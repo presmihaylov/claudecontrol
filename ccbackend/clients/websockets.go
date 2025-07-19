@@ -1,4 +1,4 @@
-package main
+package clients
 
 import (
 	"fmt"
@@ -20,17 +20,17 @@ type Client struct {
 	ClientConn *websocket.Conn
 }
 
-type MessageHandlerFunc func(client *Client, msg any)
+type MessageHandlerFunc func(clientID string, msg any)
 
-type WebSocketServer struct {
+type WebSocketClient struct {
 	clients         []*Client
 	mutex           sync.RWMutex
 	upgrader        websocket.Upgrader
 	messageHandlers []MessageHandlerFunc
 }
 
-func NewWebsocketServer() *WebSocketServer {
-	return &WebSocketServer{
+func NewWebSocketClient() *WebSocketClient {
+	return &WebSocketClient{
 		clients: make([]*Client, 0),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(_ *http.Request) bool {
@@ -41,13 +41,13 @@ func NewWebsocketServer() *WebSocketServer {
 	}
 }
 
-func (ws *WebSocketServer) StartWebsocketServer() {
+func (ws *WebSocketClient) StartWebsocketServer() {
 	log.Printf("🚀 Starting WebSocket server on /ws endpoint")
 	http.HandleFunc("/ws", ws.handleWebSocketConnection)
 	log.Printf("✅ WebSocket server registered on /ws")
 }
 
-func (ws *WebSocketServer) handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
+func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🔗 New WebSocket connection attempt from %s", r.RemoteAddr)
 	
 	conn, err := ws.upgrader.Upgrade(w, r, nil)
@@ -87,14 +87,14 @@ func (ws *WebSocketServer) handleWebSocketConnection(w http.ResponseWriter, r *h
 	log.Printf("🛑 Message listener stopped for client %s", client.ID)
 }
 
-func (ws *WebSocketServer) addClient(client *Client) {
+func (ws *WebSocketClient) addClient(client *Client) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	ws.clients = append(ws.clients, client)
 	log.Printf("📊 Client %s added to active connections. Total clients: %d", client.ID, len(ws.clients))
 }
 
-func (ws *WebSocketServer) removeClient(clientID string) {
+func (ws *WebSocketClient) removeClient(clientID string) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	for i, client := range ws.clients {
@@ -107,7 +107,7 @@ func (ws *WebSocketServer) removeClient(clientID string) {
 	log.Printf("⚠️ Attempted to remove client %s but not found in active connections", clientID)
 }
 
-func (ws *WebSocketServer) GetClientIDs() []string {
+func (ws *WebSocketClient) GetClientIDs() []string {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	clientIDs := make([]string, len(ws.clients))
@@ -118,7 +118,7 @@ func (ws *WebSocketServer) GetClientIDs() []string {
 	return clientIDs
 }
 
-func (ws *WebSocketServer) getClientByID(clientID string) *Client {
+func (ws *WebSocketClient) getClientByID(clientID string) *Client {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	for _, client := range ws.clients {
@@ -131,7 +131,7 @@ func (ws *WebSocketServer) getClientByID(clientID string) *Client {
 	return nil
 }
 
-func (ws *WebSocketServer) SendMessage(clientID string, msg any) error {
+func (ws *WebSocketClient) SendMessage(clientID string, msg any) error {
 	log.Printf("📤 Attempting to send message to client %s", clientID)
 	client := ws.getClientByID(clientID)
 	if client == nil {
@@ -148,20 +148,20 @@ func (ws *WebSocketServer) SendMessage(clientID string, msg any) error {
 	return nil
 }
 
-func (ws *WebSocketServer) registerMessageHandler(handler MessageHandlerFunc) {
+func (ws *WebSocketClient) RegisterMessageHandler(handler MessageHandlerFunc) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	ws.messageHandlers = append(ws.messageHandlers, handler)
 	log.Printf("📝 Message handler registered. Total handlers: %d", len(ws.messageHandlers))
 }
 
-func (ws *WebSocketServer) invokeMessageHandlers(client *Client, msg any) {
+func (ws *WebSocketClient) invokeMessageHandlers(client *Client, msg any) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	log.Printf("🔄 Invoking %d message handlers for client %s", len(ws.messageHandlers), client.ID)
 	for i, handler := range ws.messageHandlers {
 		log.Printf("🎯 Executing handler %d for client %s", i+1, client.ID)
-		handler(client, msg)
+		handler(client.ID, msg)
 	}
 	log.Printf("✅ All message handlers completed for client %s", client.ID)
 }
