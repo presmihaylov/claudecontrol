@@ -12,14 +12,18 @@ type Message struct {
 	Type string `json:"type"`
 }
 
+type Client struct {
+	ClientConn *websocket.Conn
+}
+
 type WebSocketManager struct {
-	connections map[*websocket.Conn]bool
-	mutex       sync.RWMutex
-	upgrader    websocket.Upgrader
+	clients  []Client
+	mutex    sync.RWMutex
+	upgrader websocket.Upgrader
 }
 
 var wsManager = &WebSocketManager{
-	connections: make(map[*websocket.Conn]bool),
+	clients: make([]Client, 0),
 	upgrader: websocket.Upgrader{
 		CheckOrigin: func(_ *http.Request) bool {
 			return true
@@ -39,8 +43,9 @@ func (wsm *WebSocketManager) handleWebSocketConnection(w http.ResponseWriter, r 
 	}
 	defer conn.Close()
 
-	wsm.addConnection(conn)
-	defer wsm.removeConnection(conn)
+	client := Client{ClientConn: conn}
+	wsm.addClient(client)
+	defer wsm.removeClient(conn)
 
 	log.Printf("✅ WebSocket client connected")
 
@@ -67,16 +72,21 @@ func (wsm *WebSocketManager) handleWebSocketConnection(w http.ResponseWriter, r 
 	log.Printf("🔌 WebSocket client disconnected")
 }
 
-func (wsm *WebSocketManager) addConnection(conn *websocket.Conn) {
+func (wsm *WebSocketManager) addClient(client Client) {
 	wsm.mutex.Lock()
 	defer wsm.mutex.Unlock()
-	wsm.connections[conn] = true
+	wsm.clients = append(wsm.clients, client)
 }
 
-func (wsm *WebSocketManager) removeConnection(conn *websocket.Conn) {
+func (wsm *WebSocketManager) removeClient(conn *websocket.Conn) {
 	wsm.mutex.Lock()
 	defer wsm.mutex.Unlock()
-	delete(wsm.connections, conn)
+	for i, client := range wsm.clients {
+		if client.ClientConn == conn {
+			wsm.clients = append(wsm.clients[:i], wsm.clients[i+1:]...)
+			break
+		}
+	}
 }
 
 func sendPingToClient(conn *websocket.Conn) error {
@@ -89,8 +99,8 @@ func sendPingToAllClients() {
 	defer wsManager.mutex.RUnlock()
 
 	msg := Message{Type: "ping"}
-	for conn := range wsManager.connections {
-		if err := conn.WriteJSON(msg); err != nil {
+	for _, client := range wsManager.clients {
+		if err := client.ClientConn.WriteJSON(msg); err != nil {
 			log.Printf("❌ Failed to send ping to client: %v", err)
 		}
 	}
