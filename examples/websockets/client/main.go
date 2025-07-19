@@ -63,13 +63,13 @@ func main() {
 		select {
 		case <-done:
 			return
-		case <-ticker.C:
-			ping := Message{Type: "ping"}
-			if err := conn.WriteJSON(ping); err != nil {
-				log.Printf("❌ Failed to send ping: %v", err)
-				return
-			}
-			log.Printf("🏓 Sent ping to server")
+		// case <-ticker.C:
+		// 	ping := Message{Type: "ping"}
+		// 	if err := conn.WriteJSON(ping); err != nil {
+		// 		log.Printf("❌ Failed to send ping: %v", err)
+		// 		return
+		// 	}
+		// 	log.Printf("🏓 Sent ping to server")
 		case <-interrupt:
 			log.Println("🔌 Interrupt received, closing connection...")
 
@@ -87,4 +87,3 @@ func main() {
 		}
 	}
 }
-

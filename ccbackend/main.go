@@ -30,11 +30,11 @@ func main() {
 
 	slackClient := slack.New(token)
 
-	setupSlackCommandsEndpoints(slackClient, signingSecret)
-	setupSlackEventsEndpoints(slackClient)
-
 	wsServer := NewWebsocketServer()
 	wsServer.StartWebsocketServer()
+
+	setupSlackCommandsEndpoints(slackClient, signingSecret)
+	setupSlackEventsEndpoints(slackClient, wsServer)
 
 	wsServer.registerMessageHandler(func(client *Client, msg any) {
 		handleWSMessage(client, msg, wsServer)
