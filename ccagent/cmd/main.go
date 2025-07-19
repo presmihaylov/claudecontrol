@@ -85,6 +85,14 @@ func (cr *CmdRunner) handleNewCommand(cmd *NewCommand) {
 	_ = cmd
 	session := cr.sessionService.GenerateSession()
 	fmt.Println(session.ID)
+	
+	output, err := cr.claudeClient.StartNewSession("hello")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error starting Claude session: %v\n", err)
+		os.Exit(1)
+	}
+	
+	fmt.Println(output)
 }
 
 func (cr *CmdRunner) handleContinueCommand(cmd *ContinueCommand) {
