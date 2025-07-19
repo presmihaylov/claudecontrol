@@ -1,0 +1,44 @@
+{
+  "name": "@presmihaylov/ccagent",
+  "version": "0.0.46",
+  "module": "index.ts",
+  "type": "module",
+  "private": false,
+  "files": [
+    "dist/"
+  ],
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "bin": {
+    "ccagent": "dist/ccagent.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "Claude Control agent for managing a Claude Code instance",
+  "main": "index.ts",
+  "dependencies": {
+    "bun-types": "^1.2.18",
+    "csstype": "^3.1.3",
+    "typescript": "^5.8.3",
+    "undici-types": "^7.8.0"
+  },
+  "scripts": {
+    "bin:build": "bun build ./cli.ts --outfile dist/ccagent.js --target node",
+    "prepublishOnly": "mkdir -p dist && bun bin:build",
+    "version:patch": "npm version patch",
+    "test": "bun test"
+  },
+  "keywords": [
+    "cli",
+    "claude",
+    "code",
+    "claude"
+  ],
+  "author": "Pres Mihaylov",
+  "license": "ISC"
+}
