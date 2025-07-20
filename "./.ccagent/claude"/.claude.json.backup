@@ -1,0 +1,28 @@
+{
+  "installMethod": "unknown",
+  "autoUpdates": true,
+  "firstStartTime": "2025-07-20T17:50:37.462Z",
+  "userID": "717c751f5daaa217cb889d4172aaedffe242f6a34c52cdee7b28bf4d36f329e9",
+  "projects": {
+    "/private/tmp/cc1": {
+      "allowedTools": [],
+      "history": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": false,
+      "projectOnboardingSeenCount": 0,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "hasClaudeMdExternalIncludesWarningShown": false,
+      "exampleFiles": [
+        "main.go",
+        "websockets.go",
+        "claude.go",
+        "agents.go",
+        "service.go"
+      ],
+      "exampleFilesGeneratedAt": 1753033838597
+    }
+  }
+}
