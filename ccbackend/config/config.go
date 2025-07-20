@@ -11,6 +11,8 @@ type AppConfig struct {
 	SlackBotToken      string
 	SlackSigningSecret string
 	Port               string
+	DatabaseURL        string
+	DatabaseSchema     string
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -28,10 +30,22 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
+	databaseURL, err := getEnvRequired("DB_URL")
+	if err != nil {
+		return nil, err
+	}
+
+	databaseSchema, err := getEnvRequired("DB_SCHEMA")
+	if err != nil {
+		return nil, err
+	}
+
 	config := &AppConfig{
 		SlackBotToken:      slackBotToken,
 		SlackSigningSecret: slackSigningSecret,
 		Port:               getEnvWithDefault("PORT", "8080"),
+		DatabaseURL:        databaseURL,
+		DatabaseSchema:     databaseSchema,
 	}
 
 	return config, nil

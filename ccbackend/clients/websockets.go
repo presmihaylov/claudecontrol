@@ -21,12 +21,15 @@ type Client struct {
 }
 
 type MessageHandlerFunc func(clientID string, msg any)
+type ConnectionHookFunc func(clientID string)
 
 type WebSocketClient struct {
-	clients         []*Client
-	mutex           sync.RWMutex
-	upgrader        websocket.Upgrader
-	messageHandlers []MessageHandlerFunc
+	clients              []*Client
+	mutex                sync.RWMutex
+	upgrader             websocket.Upgrader
+	messageHandlers      []MessageHandlerFunc
+	connectionHooks      []ConnectionHookFunc
+	disconnectionHooks   []ConnectionHookFunc
 }
 
 func NewWebSocketClient() *WebSocketClient {
@@ -37,7 +40,9 @@ func NewWebSocketClient() *WebSocketClient {
 				return true
 			},
 		},
-		messageHandlers: make([]MessageHandlerFunc, 0),
+		messageHandlers:    make([]MessageHandlerFunc, 0),
+		connectionHooks:    make([]ConnectionHookFunc, 0),
+		disconnectionHooks: make([]ConnectionHookFunc, 0),
 	}
 }
 
@@ -66,7 +71,11 @@ func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *h
 	}
 	ws.addClient(client)
 	log.Printf("✅ WebSocket client connected with ID: %s from %s", client.ID, r.RemoteAddr)
-	defer ws.removeClient(client.ID)
+	ws.invokeConnectionHooks(client.ID)
+	defer func() {
+		ws.invokeDisconnectionHooks(client.ID)
+		ws.removeClient(client.ID)
+	}()
 
 	log.Printf("👂 Starting message listener for client %s", client.ID)
 	for {
@@ -155,6 +164,20 @@ func (ws *WebSocketClient) RegisterMessageHandler(handler MessageHandlerFunc) {
 	log.Printf("📝 Message handler registered. Total handlers: %d", len(ws.messageHandlers))
 }
 
+func (ws *WebSocketClient) RegisterConnectionHook(hook ConnectionHookFunc) {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+	ws.connectionHooks = append(ws.connectionHooks, hook)
+	log.Printf("🔗 Connection hook registered. Total connection hooks: %d", len(ws.connectionHooks))
+}
+
+func (ws *WebSocketClient) RegisterDisconnectionHook(hook ConnectionHookFunc) {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+	ws.disconnectionHooks = append(ws.disconnectionHooks, hook)
+	log.Printf("🔌 Disconnection hook registered. Total disconnection hooks: %d", len(ws.disconnectionHooks))
+}
+
 func (ws *WebSocketClient) invokeMessageHandlers(client *Client, msg any) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
@@ -164,4 +187,26 @@ func (ws *WebSocketClient) invokeMessageHandlers(client *Client, msg any) {
 		handler(client.ID, msg)
 	}
 	log.Printf("✅ All message handlers completed for client %s", client.ID)
+}
+
+func (ws *WebSocketClient) invokeConnectionHooks(clientID string) {
+	ws.mutex.RLock()
+	defer ws.mutex.RUnlock()
+	log.Printf("🔗 Invoking %d connection hooks for client %s", len(ws.connectionHooks), clientID)
+	for i, hook := range ws.connectionHooks {
+		log.Printf("🎯 Executing connection hook %d for client %s", i+1, clientID)
+		hook(clientID)
+	}
+	log.Printf("✅ All connection hooks completed for client %s", clientID)
+}
+
+func (ws *WebSocketClient) invokeDisconnectionHooks(clientID string) {
+	ws.mutex.RLock()
+	defer ws.mutex.RUnlock()
+	log.Printf("🔌 Invoking %d disconnection hooks for client %s", len(ws.disconnectionHooks), clientID)
+	for i, hook := range ws.disconnectionHooks {
+		log.Printf("🎯 Executing disconnection hook %d for client %s", i+1, clientID)
+		hook(clientID)
+	}
+	log.Printf("✅ All disconnection hooks completed for client %s", clientID)
 }
