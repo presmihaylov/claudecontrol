@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testSchema = "claudecontrol_test"
-
 func setupTestService(t *testing.T) (*AgentsService, func()) {
 	if err := godotenv.Load("../.env.test"); err != nil {
 		t.Logf("⚠️ Could not load .env file: %v", err)
@@ -22,13 +20,17 @@ func setupTestService(t *testing.T) (*AgentsService, func()) {
 	dbURL := os.Getenv("DB_URL")
 	require.NotEmpty(t, dbURL, "DB_URL environment variable is required for tests")
 
-	repo, err := db.NewPostgresAgentsRepository(dbURL, testSchema)
-	require.NoError(t, err, "Failed to create agents repository")
+	dbSchema := os.Getenv("DB_SCHEMA")
+	require.NotEmpty(t, dbSchema, "DB_SCHEMA environment variable is required for tests")
 
+	dbConn, err := db.NewConnection(dbURL)
+	require.NoError(t, err, "Failed to create database connection")
+
+	repo := db.NewPostgresAgentsRepository(dbConn, dbSchema)
 	service := NewAgentsService(repo)
 
 	cleanup := func() {
-		repo.Close()
+		dbConn.Close()
 	}
 
 	return service, cleanup
@@ -279,4 +281,3 @@ func TestAgentsService(t *testing.T) {
 		})
 	})
 }
-

@@ -18,17 +18,8 @@ type PostgresAgentsRepository struct {
 	schema string
 }
 
-func NewPostgresAgentsRepository(databaseURL, schema string) (*PostgresAgentsRepository, error) {
-	db, err := sqlx.Open("postgres", databaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	return &PostgresAgentsRepository{db: db, schema: schema}, nil
+func NewPostgresAgentsRepository(db *sqlx.DB, schema string) *PostgresAgentsRepository {
+	return &PostgresAgentsRepository{db: db, schema: schema}
 }
 
 func (r *PostgresAgentsRepository) CreateActiveAgent(agent *models.ActiveAgent) error {
@@ -128,7 +119,45 @@ func (r *PostgresAgentsRepository) DeleteAllActiveAgents() error {
 	return nil
 }
 
-func (r *PostgresAgentsRepository) Close() error {
-	return r.db.Close()
+func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID) (*models.ActiveAgent, error) {
+	query := fmt.Sprintf(`
+		SELECT id, assigned_job_id, ws_connection_id, created_at, updated_at 
+		FROM %s.active_agents 
+		WHERE assigned_job_id = $1`, r.schema)
+
+	agent := &models.ActiveAgent{}
+	err := r.db.Get(agent, query, jobID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("active agent with assigned_job_id %s not found", jobID)
+		}
+		return nil, fmt.Errorf("failed to get active agent by job ID: %w", err)
+	}
+
+	return agent, nil
 }
+
+func (r *PostgresAgentsRepository) UpdateAgentJobAssignment(agentID uuid.UUID, jobID *uuid.UUID) error {
+	query := fmt.Sprintf(`
+		UPDATE %s.active_agents 
+		SET assigned_job_id = $2, updated_at = NOW() 
+		WHERE id = $1`, r.schema)
+
+	result, err := r.db.Exec(query, agentID, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to update agent job assignment: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("active agent with id %s not found", agentID)
+	}
+
+	return nil
+}
+
 

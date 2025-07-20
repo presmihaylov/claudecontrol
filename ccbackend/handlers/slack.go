@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"ccbackend/models"
-	"ccbackend/services"
+	"ccbackend/usecases"
 
 	"github.com/slack-go/slack"
 )
@@ -16,14 +16,14 @@ import (
 type SlackWebhooksHandler struct {
 	slackClient   *slack.Client
 	signingSecret string
-	appService    *services.AppService
+	coreUseCase   *usecases.CoreUseCase
 }
 
-func NewSlackWebhooksHandler(slackClient *slack.Client, signingSecret string, appService *services.AppService) *SlackWebhooksHandler {
+func NewSlackWebhooksHandler(slackClient *slack.Client, signingSecret string, coreUseCase *usecases.CoreUseCase) *SlackWebhooksHandler {
 	return &SlackWebhooksHandler{
 		slackClient:   slackClient,
 		signingSecret: signingSecret,
-		appService:    appService,
+		coreUseCase:   coreUseCase,
 	}
 }
 
@@ -147,7 +147,7 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 		ThreadTs: threadTs,
 	}
 
-	if err := h.appService.ProcessSlackMessageEvent(slackEvent); err != nil {
+	if err := h.coreUseCase.ProcessSlackMessageEvent(slackEvent); err != nil {
 		log.Printf("❌ Failed to process Slack message event: %v", err)
 	}
 

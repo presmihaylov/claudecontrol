@@ -117,3 +117,69 @@ func (s *AgentsService) DeleteAllActiveAgents() error {
 	return nil
 }
 
+func (s *AgentsService) AssignJobToAgent(agentID, jobID uuid.UUID) error {
+	log.Printf("📋 Starting to assign job %s to agent %s", jobID, agentID)
+
+	if agentID == uuid.Nil {
+		return fmt.Errorf("agent ID cannot be nil")
+	}
+
+	if jobID == uuid.Nil {
+		return fmt.Errorf("job ID cannot be nil")
+	}
+
+	if err := s.agentsRepo.UpdateAgentJobAssignment(agentID, &jobID); err != nil {
+		return fmt.Errorf("failed to assign job to agent: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - assigned job %s to agent %s", jobID, agentID)
+	return nil
+}
+
+func (s *AgentsService) UnassignJobFromAgent(agentID uuid.UUID) error {
+	log.Printf("📋 Starting to unassign job from agent %s", agentID)
+
+	if agentID == uuid.Nil {
+		return fmt.Errorf("agent ID cannot be nil")
+	}
+
+	if err := s.agentsRepo.UpdateAgentJobAssignment(agentID, nil); err != nil {
+		return fmt.Errorf("failed to unassign job from agent: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - unassigned job from agent %s", agentID)
+	return nil
+}
+
+func (s *AgentsService) GetAgentByJobID(jobID uuid.UUID) (*models.ActiveAgent, error) {
+	log.Printf("📋 Starting to get agent by job ID: %s", jobID)
+
+	if jobID == uuid.Nil {
+		return nil, fmt.Errorf("job ID cannot be nil")
+	}
+
+	agent, err := s.agentsRepo.GetAgentByJobID(jobID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get agent by job ID: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - retrieved agent %s for job %s", agent.ID, jobID)
+	return agent, nil
+}
+
+func (s *AgentsService) GetAgentByWSConnectionID(wsConnectionID string) (*models.ActiveAgent, error) {
+	log.Printf("📋 Starting to get agent by WS connection ID: %s", wsConnectionID)
+
+	if wsConnectionID == "" {
+		return nil, fmt.Errorf("ws_connection_id cannot be empty")
+	}
+
+	agent, err := s.agentsRepo.GetAgentByWSConnectionID(wsConnectionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get agent by WS connection ID: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - retrieved agent %s for WS connection %s", agent.ID, wsConnectionID)
+	return agent, nil
+}
+

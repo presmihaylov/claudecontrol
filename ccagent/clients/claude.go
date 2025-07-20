@@ -16,6 +16,7 @@ func NewClaudeClient() *ClaudeClient {
 }
 
 func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error) {
+	log.Info("📋 Starting to continue Claude session: %s", sessionID)
 	// Not used at the moment, because claude code doesn't support continuing sessions due to a bug:
 	// https://github.com/anthropics/claude-code/issues/3976
 	_ = sessionID
@@ -43,11 +44,13 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 	result := strings.TrimSpace(string(output))
 	log.Info("Claude command completed successfully", "outputLength", len(result))
 	log.Info("Claude output", "output", result)
+	log.Info("📋 Completed successfully - continued Claude session")
 
 	return result, nil
 }
 
 func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
+	log.Info("📋 Starting to create new Claude session")
 	args := []string{
 		"--permission-mode", "bypassPermissions",
 		"-p", prompt,
@@ -71,6 +74,7 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 	result := strings.TrimSpace(string(output))
 	log.Info("Claude command completed successfully", "outputLength", len(result))
 	log.Info("Claude output", "output", result)
+	log.Info("📋 Completed successfully - started new Claude session")
 
 	return result, nil
 }

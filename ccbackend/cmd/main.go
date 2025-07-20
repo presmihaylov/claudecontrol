@@ -13,8 +13,8 @@ import (
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/handlers"
-	"ccbackend/models"
 	"ccbackend/services"
+	"ccbackend/usecases"
 
 	"github.com/slack-go/slack"
 )
@@ -32,14 +32,19 @@ func run() error {
 		return err
 	}
 
-	// Initialize database and agents service
-	agentsRepo, err := db.NewPostgresAgentsRepository(cfg.DatabaseURL, cfg.DatabaseSchema)
+	// Initialize database connection
+	dbConn, err := db.NewConnection(cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
-	defer agentsRepo.Close()
+	defer dbConn.Close()
+
+	// Initialize repositories with shared connection
+	agentsRepo := db.NewPostgresAgentsRepository(dbConn, cfg.DatabaseSchema)
+	jobsRepo := db.NewPostgresJobsRepository(dbConn, cfg.DatabaseSchema)
 
 	agentsService := services.NewAgentsService(agentsRepo)
+	jobsService := services.NewJobsService(jobsRepo)
 
 	// Clear all active agents on startup
 	log.Printf("🧹 Cleaning up stale active agents from previous server runs")
@@ -48,19 +53,27 @@ func run() error {
 	}
 
 	slackClient := slack.New(cfg.SlackBotToken)
-	appState := &models.AppState{}
 	wsClient := clients.NewWebSocketClient()
 	wsClient.StartWebsocketServer()
 	
-	appService := services.NewAppService(slackClient, appState, wsClient, agentsService)
-	wsHandler := handlers.NewWebSocketHandler(appService)
-	slackHandler := handlers.NewSlackWebhooksHandler(slackClient, cfg.SlackSigningSecret, appService)
+	coreUseCase := usecases.NewCoreUseCase(slackClient, wsClient, agentsService, jobsService)
+	wsHandler := handlers.NewWebSocketHandler(coreUseCase)
+	slackHandler := handlers.NewSlackWebhooksHandler(slackClient, cfg.SlackSigningSecret, coreUseCase)
 	slackHandler.SetupEndpoints()
 
 	// Register WebSocket hooks for agent lifecycle
-	wsClient.RegisterConnectionHook(appService.RegisterAgent)
-	wsClient.RegisterDisconnectionHook(appService.DeregisterAgent)
+	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
+	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
 	wsClient.RegisterMessageHandler(wsHandler.HandleMessage)
+
+	// Start periodic cleanup of idle jobs
+	cleanupTicker := time.NewTicker(2 * time.Minute)
+	go func() {
+		for range cleanupTicker.C {
+			coreUseCase.CleanupIdleJobs()
+		}
+	}()
+	defer cleanupTicker.Stop()
 
 	// Setup and handle graceful shutdown
 	server := &http.Server{

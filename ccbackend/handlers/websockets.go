@@ -5,16 +5,16 @@ import (
 	"log"
 
 	"ccbackend/models"
-	"ccbackend/services"
+	"ccbackend/usecases"
 )
 
 type WebSocketHandler struct {
-	appService *services.AppService
+	coreUseCase *usecases.CoreUseCase
 }
 
-func NewWebSocketHandler(appService *services.AppService) *WebSocketHandler {
+func NewWebSocketHandler(coreUseCase *usecases.CoreUseCase) *WebSocketHandler {
 	return &WebSocketHandler{
-		appService: appService,
+		coreUseCase: coreUseCase,
 	}
 }
 
@@ -40,7 +40,7 @@ func (h *WebSocketHandler) HandleMessage(clientID string, msg any) {
 		}
 
 		log.Printf("🤖 Received assistant message from client %s: %s", clientID, payload.Message)
-		if err := h.appService.ProcessAssistantMessage(payload); err != nil {
+		if err := h.coreUseCase.ProcessAssistantMessage(clientID, payload); err != nil {
 			log.Printf("❌ Failed to process assistant message from client %s: %v", clientID, err)
 		}
 

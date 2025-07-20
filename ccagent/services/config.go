@@ -21,20 +21,32 @@ func NewConfigService() *ConfigService {
 }
 
 func (s *ConfigService) GetOrCreateConfig() (*models.Config, error) {
+	log.Info("📋 Starting to get or create config")
 	configPath := filepath.Join(configDir, configFile)
-	log.Info("Checking for config file", "path", configPath)
+	log.Info("Checking for config file at path: %s", configPath)
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Info("Config file does not exist, creating new config")
-		return s.createConfig()
+		config, err := s.createConfig()
+		if err != nil {
+			return nil, err
+		}
+		log.Info("📋 Completed successfully - created new config with agent ID: %s", config.AgentID)
+		return config, nil
 	}
 
 	log.Info("Config file exists, loading existing config")
-	return s.loadConfig(configPath)
+	config, err := s.loadConfig(configPath)
+	if err != nil {
+		return nil, err
+	}
+	log.Info("📋 Completed successfully - loaded existing config with agent ID: %s", config.AgentID)
+	return config, nil
 }
 
 func (s *ConfigService) createConfig() (*models.Config, error) {
-	log.Info("Creating config directory", "dir", configDir)
+	log.Info("📋 Starting to create new config")
+	log.Info("Creating config directory: %s", configDir)
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		log.Error("Failed to create config directory", "error", err)
 		return nil, err
@@ -43,13 +55,13 @@ func (s *ConfigService) createConfig() (*models.Config, error) {
 	s.addToGitignore(configDir)
 
 	agentID := uuid.New().String()
-	log.Info("Generated new agent ID", "agentID", agentID)
+	log.Info("Generated new agent ID: %s", agentID)
 	config := &models.Config{
 		AgentID: agentID,
 	}
 
 	configPath := filepath.Join(configDir, configFile)
-	log.Info("Writing config file", "path", configPath)
+	log.Info("Writing config file to path: %s", configPath)
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		log.Error("Failed to marshal config", "error", err)
@@ -62,11 +74,13 @@ func (s *ConfigService) createConfig() (*models.Config, error) {
 	}
 
 	log.Info("Config created successfully")
+	log.Info("📋 Completed successfully - created config with agent ID: %s", config.AgentID)
 	return config, nil
 }
 
 func (s *ConfigService) loadConfig(configPath string) (*models.Config, error) {
-	log.Info("Loading config file", "path", configPath)
+	log.Info("📋 Starting to load config from path: %s", configPath)
+	log.Info("Loading config file from path: %s", configPath)
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Error("Failed to read config file", "error", err)
@@ -79,7 +93,8 @@ func (s *ConfigService) loadConfig(configPath string) (*models.Config, error) {
 		return nil, err
 	}
 
-	log.Info("Config loaded successfully", "agentID", config.AgentID)
+	log.Info("Config loaded successfully with agent ID: %s", config.AgentID)
+	log.Info("📋 Completed successfully - loaded config with agent ID: %s", config.AgentID)
 	return &config, nil
 }
 

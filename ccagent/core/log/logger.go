@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 )
@@ -13,20 +14,36 @@ func init() {
 	}))
 }
 
-func Info(msg string, args ...any) {
-	logger.Info(msg, args...)
+func Info(format string, args ...any) {
+	if len(args) > 0 {
+		logger.Info(fmt.Sprintf(format, args...))
+	} else {
+		logger.Info(format)
+	}
 }
 
-func Debug(msg string, args ...any) {
-	logger.Debug(msg, args...)
+func Debug(format string, args ...any) {
+	if len(args) > 0 {
+		logger.Debug(fmt.Sprintf(format, args...))
+	} else {
+		logger.Debug(format)
+	}
 }
 
-func Warn(msg string, args ...any) {
-	logger.Warn(msg, args...)
+func Warn(format string, args ...any) {
+	if len(args) > 0 {
+		logger.Warn(fmt.Sprintf(format, args...))
+	} else {
+		logger.Warn(format)
+	}
 }
 
-func Error(msg string, args ...any) {
-	logger.Error(msg, args...)
+func Error(format string, args ...any) {
+	if len(args) > 0 {
+		logger.Error(fmt.Sprintf(format, args...))
+	} else {
+		logger.Error(format)
+	}
 }
 
 func SetLevel(level slog.Level) {
