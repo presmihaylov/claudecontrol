@@ -224,8 +224,6 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 		cr.handleStartConversation(msg, conn)
 	case MessageTypeUserMessage:
 		cr.handleUserMessage(msg, conn)
-	case MessageTypePing:
-		cr.handlePing(conn)
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
 	}
@@ -297,22 +295,6 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	}
 }
 
-func (cr *CmdRunner) handlePing(conn *websocket.Conn) {
-	log.Info("📋 Starting to handle ping message")
-	log.Info("🏓 Received ping, sending pong")
-
-	response := UnknownMessage{
-		Type:    MessageTypePong,
-		Payload: PongPayload{},
-	}
-
-	if err := conn.WriteJSON(response); err != nil {
-		log.Info("❌ Failed to send pong: %v", err)
-	} else {
-		log.Info("🏓 Sent pong response")
-		log.Info("📋 Completed successfully - handled ping message")
-	}
-}
 
 func unmarshalPayload(payload any, target any) error {
 	if payload == nil {
