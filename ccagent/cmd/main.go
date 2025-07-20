@@ -82,6 +82,10 @@ func (cr *CmdRunner) startWebSocketClient(serverURL string) error {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
 
+	// Set up global interrupt handling
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
 	// Retry intervals in seconds: 5, 10, 20, 30, 60, 120
 	retryIntervals := []time.Duration{
 		5 * time.Second,
@@ -93,20 +97,29 @@ func (cr *CmdRunner) startWebSocketClient(serverURL string) error {
 	}
 
 	for {
-		conn, connected := cr.connectWithRetry(u.String(), retryIntervals)
+		conn, connected := cr.connectWithRetry(u.String(), retryIntervals, interrupt)
 		if conn == nil {
-			log.Info("❌ All retry attempts exhausted, shutting down")
-			return fmt.Errorf("failed to connect after all retry attempts")
+			select {
+			case <-interrupt:
+				log.Info("🔌 Interrupt received during connection attempts, shutting down")
+				return nil
+			default:
+				log.Info("❌ All retry attempts exhausted, shutting down")
+				return fmt.Errorf("failed to connect after all retry attempts")
+			}
 		}
 
 		if !connected {
-			continue // Retry loop will handle reconnection
+			select {
+			case <-interrupt:
+				log.Info("🔌 Interrupt received, shutting down")
+				return nil
+			default:
+				continue // Retry loop will handle reconnection
+			}
 		}
 
 		log.Info("✅ Connected to WebSocket server")
-
-		interrupt := make(chan os.Signal, 1)
-		signal.Notify(interrupt, os.Interrupt)
 
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
@@ -166,7 +179,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL string) error {
 	}
 }
 
-func (cr *CmdRunner) connectWithRetry(serverURL string, retryIntervals []time.Duration) (*websocket.Conn, bool) {
+func (cr *CmdRunner) connectWithRetry(serverURL string, retryIntervals []time.Duration, interrupt <-chan os.Signal) (*websocket.Conn, bool) {
 	log.Info("🔌 Attempting to connect to WebSocket server at %s", serverURL)
 
 	conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
@@ -179,7 +192,17 @@ func (cr *CmdRunner) connectWithRetry(serverURL string, retryIntervals []time.Du
 
 	for attempt, interval := range retryIntervals {
 		log.Info("⏱️ Waiting %v before retry attempt %d/%d", interval, attempt+1, len(retryIntervals))
-		time.Sleep(interval)
+		
+		// Use select to wait for either timeout or interrupt
+		timer := time.NewTimer(interval)
+		select {
+		case <-timer.C:
+			// Timer expired, continue with retry
+		case <-interrupt:
+			timer.Stop()
+			log.Info("🔌 Interrupt received during retry wait, aborting")
+			return nil, false
+		}
 
 		log.Info("🔌 Retry attempt %d/%d: connecting to %s", attempt+1, len(retryIntervals), serverURL)
 		conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
