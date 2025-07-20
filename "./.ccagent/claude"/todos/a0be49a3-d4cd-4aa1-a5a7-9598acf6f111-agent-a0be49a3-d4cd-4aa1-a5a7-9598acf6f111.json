@@ -1,0 +1,26 @@
+[
+  {
+    "content": "Remove ping/pong message types and structs from ccbackend models/messages.go",
+    "status": "completed",
+    "priority": "high",
+    "id": "1"
+  },
+  {
+    "content": "Remove ping/pong message types and structs from ccagent cmd/messages.go",
+    "status": "completed",
+    "priority": "high",
+    "id": "2"
+  },
+  {
+    "content": "Remove ping handling logic from ccagent cmd/main.go",
+    "status": "completed",
+    "priority": "high",
+    "id": "3"
+  },
+  {
+    "content": "Build and test to ensure nothing is broken",
+    "status": "completed",
+    "priority": "medium",
+    "id": "4"
+  }
+]
