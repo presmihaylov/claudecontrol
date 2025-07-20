@@ -198,6 +198,18 @@ func (s *CoreUseCase) RegisterAgent(clientID string) {
 func (s *CoreUseCase) DeregisterAgent(clientID string) {
 	log.Printf("📋 Starting to deregister agent for client %s", clientID)
 
+	// Send JobUnassigned message to the agent before disconnecting
+	jobUnassignedMessage := models.UnknownMessage{
+		Type:    models.MessageTypeJobUnassigned,
+		Payload: models.JobUnassignedPayload{},
+	}
+	
+	if err := s.wsClient.SendMessage(clientID, jobUnassignedMessage); err != nil {
+		log.Printf("⚠️ Failed to send JobUnassigned message to client %s: %v", clientID, err)
+	} else {
+		log.Printf("📤 Sent JobUnassigned message to client %s", clientID)
+	}
+
 	err := s.agentsService.DeleteActiveAgentByWsConnectionID(clientID)
 	if err != nil {
 		log.Printf("❌ Failed to deregister agent for client %s: %v", clientID, err)
