@@ -224,8 +224,8 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 		cr.handleStartConversation(msg, conn)
 	case MessageTypeUserMessage:
 		cr.handleUserMessage(msg, conn)
-	case MessageTypePing:
-		cr.handlePing(conn)
+	case MessageTypeJobUnassigned:
+		cr.handleJobUnassigned(msg, conn)
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
 	}
@@ -297,21 +297,16 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	}
 }
 
-func (cr *CmdRunner) handlePing(conn *websocket.Conn) {
-	log.Info("📋 Starting to handle ping message")
-	log.Info("🏓 Received ping, sending pong")
-
-	response := UnknownMessage{
-		Type:    MessageTypePong,
-		Payload: PongPayload{},
+func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, conn *websocket.Conn) {
+	log.Info("📋 Starting to handle job unassigned message")
+	var payload JobUnassignedPayload
+	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
+		log.Info("❌ Failed to unmarshal job unassigned payload: %v", err)
+		return
 	}
 
-	if err := conn.WriteJSON(response); err != nil {
-		log.Info("❌ Failed to send pong: %v", err)
-	} else {
-		log.Info("🏓 Sent pong response")
-		log.Info("📋 Completed successfully - handled ping message")
-	}
+	log.Info("🚫 Job has been unassigned from this agent")
+	log.Info("📋 Completed successfully - handled job unassigned message")
 }
 
 func unmarshalPayload(payload any, target any) error {
