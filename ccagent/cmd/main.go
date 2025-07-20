@@ -12,6 +12,7 @@ import (
 	"ccagent/clients"
 	"ccagent/core/log"
 	"ccagent/services"
+	"ccagent/usecases"
 
 	"github.com/gorilla/websocket"
 	"github.com/jessevdk/go-flags"
@@ -21,6 +22,7 @@ type CmdRunner struct {
 	configService  *services.ConfigService
 	sessionService *services.SessionService
 	claudeClient   *clients.ClaudeClient
+	gitUseCase     *usecases.GitUseCase
 }
 
 func NewCmdRunner() *CmdRunner {
@@ -28,12 +30,15 @@ func NewCmdRunner() *CmdRunner {
 	configService := services.NewConfigService()
 	sessionService := services.NewSessionService()
 	claudeClient := clients.NewClaudeClient()
+	gitClient := clients.NewGitClient()
+	gitUseCase := usecases.NewGitUseCase(gitClient, claudeClient)
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
 		configService:  configService,
 		sessionService: sessionService,
 		claudeClient:   claudeClient,
+		gitUseCase:     gitUseCase,
 	}
 }
 
@@ -64,6 +69,13 @@ func main() {
 	_, err = cmdRunner.configService.GetOrCreateConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing config: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Validate Git environment before starting
+	err = cmdRunner.gitUseCase.ValidateGitEnvironment()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Git environment validation failed: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -241,6 +253,12 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
 
+	// Prepare Git environment for new conversation - FAIL if this doesn't work
+	if err := cr.gitUseCase.PrepareForNewConversation(payload.Message); err != nil {
+		log.Error("❌ Failed to prepare Git environment: %v", err)
+		return
+	}
+
 	output, err := cr.claudeClient.StartNewSession(payload.Message)
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
@@ -306,6 +324,13 @@ func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, conn *websocket.Con
 	}
 
 	log.Info("🚫 Job has been unassigned from this agent")
+	
+	// Complete job and create PR - FAIL if this doesn't work
+	if err := cr.gitUseCase.CompleteJobAndCreatePR(); err != nil {
+		log.Error("❌ Failed to complete job and create PR: %v", err)
+		return
+	}
+	
 	log.Info("📋 Completed successfully - handled job unassigned message")
 }
 

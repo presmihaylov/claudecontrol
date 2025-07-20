@@ -198,18 +198,6 @@ func (s *CoreUseCase) RegisterAgent(clientID string) {
 func (s *CoreUseCase) DeregisterAgent(clientID string) {
 	log.Printf("📋 Starting to deregister agent for client %s", clientID)
 
-	// Send JobUnassigned message to the agent before disconnecting
-	jobUnassignedMessage := models.UnknownMessage{
-		Type:    models.MessageTypeJobUnassigned,
-		Payload: models.JobUnassignedPayload{},
-	}
-	
-	if err := s.wsClient.SendMessage(clientID, jobUnassignedMessage); err != nil {
-		log.Printf("⚠️ Failed to send JobUnassigned message to client %s: %v", clientID, err)
-	} else {
-		log.Printf("📤 Sent JobUnassigned message to client %s", clientID)
-	}
-
 	err := s.agentsService.DeleteActiveAgentByWsConnectionID(clientID)
 	if err != nil {
 		log.Printf("❌ Failed to deregister agent for client %s: %v", clientID, err)
@@ -220,10 +208,10 @@ func (s *CoreUseCase) DeregisterAgent(clientID string) {
 }
 
 func (s *CoreUseCase) CleanupIdleJobs() {
-	log.Printf("📋 Starting to cleanup idle jobs older than 10 minutes")
+	log.Printf("📋 Starting to cleanup idle jobs older than 2 minutes")
 
-	// Get jobs that haven't been updated in the last 10 minutes
-	idleJobs, err := s.jobsService.GetIdleJobs(10)
+	// Get jobs that haven't been updated in the last 2 minutes
+	idleJobs, err := s.jobsService.GetIdleJobs(2)
 	if err != nil {
 		log.Printf("❌ Failed to get idle jobs: %v", err)
 		return
@@ -250,6 +238,18 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 				continue
 			}
 			log.Printf("✅ Unassigned agent %s from idle job %s", assignedAgent.ID, job.ID)
+
+			// Send JobUnassigned message to the agent after successful unassignment
+			jobUnassignedMessage := models.UnknownMessage{
+				Type:    models.MessageTypeJobUnassigned,
+				Payload: models.JobUnassignedPayload{},
+			}
+			
+			if err := s.wsClient.SendMessage(assignedAgent.WSConnectionID, jobUnassignedMessage); err != nil {
+				log.Printf("⚠️ Failed to send JobUnassigned message to agent %s: %v", assignedAgent.ID, err)
+			} else {
+				log.Printf("📤 Sent JobUnassigned message to agent %s", assignedAgent.ID)
+			}
 		}
 
 		// Delete the idle job

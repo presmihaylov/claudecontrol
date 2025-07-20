@@ -31,11 +31,11 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "CLAUDE_CONFIG_DIR=\"./.ccagent/claude\"")
-	
-	log.Info("Running Claude command", "command", "claude", "env", "CLAUDE_CONFIG_DIR=\"./.ccagent/claude\"")
+	cmd.Env = append(cmd.Env, "CLAUDE_CONFIG_DIR=.ccagent/claude")
+
+	log.Info("Running Claude command", "command", "claude", "env", "CLAUDE_CONFIG_DIR=.ccagent/claude")
 	output, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		log.Error("Claude command failed", "error", err, "output", string(output))
 		return "", fmt.Errorf("claude command failed: %w\nOutput: %s", err, string(output))
@@ -61,11 +61,11 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "CLAUDE_CONFIG_DIR=\"./.ccagent/claude\"")
-	
-	log.Info("Running Claude command", "command", "claude", "env", "CLAUDE_CONFIG_DIR=\"./.ccagent/claude\"")
+	cmd.Env = append(cmd.Env, "CLAUDE_CONFIG_DIR=.ccagent/claude")
+
+	log.Info("Running Claude command", "command", "claude", "env", "CLAUDE_CONFIG_DIR=./.ccagent/claude")
 	output, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		log.Error("Claude command failed", "error", err, "output", string(output))
 		return "", fmt.Errorf("claude command failed: %w\nOutput: %s", err, string(output))
