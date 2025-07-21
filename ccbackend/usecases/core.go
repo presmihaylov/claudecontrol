@@ -259,6 +259,18 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 		}
 
 		log.Printf("🗑️ Deleted idle job %s (thread: %s)", job.ID, job.SlackThreadTS)
+
+		// Send completion message to Slack thread
+		completionMessage := "This job is now complete"
+		_, _, err = s.slackClient.PostMessage(job.SlackChannelID,
+			slack.MsgOptionText(completionMessage, false),
+			slack.MsgOptionTS(job.SlackThreadTS),
+		)
+		if err != nil {
+			log.Printf("⚠️ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
+		} else {
+			log.Printf("📤 Sent completion message to Slack thread %s", job.SlackThreadTS)
+		}
 	}
 
 	log.Printf("📋 Completed successfully - cleaned up %d idle jobs", len(idleJobs))
