@@ -9,7 +9,7 @@ const (
 	MessageTypeJobUnassigned             = "job_unassigned_v1"
 )
 
-type UnknownMssage struct {
+type UnknownMessage struct {
 	Type    string `json:"type"`
 	Payload any    `json:"payload,omitempty"`
 }
@@ -32,4 +32,3 @@ type AssistantMessagePayload struct {
 }
 
 type JobUnassignedPayload struct{}
-
