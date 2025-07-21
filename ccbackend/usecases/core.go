@@ -100,7 +100,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 
 	if clientID == "" {
 		log.Printf("⚠️ No available agents to handle Slack mention")
-		
+
 		// Send message to Slack informing that no agents are available
 		_, _, err := s.slackClient.PostMessage(event.Channel,
 			slack.MsgOptionText("There are no available agents to handle this job", false),
@@ -110,7 +110,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 			log.Printf("❌ Failed to send 'no agents available' message to Slack: %v", err)
 			return fmt.Errorf("failed to send 'no agents available' message to Slack: %w", err)
 		}
-		
+
 		log.Printf("📤 Sent 'no agents available' message to Slack thread %s in channel %s", threadTS, event.Channel)
 		return nil
 	}
@@ -211,7 +211,7 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 	log.Printf("📋 Starting to cleanup idle jobs older than 2 minutes")
 
 	// Get jobs that haven't been updated in the last 2 minutes
-	idleJobs, err := s.jobsService.GetIdleJobs(2)
+	idleJobs, err := s.jobsService.GetIdleJobs(5)
 	if err != nil {
 		log.Printf("❌ Failed to get idle jobs: %v", err)
 		return
@@ -244,7 +244,7 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 				Type:    models.MessageTypeJobUnassigned,
 				Payload: models.JobUnassignedPayload{},
 			}
-			
+
 			if err := s.wsClient.SendMessage(assignedAgent.WSConnectionID, jobUnassignedMessage); err != nil {
 				log.Printf("⚠️ Failed to send JobUnassigned message to agent %s: %v", assignedAgent.ID, err)
 			} else {
@@ -263,3 +263,4 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 
 	log.Printf("📋 Completed successfully - cleaned up %d idle jobs", len(idleJobs))
 }
+
