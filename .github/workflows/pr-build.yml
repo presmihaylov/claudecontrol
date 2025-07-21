@@ -1,0 +1,40 @@
+name: PR Build Check
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-ccbackend:
+    name: Build ccbackend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Build ccbackend
+      run: |
+        cd ccbackend
+        make build
+
+  build-ccagent:
+    name: Build ccagent
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Build ccagent
+      run: |
+        cd ccagent
+        make build
