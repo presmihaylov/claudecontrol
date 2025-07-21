@@ -8,6 +8,7 @@ import (
 	"ccbackend/clients"
 	"ccbackend/models"
 	"ccbackend/services"
+	"ccbackend/utils"
 
 	"github.com/slack-go/slack"
 )
@@ -27,6 +28,7 @@ func NewCoreUseCase(slackClient *slack.Client, wsClient *clients.WebSocketClient
 		jobsService:   jobsService,
 	}
 }
+
 
 func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.AssistantMessagePayload) error {
 	log.Printf("📋 Starting to process assistant message from client %s: %s", clientID, payload.Message)
@@ -53,8 +55,9 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 
 	log.Printf("📤 Sending assistant message to Slack thread %s in channel %s", job.SlackThreadTS, job.SlackChannelID)
 
+	slackMessage := utils.ConvertMarkdownToSlack(payload.Message)
 	_, _, err = s.slackClient.PostMessage(job.SlackChannelID,
-		slack.MsgOptionText(payload.Message, false),
+		slack.MsgOptionText(slackMessage, false),
 		slack.MsgOptionTS(job.SlackThreadTS),
 	)
 	if err != nil {
@@ -102,8 +105,9 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 		log.Printf("⚠️ No available agents to handle Slack mention")
 
 		// Send message to Slack informing that no agents are available
+		noAgentsMessage := utils.ConvertMarkdownToSlack("There are no available agents to handle this job")
 		_, _, err := s.slackClient.PostMessage(event.Channel,
-			slack.MsgOptionText("There are no available agents to handle this job", false),
+			slack.MsgOptionText(noAgentsMessage, false),
 			slack.MsgOptionTS(threadTS),
 		)
 		if err != nil {
@@ -261,7 +265,7 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 		log.Printf("🗑️ Deleted idle job %s (thread: %s)", job.ID, job.SlackThreadTS)
 
 		// Send completion message to Slack thread
-		completionMessage := "This job is now complete"
+		completionMessage := utils.ConvertMarkdownToSlack("This job is now complete")
 		_, _, err = s.slackClient.PostMessage(job.SlackChannelID,
 			slack.MsgOptionText(completionMessage, false),
 			slack.MsgOptionTS(job.SlackThreadTS),

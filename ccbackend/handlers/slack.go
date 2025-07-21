@@ -9,6 +9,7 @@ import (
 
 	"ccbackend/models"
 	"ccbackend/usecases"
+	"ccbackend/utils"
 
 	"github.com/slack-go/slack"
 )
@@ -70,8 +71,9 @@ func (h *SlackWebhooksHandler) HandleSlackCommand(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusOK)
 
 		go func() {
+			echoMessage := utils.ConvertMarkdownToSlack("echo " + command.Text)
 			_, _, err := h.slackClient.PostMessage(command.ChannelID,
-				slack.MsgOptionText("echo "+command.Text, false),
+				slack.MsgOptionText(echoMessage, false),
 				slack.MsgOptionPostMessageParameters(slack.PostMessageParameters{
 					AsUser: true,
 				}),
