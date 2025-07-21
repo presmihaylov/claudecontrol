@@ -2,11 +2,11 @@ package main
 
 // Message types
 const (
-	MessageTypeStartConversation           = "start_conversation_v1"
-	MessageTypeStartConversationResponse   = "start_conversation_response_v1"
-	MessageTypeUserMessage                 = "user_message_v1"
-	MessageTypeAssistantMessage           = "assistant_message_v1"
-	MessageTypeJobUnassigned              = "job_unassigned_v1"
+	MessageTypeStartConversation         = "start_conversation_v1"
+	MessageTypeStartConversationResponse = "start_conversation_response_v1"
+	MessageTypeUserMessage               = "user_message_v1"
+	MessageTypeAssistantMessage          = "assistant_message_v1"
+	MessageTypeJobUnassigned             = "job_unassigned_v1"
 )
 
 type UnknownMessage struct {
@@ -31,4 +31,4 @@ type AssistantMessagePayload struct {
 	Message string `json:"message"`
 }
 
-type JobUnassignedPayload struct {}
+type JobUnassignedPayload struct{}
