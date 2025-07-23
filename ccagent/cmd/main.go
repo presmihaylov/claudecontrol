@@ -204,7 +204,7 @@ func (cr *CmdRunner) connectWithRetry(serverURL string, retryIntervals []time.Du
 
 	for attempt, interval := range retryIntervals {
 		log.Info("⏱️ Waiting %v before retry attempt %d/%d", interval, attempt+1, len(retryIntervals))
-		
+
 		// Use select to wait for either timeout or interrupt
 		timer := time.NewTimer(interval)
 		select {
@@ -259,7 +259,38 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 		return
 	}
 
-	output, err := cr.claudeClient.StartNewSession(payload.Message)
+	behaviourInstructions := `You are a claude code instance which will be referred to by the user as "Claude Control" for this session. When someone calls you claude control, they refer to you.
+
+You are being interacted with over Slack (the software). I want you to adjust your responses to account for this. In particular:
+- keep your responses more succinct than usual because it's hard to read very long messages in slack. Use long messages only if user asks for it
+- Structure your responses in sections split via bold text instead of using markdown headings because slack doesnt support markdown headings
+- Use the following Markdown formatting rules for all of your responses:
+	- Bold text: *example*
+	- Italic text: _example_
+	- Strikethrough text: ~example~
+	- Block quotes: > example
+	- Bulleted list - - one\n - two\n - three
+	- Inline code blocks: ` + "`example`" + `
+	- Full code blocks: ` + "```example```" + `
+- Do not use any other sort of markdown format except the ones listed above
+- Do not show any specific language in code blocks because Slack doesn't support syntax highlighting
+    - This is incorrect - ` + "```python\nexample\n```" + `
+    - This is correct - ` + "```\nexample\n```" + `
+- Especially be careful when using bold text:
+    - This is incorrect - **example**
+	- This is correct - *example*
+- Use emojis liberally to draw attention to the relevant pieces of your message that are most important
+- Be more explicit about errors and failures with clear emoji indicators
+- Use clear file paths with line numbers for easy navigation
+`
+
+	_, err := cr.claudeClient.StartNewSession(behaviourInstructions)
+	if err != nil {
+		log.Info("❌ Error starting Claude session with behaviour prompt: %v", err)
+		return
+	}
+
+	output, err := cr.claudeClient.ContinueSession("dummy-session", payload.Message)
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
 		return
@@ -324,13 +355,13 @@ func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, conn *websocket.Con
 	}
 
 	log.Info("🚫 Job has been unassigned from this agent")
-	
+
 	// Complete job and create PR - FAIL if this doesn't work
 	if err := cr.gitUseCase.CompleteJobAndCreatePR(); err != nil {
 		log.Error("❌ Failed to complete job and create PR: %v", err)
 		return
 	}
-	
+
 	log.Info("📋 Completed successfully - handled job unassigned message")
 }
 
@@ -346,4 +377,3 @@ func unmarshalPayload(payload any, target any) error {
 
 	return json.Unmarshal(payloadBytes, target)
 }
-
