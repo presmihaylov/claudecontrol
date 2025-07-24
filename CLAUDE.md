@@ -161,6 +161,11 @@ cd ccbackend && make test   # Then run tests
 ```
 
 ### Database Migrations
-- **Development**: `supabase db reset` to apply all migrations
+- **Apply Pending Migrations**: `supabase migration up` to apply only new migrations
+- **Development Reset**: `supabase db reset` to reset and apply all migrations from scratch
 - **New Migrations**: `supabase migration new <name>` 
 - **Test Schema**: Migrations create both prod and test schemas
+```
+
+## Slack Message Handling Guidelines
+- **Slack Message Conversion**: Anytime you send a message to slack coming from the ccagent, you should ensure it goes through the `utils.ConvertMarkdownToSlack` function

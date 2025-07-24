@@ -8,7 +8,9 @@ import (
 	"ccbackend/clients"
 	"ccbackend/models"
 	"ccbackend/services"
+	"ccbackend/utils"
 
+	"github.com/google/uuid"
 	"github.com/slack-go/slack"
 )
 
@@ -54,7 +56,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	log.Printf("📤 Sending assistant message to Slack thread %s in channel %s", job.SlackThreadTS, job.SlackChannelID)
 
 	_, _, err = s.slackClient.PostMessage(job.SlackChannelID,
-		slack.MsgOptionText(payload.Message, false),
+		slack.MsgOptionText(utils.ConvertMarkdownToSlack(payload.Message), false),
 		slack.MsgOptionTS(job.SlackThreadTS),
 	)
 	if err != nil {
@@ -64,6 +66,38 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	// Update job timestamp to track activity
 	if err := s.jobsService.UpdateJobTimestamp(job.ID); err != nil {
 		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
+	}
+
+	// Update the ProcessedSlackMessage status to COMPLETED
+	utils.AssertInvariant(payload.SlackMessageID != "", "SlackMessageID is empty")
+	utils.AssertInvariant(uuid.Validate(payload.SlackMessageID) == nil, "SlackMessageID is not in UUID format")
+	
+	messageID := uuid.MustParse(payload.SlackMessageID)
+	
+	if err := s.jobsService.UpdateProcessedSlackMessage(messageID, models.ProcessedSlackMessageStatusCompleted); err != nil {
+		return fmt.Errorf("failed to update processed slack message status: %w", err)
+	}
+
+	// Check for any queued messages and process the next one
+	queuedMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(job.ID, models.ProcessedSlackMessageStatusQueued)
+	if err != nil {
+		return fmt.Errorf("failed to check for queued messages: %w", err)
+	}
+
+	if len(queuedMessages) > 0 {
+		// Get the oldest queued message (first in the sorted list)
+		nextMessage := queuedMessages[0]
+		log.Printf("📨 Processing next queued message for job %s (SlackTS: %s)", job.ID, nextMessage.SlackTS)
+		
+		// Update the queued message to IN_PROGRESS
+		if err := s.jobsService.UpdateProcessedSlackMessage(nextMessage.ID, models.ProcessedSlackMessageStatusInProgress); err != nil {
+			return fmt.Errorf("failed to update queued message status to IN_PROGRESS: %w", err)
+		}
+
+		// Send the queued message to agent (always user message since start conversation only happens for new threads)
+		if err := s.sendUserMessageToAgent(clientID, nextMessage); err != nil {
+			return fmt.Errorf("failed to send queued user message to agent: %w", err)
+		}
 	}
 
 	log.Printf("📋 Completed successfully - sent assistant message to Slack thread %s", job.SlackThreadTS)
@@ -103,7 +137,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 
 		// Send message to Slack informing that no agents are available
 		_, _, err := s.slackClient.PostMessage(event.Channel,
-			slack.MsgOptionText("There are no available agents to handle this job", false),
+			slack.MsgOptionText(utils.ConvertMarkdownToSlack("There are no available agents to handle this job"), false),
 			slack.MsgOptionTS(threadTS),
 		)
 		if err != nil {
@@ -115,30 +149,84 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 		return nil
 	}
 
-	// Send appropriate message to the assigned agent
-	if event.ThreadTs == "" {
-		startConversationMessage := models.UnknownMessage{
-			Type:    models.MessageTypeStartConversation,
-			Payload: models.StartConversationPayload{Message: event.Text},
-		}
+	// Check if there are any IN_PROGRESS messages for this job
+	inProgressMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(job.ID, models.ProcessedSlackMessageStatusInProgress)
+	if err != nil {
+		return fmt.Errorf("failed to check for in progress messages: %w", err)
+	}
 
-		if err := s.wsClient.SendMessage(clientID, startConversationMessage); err != nil {
-			return fmt.Errorf("failed to send start conversation message to client %s: %v", clientID, err)
-		}
-		log.Printf("🚀 Sent start conversation message to client %s", clientID)
+	// Determine the status for the new message
+	var messageStatus models.ProcessedSlackMessageStatus
+	if len(inProgressMessages) > 0 {
+		// There's already an IN_PROGRESS message, so queue this one
+		messageStatus = models.ProcessedSlackMessageStatusQueued
+		log.Printf("⏳ Message will be queued - found %d in progress message(s) for job %s", len(inProgressMessages), job.ID)
 	} else {
-		userMessage := models.UnknownMessage{
-			Type:    models.MessageTypeUserMessage,
-			Payload: models.UserMessagePayload{Message: event.Text},
-		}
+		// No IN_PROGRESS messages, process immediately
+		messageStatus = models.ProcessedSlackMessageStatusInProgress
+	}
 
-		if err := s.wsClient.SendMessage(clientID, userMessage); err != nil {
-			return fmt.Errorf("failed to send user message to client %s: %v", clientID, err)
+	// Store the Slack message as ProcessedSlackMessage
+	processedMessage, err := s.jobsService.CreateProcessedSlackMessage(
+		job.ID, 
+		event.Channel, 
+		event.Ts, 
+		event.Text,
+		messageStatus,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create processed slack message: %w", err)
+	}
+
+	// Only send to agent if status is IN_PROGRESS (not queued)
+	if messageStatus == models.ProcessedSlackMessageStatusInProgress {
+		// Send appropriate message to the assigned agent
+		if event.ThreadTs == "" {
+			if err := s.sendStartConversationToAgent(clientID, processedMessage); err != nil {
+				return fmt.Errorf("failed to send start conversation message: %w", err)
+			}
+		} else {
+			if err := s.sendUserMessageToAgent(clientID, processedMessage); err != nil {
+				return fmt.Errorf("failed to send user message: %w", err)
+			}
 		}
-		log.Printf("💬 Sent user message to client %s", clientID)
+	} else {
+		log.Printf("📥 Message queued for job %s (SlackTS: %s)", job.ID, event.Ts)
 	}
 
 	log.Printf("📋 Completed successfully - processed Slack message event")
+	return nil
+}
+
+func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *models.ProcessedSlackMessage) error {
+	startConversationMessage := models.UnknownMessage{
+		Type:    models.MessageTypeStartConversation,
+		Payload: models.StartConversationPayload{
+			Message:        message.TextContent,
+			SlackMessageID: message.ID.String(),
+		},
+	}
+
+	if err := s.wsClient.SendMessage(clientID, startConversationMessage); err != nil {
+		return fmt.Errorf("failed to send start conversation message to client %s: %v", clientID, err)
+	}
+	log.Printf("🚀 Sent start conversation message to client %s", clientID)
+	return nil
+}
+
+func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.ProcessedSlackMessage) error {
+	userMessage := models.UnknownMessage{
+		Type:    models.MessageTypeUserMessage,
+		Payload: models.UserMessagePayload{
+			Message:        message.TextContent,
+			SlackMessageID: message.ID.String(),
+		},
+	}
+
+	if err := s.wsClient.SendMessage(clientID, userMessage); err != nil {
+		return fmt.Errorf("failed to send user message to client %s: %v", clientID, err)
+	}
+	log.Printf("💬 Sent user message to client %s", clientID)
 	return nil
 }
 
@@ -263,7 +351,7 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 		// Send completion message to Slack thread
 		completionMessage := "This job is now complete"
 		_, _, err = s.slackClient.PostMessage(job.SlackChannelID,
-			slack.MsgOptionText(completionMessage, false),
+			slack.MsgOptionText(utils.ConvertMarkdownToSlack(completionMessage), false),
 			slack.MsgOptionTS(job.SlackThreadTS),
 		)
 		if err != nil {

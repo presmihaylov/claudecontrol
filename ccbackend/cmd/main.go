@@ -42,9 +42,10 @@ func run() error {
 	// Initialize repositories with shared connection
 	agentsRepo := db.NewPostgresAgentsRepository(dbConn, cfg.DatabaseSchema)
 	jobsRepo := db.NewPostgresJobsRepository(dbConn, cfg.DatabaseSchema)
+	processedSlackMessagesRepo := db.NewPostgresProcessedSlackMessagesRepository(dbConn, cfg.DatabaseSchema)
 
 	agentsService := services.NewAgentsService(agentsRepo)
-	jobsService := services.NewJobsService(jobsRepo)
+	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo)
 
 	// Clear all active agents on startup
 	log.Printf("🧹 Cleaning up stale active agents from previous server runs")
