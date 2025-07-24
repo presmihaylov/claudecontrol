@@ -169,3 +169,6 @@ cd ccbackend && make test   # Then run tests
 
 ## Slack Message Handling Guidelines
 - **Slack Message Conversion**: Anytime you send a message to slack coming from the ccagent, you should ensure it goes through the `utils.ConvertMarkdownToSlack` function
+
+## Error Handling Guidelines
+- **Error Propagation**: Never log errors silently and proceed with control flow. Always propagate the error upstream unless explicitly instructed to log the error and ignore

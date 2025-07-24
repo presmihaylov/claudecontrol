@@ -482,18 +482,14 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 			// Update the status
 			newStatus := models.ProcessedSlackMessageStatusInProgress
-			err = jobsService.UpdateProcessedSlackMessage(message.ID, newStatus)
-			require.NoError(t, err)
-
-			// Verify the update worked by checking the repository directly
-			updatedMessage, err := jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(message.ID)
+			updatedMessage, err := jobsService.UpdateProcessedSlackMessage(message.ID, newStatus)
 			require.NoError(t, err)
 			assert.Equal(t, newStatus, updatedMessage.Status)
 			assert.True(t, updatedMessage.UpdatedAt.After(message.UpdatedAt))
 		})
 
 		t.Run("NilID", func(t *testing.T) {
-			err := jobsService.UpdateProcessedSlackMessage(uuid.Nil, models.ProcessedSlackMessageStatusCompleted)
+			_, err := jobsService.UpdateProcessedSlackMessage(uuid.Nil, models.ProcessedSlackMessageStatusCompleted)
 
 			require.Error(t, err)
 			assert.Equal(t, "processed slack message ID cannot be nil", err.Error())
@@ -502,7 +498,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		t.Run("NotFound", func(t *testing.T) {
 			id := uuid.New()
 
-			err := jobsService.UpdateProcessedSlackMessage(id, models.ProcessedSlackMessageStatusCompleted)
+			_, err := jobsService.UpdateProcessedSlackMessage(id, models.ProcessedSlackMessageStatusCompleted)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "not found")
 		})
@@ -602,17 +598,11 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Test status transitions: QUEUED -> IN_PROGRESS -> COMPLETED
-		err = jobsService.UpdateProcessedSlackMessage(message.ID, models.ProcessedSlackMessageStatusInProgress)
-		require.NoError(t, err)
-
-		updatedMessage, err := jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(message.ID)
+		updatedMessage, err := jobsService.UpdateProcessedSlackMessage(message.ID, models.ProcessedSlackMessageStatusInProgress)
 		require.NoError(t, err)
 		assert.Equal(t, models.ProcessedSlackMessageStatusInProgress, updatedMessage.Status)
 
-		err = jobsService.UpdateProcessedSlackMessage(message.ID, models.ProcessedSlackMessageStatusCompleted)
-		require.NoError(t, err)
-
-		finalMessage, err := jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(message.ID)
+		finalMessage, err := jobsService.UpdateProcessedSlackMessage(message.ID, models.ProcessedSlackMessageStatusCompleted)
 		require.NoError(t, err)
 		assert.Equal(t, models.ProcessedSlackMessageStatusCompleted, finalMessage.Status)
 		assert.True(t, finalMessage.UpdatedAt.After(updatedMessage.UpdatedAt))

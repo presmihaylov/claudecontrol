@@ -186,19 +186,20 @@ func (s *JobsService) CreateProcessedSlackMessage(jobID uuid.UUID, slackChannelI
 	return message, nil
 }
 
-func (s *JobsService) UpdateProcessedSlackMessage(id uuid.UUID, status models.ProcessedSlackMessageStatus) error {
+func (s *JobsService) UpdateProcessedSlackMessage(id uuid.UUID, status models.ProcessedSlackMessageStatus) (*models.ProcessedSlackMessage, error) {
 	log.Printf("📋 Starting to update processed slack message status for ID: %s to %s", id, status)
 
 	if id == uuid.Nil {
-		return fmt.Errorf("processed slack message ID cannot be nil")
+		return nil, fmt.Errorf("processed slack message ID cannot be nil")
 	}
 
-	if err := s.processedSlackMessagesRepo.UpdateProcessedSlackMessageStatus(id, status); err != nil {
-		return fmt.Errorf("failed to update processed slack message status: %w", err)
+	updatedMessage, err := s.processedSlackMessagesRepo.UpdateProcessedSlackMessageStatus(id, status)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update processed slack message status: %w", err)
 	}
 
 	log.Printf("📋 Completed successfully - updated processed slack message ID: %s to status: %s", id, status)
-	return nil
+	return updatedMessage, nil
 }
 
 func (s *JobsService) GetProcessedMessagesByJobIDAndStatus(jobID uuid.UUID, status models.ProcessedSlackMessageStatus) ([]*models.ProcessedSlackMessage, error) {
@@ -215,4 +216,20 @@ func (s *JobsService) GetProcessedMessagesByJobIDAndStatus(jobID uuid.UUID, stat
 
 	log.Printf("📋 Completed successfully - retrieved %d processed messages", len(messages))
 	return messages, nil
+}
+
+func (s *JobsService) GetProcessedSlackMessageByID(id uuid.UUID) (*models.ProcessedSlackMessage, error) {
+	log.Printf("📋 Starting to get processed slack message by ID: %s", id)
+
+	if id == uuid.Nil {
+		return nil, fmt.Errorf("processed slack message ID cannot be nil")
+	}
+
+	message, err := s.processedSlackMessagesRepo.GetProcessedSlackMessageByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processed slack message: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - retrieved processed slack message with ID: %s", message.ID)
+	return message, nil
 }
