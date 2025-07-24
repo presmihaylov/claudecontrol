@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"ccbackend/models"
 
@@ -115,4 +116,28 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByJobIDAn
 	}
 
 	return messages, nil
+}
+
+// TESTS_UpdateProcessedSlackMessageUpdatedAt updates the updated_at timestamp of a processed slack message for testing purposes
+func (r *PostgresProcessedSlackMessagesRepository) TESTS_UpdateProcessedSlackMessageUpdatedAt(id uuid.UUID, updatedAt time.Time) error {
+	query := fmt.Sprintf(`
+		UPDATE %s.processed_slack_messages 
+		SET updated_at = $2 
+		WHERE id = $1`, r.schema)
+
+	result, err := r.db.Exec(query, id, updatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to update processed slack message updated_at: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("processed slack message with id %s not found", id)
+	}
+
+	return nil
 }
