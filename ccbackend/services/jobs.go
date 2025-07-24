@@ -12,11 +12,15 @@ import (
 )
 
 type JobsService struct {
-	jobsRepo *db.PostgresJobsRepository
+	jobsRepo                   *db.PostgresJobsRepository
+	processedSlackMessagesRepo *db.PostgresProcessedSlackMessagesRepository
 }
 
-func NewJobsService(repo *db.PostgresJobsRepository) *JobsService {
-	return &JobsService{jobsRepo: repo}
+func NewJobsService(repo *db.PostgresJobsRepository, processedSlackMessagesRepo *db.PostgresProcessedSlackMessagesRepository) *JobsService {
+	return &JobsService{
+		jobsRepo:                   repo,
+		processedSlackMessagesRepo: processedSlackMessagesRepo,
+	}
 }
 
 func (s *JobsService) CreateJob(slackThreadTS, slackChannelID string) (*models.Job, error) {
@@ -132,10 +136,83 @@ func (s *JobsService) DeleteJob(id uuid.UUID) error {
 		return fmt.Errorf("job ID cannot be nil")
 	}
 
+	if err := s.processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(id); err != nil {
+		return fmt.Errorf("failed to delete processed slack messages for job: %w", err)
+	}
+
 	if err := s.jobsRepo.DeleteJob(id); err != nil {
 		return fmt.Errorf("failed to delete job: %w", err)
 	}
 
 	log.Printf("📋 Completed successfully - deleted job with ID: %s", id)
 	return nil
+}
+
+func (s *JobsService) CreateProcessedSlackMessage(jobID uuid.UUID, slackChannelID, slackTS, textContent string, status models.ProcessedSlackMessageStatus) (*models.ProcessedSlackMessage, error) {
+	log.Printf("📋 Starting to create processed slack message for job: %s, channel: %s, ts: %s", jobID, slackChannelID, slackTS)
+
+	if jobID == uuid.Nil {
+		return nil, fmt.Errorf("job ID cannot be nil")
+	}
+
+	if slackChannelID == "" {
+		return nil, fmt.Errorf("slack_channel_id cannot be empty")
+	}
+
+	if slackTS == "" {
+		return nil, fmt.Errorf("slack_ts cannot be empty")
+	}
+
+	if textContent == "" {
+		return nil, fmt.Errorf("text_content cannot be empty")
+	}
+
+	id := uuid.New()
+
+	message := &models.ProcessedSlackMessage{
+		ID:             id,
+		JobID:          jobID,
+		SlackChannelID: slackChannelID,
+		SlackTS:        slackTS,
+		TextContent:    textContent,
+		Status:         status,
+	}
+
+	if err := s.processedSlackMessagesRepo.CreateProcessedSlackMessage(message); err != nil {
+		return nil, fmt.Errorf("failed to create processed slack message: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - created processed slack message with ID: %s", message.ID)
+	return message, nil
+}
+
+func (s *JobsService) UpdateProcessedSlackMessage(id uuid.UUID, status models.ProcessedSlackMessageStatus) error {
+	log.Printf("📋 Starting to update processed slack message status for ID: %s to %s", id, status)
+
+	if id == uuid.Nil {
+		return fmt.Errorf("processed slack message ID cannot be nil")
+	}
+
+	if err := s.processedSlackMessagesRepo.UpdateProcessedSlackMessageStatus(id, status); err != nil {
+		return fmt.Errorf("failed to update processed slack message status: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated processed slack message ID: %s to status: %s", id, status)
+	return nil
+}
+
+func (s *JobsService) GetProcessedMessagesByJobIDAndStatus(jobID uuid.UUID, status models.ProcessedSlackMessageStatus) ([]*models.ProcessedSlackMessage, error) {
+	log.Printf("📋 Starting to get processed messages for job: %s with status: %s", jobID, status)
+
+	if jobID == uuid.Nil {
+		return nil, fmt.Errorf("job ID cannot be nil")
+	}
+
+	messages, err := s.processedSlackMessagesRepo.GetProcessedMessagesByJobIDAndStatus(jobID, status)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processed messages: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - retrieved %d processed messages", len(messages))
+	return messages, nil
 }

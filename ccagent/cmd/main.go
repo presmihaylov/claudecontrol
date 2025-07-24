@@ -300,7 +300,8 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
-			Message: output,
+			Message:        output,
+			SlackMessageID: payload.SlackMessageID,
 		},
 	}
 
@@ -334,7 +335,8 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
-			Message: output,
+			Message:        output,
+			SlackMessageID: payload.SlackMessageID,
 		},
 	}
 
