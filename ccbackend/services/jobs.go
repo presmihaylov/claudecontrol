@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"ccbackend/db"
 	"ccbackend/models"
@@ -232,4 +233,36 @@ func (s *JobsService) GetProcessedSlackMessageByID(id uuid.UUID) (*models.Proces
 
 	log.Printf("📋 Completed successfully - retrieved processed slack message with ID: %s", message.ID)
 	return message, nil
+}
+
+// TESTS_UpdateJobUpdatedAt updates the updated_at timestamp of a job for testing purposes
+func (s *JobsService) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedAt time.Time) error {
+	log.Printf("📋 Starting to update job updated_at for testing purposes: %s to %s", id, updatedAt)
+
+	if id == uuid.Nil {
+		return fmt.Errorf("job ID cannot be nil")
+	}
+
+	if err := s.jobsRepo.TESTS_UpdateJobUpdatedAt(id, updatedAt); err != nil {
+		return fmt.Errorf("failed to update job updated_at: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated job updated_at for ID: %s", id)
+	return nil
+}
+
+// TESTS_UpdateProcessedSlackMessageUpdatedAt updates the updated_at timestamp of a processed slack message for testing purposes
+func (s *JobsService) TESTS_UpdateProcessedSlackMessageUpdatedAt(id uuid.UUID, updatedAt time.Time) error {
+	log.Printf("📋 Starting to update processed slack message updated_at for testing purposes: %s to %s", id, updatedAt)
+
+	if id == uuid.Nil {
+		return fmt.Errorf("processed slack message ID cannot be nil")
+	}
+
+	if err := s.processedSlackMessagesRepo.TESTS_UpdateProcessedSlackMessageUpdatedAt(id, updatedAt); err != nil {
+		return fmt.Errorf("failed to update processed slack message updated_at: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated processed slack message updated_at for ID: %s", id)
+	return nil
 }

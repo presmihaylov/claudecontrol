@@ -3,6 +3,7 @@ package services
 import (
 	"os"
 	"testing"
+	"time"
 
 	"ccbackend/db"
 	"ccbackend/models"
@@ -13,6 +14,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+
+// Helper function to check if a job is in the idle jobs list
+func jobFoundInIdleList(jobID uuid.UUID, idleJobs []*models.Job) bool {
+	for _, idleJob := range idleJobs {
+		if idleJob.ID == jobID {
+			return true
+		}
+	}
+	return false
+}
 
 func setupTestJobsService(t *testing.T) (*JobsService, func()) {
 	if err := godotenv.Load("../.env.test"); err != nil {
@@ -375,33 +386,124 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	})
 
 	t.Run("GetIdleJobs", func(t *testing.T) {
-		// Create a job
-		job, err := jobsService.CreateJob("idle.test.thread", "C9999999999")
-		require.NoError(t, err)
+		t.Run("JobWithNoMessages", func(t *testing.T) {
+			// Create a job with no messages
+			job, err := jobsService.CreateJob("idle.no.messages", "C1111111111")
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job.ID) }()
 
-		// Test getting idle jobs with different time ranges
-		// Since we just created the job, it shouldn't be idle
-		idleJobs, err := jobsService.GetIdleJobs(1)
-		require.NoError(t, err)
-		
-		// Filter out our test job - it should not be in idle list
-		foundOurJob := false
-		for _, idleJob := range idleJobs {
-			if idleJob.ID == job.ID {
-				foundOurJob = true
-				break
-			}
-		}
-		assert.False(t, foundOurJob, "Newly created job should not be in idle list")
+			// Since we just created the job, it shouldn't be idle
+			idleJobs, err := jobsService.GetIdleJobs(1)
+			require.NoError(t, err)
+			
+			// Filter out our test job - it should not be in idle list
+			assert.False(t, jobFoundInIdleList(job.ID, idleJobs), "Newly created job should not be in idle list")
 
-		// Test with invalid idle minutes
-		_, err = jobsService.GetIdleJobs(0)
-		require.Error(t, err)
-		assert.Equal(t, "idle minutes must be greater than 0", err.Error())
+			// Now manipulate the job timestamp to make it old
+			oldTimestamp := time.Now().Add(-10 * time.Minute) // 10 minutes ago
+			err = jobsService.TESTS_UpdateJobUpdatedAt(job.ID, oldTimestamp)
+			require.NoError(t, err)
 
-		_, err = jobsService.GetIdleJobs(-5)
-		require.Error(t, err)
-		assert.Equal(t, "idle minutes must be greater than 0", err.Error())
+			// Now the job should be idle with 5 minute threshold
+			idleJobs, err = jobsService.GetIdleJobs(5)
+			require.NoError(t, err)
+			
+			assert.True(t, jobFoundInIdleList(job.ID, idleJobs), "Job with old updated_at and no messages should be idle")
+		})
+
+		t.Run("JobWithIncompleteMessages", func(t *testing.T) {
+			// Create a job and add a message that's not completed
+			job, err := jobsService.CreateJob("idle.incomplete.messages", "C2222222222")
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job.ID) }()
+
+			// Add a message in IN_PROGRESS state
+			_, err = jobsService.CreateProcessedSlackMessage(job.ID, "C2222222222", "1234567890.111111", "Hello world", models.ProcessedSlackMessageStatusInProgress)
+			require.NoError(t, err)
+
+			// Job should not be idle because it has an incomplete message
+			idleJobs, err := jobsService.GetIdleJobs(999) // Even with very high threshold
+			require.NoError(t, err)
+			
+			assert.False(t, jobFoundInIdleList(job.ID, idleJobs), "Job with incomplete messages should not be idle")
+		})
+
+		t.Run("JobWithQueuedMessages", func(t *testing.T) {
+			// Create a job and add a queued message
+			job, err := jobsService.CreateJob("idle.queued.messages", "C3333333333")
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job.ID) }()
+
+			// Add a message in QUEUED state
+			_, err = jobsService.CreateProcessedSlackMessage(job.ID, "C3333333333", "1234567890.222222", "Hello queued", models.ProcessedSlackMessageStatusQueued)
+			require.NoError(t, err)
+
+			// Job should not be idle because it has a queued message
+			idleJobs, err := jobsService.GetIdleJobs(999) // Even with very high threshold
+			require.NoError(t, err)
+			
+			assert.False(t, jobFoundInIdleList(job.ID, idleJobs), "Job with queued messages should not be idle")
+		})
+
+		t.Run("JobWithOnlyCompletedMessages", func(t *testing.T) {
+			// Create a job and add only completed messages
+			job, err := jobsService.CreateJob("idle.completed.messages", "C4444444444")
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job.ID) }()
+
+			// Add a completed message
+			message, err := jobsService.CreateProcessedSlackMessage(job.ID, "C4444444444", "1234567890.333333", "Hello completed", models.ProcessedSlackMessageStatusCompleted)
+			require.NoError(t, err)
+
+			// Since the message was just created, job should not be idle with 1 minute threshold
+			idleJobs, err := jobsService.GetIdleJobs(1)
+			require.NoError(t, err)
+			
+			assert.False(t, jobFoundInIdleList(job.ID, idleJobs), "Job with recently completed messages should not be idle")
+
+			// Now manipulate the timestamp to make the message old
+			oldTimestamp := time.Now().Add(-10 * time.Minute) // 10 minutes ago
+			err = jobsService.TESTS_UpdateProcessedSlackMessageUpdatedAt(message.ID, oldTimestamp)
+			require.NoError(t, err)
+
+			// Now the job should be idle with 5 minute threshold
+			idleJobs, err = jobsService.GetIdleJobs(5)
+			require.NoError(t, err)
+			
+			assert.True(t, jobFoundInIdleList(job.ID, idleJobs), "Job with old completed messages should be idle")
+		})
+
+		t.Run("JobWithMixedMessages", func(t *testing.T) {
+			// Create a job with both completed and incomplete messages
+			job, err := jobsService.CreateJob("idle.mixed.messages", "C5555555555")
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job.ID) }()
+
+			// Add a completed message
+			_, err = jobsService.CreateProcessedSlackMessage(job.ID, "C5555555555", "1234567890.444444", "Hello completed", models.ProcessedSlackMessageStatusCompleted)
+			require.NoError(t, err)
+
+			// Add an incomplete message
+			_, err = jobsService.CreateProcessedSlackMessage(job.ID, "C5555555555", "1234567890.555555", "Hello in progress", models.ProcessedSlackMessageStatusInProgress)
+			require.NoError(t, err)
+
+			// Job should not be idle because it has incomplete messages
+			idleJobs, err := jobsService.GetIdleJobs(999) // Even with very high threshold
+			require.NoError(t, err)
+			
+			assert.False(t, jobFoundInIdleList(job.ID, idleJobs), "Job with mixed messages (including incomplete) should not be idle")
+		})
+
+		t.Run("InvalidIdleMinutes", func(t *testing.T) {
+			// Test with invalid idle minutes
+			_, err := jobsService.GetIdleJobs(0)
+			require.Error(t, err)
+			assert.Equal(t, "idle minutes must be greater than 0", err.Error())
+
+			_, err = jobsService.GetIdleJobs(-5)
+			require.Error(t, err)
+			assert.Equal(t, "idle minutes must be greater than 0", err.Error())
+		})
 	})
 
 	t.Run("CreateProcessedSlackMessage", func(t *testing.T) {

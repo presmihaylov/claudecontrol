@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"ccbackend/models"
 
@@ -103,9 +104,23 @@ func (r *PostgresJobsRepository) UpdateJobTimestamp(jobID uuid.UUID) error {
 
 func (r *PostgresJobsRepository) GetIdleJobs(idleMinutes int) ([]*models.Job, error) {
 	query := fmt.Sprintf(`
-		SELECT id, slack_thread_ts, slack_channel_id, created_at, updated_at 
-		FROM %s.jobs 
-		WHERE updated_at < NOW() - INTERVAL '%d minutes'`, r.schema, idleMinutes)
+		SELECT j.id, j.slack_thread_ts, j.slack_channel_id, j.created_at, j.updated_at 
+		FROM %s.jobs j
+		WHERE NOT EXISTS (
+			-- No messages that are not COMPLETED
+			SELECT 1 FROM %s.processed_slack_messages psm 
+			WHERE psm.job_id = j.id 
+			AND psm.status != 'COMPLETED'
+		)
+		AND (
+			-- Either no messages at all (use job updated_at)
+			(NOT EXISTS (SELECT 1 FROM %s.processed_slack_messages psm WHERE psm.job_id = j.id)
+			 AND j.updated_at < NOW() - INTERVAL '%d minutes')
+			OR
+			-- Or last COMPLETED message is older than threshold
+			(SELECT MAX(psm.updated_at) FROM %s.processed_slack_messages psm 
+			 WHERE psm.job_id = j.id AND psm.status = 'COMPLETED') < NOW() - INTERVAL '%d minutes'
+		)`, r.schema, r.schema, r.schema, idleMinutes, r.schema, idleMinutes)
 
 	var jobs []*models.Job
 	err := r.db.Select(&jobs, query)
@@ -124,6 +139,30 @@ func (r *PostgresJobsRepository) DeleteJob(id uuid.UUID) error {
 	result, err := r.db.Exec(query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete job: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("job with id %s not found", id)
+	}
+
+	return nil
+}
+
+// TESTS_UpdateJobUpdatedAt updates the updated_at timestamp of a job for testing purposes
+func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedAt time.Time) error {
+	query := fmt.Sprintf(`
+		UPDATE %s.jobs 
+		SET updated_at = $2 
+		WHERE id = $1`, r.schema)
+
+	result, err := r.db.Exec(query, id, updatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to update job updated_at: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
