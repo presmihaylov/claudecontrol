@@ -71,11 +71,18 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	// Update the ProcessedSlackMessage status to COMPLETED
 	utils.AssertInvariant(payload.SlackMessageID != "", "SlackMessageID is empty")
 	utils.AssertInvariant(uuid.Validate(payload.SlackMessageID) == nil, "SlackMessageID is not in UUID format")
-	
+
 	messageID := uuid.MustParse(payload.SlackMessageID)
-	
-	if err := s.jobsService.UpdateProcessedSlackMessage(messageID, models.ProcessedSlackMessageStatusCompleted); err != nil {
+
+	updatedMessage, err := s.jobsService.UpdateProcessedSlackMessage(messageID, models.ProcessedSlackMessageStatusCompleted)
+	if err != nil {
 		return fmt.Errorf("failed to update processed slack message status: %w", err)
+	}
+
+	// Add completed emoji reaction
+	reactionEmoji := DeriveMessageReactionFromStatus(models.ProcessedSlackMessageStatusCompleted)
+	if err := s.updateSlackMessageReaction(updatedMessage.SlackChannelID, updatedMessage.SlackTS, reactionEmoji); err != nil {
+		return fmt.Errorf("failed to update slack message reaction: %w", err)
 	}
 
 	// Check for any queued messages and process the next one
@@ -88,10 +95,17 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 		// Get the oldest queued message (first in the sorted list)
 		nextMessage := queuedMessages[0]
 		log.Printf("📨 Processing next queued message for job %s (SlackTS: %s)", job.ID, nextMessage.SlackTS)
-		
+
 		// Update the queued message to IN_PROGRESS
-		if err := s.jobsService.UpdateProcessedSlackMessage(nextMessage.ID, models.ProcessedSlackMessageStatusInProgress); err != nil {
+		updatedNextMessage, err := s.jobsService.UpdateProcessedSlackMessage(nextMessage.ID, models.ProcessedSlackMessageStatusInProgress)
+		if err != nil {
 			return fmt.Errorf("failed to update queued message status to IN_PROGRESS: %w", err)
+		}
+
+		// Update emoji reaction to show processing
+		reactionEmoji := DeriveMessageReactionFromStatus(models.ProcessedSlackMessageStatusInProgress)
+		if err := s.updateSlackMessageReaction(updatedNextMessage.SlackChannelID, updatedNextMessage.SlackTS, reactionEmoji); err != nil {
+			return fmt.Errorf("failed to update slack message reaction for queued message: %w", err)
 		}
 
 		// Send the queued message to agent (always user message since start conversation only happens for new threads)
@@ -168,14 +182,20 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 
 	// Store the Slack message as ProcessedSlackMessage
 	processedMessage, err := s.jobsService.CreateProcessedSlackMessage(
-		job.ID, 
-		event.Channel, 
-		event.Ts, 
+		job.ID,
+		event.Channel,
+		event.Ts,
 		event.Text,
 		messageStatus,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create processed slack message: %w", err)
+	}
+
+	// Add emoji reaction based on message status
+	reactionEmoji := DeriveMessageReactionFromStatus(messageStatus)
+	if err := s.updateSlackMessageReaction(processedMessage.SlackChannelID, processedMessage.SlackTS, reactionEmoji); err != nil {
+		return fmt.Errorf("failed to update slack message reaction: %w", err)
 	}
 
 	// Only send to agent if status is IN_PROGRESS (not queued)
@@ -200,7 +220,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 
 func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *models.ProcessedSlackMessage) error {
 	startConversationMessage := models.UnknownMessage{
-		Type:    models.MessageTypeStartConversation,
+		Type: models.MessageTypeStartConversation,
 		Payload: models.StartConversationPayload{
 			Message:        message.TextContent,
 			SlackMessageID: message.ID.String(),
@@ -216,7 +236,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 
 func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.ProcessedSlackMessage) error {
 	userMessage := models.UnknownMessage{
-		Type:    models.MessageTypeUserMessage,
+		Type: models.MessageTypeUserMessage,
 		Payload: models.UserMessagePayload{
 			Message:        message.TextContent,
 			SlackMessageID: message.ID.String(),
@@ -227,6 +247,51 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 		return fmt.Errorf("failed to send user message to client %s: %v", clientID, err)
 	}
 	log.Printf("💬 Sent user message to client %s", clientID)
+	return nil
+}
+
+func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) string {
+	switch status {
+	case models.ProcessedSlackMessageStatusInProgress:
+		return "eyes"
+	case models.ProcessedSlackMessageStatusQueued:
+		return "hourglass"
+	case models.ProcessedSlackMessageStatusCompleted:
+		return "white_check_mark"
+	default:
+		utils.AssertInvariant(false, "invalid status received")
+		return ""
+	}
+}
+
+func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji string) error {
+	// Remove existing reactions
+	reactionsToRemove := []string{"eyes", "hourglass", "white_check_mark"}
+	for _, emoji := range reactionsToRemove {
+		if err := s.slackClient.RemoveReaction(emoji, slack.ItemRef{
+			Channel:   channelID,
+			Timestamp: messageTS,
+		}); err != nil {
+			// Check if it's a no_reaction error (reaction doesn't exist)
+			if strings.Contains(err.Error(), "no_reaction") {
+				// Ignore no_reaction error and continue
+				log.Printf("Note: %s reaction not found on message %s, skipping removal", emoji, messageTS)
+				continue
+			}
+			return fmt.Errorf("failed to remove %s reaction: %w", emoji, err)
+		}
+	}
+
+	// Add the new reaction
+	if newEmoji != "" {
+		if err := s.slackClient.AddReaction(newEmoji, slack.ItemRef{
+			Channel:   channelID,
+			Timestamp: messageTS,
+		}); err != nil {
+			return fmt.Errorf("failed to add %s reaction: %w", newEmoji, err)
+		}
+	}
+
 	return nil
 }
 
@@ -363,4 +428,3 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 
 	log.Printf("📋 Completed successfully - cleaned up %d idle jobs", len(idleJobs))
 }
-

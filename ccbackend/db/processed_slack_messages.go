@@ -54,27 +54,23 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 	return message, nil
 }
 
-func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageStatus(id uuid.UUID, status models.ProcessedSlackMessageStatus) error {
+func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageStatus(id uuid.UUID, status models.ProcessedSlackMessageStatus) (*models.ProcessedSlackMessage, error) {
 	query := fmt.Sprintf(`
 		UPDATE %s.processed_slack_messages 
 		SET status = $2, updated_at = NOW() 
-		WHERE id = $1`, r.schema)
+		WHERE id = $1
+		RETURNING id, job_id, slack_channel_id, slack_ts, text_content, status, created_at, updated_at`, r.schema)
 
-	result, err := r.db.Exec(query, id, status)
+	message := &models.ProcessedSlackMessage{}
+	err := r.db.QueryRowx(query, id, status).StructScan(message)
 	if err != nil {
-		return fmt.Errorf("failed to update processed slack message status: %w", err)
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("processed slack message with id %s not found", id)
+		}
+		return nil, fmt.Errorf("failed to update processed slack message status: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("processed slack message with id %s not found", id)
-	}
-
-	return nil
+	return message, nil
 }
 
 func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessagesByJobID(jobID uuid.UUID) ([]*models.ProcessedSlackMessage, error) {
