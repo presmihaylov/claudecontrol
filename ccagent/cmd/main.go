@@ -144,7 +144,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL string) error {
 				err := conn.ReadJSON(&msg)
 				if err != nil {
 					log.Info("❌ Read error: %v", err)
-					cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err))
+					cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
 					close(reconnect)
 					return
 				}
@@ -235,15 +235,15 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 	switch msg.Type {
 	case MessageTypeStartConversation:
 		if err := cr.handleStartConversation(msg, conn); err != nil {
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err))
+			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
 		}
 	case MessageTypeUserMessage:
 		if err := cr.handleUserMessage(msg, conn); err != nil {
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err))
+			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
 		}
 	case MessageTypeJobUnassigned:
 		if err := cr.handleJobUnassigned(msg, conn); err != nil {
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err))
+			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
 		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
@@ -303,7 +303,14 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 		return fmt.Errorf("error starting Claude session: %w", err)
 	}
 
-	// Send assistant response back
+	// Auto-commit changes if needed
+	commitResult, err := cr.gitUseCase.AutoCommitChangesIfNeeded()
+	if err != nil {
+		log.Info("❌ Auto-commit failed: %v", err)
+		return fmt.Errorf("auto-commit failed: %w", err)
+	}
+
+	// Send assistant response back first
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
@@ -318,6 +325,16 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 	}
 
 	log.Info("🤖 Sent assistant response")
+
+	// Send system message after assistant message if PR was created
+	if commitResult != nil && commitResult.HasCreatedPR && commitResult.PullRequestLink != "" {
+		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
+		if err := cr.sendSystemMessage(conn, message, payload.SlackMessageID); err != nil {
+			log.Info("❌ Failed to send system message: %v", err)
+			return fmt.Errorf("failed to send system message: %w", err)
+		}
+	}
+
 	log.Info("📋 Completed successfully - handled start conversation message")
 	return nil
 }
@@ -340,7 +357,14 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 		return fmt.Errorf("error continuing Claude session: %w", err)
 	}
 
-	// Send assistant response back
+	// Auto-commit changes if needed
+	commitResult, err := cr.gitUseCase.AutoCommitChangesIfNeeded()
+	if err != nil {
+		log.Info("❌ Auto-commit failed: %v", err)
+		return fmt.Errorf("auto-commit failed: %w", err)
+	}
+
+	// Send assistant response back first
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
@@ -355,6 +379,16 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	}
 
 	log.Info("🤖 Sent assistant response")
+
+	// Send system message after assistant message if PR was created
+	if commitResult != nil && commitResult.HasCreatedPR && commitResult.PullRequestLink != "" {
+		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
+		if err := cr.sendSystemMessage(conn, message, payload.SlackMessageID); err != nil {
+			log.Info("❌ Failed to send system message: %v", err)
+			return fmt.Errorf("failed to send system message: %w", err)
+		}
+	}
+
 	log.Info("📋 Completed successfully - handled user message")
 	return nil
 }
@@ -368,32 +402,25 @@ func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, _ *websocket.Conn) 
 	}
 
 	log.Info("🚫 Job has been unassigned from this agent")
-
-	// Complete job and create PR - FAIL if this doesn't work
-	if err := cr.gitUseCase.CompleteJobAndCreatePR(); err != nil {
-		log.Error("❌ Failed to complete job and create PR: %v", err)
-		return fmt.Errorf("failed to complete job and create PR: %w", err)
-	}
-
 	log.Info("📋 Completed successfully - handled job unassigned message")
 	return nil
 }
 
-func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message string) error {
-	log.Info("📋 Sending system message: %s", message)
-	response := UnknownMessage{
+func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessageID string) error {
+	systemMsg := UnknownMessage{
 		Type: MessageTypeSystemMessage,
 		Payload: SystemMessagePayload{
-			Message: message,
+			Message:        message,
+			SlackMessageID: slackMessageID,
 		},
 	}
 
-	if err := conn.WriteJSON(response); err != nil {
+	if err := conn.WriteJSON(systemMsg); err != nil {
 		log.Info("❌ Failed to send system message: %v", err)
-		return fmt.Errorf("failed to send system message: %w", err)
+		return err
 	}
 
-	log.Info("⚙️ Sent system message")
+	log.Info("⚙️ Sent system message: %s", message)
 	return nil
 }
 

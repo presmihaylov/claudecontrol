@@ -8,11 +8,19 @@ import (
 
 	"ccagent/clients"
 	"ccagent/core/log"
+
+	"github.com/google/uuid"
+	"github.com/lucasepe/codename"
 )
 
 type GitUseCase struct {
 	gitClient    *clients.GitClient
 	claudeClient *clients.ClaudeClient
+}
+
+type AutoCommitResult struct {
+	HasCreatedPR    bool
+	PullRequestLink string
 }
 
 func NewGitUseCase(gitClient *clients.GitClient, claudeClient *clients.ClaudeClient) *GitUseCase {
@@ -51,12 +59,11 @@ func (g *GitUseCase) ValidateGitEnvironment() error {
 func (g *GitUseCase) PrepareForNewConversation(conversationHint string) error {
 	log.Info("📋 Starting to prepare for new conversation")
 
-	// Generate branch name using Claude
-	branchName, err := g.generateBranchNameWithClaude(conversationHint)
+	// Generate random branch name
+	branchName, err := g.generateRandomBranchName()
 	if err != nil {
-		log.Error("❌ Failed to generate branch name with Claude, using fallback", "error", err)
-		branchName = g.generateFallbackBranchName(conversationHint)
-		// Note: We continue with fallback rather than failing completely
+		log.Error("❌ Failed to generate random branch name", "error", err)
+		return fmt.Errorf("failed to generate branch name: %w", err)
 	}
 
 	log.Info("🌿 Generated branch name: %s", branchName)
@@ -102,124 +109,76 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) error {
 	return nil
 }
 
-func (g *GitUseCase) CompleteJobAndCreatePR() error {
-	log.Info("📋 Starting to complete job and create PR")
+func (g *GitUseCase) AutoCommitChangesIfNeeded() (*AutoCommitResult, error) {
+	log.Info("📋 Starting to auto-commit changes if needed")
 
-	// Step 1: Check if there are any uncommitted changes
+	// Check if there are any uncommitted changes
 	hasChanges, err := g.gitClient.HasUncommittedChanges()
 	if err != nil {
 		log.Error("❌ Failed to check for uncommitted changes", "error", err)
-		return fmt.Errorf("failed to check for uncommitted changes: %w", err)
+		return nil, fmt.Errorf("failed to check for uncommitted changes: %w", err)
 	}
 
 	if !hasChanges {
-		log.Info("ℹ️ No uncommitted changes found - aborting PR creation")
-		log.Info("📋 Completed successfully - no changes to commit, PR creation skipped")
-		return nil
+		log.Info("ℹ️ No uncommitted changes found - skipping auto-commit")
+		log.Info("📋 Completed successfully - no changes to commit")
+		return &AutoCommitResult{HasCreatedPR: false, PullRequestLink: ""}, nil
 	}
 
-	log.Info("✅ Uncommitted changes detected - proceeding with commit and PR creation")
+	log.Info("✅ Uncommitted changes detected - proceeding with auto-commit")
 
-	// Step 2: Ensure .ccagent/ is in .gitignore
+	// Ensure .ccagent/ is in .gitignore
 	if err := g.gitClient.EnsureCCAgentInGitignore(); err != nil {
 		log.Error("❌ Failed to ensure .ccagent/ is in .gitignore", "error", err)
-		return fmt.Errorf("failed to ensure .ccagent/ is in .gitignore: %w", err)
+		return nil, fmt.Errorf("failed to ensure .ccagent/ is in .gitignore: %w", err)
 	}
 
-	// Step 3: Get current branch
+	// Get current branch
 	currentBranch, err := g.gitClient.GetCurrentBranch()
 	if err != nil {
 		log.Error("❌ Failed to get current branch", "error", err)
-		return fmt.Errorf("failed to get current branch: %w", err)
+		return nil, fmt.Errorf("failed to get current branch: %w", err)
 	}
 
-	// Generate commit message, PR title and body using Claude
-	commitMessage, err := g.generateCommitMessageWithClaude(currentBranch)
+	// Generate commit message using Claude with isolated config directory
+	commitMessage, err := g.generateCommitMessageWithClaudeIsolated(currentBranch)
 	if err != nil {
 		log.Error("❌ Failed to generate commit message with Claude, using fallback", "error", err)
 		commitMessage = g.generateFallbackCommitMessage(currentBranch)
 	}
 
-	prTitle, err := g.generatePRTitleWithClaude(currentBranch)
-	if err != nil {
-		log.Error("❌ Failed to generate PR title with Claude, using fallback", "error", err)
-		prTitle = g.generateFallbackPRTitle(currentBranch)
-	}
-
-	prBody, err := g.generatePRBodyWithClaude(currentBranch)
-	if err != nil {
-		log.Error("❌ Failed to generate PR body with Claude, using fallback", "error", err)
-		prBody = g.generateFallbackPRBody(currentBranch)
-	}
-
 	log.Info("📝 Generated commit message: %s", commitMessage)
-	log.Info("📋 Generated PR title: %s", prTitle)
 
-	// Step 4: Add all changes
+	// Add all changes
 	if err := g.gitClient.AddAll(); err != nil {
 		log.Error("❌ Failed to add all changes", "error", err)
-		return fmt.Errorf("failed to add all changes: %w", err)
+		return nil, fmt.Errorf("failed to add all changes: %w", err)
 	}
 
-	// Step 5: Commit with message
+	// Commit with message
 	if err := g.gitClient.Commit(commitMessage); err != nil {
 		log.Error("❌ Failed to commit changes", "error", err)
-		return fmt.Errorf("failed to commit changes: %w", err)
+		return nil, fmt.Errorf("failed to commit changes: %w", err)
 	}
 
-	// Step 6: Push current branch to remote
+	// Push current branch to remote
 	if err := g.gitClient.PushBranch(currentBranch); err != nil {
 		log.Error("❌ Failed to push branch", "branch", currentBranch, "error", err)
-		return fmt.Errorf("failed to push branch %s: %w", currentBranch, err)
+		return nil, fmt.Errorf("failed to push branch %s: %w", currentBranch, err)
 	}
 
-	// Step 7: Get default branch for PR base
-	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	// Handle PR creation/update
+	prResult, err := g.handlePRCreationOrUpdate(currentBranch)
 	if err != nil {
-		log.Error("❌ Failed to get default branch", "error", err)
-		return fmt.Errorf("failed to get default branch: %w", err)
+		log.Error("❌ Failed to handle PR creation/update", "error", err)
+		return nil, fmt.Errorf("failed to handle PR creation/update: %w", err)
 	}
 
-	// Step 8: Create pull request
-	if err := g.gitClient.CreatePullRequest(prTitle, prBody, defaultBranch); err != nil {
-		log.Error("❌ Failed to create pull request", "error", err)
-		return fmt.Errorf("failed to create pull request: %w", err)
-	}
-
-	log.Info("✅ Successfully completed job and created PR: %s", prTitle)
-	log.Info("📋 Completed successfully - completed job and created PR")
-	return nil
+	log.Info("✅ Successfully auto-committed and pushed changes")
+	log.Info("📋 Completed successfully - auto-committed changes")
+	return prResult, nil
 }
 
-func (g *GitUseCase) generateBranchNameWithClaude(conversationHint string) (string, error) {
-	log.Info("🤖 Asking Claude to generate branch name")
-
-	prompt := fmt.Sprintf(`Based on this task description: "%s"
-
-Please generate a short, descriptive Git branch name. Follow these rules:
-- Use kebab-case (lowercase with hyphens)
-- Maximum 30 characters
-- Be concise but descriptive
-- No special characters except hyphens
-- Start with an action verb when possible
-
-Respond with ONLY the branch name, nothing else.`, conversationHint)
-
-	claudeBranchName, err := g.claudeClient.StartNewSession(prompt)
-	if err != nil {
-		return "", fmt.Errorf("claude failed to generate branch name: %w", err)
-	}
-
-	// Clean up Claude's response
-	cleanBranchName := g.cleanBranchName(claudeBranchName)
-
-	// Add timestamp and prefix to ensure uniqueness
-	timestamp := time.Now().Format("20060102-150405")
-	finalBranchName := fmt.Sprintf("ccagent/%s-%s", cleanBranchName, timestamp)
-
-	log.Info("🤖 Claude suggested: %s, final: %s", claudeBranchName, finalBranchName)
-	return finalBranchName, nil
-}
 
 func (g *GitUseCase) generateCommitMessageWithClaude(branchName string) (string, error) {
 	log.Info("🤖 Asking Claude to generate commit message")
@@ -253,14 +212,19 @@ func (g *GitUseCase) generatePRTitleWithClaude(branchName string) (string, error
 
 	prompt := fmt.Sprintf(`I'm creating a pull request for Git branch: "%s"
 
-Please generate a clear, descriptive pull request title. Follow these rules:
-- Use title case
-- Be descriptive but concise
-- Maximum 60 characters
-- Focus on what was accomplished
-- Don't mention "Claude" or "agent" in the title
+Generate a SHORT pull request title. Follow these strict rules:
+- Maximum 40 characters (STRICT LIMIT)
+- Start with action verb (Add, Fix, Update, Improve, etc.)
+- Be concise and specific
+- No unnecessary words or phrases
+- Don't mention "Claude", "agent", or implementation details
 
-Respond with ONLY the PR title, nothing else.`, branchName)
+Examples:
+- "Fix error handling in message processor"
+- "Add user authentication middleware"
+- "Update API response format"
+
+Respond with ONLY the short title, nothing else.`, branchName)
 
 	prTitle, err := g.claudeClient.StartNewSession(prompt)
 	if err != nil {
@@ -328,14 +292,20 @@ func (g *GitUseCase) cleanBranchName(branchName string) string {
 	return cleaned
 }
 
-// Fallback methods for when Claude fails
-func (g *GitUseCase) generateFallbackBranchName(conversationHint string) string {
-	cleaned := g.cleanBranchName(conversationHint)
-	if len(cleaned) < 3 {
-		cleaned = "claude-task"
+func (g *GitUseCase) generateRandomBranchName() (string, error) {
+	log.Info("🎲 Generating random branch name")
+
+	rng, err := codename.DefaultRNG()
+	if err != nil {
+		return "", fmt.Errorf("failed to create random generator: %w", err)
 	}
+
+	randomName := codename.Generate(rng, 0)
 	timestamp := time.Now().Format("20060102-150405")
-	return fmt.Sprintf("ccagent/%s-%s", cleaned, timestamp)
+	finalBranchName := fmt.Sprintf("ccagent/%s-%s", randomName, timestamp)
+
+	log.Info("🎲 Generated random name: %s", finalBranchName)
+	return finalBranchName, nil
 }
 
 func (g *GitUseCase) generateFallbackCommitMessage(branchName string) string {
@@ -360,3 +330,149 @@ Completed task via Claude Control.
 🤖 Generated with Claude Control`, branchName, time.Now().Format("2006-01-02 15:04:05"))
 }
 
+func (g *GitUseCase) generateCommitMessageWithClaudeIsolated(branchName string) (string, error) {
+	log.Info("🤖 Asking Claude to generate commit message with isolated config")
+
+	// Generate unique config directory using UUID
+	configDir := fmt.Sprintf(".ccagent/git-%s", uuid.New().String())
+
+	prompt := fmt.Sprintf(`I'm completing work on Git branch: "%s"
+
+Please generate a concise Git commit message. Follow these rules:
+- Start with an action verb (Add, Fix, Update, Implement, etc.)
+- Be descriptive but concise
+- Use imperative mood
+- Maximum 50 characters for the title
+- End with a simple note that this was done by Claude Control
+
+Format:
+<title>
+
+🤖 Generated with Claude Control
+
+Respond with ONLY the commit message, nothing else.`, branchName)
+
+	commitMessage, err := g.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
+	if err != nil {
+		return "", fmt.Errorf("claude failed to generate commit message: %w", err)
+	}
+
+	return strings.TrimSpace(commitMessage), nil
+}
+
+func (g *GitUseCase) handlePRCreationOrUpdate(branchName string) (*AutoCommitResult, error) {
+	log.Info("📋 Starting to handle PR creation or update for branch: %s", branchName)
+
+	// Check if a PR already exists for this branch
+	hasExistingPR, err := g.gitClient.HasExistingPR(branchName)
+	if err != nil {
+		log.Error("❌ Failed to check for existing PR", "error", err)
+		return nil, fmt.Errorf("failed to check for existing PR: %w", err)
+	}
+
+	if hasExistingPR {
+		log.Info("✅ Existing PR found for branch %s - changes have been pushed", branchName)
+		
+		// Get the PR URL for the existing PR
+		prURL, err := g.gitClient.GetPRURL(branchName)
+		if err != nil {
+			log.Error("❌ Failed to get PR URL for existing PR", "error", err)
+			// Continue without the URL rather than failing
+			prURL = ""
+		}
+		
+		log.Info("📋 Completed successfully - updated existing PR")
+		return &AutoCommitResult{HasCreatedPR: false, PullRequestLink: prURL}, nil
+	}
+
+	log.Info("🆕 No existing PR found - creating new PR")
+
+	// Generate PR title and body using Claude with isolated config directories
+	prTitle, err := g.generatePRTitleWithClaudeIsolated(branchName)
+	if err != nil {
+		log.Error("❌ Failed to generate PR title with Claude, using fallback", "error", err)
+		prTitle = g.generateFallbackPRTitle(branchName)
+	}
+
+	prBody, err := g.generatePRBodyWithClaudeIsolated(branchName)
+	if err != nil {
+		log.Error("❌ Failed to generate PR body with Claude, using fallback", "error", err)
+		prBody = g.generateFallbackPRBody(branchName)
+	}
+
+	log.Info("📋 Generated PR title: %s", prTitle)
+
+	// Get default branch for PR base
+	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	if err != nil {
+		log.Error("❌ Failed to get default branch", "error", err)
+		return nil, fmt.Errorf("failed to get default branch: %w", err)
+	}
+
+	// Create pull request
+	prURL, err := g.gitClient.CreatePullRequest(prTitle, prBody, defaultBranch)
+	if err != nil {
+		log.Error("❌ Failed to create pull request", "error", err)
+		return nil, fmt.Errorf("failed to create pull request: %w", err)
+	}
+
+	log.Info("✅ Successfully created PR: %s", prTitle)
+	log.Info("📋 Completed successfully - created new PR")
+	return &AutoCommitResult{HasCreatedPR: true, PullRequestLink: prURL}, nil
+}
+
+func (g *GitUseCase) generatePRTitleWithClaudeIsolated(branchName string) (string, error) {
+	log.Info("🤖 Asking Claude to generate PR title with isolated config")
+
+	// Generate unique config directory using UUID
+	configDir := fmt.Sprintf(".ccagent/git-%s", uuid.New().String())
+
+	prompt := fmt.Sprintf(`I'm creating a pull request for Git branch: "%s"
+
+Generate a SHORT pull request title. Follow these strict rules:
+- Maximum 40 characters (STRICT LIMIT)
+- Start with action verb (Add, Fix, Update, Improve, etc.)
+- Be concise and specific
+- No unnecessary words or phrases
+- Don't mention "Claude", "agent", or implementation details
+
+Examples:
+- "Fix error handling in message processor"
+- "Add user authentication middleware"
+- "Update API response format"
+
+Respond with ONLY the short title, nothing else.`, branchName)
+
+	prTitle, err := g.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
+	if err != nil {
+		return "", fmt.Errorf("claude failed to generate PR title: %w", err)
+	}
+
+	return strings.TrimSpace(prTitle), nil
+}
+
+func (g *GitUseCase) generatePRBodyWithClaudeIsolated(branchName string) (string, error) {
+	log.Info("🤖 Asking Claude to generate PR body with isolated config")
+
+	// Generate unique config directory using UUID
+	configDir := fmt.Sprintf(".ccagent/git-%s", uuid.New().String())
+
+	prompt := fmt.Sprintf(`I'm creating a pull request for Git branch: "%s"
+
+Please generate a professional pull request description. Include:
+- ## Summary section with what was accomplished
+- ## Changes section with key modifications
+- Note that this was generated by Claude Control
+- Keep it concise but informative
+
+Use proper markdown formatting.
+
+Respond with ONLY the PR body, nothing else.`, branchName)
+
+	prBody, err := g.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
+	if err != nil {
+		return "", fmt.Errorf("claude failed to generate PR body: %w", err)
+	}
+
+	return strings.TrimSpace(prBody), nil
+}

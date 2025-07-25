@@ -6,6 +6,7 @@ const (
 	MessageTypeUserMessage       = "user_message_v1"
 	MessageTypeAssistantMessage  = "assistant_message_v1"
 	MessageTypeJobUnassigned     = "job_unassigned_v1"
+	MessageTypeSystemMessage     = "system_message_v1"
 )
 
 type UnknownMessage struct {
@@ -14,8 +15,9 @@ type UnknownMessage struct {
 }
 
 type StartConversationPayload struct {
-	Message        string `json:"message"`
-	SlackMessageID string `json:"slack_message_id"`
+	Message         string `json:"message"`
+	SlackMessageID  string `json:"slack_message_id"`
+	SlackMessageLink string `json:"slack_message_link"`
 }
 
 type UserMessagePayload struct {
@@ -29,3 +31,8 @@ type AssistantMessagePayload struct {
 }
 
 type JobUnassignedPayload struct {}
+
+type SystemMessagePayload struct {
+	Message        string `json:"message"`
+	SlackMessageID string `json:"slack_message_id"`
+}
