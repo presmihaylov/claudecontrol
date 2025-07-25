@@ -144,6 +144,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL string) error {
 				err := conn.ReadJSON(&msg)
 				if err != nil {
 					log.Info("❌ Read error: %v", err)
+					// WebSocket read errors don't have SlackMessageID context
 					cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
 					close(reconnect)
 					return
@@ -235,14 +236,27 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 	switch msg.Type {
 	case MessageTypeStartConversation:
 		if err := cr.handleStartConversation(msg, conn); err != nil {
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
+			// Extract SlackMessageID from payload for error reporting
+			var payload StartConversationPayload
+			slackMessageID := ""
+			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
+				slackMessageID = payload.SlackMessageID
+			}
+			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), slackMessageID)
 		}
 	case MessageTypeUserMessage:
 		if err := cr.handleUserMessage(msg, conn); err != nil {
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
+			// Extract SlackMessageID from payload for error reporting
+			var payload UserMessagePayload
+			slackMessageID := ""
+			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
+				slackMessageID = payload.SlackMessageID
+			}
+			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), slackMessageID)
 		}
 	case MessageTypeJobUnassigned:
 		if err := cr.handleJobUnassigned(msg, conn); err != nil {
+			// JobUnassigned doesn't have SlackMessageID, so use empty string
 			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
 		}
 	default:
