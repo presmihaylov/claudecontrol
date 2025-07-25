@@ -127,7 +127,7 @@ func (g *GitClient) PushBranch(branchName string) error {
 	return nil
 }
 
-func (g *GitClient) CreatePullRequest(title, body, baseBranch string) error {
+func (g *GitClient) CreatePullRequest(title, body, baseBranch string) (string, error) {
 	log.Info("📋 Starting to create pull request: %s", title)
 	
 	cmd := exec.Command("gh", "pr", "create", "--title", title, "--body", body, "--base", baseBranch)
@@ -135,12 +135,33 @@ func (g *GitClient) CreatePullRequest(title, body, baseBranch string) error {
 	
 	if err != nil {
 		log.Error("❌ GitHub PR creation failed", "title", title, "error", err, "output", string(output))
-		return fmt.Errorf("github pr creation failed: %w\nOutput: %s", err, string(output))
+		return "", fmt.Errorf("github pr creation failed: %w\nOutput: %s", err, string(output))
 	}
+	
+	// The output contains the PR URL
+	prURL := strings.TrimSpace(string(output))
 	
 	log.Info("✅ Successfully created pull request: %s", title)
 	log.Info("📋 Completed successfully - created pull request")
-	return nil
+	return prURL, nil
+}
+
+func (g *GitClient) GetPRURL(branchName string) (string, error) {
+	log.Info("📋 Starting to get PR URL for branch: %s", branchName)
+	
+	cmd := exec.Command("gh", "pr", "view", branchName, "--json", "url", "--jq", ".url")
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		log.Error("❌ Failed to get PR URL", "branch", branchName, "error", err, "output", string(output))
+		return "", fmt.Errorf("failed to get PR URL: %w\nOutput: %s", err, string(output))
+	}
+	
+	prURL := strings.TrimSpace(string(output))
+	
+	log.Info("✅ Successfully got PR URL: %s", prURL)
+	log.Info("📋 Completed successfully - got PR URL")
+	return prURL, nil
 }
 
 func (g *GitClient) GetCurrentBranch() (string, error) {
@@ -368,4 +389,30 @@ func (g *GitClient) writeFileContent(filePath, content string) error {
 		return fmt.Errorf("failed to write file %s: %w", filePath, err)
 	}
 	return nil
+}
+
+func (g *GitClient) HasExistingPR(branchName string) (bool, error) {
+	log.Info("📋 Starting to check for existing PR for branch: %s", branchName)
+	
+	// Use GitHub CLI to list PRs for the current branch
+	cmd := exec.Command("gh", "pr", "list", "--head", branchName, "--json", "number")
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		log.Error("❌ Failed to check for existing PR", "branch", branchName, "error", err, "output", string(output))
+		return false, fmt.Errorf("failed to check for existing PR: %w\nOutput: %s", err, string(output))
+	}
+	
+	// If output is "[]" (empty JSON array), no PRs exist for this branch
+	outputStr := strings.TrimSpace(string(output))
+	hasPR := outputStr != "[]" && outputStr != ""
+	
+	if hasPR {
+		log.Info("✅ Found existing PR for branch: %s", branchName)
+	} else {
+		log.Info("✅ No existing PR found for branch: %s", branchName)
+	}
+	
+	log.Info("📋 Completed successfully - checked for existing PR")
+	return hasPR, nil
 }
