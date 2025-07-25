@@ -303,16 +303,7 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 		return
 	}
 
-	if commitResult != nil && commitResult.HasCreatedPR && commitResult.PullRequestLink != "" {
-		// Send system message about new PR creation
-		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
-		if err := cr.sendSystemMessage(conn, message, payload.SlackMessageID); err != nil {
-			log.Info("❌ Failed to send system message: %v", err)
-			return
-		}
-	}
-
-	// Send assistant response back
+	// Send assistant response back first
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
@@ -323,10 +314,21 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 
 	if err := conn.WriteJSON(response); err != nil {
 		log.Info("❌ Failed to send assistant response: %v", err)
+		return
 	} else {
 		log.Info("🤖 Sent assistant response")
-		log.Info("📋 Completed successfully - handled start conversation message")
 	}
+
+	// Send system message after assistant message if PR was created
+	if commitResult != nil && commitResult.HasCreatedPR && commitResult.PullRequestLink != "" {
+		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
+		if err := cr.sendSystemMessage(conn, message, payload.SlackMessageID); err != nil {
+			log.Info("❌ Failed to send system message: %v", err)
+			return
+		}
+	}
+
+	log.Info("📋 Completed successfully - handled start conversation message")
 }
 
 func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn) {
@@ -354,16 +356,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 		return
 	}
 
-	if commitResult != nil && commitResult.HasCreatedPR && commitResult.PullRequestLink != "" {
-		// Send system message about new PR creation
-		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
-		if err := cr.sendSystemMessage(conn, message, payload.SlackMessageID); err != nil {
-			log.Info("❌ Failed to send system message: %v", err)
-			return
-		}
-	}
-
-	// Send assistant response back
+	// Send assistant response back first
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
@@ -374,10 +367,21 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 
 	if err := conn.WriteJSON(response); err != nil {
 		log.Info("❌ Failed to send assistant response: %v", err)
+		return
 	} else {
 		log.Info("🤖 Sent assistant response")
-		log.Info("📋 Completed successfully - handled user message")
 	}
+
+	// Send system message after assistant message if PR was created
+	if commitResult != nil && commitResult.HasCreatedPR && commitResult.PullRequestLink != "" {
+		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
+		if err := cr.sendSystemMessage(conn, message, payload.SlackMessageID); err != nil {
+			log.Info("❌ Failed to send system message: %v", err)
+			return
+		}
+	}
+
+	log.Info("📋 Completed successfully - handled user message")
 }
 
 func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, conn *websocket.Conn) {

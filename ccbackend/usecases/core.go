@@ -146,8 +146,8 @@ func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.Syste
 
 	log.Printf("📤 Sending system message to Slack thread %s in channel %s", job.SlackThreadTS, processedMessage.SlackChannelID)
 
-	// Send system message with :cog: emoji prepended
-	systemMessage := ":cog: " + payload.Message
+	// Send system message with :gear: emoji prepended
+	systemMessage := ":gear: " + payload.Message
 	_, _, err = s.slackClient.PostMessage(processedMessage.SlackChannelID,
 		slack.MsgOptionText(utils.ConvertMarkdownToSlack(systemMessage), false),
 		slack.MsgOptionTS(job.SlackThreadTS),
