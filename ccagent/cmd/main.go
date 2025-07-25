@@ -359,7 +359,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	return nil
 }
 
-func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, conn *websocket.Conn) error {
+func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, _ *websocket.Conn) error {
 	log.Info("📋 Starting to handle job unassigned message")
 	var payload JobUnassignedPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
