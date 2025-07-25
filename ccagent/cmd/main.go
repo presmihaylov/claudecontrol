@@ -379,7 +379,7 @@ func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, conn *websocket.Con
 	return nil
 }
 
-func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message string) {
+func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message string) error {
 	log.Info("📋 Sending system message: %s", message)
 	response := UnknownMessage{
 		Type: MessageTypeSystemMessage,
@@ -390,9 +390,11 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message string) {
 
 	if err := conn.WriteJSON(response); err != nil {
 		log.Info("❌ Failed to send system message: %v", err)
-	} else {
-		log.Info("⚙️ Sent system message")
+		return fmt.Errorf("failed to send system message: %w", err)
 	}
+
+	log.Info("⚙️ Sent system message")
+	return nil
 }
 
 func unmarshalPayload(payload any, target any) error {
