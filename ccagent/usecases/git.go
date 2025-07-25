@@ -56,6 +56,7 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) error {
 	if err != nil {
 		log.Error("❌ Failed to generate branch name with Claude, using fallback", "error", err)
 		branchName = g.generateFallbackBranchName(conversationHint)
+		// Note: We continue with fallback rather than failing completely
 	}
 
 	log.Info("🌿 Generated branch name: %s", branchName)

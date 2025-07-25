@@ -144,6 +144,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL string) error {
 				err := conn.ReadJSON(&msg)
 				if err != nil {
 					log.Info("❌ Read error: %v", err)
+					cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err))
 					close(reconnect)
 					return
 				}
@@ -233,22 +234,28 @@ func (cr *CmdRunner) connectWithRetry(serverURL string, retryIntervals []time.Du
 func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 	switch msg.Type {
 	case MessageTypeStartConversation:
-		cr.handleStartConversation(msg, conn)
+		if err := cr.handleStartConversation(msg, conn); err != nil {
+			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err))
+		}
 	case MessageTypeUserMessage:
-		cr.handleUserMessage(msg, conn)
+		if err := cr.handleUserMessage(msg, conn); err != nil {
+			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err))
+		}
 	case MessageTypeJobUnassigned:
-		cr.handleJobUnassigned(msg, conn)
+		if err := cr.handleJobUnassigned(msg, conn); err != nil {
+			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err))
+		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
 	}
 }
 
-func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket.Conn) {
+func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket.Conn) error {
 	log.Info("📋 Starting to handle start conversation message")
 	var payload StartConversationPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal start conversation payload: %v", err)
-		return
+		return fmt.Errorf("failed to unmarshal start conversation payload: %w", err)
 	}
 
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
@@ -256,7 +263,7 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 	// Prepare Git environment for new conversation - FAIL if this doesn't work
 	if err := cr.gitUseCase.PrepareForNewConversation(payload.Message); err != nil {
 		log.Error("❌ Failed to prepare Git environment: %v", err)
-		return
+		return fmt.Errorf("failed to prepare Git environment: %w", err)
 	}
 
 	behaviourInstructions := `You are a claude code instance which will be referred to by the user as "Claude Control" for this session. When someone calls you claude control, they refer to you.
@@ -287,13 +294,13 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 	_, err := cr.claudeClient.StartNewSession(behaviourInstructions)
 	if err != nil {
 		log.Info("❌ Error starting Claude session with behaviour prompt: %v", err)
-		return
+		return fmt.Errorf("error starting Claude session with behaviour prompt: %w", err)
 	}
 
 	output, err := cr.claudeClient.ContinueSession("dummy-session", payload.Message)
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
-		return
+		return fmt.Errorf("error starting Claude session: %w", err)
 	}
 
 	// Send assistant response back
@@ -307,18 +314,20 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 
 	if err := conn.WriteJSON(response); err != nil {
 		log.Info("❌ Failed to send assistant response: %v", err)
-	} else {
-		log.Info("🤖 Sent assistant response")
-		log.Info("📋 Completed successfully - handled start conversation message")
+		return fmt.Errorf("failed to send assistant response: %w", err)
 	}
+
+	log.Info("🤖 Sent assistant response")
+	log.Info("📋 Completed successfully - handled start conversation message")
+	return nil
 }
 
-func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn) {
+func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn) error {
 	log.Info("📋 Starting to handle user message")
 	var payload UserMessagePayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal user message payload: %v", err)
-		return
+		return fmt.Errorf("failed to unmarshal user message payload: %w", err)
 	}
 
 	log.Info("💬 Continuing conversation with message: %s", payload.Message)
@@ -328,7 +337,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	output, err := cr.claudeClient.ContinueSession("dummy-session", payload.Message)
 	if err != nil {
 		log.Info("❌ Error continuing Claude session: %v", err)
-		return
+		return fmt.Errorf("error continuing Claude session: %w", err)
 	}
 
 	// Send assistant response back
@@ -342,18 +351,20 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 
 	if err := conn.WriteJSON(response); err != nil {
 		log.Info("❌ Failed to send assistant response: %v", err)
-	} else {
-		log.Info("🤖 Sent assistant response")
-		log.Info("📋 Completed successfully - handled user message")
+		return fmt.Errorf("failed to send assistant response: %w", err)
 	}
+
+	log.Info("🤖 Sent assistant response")
+	log.Info("📋 Completed successfully - handled user message")
+	return nil
 }
 
-func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, conn *websocket.Conn) {
+func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, conn *websocket.Conn) error {
 	log.Info("📋 Starting to handle job unassigned message")
 	var payload JobUnassignedPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal job unassigned payload: %v", err)
-		return
+		return fmt.Errorf("failed to unmarshal job unassigned payload: %w", err)
 	}
 
 	log.Info("🚫 Job has been unassigned from this agent")
@@ -361,10 +372,27 @@ func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, conn *websocket.Con
 	// Complete job and create PR - FAIL if this doesn't work
 	if err := cr.gitUseCase.CompleteJobAndCreatePR(); err != nil {
 		log.Error("❌ Failed to complete job and create PR: %v", err)
-		return
+		return fmt.Errorf("failed to complete job and create PR: %w", err)
 	}
 
 	log.Info("📋 Completed successfully - handled job unassigned message")
+	return nil
+}
+
+func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message string) {
+	log.Info("📋 Sending system message: %s", message)
+	response := UnknownMessage{
+		Type: MessageTypeSystemMessage,
+		Payload: SystemMessagePayload{
+			Message: message,
+		},
+	}
+
+	if err := conn.WriteJSON(response); err != nil {
+		log.Info("❌ Failed to send system message: %v", err)
+	} else {
+		log.Info("⚙️ Sent system message")
+	}
 }
 
 func unmarshalPayload(payload any, target any) error {

@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -52,7 +53,9 @@ func (s *ConfigService) createConfig() (*models.Config, error) {
 		return nil, err
 	}
 
-	s.addToGitignore(configDir)
+	if err := s.addToGitignore(configDir); err != nil {
+		return nil, fmt.Errorf("failed to add to gitignore: %w", err)
+	}
 
 	agentID := uuid.New().String()
 	log.Info("Generated new agent ID: %s", agentID)
@@ -98,10 +101,10 @@ func (s *ConfigService) loadConfig(configPath string) (*models.Config, error) {
 	return &config, nil
 }
 
-func (s *ConfigService) addToGitignore(dir string) {
+func (s *ConfigService) addToGitignore(dir string) error {
 	if _, err := os.Stat(".git"); os.IsNotExist(err) {
 		log.Debug("Not a git repository, skipping gitignore update")
-		return
+		return nil
 	}
 	
 	log.Info("Adding directory to gitignore", "dir", dir)
@@ -117,7 +120,7 @@ func (s *ConfigService) addToGitignore(dir string) {
 		f, err := os.OpenFile(gitignorePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Error("Failed to open gitignore file", "error", err)
-			return
+			return fmt.Errorf("failed to open gitignore file: %w", err)
 		}
 		defer f.Close()
 		
@@ -129,6 +132,7 @@ func (s *ConfigService) addToGitignore(dir string) {
 	} else {
 		log.Debug("Directory already in gitignore", "dir", dir)
 	}
+	return nil
 }
 
 func contains(s, substr string) bool {
