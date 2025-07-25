@@ -118,6 +118,53 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	return nil
 }
 
+func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.SystemMessagePayload) error {
+	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
+
+	// Validate SlackMessageID is provided
+	if payload.SlackMessageID == "" {
+		log.Printf("⚠️ System message has no SlackMessageID, cannot determine target thread")
+		return nil
+	}
+
+	utils.AssertInvariant(uuid.Validate(payload.SlackMessageID) == nil, "SlackMessageID is not in UUID format")
+	messageID := uuid.MustParse(payload.SlackMessageID)
+
+	// Get the ProcessedSlackMessage to find the correct channel and thread
+	processedMessage, err := s.jobsService.GetProcessedSlackMessageByID(messageID)
+	if err != nil {
+		log.Printf("❌ Failed to get processed slack message %s: %v", messageID, err)
+		return fmt.Errorf("failed to get processed slack message: %w", err)
+	}
+
+	// Get the job to find the thread timestamp
+	job, err := s.jobsService.GetJobByID(processedMessage.JobID)
+	if err != nil {
+		log.Printf("❌ Failed to get job %s: %v", processedMessage.JobID, err)
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	log.Printf("📤 Sending system message to Slack thread %s in channel %s", job.SlackThreadTS, processedMessage.SlackChannelID)
+
+	// Send system message with :cog: emoji prepended
+	systemMessage := ":cog: " + payload.Message
+	_, _, err = s.slackClient.PostMessage(processedMessage.SlackChannelID,
+		slack.MsgOptionText(utils.ConvertMarkdownToSlack(systemMessage), false),
+		slack.MsgOptionTS(job.SlackThreadTS),
+	)
+	if err != nil {
+		return fmt.Errorf("❌ Failed to send system message to Slack: %v", err)
+	}
+
+	// Update job timestamp to track activity
+	if err := s.jobsService.UpdateJobTimestamp(job.ID); err != nil {
+		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
+	}
+
+	log.Printf("📋 Completed successfully - sent system message to Slack thread %s", job.SlackThreadTS)
+	return nil
+}
+
 func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) error {
 	log.Printf("📋 Starting to process Slack message event from %s in %s: %s", event.User, event.Channel, event.Text)
 
@@ -219,11 +266,21 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 }
 
 func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *models.ProcessedSlackMessage) error {
+	// Generate permalink for the Slack message
+	permalink, err := s.slackClient.GetPermalink(&slack.PermalinkParameters{
+		Channel: message.SlackChannelID,
+		Ts:      message.SlackTS,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get permalink for slack message: %w", err)
+	}
+
 	startConversationMessage := models.UnknownMessage{
 		Type: models.MessageTypeStartConversation,
 		Payload: models.StartConversationPayload{
-			Message:        message.TextContent,
-			SlackMessageID: message.ID.String(),
+			Message:          message.TextContent,
+			SlackMessageID:   message.ID.String(),
+			SlackMessageLink: permalink,
 		},
 	}
 

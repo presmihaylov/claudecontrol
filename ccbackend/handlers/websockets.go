@@ -42,10 +42,25 @@ func (h *WebSocketHandler) HandleMessage(clientID string, msg any) {
 		log.Printf("🤖 Received assistant message from client %s: %s", clientID, payload.Message)
 		if err := h.coreUseCase.ProcessAssistantMessage(clientID, payload); err != nil {
 			log.Printf("❌ Failed to process assistant message from client %s: %v", clientID, err)
+			return
+		}
+
+	case models.MessageTypeSystemMessage:
+		var payload models.SystemMessagePayload
+		if err := unmarshalPayload(parsedMsg.Payload, &payload); err != nil {
+			log.Printf("❌ Failed to unmarshal system message payload from client %s: %v", clientID, err)
+			return
+		}
+
+		log.Printf("⚙️ Received system message from client %s: %s", clientID, payload.Message)
+		if err := h.coreUseCase.ProcessSystemMessage(clientID, payload); err != nil {
+			log.Printf("❌ Failed to process system message from client %s: %v", clientID, err)
+			return
 		}
 
 	default:
 		log.Printf("⚠️ Unknown message type '%s' from client %s", parsedMsg.Type, clientID)
+		return
 	}
 }
 
