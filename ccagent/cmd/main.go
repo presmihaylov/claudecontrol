@@ -25,11 +25,11 @@ type CmdRunner struct {
 	gitUseCase     *usecases.GitUseCase
 }
 
-func NewCmdRunner() *CmdRunner {
+func NewCmdRunner(anthroApiKey string) *CmdRunner {
 	log.Info("📋 Starting to initialize CmdRunner")
 	configService := services.NewConfigService()
 	sessionService := services.NewSessionService()
-	claudeClient := clients.NewClaudeClient()
+	claudeClient := clients.NewClaudeClient(anthroApiKey)
 	gitClient := clients.NewGitClient()
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeClient)
 
@@ -64,7 +64,14 @@ func main() {
 		log.SetLevel(slog.LevelInfo)
 	}
 
-	cmdRunner := NewCmdRunner()
+	// Validate ANTHROPIC_API_KEY environment variable
+	anthroApiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if anthroApiKey == "" {
+		fmt.Fprintf(os.Stderr, "Error: ANTHROPIC_API_KEY environment variable is required but not set\n")
+		os.Exit(1)
+	}
+
+	cmdRunner := NewCmdRunner(anthroApiKey)
 
 	_, err = cmdRunner.configService.GetOrCreateConfig()
 	if err != nil {
