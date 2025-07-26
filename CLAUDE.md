@@ -25,6 +25,16 @@ make clean                  # Remove build artifacts
 go run cmd/main.go          # Run agent directly
 ```
 
+### ccfrontend (Next.js Frontend)
+```bash
+cd ccfrontend
+bun dev                     # Run development server on localhost:3000
+bun run build               # Build production bundle
+bun start                   # Start production server
+bun run lint                # Run ESLint
+bun install                 # Install dependencies
+```
+
 ### Supabase (Database Development)
 ```bash
 cd ccbackend
@@ -51,6 +61,7 @@ go run main.go ws://localhost:3000/ws  # Connect to ccbackend
 ### Multi-Module Structure
 - **ccbackend**: Go HTTP/WebSocket server handling Slack integration with Supabase database
 - **ccagent**: Go CLI tool for Claude Code interaction
+- **ccfrontend**: Next.js frontend application with React 19 and Tailwind CSS
 - **examples/websockets**: Reference WebSocket implementations
 
 ### Backend Component Organization
@@ -158,6 +169,7 @@ CREATE TABLE {schema}.active_agents (
 ```bash
 cd ccbackend && make build  # Build first to catch compilation issues
 cd ccbackend && make test   # Then run tests
+cd ccfrontend && bun run build && bun run lint  # Build and lint frontend
 ```
 
 ### Database Migrations

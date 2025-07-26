@@ -1,0 +1,222 @@
+package services
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"testing"
+
+	"ccbackend/config"
+	"ccbackend/db"
+
+	"github.com/clerk/clerk-sdk-go/v2"
+	"github.com/clerk/clerk-sdk-go/v2/user"
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// TestUserHelper provides utilities for creating and managing test users with Clerk
+type TestUserHelper struct {
+	clerkClient *user.Client
+	createdUsers []string // Track created user IDs for cleanup
+}
+
+// NewTestUserHelper creates a new test user helper with Clerk client
+func NewTestUserHelper(t *testing.T) *TestUserHelper {
+	// Load config to get Clerk secret key
+	cfg, err := config.LoadConfig()
+	require.NoError(t, err, "Failed to load config for test")
+
+	// Create Clerk client config
+	clerkConfig := &clerk.ClientConfig{
+		BackendConfig: clerk.BackendConfig{
+			Key: clerk.String(cfg.ClerkSecretKey),
+		},
+	}
+
+	clerkClient := user.NewClient(clerkConfig)
+
+	return &TestUserHelper{
+		clerkClient:  clerkClient,
+		createdUsers: make([]string, 0),
+	}
+}
+
+// CreateTestUser creates a test user via Clerk API and returns the user ID
+func (h *TestUserHelper) CreateTestUser(t *testing.T, emailAddress string) string {
+	ctx := context.Background()
+
+	// Create test user with Clerk
+	clerkUser, err := h.clerkClient.Create(ctx, &user.CreateParams{
+		EmailAddresses: &[]string{emailAddress},
+		SkipPasswordChecks:      clerk.Bool(true),
+		SkipPasswordRequirement: clerk.Bool(true),
+	})
+	require.NoError(t, err, "Failed to create test user via Clerk API")
+	require.NotNil(t, clerkUser, "Created user should not be nil")
+
+	// Track created user for cleanup
+	h.createdUsers = append(h.createdUsers, clerkUser.ID)
+
+	t.Logf("📋 Created test user with Clerk ID: %s, Email: %s", clerkUser.ID, emailAddress)
+	return clerkUser.ID
+}
+
+// CleanupTestUsers deletes all created test users
+func (h *TestUserHelper) CleanupTestUsers(t *testing.T) {
+	ctx := context.Background()
+
+	for _, userID := range h.createdUsers {
+		_, err := h.clerkClient.Delete(ctx, userID)
+		if err != nil {
+			t.Logf("⚠️ Failed to cleanup test user %s: %v", userID, err)
+		} else {
+			t.Logf("🧹 Cleaned up test user: %s", userID)
+		}
+	}
+
+	h.createdUsers = make([]string, 0)
+}
+
+// loadTestConfig loads only the minimal config needed for user service tests
+func loadTestConfig() (*config.AppConfig, error) {
+	// Load environment variables from .env file if available
+	_ = godotenv.Load()
+	
+	databaseURL := os.Getenv("DB_URL")
+	if databaseURL == "" {
+		return nil, fmt.Errorf("DB_URL is not set")
+	}
+	
+	databaseSchema := os.Getenv("DB_SCHEMA")
+	if databaseSchema == "" {
+		return nil, fmt.Errorf("DB_SCHEMA is not set")
+	}
+	
+	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
+	if clerkSecretKey == "" {
+		return nil, fmt.Errorf("CLERK_SECRET_KEY is not set")
+	}
+	
+	return &config.AppConfig{
+		DatabaseURL:    databaseURL,
+		DatabaseSchema: databaseSchema,
+		ClerkSecretKey: clerkSecretKey,
+		// Other fields not needed for user service tests
+		SlackBotToken:      "dummy",
+		SlackSigningSecret: "dummy",
+		Port:               "8080",
+	}, nil
+}
+
+func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
+	// Load test config and initialize database connection
+	cfg, err := loadTestConfig()
+	require.NoError(t, err)
+
+	dbConn, err := db.NewConnection(cfg.DatabaseURL)
+	require.NoError(t, err)
+	defer dbConn.Close()
+
+	// Initialize repository and service
+	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
+	usersService := NewUsersService(usersRepo)
+
+	// Create test user helper
+	testHelper := NewTestUserHelper(t)
+	defer testHelper.CleanupTestUsers(t)
+
+	// Create a test user via Clerk API
+	testEmail := "test-user-integration@example.com"
+	clerkUserID := testHelper.CreateTestUser(t, testEmail)
+
+	// Test GetOrCreateUser with the real Clerk user ID
+	user, err := usersService.GetOrCreateUser("clerk", clerkUserID)
+	require.NoError(t, err)
+	assert.NotNil(t, user)
+	assert.Equal(t, "clerk", user.AuthProvider)
+	assert.Equal(t, clerkUserID, user.AuthProviderID)
+	assert.NotEmpty(t, user.ID)
+
+	// Test that calling GetOrCreateUser again returns the same user
+	user2, err := usersService.GetOrCreateUser("clerk", clerkUserID)
+	require.NoError(t, err)
+	assert.Equal(t, user.ID, user2.ID)
+	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
+
+	// Cleanup database record
+	defer func() {
+		// Note: In a real test environment, you might want to clean up the database record too
+		t.Logf("📋 Test completed for user: %s", user.ID)
+	}()
+}
+
+func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
+	// Load test config and initialize database connection
+	cfg, err := loadTestConfig()
+	require.NoError(t, err)
+
+	dbConn, err := db.NewConnection(cfg.DatabaseURL)
+	require.NoError(t, err)
+	defer dbConn.Close()
+
+	// Initialize repository and service
+	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
+	usersService := NewUsersService(usersRepo)
+
+	// Use a mock Clerk user ID for testing
+	mockClerkUserID := "user_test_12345"
+	
+	// Test GetOrCreateUser with mock data
+	user, err := usersService.GetOrCreateUser("clerk", mockClerkUserID)
+	require.NoError(t, err)
+	assert.NotNil(t, user)
+	assert.Equal(t, "clerk", user.AuthProvider)
+	assert.Equal(t, mockClerkUserID, user.AuthProviderID)
+	assert.NotEmpty(t, user.ID)
+
+	// Test that calling GetOrCreateUser again returns the same user
+	user2, err := usersService.GetOrCreateUser("clerk", mockClerkUserID)
+	require.NoError(t, err)
+	assert.Equal(t, user.ID, user2.ID)
+	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
+
+	// Cleanup - delete the test user from database
+	defer func() {
+		// Clean up test data from database
+		query := "DELETE FROM " + cfg.DatabaseSchema + ".users WHERE auth_provider_id = $1"
+		_, err := dbConn.Exec(query, mockClerkUserID)
+		if err != nil {
+			t.Logf("⚠️ Failed to cleanup test user from database: %v", err)
+		} else {
+			t.Logf("🧹 Cleaned up test user from database: %s", mockClerkUserID)
+		}
+	}()
+}
+
+func TestUsersService_GetOrCreateUser_ValidationErrors(t *testing.T) {
+	// Load test config and initialize database connection
+	cfg, err := loadTestConfig()
+	require.NoError(t, err)
+
+	dbConn, err := db.NewConnection(cfg.DatabaseURL)
+	require.NoError(t, err)
+	defer dbConn.Close()
+
+	// Initialize repository and service
+	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
+	usersService := NewUsersService(usersRepo)
+
+	// Test with empty auth provider
+	user, err := usersService.GetOrCreateUser("", "test_user_id")
+	assert.Error(t, err)
+	assert.Nil(t, user)
+	assert.Contains(t, err.Error(), "auth_provider cannot be empty")
+
+	// Test with empty auth provider ID
+	user, err = usersService.GetOrCreateUser("clerk", "")
+	assert.Error(t, err)
+	assert.Nil(t, user)
+	assert.Contains(t, err.Error(), "auth_provider_id cannot be empty")
+}
