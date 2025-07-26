@@ -11,6 +11,7 @@ import (
 	"ccbackend/usecases"
 	"ccbackend/utils"
 
+	"github.com/gorilla/mux"
 	"github.com/slack-go/slack"
 )
 
@@ -155,13 +156,15 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *SlackWebhooksHandler) SetupEndpoints() {
-	log.Printf("🚀 Registering Slack commands endpoint on /slack/commands")
-	http.HandleFunc("/slack/commands", h.HandleSlackCommand)
-	log.Printf("✅ Slack commands endpoint registered successfully")
-
-	log.Printf("🚀 Registering Slack events endpoint on /slack/events")
-	http.HandleFunc("/slack/events", h.HandleSlackEvent)
-	log.Printf("✅ Slack events endpoint registered successfully")
+func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
+	log.Printf("🚀 Registering Slack webhook endpoints")
+	
+	router.HandleFunc("/slack/commands", h.HandleSlackCommand).Methods("POST")
+	log.Printf("✅ POST /slack/commands endpoint registered")
+	
+	router.HandleFunc("/slack/events", h.HandleSlackEvent).Methods("POST")
+	log.Printf("✅ POST /slack/events endpoint registered")
+	
+	log.Printf("✅ All Slack webhook endpoints registered successfully")
 }
 

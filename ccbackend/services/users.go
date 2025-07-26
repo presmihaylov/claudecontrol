@@ -35,3 +35,4 @@ func (s *UsersService) GetOrCreateUser(authProvider, authProviderID string) (*mo
 	log.Printf("📋 Completed successfully - retrieved/created user with ID: %s", user.ID)
 	return user, nil
 }
+

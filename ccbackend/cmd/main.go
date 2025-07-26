@@ -14,9 +14,11 @@ import (
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/handlers"
+	"ccbackend/middleware"
 	"ccbackend/services"
 	"ccbackend/usecases"
 
+	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/slack-go/slack"
 )
@@ -51,7 +53,8 @@ func run() error {
 	agentsService := services.NewAgentsService(agentsRepo)
 	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo)
 	usersService := services.NewUsersService(usersRepo)
-	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, cfg.SlackClientID, cfg.SlackClientSecret)
+	slackOAuthClient := clients.NewConcreteSlackClient()
+	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
 
 	// Clear all active agents on startup
 	log.Printf("🧹 Cleaning up stale active agents from previous server runs")
@@ -66,9 +69,15 @@ func run() error {
 	coreUseCase := usecases.NewCoreUseCase(slackClient, wsClient, agentsService, jobsService)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase)
 	slackHandler := handlers.NewSlackWebhooksHandler(slackClient, cfg.SlackSigningSecret, coreUseCase)
-	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService, cfg.ClerkSecretKey)
-	slackHandler.SetupEndpoints()
-	dashboardHandler.SetupEndpoints()
+	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
+	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, cfg.ClerkSecretKey)
+	
+	// Create a new router
+	router := mux.NewRouter()
+	
+	// Setup endpoints with the new router
+	slackHandler.SetupEndpoints(router)
+	dashboardHandler.SetupEndpoints(router, authMiddleware)
 
 	// Register WebSocket hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
@@ -100,7 +109,7 @@ func run() error {
 	// Setup and handle graceful shutdown
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: c.Handler(http.DefaultServeMux),
+		Handler: c.Handler(router),
 	}
 
 	return handleGracefulShutdown(server, agentsService)

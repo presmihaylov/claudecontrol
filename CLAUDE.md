@@ -184,3 +184,8 @@ cd ccfrontend && bun run build && bun run lint  # Build and lint frontend
 
 ## Error Handling Guidelines
 - **Error Propagation**: Never log errors silently and proceed with control flow. Always propagate the error upstream unless explicitly instructed to log the error and ignore
+
+## Service Layer Architecture Rules
+- **User-Scoped Entities**: All entities in the database should be scoped to a user ID. Never manage an entity without a user ID filter for security and data isolation
+- **Context-Based User Access**: User ID should be accessed from the context in the service layer instead of being passed explicitly as a parameter
+- **Context First Parameter**: All functions in the service layer should take `ctx context.Context` as the first argument to ensure proper request context propagation
