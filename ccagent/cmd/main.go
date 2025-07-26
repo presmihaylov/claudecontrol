@@ -64,6 +64,12 @@ func main() {
 		log.SetLevel(slog.LevelInfo)
 	}
 
+	// Validate ANTHROPIC_API_KEY environment variable
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		fmt.Fprintf(os.Stderr, "Error: ANTHROPIC_API_KEY environment variable is required but not set\n")
+		os.Exit(1)
+	}
+
 	cmdRunner := NewCmdRunner()
 
 	_, err = cmdRunner.configService.GetOrCreateConfig()
