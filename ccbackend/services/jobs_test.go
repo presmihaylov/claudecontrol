@@ -121,12 +121,13 @@ func TestJobsService(t *testing.T) {
 			slackThreadTS := "new.thread.555"
 			slackChannelID := "C5555555555"
 
-			job, err := service.GetOrCreateJobForSlackThread(slackThreadTS, slackChannelID)
+			result, err := service.GetOrCreateJobForSlackThread(slackThreadTS, slackChannelID)
 
 			require.NoError(t, err)
-			assert.NotEqual(t, uuid.Nil, job.ID)
-			assert.Equal(t, slackThreadTS, job.SlackThreadTS)
-			assert.Equal(t, slackChannelID, job.SlackChannelID)
+			assert.NotEqual(t, uuid.Nil, result.Job.ID)
+			assert.Equal(t, slackThreadTS, result.Job.SlackThreadTS)
+			assert.Equal(t, slackChannelID, result.Job.SlackChannelID)
+			assert.Equal(t, models.JobCreationStatusCreated, result.Status)
 		})
 
 		t.Run("GetExisting", func(t *testing.T) {
@@ -134,17 +135,19 @@ func TestJobsService(t *testing.T) {
 			slackChannelID := "C7777777777"
 
 			// Create job first
-			firstJob, err := service.GetOrCreateJobForSlackThread(slackThreadTS, slackChannelID)
+			firstResult, err := service.GetOrCreateJobForSlackThread(slackThreadTS, slackChannelID)
 			require.NoError(t, err)
+			assert.Equal(t, models.JobCreationStatusCreated, firstResult.Status)
 
 			// Get the same job again
-			secondJob, err := service.GetOrCreateJobForSlackThread(slackThreadTS, slackChannelID)
+			secondResult, err := service.GetOrCreateJobForSlackThread(slackThreadTS, slackChannelID)
 			require.NoError(t, err)
+			assert.Equal(t, models.JobCreationStatusNA, secondResult.Status)
 
 			// Should be the same job
-			assert.Equal(t, firstJob.ID, secondJob.ID)
-			assert.Equal(t, firstJob.SlackThreadTS, secondJob.SlackThreadTS)
-			assert.Equal(t, firstJob.SlackChannelID, secondJob.SlackChannelID)
+			assert.Equal(t, firstResult.Job.ID, secondResult.Job.ID)
+			assert.Equal(t, firstResult.Job.SlackThreadTS, secondResult.Job.SlackThreadTS)
+			assert.Equal(t, firstResult.Job.SlackChannelID, secondResult.Job.SlackChannelID)
 		})
 
 		t.Run("EmptySlackThreadTS", func(t *testing.T) {
