@@ -2,16 +2,14 @@ package services
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"testing"
 
 	"ccbackend/config"
 	"ccbackend/db"
+	"ccbackend/testutils"
 
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,40 +77,10 @@ func (h *TestUserHelper) CleanupTestUsers(t *testing.T) {
 	h.createdUsers = make([]string, 0)
 }
 
-// loadTestConfig loads only the minimal config needed for user service tests
-func loadTestConfig() (*config.AppConfig, error) {
-	// Load environment variables from .env file if available
-	_ = godotenv.Load()
-	
-	databaseURL := os.Getenv("DB_URL")
-	if databaseURL == "" {
-		return nil, fmt.Errorf("DB_URL is not set")
-	}
-	
-	databaseSchema := os.Getenv("DB_SCHEMA")
-	if databaseSchema == "" {
-		return nil, fmt.Errorf("DB_SCHEMA is not set")
-	}
-	
-	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
-	if clerkSecretKey == "" {
-		return nil, fmt.Errorf("CLERK_SECRET_KEY is not set")
-	}
-	
-	return &config.AppConfig{
-		DatabaseURL:    databaseURL,
-		DatabaseSchema: databaseSchema,
-		ClerkSecretKey: clerkSecretKey,
-		// Other fields not needed for user service tests
-		SlackBotToken:      "dummy",
-		SlackSigningSecret: "dummy",
-		Port:               "8080",
-	}, nil
-}
 
 func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
 	// Load test config and initialize database connection
-	cfg, err := loadTestConfig()
+	cfg, err := testutils.LoadTestConfig()
 	require.NoError(t, err)
 
 	dbConn, err := db.NewConnection(cfg.DatabaseURL)
@@ -154,7 +122,7 @@ func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
 
 func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	// Load test config and initialize database connection
-	cfg, err := loadTestConfig()
+	cfg, err := testutils.LoadTestConfig()
 	require.NoError(t, err)
 
 	dbConn, err := db.NewConnection(cfg.DatabaseURL)
@@ -197,7 +165,7 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 
 func TestUsersService_GetOrCreateUser_ValidationErrors(t *testing.T) {
 	// Load test config and initialize database connection
-	cfg, err := loadTestConfig()
+	cfg, err := testutils.LoadTestConfig()
 	require.NoError(t, err)
 
 	dbConn, err := db.NewConnection(cfg.DatabaseURL)

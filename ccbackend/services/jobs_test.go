@@ -2,15 +2,14 @@ package services
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"ccbackend/db"
 	"ccbackend/models"
+	"ccbackend/testutils"
 
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,21 +26,14 @@ func jobFoundInIdleList(jobID uuid.UUID, idleJobs []*models.Job) bool {
 }
 
 func setupTestJobsService(t *testing.T) (*JobsService, func()) {
-	if err := godotenv.Load("../.env.test"); err != nil {
-		t.Logf("⚠️ Could not load .env file: %v", err)
-	}
+	cfg, err := testutils.LoadTestConfig()
+	require.NoError(t, err)
 
-	dbURL := os.Getenv("DB_URL")
-	require.NotEmpty(t, dbURL, "DB_URL environment variable is required for tests")
-
-	dbSchema := os.Getenv("DB_SCHEMA")
-	require.NotEmpty(t, dbSchema, "DB_SCHEMA environment variable is required for tests")
-
-	dbConn, err := db.NewConnection(dbURL)
+	dbConn, err := db.NewConnection(cfg.DatabaseURL)
 	require.NoError(t, err, "Failed to create database connection")
 
-	repo := db.NewPostgresJobsRepository(dbConn, dbSchema)
-	processedSlackMessagesRepo := db.NewPostgresProcessedSlackMessagesRepository(dbConn, dbSchema)
+	repo := db.NewPostgresJobsRepository(dbConn, cfg.DatabaseSchema)
+	processedSlackMessagesRepo := db.NewPostgresProcessedSlackMessagesRepository(dbConn, cfg.DatabaseSchema)
 	service := NewJobsService(repo, processedSlackMessagesRepo)
 
 	cleanup := func() {
