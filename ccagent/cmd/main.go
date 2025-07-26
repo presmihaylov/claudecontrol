@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -71,6 +72,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Validate CCAGENT_API_KEY environment variable
+	ccagentApiKey := os.Getenv("CCAGENT_API_KEY")
+	if ccagentApiKey == "" {
+		fmt.Fprintf(os.Stderr, "Error: CCAGENT_API_KEY environment variable is required but not set\n")
+		os.Exit(1)
+	}
+
 	cmdRunner := NewCmdRunner(anthroApiKey)
 
 	_, err = cmdRunner.configService.GetOrCreateConfig()
@@ -87,14 +95,14 @@ func main() {
 	}
 
 	// Start WebSocket client
-	err = cmdRunner.startWebSocketClient(opts.URL)
+	err = cmdRunner.startWebSocketClient(opts.URL, ccagentApiKey)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting WebSocket client: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func (cr *CmdRunner) startWebSocketClient(serverURL string) error {
+func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 	log.Info("📋 Starting to connect to WebSocket server at %s", serverURL)
 	u, err := url.Parse(serverURL)
 	if err != nil {
@@ -116,7 +124,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL string) error {
 	}
 
 	for {
-		conn, connected := cr.connectWithRetry(u.String(), retryIntervals, interrupt)
+		conn, connected := cr.connectWithRetry(u.String(), apiKey, retryIntervals, interrupt)
 		if conn == nil {
 			select {
 			case <-interrupt:
@@ -200,10 +208,13 @@ func (cr *CmdRunner) startWebSocketClient(serverURL string) error {
 	}
 }
 
-func (cr *CmdRunner) connectWithRetry(serverURL string, retryIntervals []time.Duration, interrupt <-chan os.Signal) (*websocket.Conn, bool) {
+func (cr *CmdRunner) connectWithRetry(serverURL, apiKey string, retryIntervals []time.Duration, interrupt <-chan os.Signal) (*websocket.Conn, bool) {
 	log.Info("🔌 Attempting to connect to WebSocket server at %s", serverURL)
 
-	conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
+	headers := http.Header{
+		"X-CCAGENT-API-KEY": []string{apiKey},
+	}
+	conn, _, err := websocket.DefaultDialer.Dial(serverURL, headers)
 	if err == nil {
 		return conn, true
 	}
@@ -226,7 +237,7 @@ func (cr *CmdRunner) connectWithRetry(serverURL string, retryIntervals []time.Du
 		}
 
 		log.Info("🔌 Retry attempt %d/%d: connecting to %s", attempt+1, len(retryIntervals), serverURL)
-		conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
+		conn, _, err := websocket.DefaultDialer.Dial(serverURL, headers)
 		if err == nil {
 			log.Info("✅ Successfully connected on retry attempt %d/%d", attempt+1, len(retryIntervals))
 			return conn, true
