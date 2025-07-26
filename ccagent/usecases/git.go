@@ -446,7 +446,12 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	// Add the correct footer
 	restoredDescription := strings.Join(cleanedLines, "\n")
 	if restoredDescription != "" {
-		restoredDescription += "\n\n---\n" + expectedFooter
+		// Check if description already ends with a separator
+		if strings.HasSuffix(strings.TrimSpace(restoredDescription), "---") {
+			restoredDescription += "\n" + expectedFooter
+		} else {
+			restoredDescription += "\n\n---\n" + expectedFooter
+		}
 	} else {
 		restoredDescription = "---\n" + expectedFooter
 	}
