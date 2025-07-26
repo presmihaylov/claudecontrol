@@ -13,3 +13,15 @@ type Job struct {
 	SlackThreadTS   string    `json:"slack_thread_ts" db:"slack_thread_ts"`
 	SlackChannelID  string    `json:"slack_channel_id" db:"slack_channel_id"`
 }
+
+type JobCreationStatus string
+
+const (
+	JobCreationStatusCreated JobCreationStatus = "CREATED"
+	JobCreationStatusNA      JobCreationStatus = "NA"
+)
+
+type JobCreationResult struct {
+	Job    *Job              `json:"job"`
+	Status JobCreationStatus `json:"status"`
+}
