@@ -425,16 +425,43 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	// Remove any existing footer lines to avoid duplicates
 	lines := strings.Split(currentDescription, "\n")
 	var cleanedLines []string
+	inFooterSection := false
 	
 	for _, line := range lines {
 		trimmedLine := strings.TrimSpace(line)
-		// Skip existing footer lines
+		
+		// Check if we've hit a footer section
 		if strings.Contains(trimmedLine, "Generated with Claude Control") ||
-		   strings.Contains(trimmedLine, "Generated with Claude Code") ||
-		   (trimmedLine == "---" && len(cleanedLines) > 0 && 
-		    strings.Contains(strings.Join(cleanedLines[len(cleanedLines)-5:], " "), "Generated with")) {
+		   strings.Contains(trimmedLine, "Generated with Claude Code") {
+			inFooterSection = true
 			continue
 		}
+		
+		// Skip separator lines that are part of footer
+		if trimmedLine == "---" {
+			// Look ahead to see if this separator is followed by footer content
+			isFooterSeparator := false
+			for i := len(cleanedLines); i < len(lines)-1; i++ {
+				nextLine := strings.TrimSpace(lines[i+1])
+				if nextLine == "" {
+					continue
+				}
+				if strings.Contains(nextLine, "Generated with Claude") {
+					isFooterSeparator = true
+				}
+				break
+			}
+			
+			if isFooterSeparator || inFooterSection {
+				continue
+			}
+		}
+		
+		// Skip empty lines in footer section
+		if inFooterSection && trimmedLine == "" {
+			continue
+		}
+		
 		cleanedLines = append(cleanedLines, line)
 	}
 
