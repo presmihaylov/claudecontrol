@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"ccbackend/services"
 	"ccbackend/usecases"
 
+	"github.com/rs/cors"
 	"github.com/slack-go/slack"
 )
 
@@ -43,9 +45,13 @@ func run() error {
 	agentsRepo := db.NewPostgresAgentsRepository(dbConn, cfg.DatabaseSchema)
 	jobsRepo := db.NewPostgresJobsRepository(dbConn, cfg.DatabaseSchema)
 	processedSlackMessagesRepo := db.NewPostgresProcessedSlackMessagesRepository(dbConn, cfg.DatabaseSchema)
+	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
+	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 
 	agentsService := services.NewAgentsService(agentsRepo)
 	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo)
+	usersService := services.NewUsersService(usersRepo)
+	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, cfg.SlackClientID, cfg.SlackClientSecret)
 
 	// Clear all active agents on startup
 	log.Printf("🧹 Cleaning up stale active agents from previous server runs")
@@ -60,7 +66,9 @@ func run() error {
 	coreUseCase := usecases.NewCoreUseCase(slackClient, wsClient, agentsService, jobsService)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase)
 	slackHandler := handlers.NewSlackWebhooksHandler(slackClient, cfg.SlackSigningSecret, coreUseCase)
+	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService, cfg.ClerkSecretKey)
 	slackHandler.SetupEndpoints()
+	dashboardHandler.SetupEndpoints()
 
 	// Register WebSocket hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
@@ -76,9 +84,23 @@ func run() error {
 	}()
 	defer cleanupTicker.Stop()
 
+	// Setup CORS middleware
+	allowedOrigins := strings.Split(cfg.CORSAllowedOrigins, ",")
+	for i, origin := range allowedOrigins {
+		allowedOrigins[i] = strings.TrimSpace(origin)
+	}
+
+	c := cors.New(cors.Options{
+		AllowedOrigins:   allowedOrigins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+	})
+
 	// Setup and handle graceful shutdown
 	server := &http.Server{
-		Addr: ":" + cfg.Port,
+		Addr:    ":" + cfg.Port,
+		Handler: c.Handler(http.DefaultServeMux),
 	}
 
 	return handleGracefulShutdown(server, agentsService)

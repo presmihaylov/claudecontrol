@@ -8,11 +8,15 @@ import (
 )
 
 type AppConfig struct {
-	SlackBotToken      string
-	SlackSigningSecret string
-	Port               string
-	DatabaseURL        string
-	DatabaseSchema     string
+	SlackBotToken        string
+	SlackSigningSecret   string
+	SlackClientID        string
+	SlackClientSecret    string
+	Port                 string
+	DatabaseURL          string
+	DatabaseSchema       string
+	ClerkSecretKey       string
+	CORSAllowedOrigins   string
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -30,6 +34,16 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
+	slackClientID, err := getEnvRequired("SLACK_CLIENT_ID")
+	if err != nil {
+		return nil, err
+	}
+
+	slackClientSecret, err := getEnvRequired("SLACK_CLIENT_SECRET")
+	if err != nil {
+		return nil, err
+	}
+
 	databaseURL, err := getEnvRequired("DB_URL")
 	if err != nil {
 		return nil, err
@@ -40,12 +54,26 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
+	clerkSecretKey, err := getEnvRequired("CLERK_SECRET_KEY")
+	if err != nil {
+		return nil, err
+	}
+
+	corsAllowedOrigins, err := getEnvRequired("CORS_ALLOWED_ORIGINS")
+	if err != nil {
+		return nil, err
+	}
+
 	config := &AppConfig{
-		SlackBotToken:      slackBotToken,
-		SlackSigningSecret: slackSigningSecret,
-		Port:               getEnvWithDefault("PORT", "8080"),
-		DatabaseURL:        databaseURL,
-		DatabaseSchema:     databaseSchema,
+		SlackBotToken:        slackBotToken,
+		SlackSigningSecret:   slackSigningSecret,
+		SlackClientID:        slackClientID,
+		SlackClientSecret:    slackClientSecret,
+		Port:                 getEnvWithDefault("PORT", "8080"),
+		DatabaseURL:          databaseURL,
+		DatabaseSchema:       databaseSchema,
+		ClerkSecretKey:       clerkSecretKey,
+		CORSAllowedOrigins:   corsAllowedOrigins,
 	}
 
 	return config, nil
