@@ -67,7 +67,7 @@ func (s *JobsService) GetJobByID(id uuid.UUID) (*models.Job, error) {
 	return job, nil
 }
 
-func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID string) (*models.Job, error) {
+func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID string) (*models.JobCreationResult, error) {
 	log.Printf("📋 Starting to get or create job for slack thread: %s, channel: %s", threadTS, channelID)
 
 	if threadTS == "" {
@@ -82,7 +82,10 @@ func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID string) (
 	existingJob, err := s.jobsRepo.GetJobBySlackThread(threadTS, channelID)
 	if err == nil {
 		log.Printf("📋 Completed successfully - found existing job with ID: %s", existingJob.ID)
-		return existingJob, nil
+		return &models.JobCreationResult{
+			Job:    existingJob,
+			Status: models.JobCreationStatusNA,
+		}, nil
 	}
 
 	// If not found, create a new job
@@ -92,7 +95,10 @@ func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID string) (
 			return nil, fmt.Errorf("failed to create new job: %w", createErr)
 		}
 		log.Printf("📋 Completed successfully - created new job with ID: %s", newJob.ID)
-		return newJob, nil
+		return &models.JobCreationResult{
+			Job:    newJob,
+			Status: models.JobCreationStatusCreated,
+		}, nil
 	}
 
 	// If there was a different error, return it
