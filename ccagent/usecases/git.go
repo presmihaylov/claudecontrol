@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -19,8 +18,10 @@ type GitUseCase struct {
 }
 
 type AutoCommitResult struct {
-	HasCreatedPR    bool
+	JustCreatedPR    bool
 	PullRequestLink string
+	CommitHash      string
+	RepositoryURL   string
 }
 
 func NewGitUseCase(gitClient *clients.GitClient, claudeClient *clients.ClaudeClient) *GitUseCase {
@@ -109,7 +110,7 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) error {
 	return nil
 }
 
-func (g *GitUseCase) AutoCommitChangesIfNeeded() (*AutoCommitResult, error) {
+func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCommitResult, error) {
 	log.Info("📋 Starting to auto-commit changes if needed")
 
 	// Check if there are any uncommitted changes
@@ -122,7 +123,12 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded() (*AutoCommitResult, error) {
 	if !hasChanges {
 		log.Info("ℹ️ No uncommitted changes found - skipping auto-commit")
 		log.Info("📋 Completed successfully - no changes to commit")
-		return &AutoCommitResult{HasCreatedPR: false, PullRequestLink: ""}, nil
+		return &AutoCommitResult{
+			JustCreatedPR:    false,
+			PullRequestLink: "",
+			CommitHash:      "",
+			RepositoryURL:   "",
+		}, nil
 	}
 
 	log.Info("✅ Uncommitted changes detected - proceeding with auto-commit")
@@ -161,6 +167,20 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded() (*AutoCommitResult, error) {
 		return nil, fmt.Errorf("failed to commit changes: %w", err)
 	}
 
+	// Get commit hash after successful commit
+	commitHash, err := g.gitClient.GetLatestCommitHash()
+	if err != nil {
+		log.Error("❌ Failed to get commit hash", "error", err)
+		return nil, fmt.Errorf("failed to get commit hash: %w", err)
+	}
+
+	// Get repository URL for commit link
+	repositoryURL, err := g.gitClient.GetRemoteURL()
+	if err != nil {
+		log.Error("❌ Failed to get repository URL", "error", err)
+		return nil, fmt.Errorf("failed to get repository URL: %w", err)
+	}
+
 	// Push current branch to remote
 	if err := g.gitClient.PushBranch(currentBranch); err != nil {
 		log.Error("❌ Failed to push branch", "branch", currentBranch, "error", err)
@@ -168,128 +188,19 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded() (*AutoCommitResult, error) {
 	}
 
 	// Handle PR creation/update
-	prResult, err := g.handlePRCreationOrUpdate(currentBranch)
+	prResult, err := g.handlePRCreationOrUpdate(currentBranch, slackThreadLink)
 	if err != nil {
 		log.Error("❌ Failed to handle PR creation/update", "error", err)
 		return nil, fmt.Errorf("failed to handle PR creation/update: %w", err)
 	}
 
+	// Update the result with commit information
+	prResult.CommitHash = commitHash
+	prResult.RepositoryURL = repositoryURL
+
 	log.Info("✅ Successfully auto-committed and pushed changes")
 	log.Info("📋 Completed successfully - auto-committed changes")
 	return prResult, nil
-}
-
-
-func (g *GitUseCase) generateCommitMessageWithClaude(branchName string) (string, error) {
-	log.Info("🤖 Asking Claude to generate commit message")
-
-	prompt := fmt.Sprintf(`I'm completing work on Git branch: "%s"
-
-Please generate a concise Git commit message. Follow these rules:
-- Start with an action verb (Add, Fix, Update, Implement, etc.)
-- Be descriptive but concise
-- Use imperative mood
-- Maximum 50 characters for the title
-- End with a simple note that this was done by Claude Control
-
-Format:
-<title>
-
-🤖 Generated with Claude Control
-
-Respond with ONLY the commit message, nothing else.`, branchName)
-
-	commitMessage, err := g.claudeClient.StartNewSession(prompt)
-	if err != nil {
-		return "", fmt.Errorf("claude failed to generate commit message: %w", err)
-	}
-
-	return strings.TrimSpace(commitMessage), nil
-}
-
-func (g *GitUseCase) generatePRTitleWithClaude(branchName string) (string, error) {
-	log.Info("🤖 Asking Claude to generate PR title")
-
-	prompt := fmt.Sprintf(`I'm creating a pull request for Git branch: "%s"
-
-Generate a SHORT pull request title. Follow these strict rules:
-- Maximum 40 characters (STRICT LIMIT)
-- Start with action verb (Add, Fix, Update, Improve, etc.)
-- Be concise and specific
-- No unnecessary words or phrases
-- Don't mention "Claude", "agent", or implementation details
-
-Examples:
-- "Fix error handling in message processor"
-- "Add user authentication middleware"
-- "Update API response format"
-
-Respond with ONLY the short title, nothing else.`, branchName)
-
-	prTitle, err := g.claudeClient.StartNewSession(prompt)
-	if err != nil {
-		return "", fmt.Errorf("claude failed to generate PR title: %w", err)
-	}
-
-	return strings.TrimSpace(prTitle), nil
-}
-
-func (g *GitUseCase) generatePRBodyWithClaude(branchName string) (string, error) {
-	log.Info("🤖 Asking Claude to generate PR body")
-
-	prompt := fmt.Sprintf(`I'm creating a pull request for Git branch: "%s"
-
-Please generate a professional pull request description. Include:
-- ## Summary section with what was accomplished
-- ## Changes section with key modifications
-- Note that this was generated by Claude Control
-- Keep it concise but informative
-
-Use proper markdown formatting.
-
-Respond with ONLY the PR body, nothing else.`, branchName)
-
-	prBody, err := g.claudeClient.StartNewSession(prompt)
-	if err != nil {
-		return "", fmt.Errorf("claude failed to generate PR body: %w", err)
-	}
-
-	return strings.TrimSpace(prBody), nil
-}
-
-func (g *GitUseCase) cleanBranchName(branchName string) string {
-	// Remove any quotes or extra whitespace
-	cleaned := strings.TrimSpace(branchName)
-	cleaned = strings.Trim(cleaned, "\"'`")
-
-	// Convert to lowercase and replace spaces/underscores with hyphens
-	cleaned = strings.ToLower(cleaned)
-	cleaned = strings.ReplaceAll(cleaned, " ", "-")
-	cleaned = strings.ReplaceAll(cleaned, "_", "-")
-
-	// Remove any characters that aren't alphanumeric or hyphens
-	reg := regexp.MustCompile(`[^a-z0-9-]`)
-	cleaned = reg.ReplaceAllString(cleaned, "")
-
-	// Remove multiple consecutive hyphens
-	reg = regexp.MustCompile(`-+`)
-	cleaned = reg.ReplaceAllString(cleaned, "-")
-
-	// Remove leading/trailing hyphens
-	cleaned = strings.Trim(cleaned, "-")
-
-	// Limit length
-	if len(cleaned) > 30 {
-		cleaned = cleaned[:30]
-		cleaned = strings.TrimRight(cleaned, "-")
-	}
-
-	// Ensure we have something valid
-	if len(cleaned) < 3 {
-		cleaned = "claude-task"
-	}
-
-	return cleaned
 }
 
 func (g *GitUseCase) generateRandomBranchName() (string, error) {
@@ -316,8 +227,8 @@ func (g *GitUseCase) generateFallbackPRTitle(branchName string) string {
 	return "Complete Claude Control Task"
 }
 
-func (g *GitUseCase) generateFallbackPRBody(branchName string) string {
-	return fmt.Sprintf(`## Summary
+func (g *GitUseCase) generateFallbackPRBody(branchName, slackThreadLink string) string {
+	body := fmt.Sprintf(`## Summary
 Completed task via Claude Control.
 
 ## Changes
@@ -325,9 +236,12 @@ Completed task via Claude Control.
 - All changes committed and ready for review
 
 **Branch:** %s  
-**Generated:** %s
+**Generated:** %s`, branchName, time.Now().Format("2006-01-02 15:04:05"))
 
-🤖 Generated with Claude Control`, branchName, time.Now().Format("2006-01-02 15:04:05"))
+	// Append footer with Slack thread link
+	body += fmt.Sprintf("\n\n---\nGenerated with Claude Control from [this slack thread](%s)", slackThreadLink)
+	
+	return body
 }
 
 func (g *GitUseCase) generateCommitMessageWithClaudeIsolated(branchName string) (string, error) {
@@ -338,19 +252,18 @@ func (g *GitUseCase) generateCommitMessageWithClaudeIsolated(branchName string) 
 
 	prompt := fmt.Sprintf(`I'm completing work on Git branch: "%s"
 
-Please generate a concise Git commit message. Follow these rules:
-- Start with an action verb (Add, Fix, Update, Implement, etc.)
-- Be descriptive but concise
-- Use imperative mood
-- Maximum 50 characters for the title
-- End with a simple note that this was done by Claude Control
+CRITICAL INSTRUCTIONS - READ CAREFULLY:
+1. You MUST respond with ONLY the commit message text
+2. NO explanations, NO additional text, NO formatting markup
+3. NO "Here is the commit message:" or similar phrases
+4. Maximum 50 characters total (STRICT LIMIT)
+5. Start with action verb (Add, Fix, Update, etc.)
+6. Use imperative mood
 
-Format:
-<title>
+FORMAT EXAMPLE:
+Fix user authentication validation
 
-🤖 Generated with Claude Control
-
-Respond with ONLY the commit message, nothing else.`, branchName)
+YOUR RESPONSE MUST BE THE COMMIT MESSAGE ONLY.`, branchName)
 
 	commitMessage, err := g.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
 	if err != nil {
@@ -360,7 +273,7 @@ Respond with ONLY the commit message, nothing else.`, branchName)
 	return strings.TrimSpace(commitMessage), nil
 }
 
-func (g *GitUseCase) handlePRCreationOrUpdate(branchName string) (*AutoCommitResult, error) {
+func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string) (*AutoCommitResult, error) {
 	log.Info("📋 Starting to handle PR creation or update for branch: %s", branchName)
 
 	// Check if a PR already exists for this branch
@@ -372,7 +285,7 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName string) (*AutoCommitRes
 
 	if hasExistingPR {
 		log.Info("✅ Existing PR found for branch %s - changes have been pushed", branchName)
-		
+
 		// Get the PR URL for the existing PR
 		prURL, err := g.gitClient.GetPRURL(branchName)
 		if err != nil {
@@ -380,9 +293,14 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName string) (*AutoCommitRes
 			// Continue without the URL rather than failing
 			prURL = ""
 		}
-		
+
 		log.Info("📋 Completed successfully - updated existing PR")
-		return &AutoCommitResult{HasCreatedPR: false, PullRequestLink: prURL}, nil
+		return &AutoCommitResult{
+			JustCreatedPR:    false,
+			PullRequestLink: prURL,
+			CommitHash:      "", // Will be filled in by caller
+			RepositoryURL:   "", // Will be filled in by caller
+		}, nil
 	}
 
 	log.Info("🆕 No existing PR found - creating new PR")
@@ -394,10 +312,10 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName string) (*AutoCommitRes
 		prTitle = g.generateFallbackPRTitle(branchName)
 	}
 
-	prBody, err := g.generatePRBodyWithClaudeIsolated(branchName)
+	prBody, err := g.generatePRBodyWithClaudeIsolated(branchName, slackThreadLink)
 	if err != nil {
 		log.Error("❌ Failed to generate PR body with Claude, using fallback", "error", err)
-		prBody = g.generateFallbackPRBody(branchName)
+		prBody = g.generateFallbackPRBody(branchName, slackThreadLink)
 	}
 
 	log.Info("📋 Generated PR title: %s", prTitle)
@@ -418,7 +336,12 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName string) (*AutoCommitRes
 
 	log.Info("✅ Successfully created PR: %s", prTitle)
 	log.Info("📋 Completed successfully - created new PR")
-	return &AutoCommitResult{HasCreatedPR: true, PullRequestLink: prURL}, nil
+	return &AutoCommitResult{
+		JustCreatedPR:    true,
+		PullRequestLink: prURL,
+		CommitHash:      "", // Will be filled in by caller
+		RepositoryURL:   "", // Will be filled in by caller
+	}, nil
 }
 
 func (g *GitUseCase) generatePRTitleWithClaudeIsolated(branchName string) (string, error) {
@@ -451,7 +374,7 @@ Respond with ONLY the short title, nothing else.`, branchName)
 	return strings.TrimSpace(prTitle), nil
 }
 
-func (g *GitUseCase) generatePRBodyWithClaudeIsolated(branchName string) (string, error) {
+func (g *GitUseCase) generatePRBodyWithClaudeIsolated(branchName, slackThreadLink string) (string, error) {
 	log.Info("🤖 Asking Claude to generate PR body with isolated config")
 
 	// Generate unique config directory using UUID
@@ -462,10 +385,11 @@ func (g *GitUseCase) generatePRBodyWithClaudeIsolated(branchName string) (string
 Please generate a professional pull request description. Include:
 - ## Summary section with what was accomplished
 - ## Changes section with key modifications
-- Note that this was generated by Claude Control
 - Keep it concise but informative
 
 Use proper markdown formatting.
+
+IMPORTANT: Do NOT include any "Generated with Claude Control" or similar footer text. I will add that separately.
 
 Respond with ONLY the PR body, nothing else.`, branchName)
 
@@ -474,5 +398,9 @@ Respond with ONLY the PR body, nothing else.`, branchName)
 		return "", fmt.Errorf("claude failed to generate PR body: %w", err)
 	}
 
-	return strings.TrimSpace(prBody), nil
+	// Append footer with Slack thread link
+	cleanBody := strings.TrimSpace(prBody)
+	finalBody := cleanBody + fmt.Sprintf("\n\n---\nGenerated with Claude Control from [this slack thread](%s)", slackThreadLink)
+
+	return finalBody, nil
 }

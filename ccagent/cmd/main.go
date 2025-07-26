@@ -325,7 +325,7 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 	}
 
 	// Auto-commit changes if needed
-	commitResult, err := cr.gitUseCase.AutoCommitChangesIfNeeded()
+	commitResult, err := cr.gitUseCase.AutoCommitChangesIfNeeded(payload.SlackMessageLink)
 	if err != nil {
 		log.Info("❌ Auto-commit failed: %v", err)
 		return fmt.Errorf("auto-commit failed: %w", err)
@@ -347,13 +347,10 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 
 	log.Info("🤖 Sent assistant response")
 
-	// Send system message after assistant message if PR was created
-	if commitResult != nil && commitResult.HasCreatedPR && commitResult.PullRequestLink != "" {
-		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
-		if err := cr.sendSystemMessage(conn, message, payload.SlackMessageID); err != nil {
-			log.Info("❌ Failed to send system message: %v", err)
-			return fmt.Errorf("failed to send system message: %w", err)
-		}
+	// Send system message after assistant message for git activity
+	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
+		log.Info("❌ Failed to send git activity system message: %v", err)
+		return fmt.Errorf("failed to send git activity system message: %w", err)
 	}
 
 	log.Info("📋 Completed successfully - handled start conversation message")
@@ -379,7 +376,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	}
 
 	// Auto-commit changes if needed
-	commitResult, err := cr.gitUseCase.AutoCommitChangesIfNeeded()
+	commitResult, err := cr.gitUseCase.AutoCommitChangesIfNeeded(payload.SlackMessageLink)
 	if err != nil {
 		log.Info("❌ Auto-commit failed: %v", err)
 		return fmt.Errorf("auto-commit failed: %w", err)
@@ -401,13 +398,10 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 
 	log.Info("🤖 Sent assistant response")
 
-	// Send system message after assistant message if PR was created
-	if commitResult != nil && commitResult.HasCreatedPR && commitResult.PullRequestLink != "" {
-		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
-		if err := cr.sendSystemMessage(conn, message, payload.SlackMessageID); err != nil {
-			log.Info("❌ Failed to send system message: %v", err)
-			return fmt.Errorf("failed to send system message: %w", err)
-		}
+	// Send system message after assistant message for git activity
+	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
+		log.Info("❌ Failed to send git activity system message: %v", err)
+		return fmt.Errorf("failed to send git activity system message: %w", err)
 	}
 
 	log.Info("📋 Completed successfully - handled user message")
@@ -442,6 +436,35 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 	}
 
 	log.Info("⚙️ Sent system message: %s", message)
+	return nil
+}
+
+func (cr *CmdRunner) sendGitActivitySystemMessage(conn *websocket.Conn, commitResult *usecases.AutoCommitResult, slackMessageID string) error {
+	if commitResult == nil {
+		return nil
+	}
+
+	if commitResult.JustCreatedPR && commitResult.PullRequestLink != "" {
+		// New PR created
+		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
+		if err := cr.sendSystemMessage(conn, message, slackMessageID); err != nil {
+			log.Info("❌ Failed to send PR creation system message: %v", err)
+			return fmt.Errorf("failed to send PR creation system message: %w", err)
+		}
+	} else if !commitResult.JustCreatedPR && commitResult.CommitHash != "" && commitResult.RepositoryURL != "" {
+		// Commit added to existing PR
+		shortHash := commitResult.CommitHash
+		if len(shortHash) > 7 {
+			shortHash = shortHash[:7]
+		}
+		commitURL := fmt.Sprintf("%s/commit/%s", commitResult.RepositoryURL, commitResult.CommitHash)
+		message := fmt.Sprintf("New commit added: <%s|%s>", commitURL, shortHash)
+		if err := cr.sendSystemMessage(conn, message, slackMessageID); err != nil {
+			log.Info("❌ Failed to send commit system message: %v", err)
+			return fmt.Errorf("failed to send commit system message: %w", err)
+		}
+	}
+
 	return nil
 }
 

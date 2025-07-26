@@ -21,8 +21,9 @@ type StartConversationPayload struct {
 }
 
 type UserMessagePayload struct {
-	Message        string `json:"message"`
-	SlackMessageID string `json:"slack_message_id"`
+	Message          string `json:"message"`
+	SlackMessageID   string `json:"slack_message_id"`
+	SlackMessageLink string `json:"slack_message_link"`
 }
 
 type AssistantMessagePayload struct {
