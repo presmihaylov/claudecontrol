@@ -59,10 +59,18 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 }
 
 func (c *ClaudeClient) StartNewSessionWithConfigDir(prompt, configDir string) (string, error) {
+	return c.StartNewSessionWithSystemPrompt(prompt, "", configDir)
+}
+
+func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt, configDir string) (string, error) {
 	log.Info("📋 Starting to create new Claude session with config dir: %s", configDir)
 	args := []string{
 		"--permission-mode", "bypassPermissions",
 		"-p", prompt,
+	}
+
+	if systemPrompt != "" {
+		args = append(args, "--append-system-prompt", systemPrompt)
 	}
 
 	log.Info("Starting new Claude session", "prompt", prompt, "configDir", configDir)
