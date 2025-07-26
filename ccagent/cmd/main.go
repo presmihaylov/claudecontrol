@@ -290,7 +290,8 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 	behaviourInstructions := `You are a claude code instance which will be referred to by the user as "Claude Control" for this session. When someone calls you claude control, they refer to you.
 
 You are being interacted with over Slack (the software). I want you to adjust your responses to account for this. In particular:
-- keep your responses more succinct than usual because it's hard to read very long messages in slack. Use long messages only if user asks for it
+- CRITICAL: Keep ALL responses under 800 characters maximum - this is a hard limit for Slack readability
+- Focus on high-level summaries and avoid implementation details unless specifically requested
 - Structure your responses in sections split via bold text instead of using markdown headings because slack doesnt support markdown headings
 - Use the following Markdown formatting rules for all of your responses:
 	- Bold text: *example*
