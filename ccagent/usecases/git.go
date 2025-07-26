@@ -404,3 +404,84 @@ Respond with ONLY the PR body, nothing else.`, branchName)
 
 	return finalBody, nil
 }
+
+func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink string) error {
+	log.Info("📋 Starting to validate and restore PR description footer")
+
+	// Get current branch
+	currentBranch, err := g.gitClient.GetCurrentBranch()
+	if err != nil {
+		log.Error("❌ Failed to get current branch", "error", err)
+		return fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	// Check if a PR exists for this branch
+	hasExistingPR, err := g.gitClient.HasExistingPR(currentBranch)
+	if err != nil {
+		log.Error("❌ Failed to check for existing PR", "error", err)
+		return fmt.Errorf("failed to check for existing PR: %w", err)
+	}
+
+	if !hasExistingPR {
+		log.Info("ℹ️ No existing PR found - skipping footer validation")
+		log.Info("📋 Completed successfully - no PR to validate")
+		return nil
+	}
+
+	// Get current PR description
+	currentDescription, err := g.gitClient.GetPRDescription(currentBranch)
+	if err != nil {
+		log.Error("❌ Failed to get PR description", "error", err)
+		return fmt.Errorf("failed to get PR description: %w", err)
+	}
+
+	// Check if the expected footer is present
+	expectedFooter := fmt.Sprintf("Generated with Claude Control from [this slack thread](%s)", slackThreadLink)
+	
+	if strings.Contains(currentDescription, expectedFooter) {
+		log.Info("✅ PR description already has correct Claude Control footer")
+		log.Info("📋 Completed successfully - footer validation passed")
+		return nil
+	}
+
+	log.Info("🔧 PR description missing Claude Control footer - restoring it")
+
+	// Remove any existing footer lines to avoid duplicates
+	lines := strings.Split(currentDescription, "\n")
+	var cleanedLines []string
+	
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		// Skip existing footer lines
+		if strings.Contains(trimmedLine, "Generated with Claude Control") ||
+		   strings.Contains(trimmedLine, "Generated with Claude Code") ||
+		   (trimmedLine == "---" && len(cleanedLines) > 0 && 
+		    strings.Contains(strings.Join(cleanedLines[len(cleanedLines)-5:], " "), "Generated with")) {
+			continue
+		}
+		cleanedLines = append(cleanedLines, line)
+	}
+
+	// Remove trailing empty lines
+	for len(cleanedLines) > 0 && strings.TrimSpace(cleanedLines[len(cleanedLines)-1]) == "" {
+		cleanedLines = cleanedLines[:len(cleanedLines)-1]
+	}
+
+	// Add the correct footer
+	restoredDescription := strings.Join(cleanedLines, "\n")
+	if restoredDescription != "" {
+		restoredDescription += "\n\n---\n" + expectedFooter
+	} else {
+		restoredDescription = "---\n" + expectedFooter
+	}
+
+	// Update the PR description
+	if err := g.gitClient.UpdatePRDescription(currentBranch, restoredDescription); err != nil {
+		log.Error("❌ Failed to update PR description", "error", err)
+		return fmt.Errorf("failed to update PR description: %w", err)
+	}
+
+	log.Info("✅ Successfully restored Claude Control footer to PR description")
+	log.Info("📋 Completed successfully - restored PR description footer")
+	return nil
+}
