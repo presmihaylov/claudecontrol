@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -118,7 +119,8 @@ func TestJobsService(t *testing.T) {
 
 	t.Run("GetOrCreateJobForSlackThread", func(t *testing.T) {
 		t.Run("CreateNew", func(t *testing.T) {
-			slackThreadTS := "new.thread.555"
+			// Use unique thread ID to avoid conflicts with previous test runs
+			slackThreadTS := fmt.Sprintf("new.thread.%d", time.Now().UnixNano())
 			slackChannelID := "C5555555555"
 
 			result, err := service.GetOrCreateJobForSlackThread(slackThreadTS, slackChannelID)
@@ -128,10 +130,16 @@ func TestJobsService(t *testing.T) {
 			assert.Equal(t, slackThreadTS, result.Job.SlackThreadTS)
 			assert.Equal(t, slackChannelID, result.Job.SlackChannelID)
 			assert.Equal(t, models.JobCreationStatusCreated, result.Status)
+			
+			// Cleanup
+			defer func() {
+				service.DeleteJob(result.Job.ID)
+			}()
 		})
 
 		t.Run("GetExisting", func(t *testing.T) {
-			slackThreadTS := "existing.thread.777"
+			// Use unique thread ID to avoid conflicts with previous test runs
+			slackThreadTS := fmt.Sprintf("existing.thread.%d", time.Now().UnixNano())
 			slackChannelID := "C7777777777"
 
 			// Create job first
@@ -148,6 +156,11 @@ func TestJobsService(t *testing.T) {
 			assert.Equal(t, firstResult.Job.ID, secondResult.Job.ID)
 			assert.Equal(t, firstResult.Job.SlackThreadTS, secondResult.Job.SlackThreadTS)
 			assert.Equal(t, firstResult.Job.SlackChannelID, secondResult.Job.SlackChannelID)
+			
+			// Cleanup
+			defer func() {
+				service.DeleteJob(firstResult.Job.ID)
+			}()
 		})
 
 		t.Run("EmptySlackThreadTS", func(t *testing.T) {
