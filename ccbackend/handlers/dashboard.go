@@ -65,6 +65,10 @@ type SlackIntegrationRequest struct {
 	RedirectURL    string `json:"redirectUrl"`
 }
 
+type CCAgentSecretKeyResponse struct {
+	SecretKey string `json:"secret_key"`
+}
+
 func (h *DashboardAPIHandler) HandleListSlackIntegrations(w http.ResponseWriter, r *http.Request) {
 	log.Printf("📋 List Slack integrations request received from %s", r.RemoteAddr)
 
@@ -97,6 +101,12 @@ func (h *DashboardAPIHandler) HandleDeleteSlackIntegration(w http.ResponseWriter
 	log.Printf("🗑️ Delete Slack integration request received from %s", r.RemoteAddr)
 
 	h.handleDeleteSlackIntegration(w, r)
+}
+
+func (h *DashboardAPIHandler) HandleGenerateCCAgentSecretKey(w http.ResponseWriter, r *http.Request) {
+	log.Printf("🔑 Generate CCAgent secret key request received from %s", r.RemoteAddr)
+
+	h.handleGenerateCCAgentSecretKey(w, r)
 }
 
 func (h *DashboardAPIHandler) handleListSlackIntegrations(w http.ResponseWriter, r *http.Request, user *models.User) {
@@ -200,6 +210,53 @@ func (h *DashboardAPIHandler) handleDeleteSlackIntegration(w http.ResponseWriter
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *DashboardAPIHandler) handleGenerateCCAgentSecretKey(w http.ResponseWriter, r *http.Request) {
+	log.Printf("🔑 Generating CCAgent secret key")
+
+	// Extract integration ID from URL path parameters
+	vars := mux.Vars(r)
+	integrationIDStr, ok := vars["id"]
+	if !ok || integrationIDStr == "" {
+		log.Printf("❌ Missing integration ID in URL path")
+		http.Error(w, "integration ID is required", http.StatusBadRequest)
+		return
+	}
+
+	integrationID, err := uuid.Parse(integrationIDStr)
+	if err != nil {
+		log.Printf("❌ Invalid integration ID format: %v", err)
+		http.Error(w, "invalid integration ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Generate the secret key (service will get user from context)
+	secretKey, err := h.slackIntegrationsService.GenerateCCAgentSecretKey(r.Context(), integrationID)
+	if err != nil {
+		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "integration not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "failed to generate secret key", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	log.Printf("✅ CCAgent secret key generated successfully for integration: %s", integrationID)
+
+	// Return the secret key response
+	response := CCAgentSecretKeyResponse{
+		SecretKey: secretKey,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("❌ Failed to encode secret key response: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (h *DashboardAPIHandler) SetupEndpoints(router *mux.Router, authMiddleware *middleware.ClerkAuthMiddleware) {
 	log.Printf("🚀 Registering dashboard API endpoints")
 	
@@ -216,6 +273,9 @@ func (h *DashboardAPIHandler) SetupEndpoints(router *mux.Router, authMiddleware 
 	
 	router.HandleFunc("/slack/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteSlackIntegration)).Methods("DELETE")
 	log.Printf("✅ DELETE /slack/integrations/{id} endpoint registered")
+	
+	router.HandleFunc("/slack/integrations/{id}/ccagent_secret_key", authMiddleware.WithAuth(h.HandleGenerateCCAgentSecretKey)).Methods("POST")
+	log.Printf("✅ POST /slack/integrations/{id}/ccagent_secret_key endpoint registered")
 	
 	log.Printf("✅ All dashboard API endpoints registered successfully")
 }

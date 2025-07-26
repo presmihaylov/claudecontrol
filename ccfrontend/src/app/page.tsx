@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { Slack, Trash2 } from "lucide-react";
+import { Settings, Slack, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface SlackIntegration {
@@ -20,11 +21,13 @@ interface SlackIntegration {
 	slack_team_id: string;
 	slack_team_name: string;
 	user_id: string;
+	ccagent_secret_key_generated_at: string | null;
 	created_at: string;
 	updated_at: string;
 }
 
 export default function Home() {
+	const router = useRouter();
 	const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
 	const [integrations, setIntegrations] = useState<SlackIntegration[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -214,16 +217,27 @@ export default function Home() {
 													</p>
 												</div>
 											</div>
-											<Button
-												variant="secondary"
-												size="sm"
-												onClick={() => handleDeleteIntegration(integration)}
-												disabled={deleting === integration.id}
-												className="flex items-center gap-2 ml-4"
-											>
-												<Trash2 className="h-4 w-4" />
-												{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
-											</Button>
+											<div className="flex items-center gap-2">
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => router.push(`/integrations/${integration.id}`)}
+													className="flex items-center gap-2"
+												>
+													<Settings className="h-4 w-4" />
+													Manage
+												</Button>
+												<Button
+													variant="secondary"
+													size="sm"
+													onClick={() => handleDeleteIntegration(integration)}
+													disabled={deleting === integration.id}
+													className="flex items-center gap-2"
+												>
+													<Trash2 className="h-4 w-4" />
+													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
+												</Button>
+											</div>
 										</div>
 									</Card>
 								))}

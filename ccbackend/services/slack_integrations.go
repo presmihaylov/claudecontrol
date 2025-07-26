@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -116,4 +118,48 @@ func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, i
 
 	log.Printf("📋 Completed successfully - deleted Slack integration: %s", integrationID)
 	return nil
+}
+
+func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context, integrationID uuid.UUID) (string, error) {
+	log.Printf("📋 Starting to generate CCAgent secret key for integration: %s", integrationID)
+
+	if integrationID == uuid.Nil {
+		return "", fmt.Errorf("integration ID cannot be nil")
+	}
+
+	// Get user from context
+	user, ok := appctx.GetUser(ctx)
+	if !ok {
+		return "", fmt.Errorf("user not found in context")
+	}
+
+	// Generate cryptographically secure random secret key (32 bytes = 256 bits)
+	secretBytes := make([]byte, 32)
+	if _, err := rand.Read(secretBytes); err != nil {
+		return "", fmt.Errorf("failed to generate random secret key: %w", err)
+	}
+
+	// Encode as base64 for easier handling
+	secretKey := base64.URLEncoding.EncodeToString(secretBytes)
+
+	// Store the secret key in the database
+	if err := s.slackIntegrationsRepo.GenerateCCAgentSecretKey(ctx, integrationID, user.ID, secretKey); err != nil {
+		return "", fmt.Errorf("failed to store CCAgent secret key: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - generated CCAgent secret key for integration: %s", integrationID)
+	return secretKey, nil
+}
+
+func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(secretKey string) (*models.SlackIntegration, error) {
+	log.Printf("📋 Starting to get slack integration by secret key")
+	
+	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationBySecretKey(secretKey)
+	if err != nil {
+		log.Printf("❌ Failed to get slack integration by secret key: %v", err)
+		return nil, fmt.Errorf("failed to get slack integration by secret key: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found slack integration for team: %s", integration.SlackTeamName)
+	return integration, nil
 }

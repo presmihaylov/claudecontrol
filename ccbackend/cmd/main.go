@@ -63,11 +63,20 @@ func run() error {
 	}
 
 	slackClient := slack.New(cfg.SlackBotToken)
-	wsClient := clients.NewWebSocketClient()
-	wsClient.StartWebsocketServer()
+	
+	// Create API key validator for WebSocket connections
+	apiKeyValidator := func(apiKey string) (string, error) {
+		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(apiKey)
+		if err != nil {
+			return "", err
+		}
+		return integration.ID.String(), nil
+	}
+	
+	wsClient := clients.NewWebSocketClient(apiKeyValidator)
 	
 	coreUseCase := usecases.NewCoreUseCase(slackClient, wsClient, agentsService, jobsService)
-	wsHandler := handlers.NewWebSocketHandler(coreUseCase)
+	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
 	slackHandler := handlers.NewSlackWebhooksHandler(slackClient, cfg.SlackSigningSecret, coreUseCase)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, cfg.ClerkSecretKey)
@@ -76,6 +85,7 @@ func run() error {
 	router := mux.NewRouter()
 	
 	// Setup endpoints with the new router
+	wsClient.RegisterWithRouter(router)
 	slackHandler.SetupEndpoints(router)
 	dashboardHandler.SetupEndpoints(router, authMiddleware)
 

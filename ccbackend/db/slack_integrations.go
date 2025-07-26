@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -25,6 +26,8 @@ var slackIntegrationsColumns = []string{
 	"slack_auth_token",
 	"slack_team_name",
 	"user_id",
+	"ccagent_secret_key",
+	"ccagent_secret_key_generated_at",
 	"created_at",
 	"updated_at",
 }
@@ -98,4 +101,59 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integra
 	}
 
 	return nil
+}
+
+func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx context.Context, integrationID uuid.UUID, userID uuid.UUID, secretKey string) error {
+	if integrationID == uuid.Nil {
+		return fmt.Errorf("integration ID cannot be nil")
+	}
+
+	if userID == uuid.Nil {
+		return fmt.Errorf("user ID cannot be nil")
+	}
+
+	if secretKey == "" {
+		return fmt.Errorf("secret key cannot be empty")
+	}
+
+	query := fmt.Sprintf(`
+		UPDATE %s.slack_integrations 
+		SET ccagent_secret_key = $1, ccagent_secret_key_generated_at = NOW(), updated_at = NOW()
+		WHERE id = $2 AND user_id = $3`, r.schema)
+	
+	result, err := r.db.ExecContext(ctx, query, secretKey, integrationID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update slack integration with secret key: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("slack integration not found or does not belong to user")
+	}
+
+	return nil
+}
+
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(secretKey string) (*models.SlackIntegration, error) {
+	if secretKey == "" {
+		return nil, fmt.Errorf("secret key cannot be empty")
+	}
+
+	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.slack_integrations 
+		WHERE ccagent_secret_key = $1 AND ccagent_secret_key IS NOT NULL`, columnsStr, r.schema)
+
+	var integration models.SlackIntegration
+	err := r.db.Get(&integration, query, secretKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slack integration by secret key: %w", err)
+	}
+
+	return &integration, nil
 }

@@ -371,3 +371,232 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		assert.Contains(t, err.Error(), "not found")
 	})
 }
+
+func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
+	service, usersRepo, cleanup := setupSlackIntegrationsTest(t)
+	defer cleanup()
+
+	t.Run("successful secret key generation", func(t *testing.T) {
+		testUser := testutils.CreateTestUser(t, usersRepo)
+
+		// Create an integration with unique team ID
+		teamID := fmt.Sprintf("T%d", uuid.New().ID())
+		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+			TeamID:      teamID,
+			TeamName:    "Test Team",
+			AccessToken: "xoxb-test-token-123",
+		})
+		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
+
+		integration, err := testService.CreateSlackIntegration("test-auth-code", "http://localhost:3000/callback", testUser.ID)
+		require.NoError(t, err)
+
+		// Create context with user
+		ctx := testutils.CreateTestContext(testUser)
+
+		// Generate secret key
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, integration.ID)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, secretKey)
+		assert.Greater(t, len(secretKey), 40) // Base64 encoded 32 bytes should be longer than 40 chars
+
+		// Verify the integration was updated by fetching it again
+		integrations, err := service.GetSlackIntegrationsByUserID(testUser.ID)
+		require.NoError(t, err)
+		require.Len(t, integrations, 1)
+		
+		updatedIntegration := integrations[0]
+		assert.NotNil(t, updatedIntegration.CCAgentSecretKey)
+		assert.Equal(t, secretKey, *updatedIntegration.CCAgentSecretKey)
+		assert.NotNil(t, updatedIntegration.CCAgentSecretKeyGeneratedAt)
+		assert.True(t, updatedIntegration.CCAgentSecretKeyGeneratedAt.After(integration.CreatedAt))
+
+		// Clean up
+		defer func() {
+			cfg, _ := testutils.LoadTestConfig()
+			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
+			defer dbConn.Close()
+			query := fmt.Sprintf("DELETE FROM %s.slack_integrations WHERE id = $1", cfg.DatabaseSchema)
+			dbConn.Exec(query, integration.ID)
+		}()
+	})
+
+	t.Run("regenerating secret key updates existing key", func(t *testing.T) {
+		testUser := testutils.CreateTestUser(t, usersRepo)
+
+		// Create an integration with unique team ID
+		teamID := fmt.Sprintf("T%d", uuid.New().ID())
+		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+			TeamID:      teamID,
+			TeamName:    "Test Team",
+			AccessToken: "xoxb-test-token-123",
+		})
+		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
+
+		integration, err := testService.CreateSlackIntegration("test-auth-code", "http://localhost:3000/callback", testUser.ID)
+		require.NoError(t, err)
+
+		// Create context with user
+		ctx := testutils.CreateTestContext(testUser)
+
+		// Generate first secret key
+		firstSecretKey, err := service.GenerateCCAgentSecretKey(ctx, integration.ID)
+		require.NoError(t, err)
+
+		// Get the first timestamp
+		integrations, err := service.GetSlackIntegrationsByUserID(testUser.ID)
+		require.NoError(t, err)
+		require.Len(t, integrations, 1)
+		firstTimestamp := *integrations[0].CCAgentSecretKeyGeneratedAt
+
+		// Generate second secret key
+		secondSecretKey, err := service.GenerateCCAgentSecretKey(ctx, integration.ID)
+		require.NoError(t, err)
+
+		// Keys should be different
+		assert.NotEqual(t, firstSecretKey, secondSecretKey)
+
+		// Verify the integration was updated
+		integrations, err = service.GetSlackIntegrationsByUserID(testUser.ID)
+		require.NoError(t, err)
+		require.Len(t, integrations, 1)
+		
+		updatedIntegration := integrations[0]
+		assert.NotNil(t, updatedIntegration.CCAgentSecretKey)
+		assert.Equal(t, secondSecretKey, *updatedIntegration.CCAgentSecretKey)
+		assert.NotNil(t, updatedIntegration.CCAgentSecretKeyGeneratedAt)
+		assert.True(t, updatedIntegration.CCAgentSecretKeyGeneratedAt.After(firstTimestamp))
+
+		// Clean up
+		defer func() {
+			cfg, _ := testutils.LoadTestConfig()
+			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
+			defer dbConn.Close()
+			query := fmt.Sprintf("DELETE FROM %s.slack_integrations WHERE id = $1", cfg.DatabaseSchema)
+			dbConn.Exec(query, integration.ID)
+		}()
+	})
+
+	t.Run("cannot generate secret key for other user's integration", func(t *testing.T) {
+		// Create two users
+		user1 := testutils.CreateTestUser(t, usersRepo)
+		user2 := testutils.CreateTestUser(t, usersRepo)
+
+		// Create integration for user1 with unique team ID
+		teamID := fmt.Sprintf("T%d", uuid.New().ID())
+		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+			TeamID:      teamID,
+			TeamName:    "Test Team",
+			AccessToken: "xoxb-test-token-123",
+		})
+		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
+
+		integration, err := testService.CreateSlackIntegration("test-auth-code", "http://localhost:3000/callback", user1.ID)
+		require.NoError(t, err)
+
+		// Try to generate secret key using user2's context
+		ctx := testutils.CreateTestContext(user2)
+
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, integration.ID)
+		assert.Error(t, err)
+		assert.Empty(t, secretKey)
+		assert.Contains(t, err.Error(), "not found or does not belong to user")
+
+		// Verify integration still has no secret key
+		integrations, err := service.GetSlackIntegrationsByUserID(user1.ID)
+		require.NoError(t, err)
+		require.Len(t, integrations, 1)
+		assert.Nil(t, integrations[0].CCAgentSecretKey)
+		assert.Nil(t, integrations[0].CCAgentSecretKeyGeneratedAt)
+
+		// Clean up
+		defer func() {
+			cfg, _ := testutils.LoadTestConfig()
+			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
+			defer dbConn.Close()
+			query := fmt.Sprintf("DELETE FROM %s.slack_integrations WHERE id = $1", cfg.DatabaseSchema)
+			dbConn.Exec(query, integration.ID)
+		}()
+	})
+
+	t.Run("nil integration ID returns error", func(t *testing.T) {
+		testUser := testutils.CreateTestUser(t, usersRepo)
+		ctx := testutils.CreateTestContext(testUser)
+
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, uuid.Nil)
+		assert.Error(t, err)
+		assert.Empty(t, secretKey)
+		assert.Contains(t, err.Error(), "integration ID cannot be nil")
+	})
+
+	t.Run("missing user in context returns error", func(t *testing.T) {
+		ctx := context.Background() // No user in context
+
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, uuid.New())
+		assert.Error(t, err)
+		assert.Empty(t, secretKey)
+		assert.Contains(t, err.Error(), "user not found in context")
+	})
+
+	t.Run("non-existent integration returns error", func(t *testing.T) {
+		testUser := testutils.CreateTestUser(t, usersRepo)
+		ctx := testutils.CreateTestContext(testUser)
+
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, uuid.New())
+		assert.Error(t, err)
+		assert.Empty(t, secretKey)
+		assert.Contains(t, err.Error(), "not found or does not belong to user")
+	})
+
+	t.Run("generated keys are unique", func(t *testing.T) {
+		testUser := testutils.CreateTestUser(t, usersRepo)
+
+		// Create two integrations with unique team IDs
+		teamID1 := fmt.Sprintf("T%d", uuid.New().ID())
+		mockClient1 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+			TeamID:      teamID1,
+			TeamName:    "Test Team 1",
+			AccessToken: "xoxb-test-token-123",
+		})
+		testService1 := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient1, "test-client-id", "test-client-secret")
+
+		integration1, err := testService1.CreateSlackIntegration("test-auth-code-1", "http://localhost:3000/callback", testUser.ID)
+		require.NoError(t, err)
+
+		teamID2 := fmt.Sprintf("T%d", uuid.New().ID())
+		mockClient2 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+			TeamID:      teamID2,
+			TeamName:    "Test Team 2",
+			AccessToken: "xoxb-test-token-456",
+		})
+		testService2 := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient2, "test-client-id", "test-client-secret")
+
+		integration2, err := testService2.CreateSlackIntegration("test-auth-code-2", "http://localhost:3000/callback", testUser.ID)
+		require.NoError(t, err)
+
+		// Create context with user
+		ctx := testutils.CreateTestContext(testUser)
+
+		// Generate secret keys for both integrations
+		secretKey1, err := service.GenerateCCAgentSecretKey(ctx, integration1.ID)
+		require.NoError(t, err)
+
+		secretKey2, err := service.GenerateCCAgentSecretKey(ctx, integration2.ID)
+		require.NoError(t, err)
+
+		// Keys should be different
+		assert.NotEqual(t, secretKey1, secretKey2)
+		assert.NotEmpty(t, secretKey1)
+		assert.NotEmpty(t, secretKey2)
+
+		// Clean up
+		defer func() {
+			cfg, _ := testutils.LoadTestConfig()
+			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
+			defer dbConn.Close()
+			query := fmt.Sprintf("DELETE FROM %s.slack_integrations WHERE id IN ($1, $2)", cfg.DatabaseSchema)
+			dbConn.Exec(query, integration1.ID, integration2.ID)
+		}()
+	})
+}
