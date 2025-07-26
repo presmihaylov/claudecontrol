@@ -331,16 +331,19 @@ func (g *GitUseCase) generatePRTitleWithClaudeIsolated(branchName string) (strin
 Generate a SHORT pull request title. Follow these strict rules:
 - Maximum 40 characters (STRICT LIMIT)
 - Start with action verb (Add, Fix, Update, Improve, etc.)
+- Include 1-2 relevant emojis to make it visually appealing
 - Be concise and specific
 - No unnecessary words or phrases
 - Don't mention "Claude", "agent", or implementation details
 
 Examples:
-- "Fix error handling in message processor"
-- "Add user authentication middleware"
-- "Update API response format"
+- "🐛 Fix error handling in message processor"
+- "✨ Add user authentication middleware"
+- "🔧 Update API response format"
+- "⚡ Improve database query performance"
+- "🚀 Add new feature for data export"
 
-Respond with ONLY the short title, nothing else.`, branchName)
+Respond with ONLY the short title with emojis, nothing else.`, branchName)
 
 	prTitle, err := g.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
 	if err != nil {
