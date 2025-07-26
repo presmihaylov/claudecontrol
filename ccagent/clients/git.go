@@ -416,3 +416,48 @@ func (g *GitClient) HasExistingPR(branchName string) (bool, error) {
 	log.Info("📋 Completed successfully - checked for existing PR")
 	return hasPR, nil
 }
+
+func (g *GitClient) GetLatestCommitHash() (string, error) {
+	log.Info("📋 Starting to get latest commit hash")
+	
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		log.Error("❌ Failed to get latest commit hash", "error", err, "output", string(output))
+		return "", fmt.Errorf("failed to get latest commit hash: %w\nOutput: %s", err, string(output))
+	}
+	
+	commitHash := strings.TrimSpace(string(output))
+	log.Info("✅ Latest commit hash: %s", commitHash)
+	log.Info("📋 Completed successfully - got latest commit hash")
+	return commitHash, nil
+}
+
+func (g *GitClient) GetRemoteURL() (string, error) {
+	log.Info("📋 Starting to get remote URL")
+	
+	cmd := exec.Command("git", "remote", "get-url", "origin")
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		log.Error("❌ Failed to get remote URL", "error", err, "output", string(output))
+		return "", fmt.Errorf("failed to get remote URL: %w\nOutput: %s", err, string(output))
+	}
+	
+	remoteURL := strings.TrimSpace(string(output))
+	
+	// Convert SSH URL to HTTPS if needed for GitHub links
+	if strings.HasPrefix(remoteURL, "git@github.com:") {
+		// Convert git@github.com:owner/repo.git to https://github.com/owner/repo
+		remoteURL = strings.Replace(remoteURL, "git@github.com:", "https://github.com/", 1)
+		remoteURL = strings.TrimSuffix(remoteURL, ".git")
+	} else if strings.HasSuffix(remoteURL, ".git") {
+		// Remove .git suffix from HTTPS URLs
+		remoteURL = strings.TrimSuffix(remoteURL, ".git")
+	}
+	
+	log.Info("✅ Remote URL: %s", remoteURL)
+	log.Info("📋 Completed successfully - got remote URL")
+	return remoteURL, nil
+}

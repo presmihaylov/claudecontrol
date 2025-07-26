@@ -292,11 +292,20 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 }
 
 func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.ProcessedSlackMessage) error {
+	permalink, err := s.slackClient.GetPermalink(&slack.PermalinkParameters{
+		Channel: message.SlackChannelID,
+		Ts:      message.SlackTS,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get permalink for slack message: %w", err)
+	}
+
 	userMessage := models.UnknownMessage{
 		Type: models.MessageTypeUserMessage,
 		Payload: models.UserMessagePayload{
-			Message:        message.TextContent,
-			SlackMessageID: message.ID.String(),
+			Message:          message.TextContent,
+			SlackMessageID:   message.ID.String(),
+			SlackMessageLink: permalink,
 		},
 	}
 
