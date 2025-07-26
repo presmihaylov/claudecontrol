@@ -315,13 +315,7 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 IMPORTANT: If you are editing a pull request description, never include or override the "Generated with Claude Control from [this slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
 `
 
-	_, err := cr.claudeClient.StartNewSession(behaviourInstructions)
-	if err != nil {
-		log.Info("❌ Error starting Claude session with behaviour prompt: %v", err)
-		return fmt.Errorf("error starting Claude session with behaviour prompt: %w", err)
-	}
-
-	output, err := cr.claudeClient.ContinueSession("dummy-session", payload.Message)
+	output, err := cr.claudeClient.StartNewSessionWithSystemPrompt(payload.Message, behaviourInstructions, ".ccagent/claude")
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
 		return fmt.Errorf("error starting Claude session: %w", err)
