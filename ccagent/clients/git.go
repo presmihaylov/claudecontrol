@@ -461,3 +461,36 @@ func (g *GitClient) GetRemoteURL() (string, error) {
 	log.Info("📋 Completed successfully - got remote URL")
 	return remoteURL, nil
 }
+
+func (g *GitClient) GetPRDescription(branchName string) (string, error) {
+	log.Info("📋 Starting to get PR description for branch: %s", branchName)
+	
+	cmd := exec.Command("gh", "pr", "view", branchName, "--json", "body", "--jq", ".body")
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		log.Error("❌ Failed to get PR description", "branch", branchName, "error", err, "output", string(output))
+		return "", fmt.Errorf("failed to get PR description: %w\nOutput: %s", err, string(output))
+	}
+	
+	description := strings.TrimSpace(string(output))
+	log.Info("✅ Successfully got PR description")
+	log.Info("📋 Completed successfully - got PR description")
+	return description, nil
+}
+
+func (g *GitClient) UpdatePRDescription(branchName, newDescription string) error {
+	log.Info("📋 Starting to update PR description for branch: %s", branchName)
+	
+	cmd := exec.Command("gh", "pr", "edit", branchName, "--body", newDescription)
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		log.Error("❌ Failed to update PR description", "branch", branchName, "error", err, "output", string(output))
+		return fmt.Errorf("failed to update PR description: %w\nOutput: %s", err, string(output))
+	}
+	
+	log.Info("✅ Successfully updated PR description")
+	log.Info("📋 Completed successfully - updated PR description")
+	return nil
+}

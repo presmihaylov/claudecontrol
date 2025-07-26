@@ -310,6 +310,8 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 - Use emojis liberally to draw attention to the relevant pieces of your message that are most important
 - Be more explicit about errors and failures with clear emoji indicators
 - Use clear file paths with line numbers for easy navigation
+
+IMPORTANT: If you are editing a pull request description, never include or override the "Generated with Claude Control from [this slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
 `
 
 	_, err := cr.claudeClient.StartNewSession(behaviourInstructions)
@@ -351,6 +353,12 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
 		log.Info("❌ Failed to send git activity system message: %v", err)
 		return fmt.Errorf("failed to send git activity system message: %w", err)
+	}
+
+	// Validate and restore PR description footer if needed
+	if err := cr.gitUseCase.ValidateAndRestorePRDescriptionFooter(payload.SlackMessageLink); err != nil {
+		log.Info("❌ Failed to validate PR description footer: %v", err)
+		return fmt.Errorf("failed to validate PR description footer: %w", err)
 	}
 
 	log.Info("📋 Completed successfully - handled start conversation message")
@@ -402,6 +410,12 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
 		log.Info("❌ Failed to send git activity system message: %v", err)
 		return fmt.Errorf("failed to send git activity system message: %w", err)
+	}
+
+	// Validate and restore PR description footer if needed
+	if err := cr.gitUseCase.ValidateAndRestorePRDescriptionFooter(payload.SlackMessageLink); err != nil {
+		log.Info("❌ Failed to validate PR description footer: %v", err)
+		return fmt.Errorf("failed to validate PR description footer: %w", err)
 	}
 
 	log.Info("📋 Completed successfully - handled user message")
