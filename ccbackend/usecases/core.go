@@ -181,11 +181,14 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 	}
 
 	// Create or get existing job for this slack thread
-	job, err := s.jobsService.GetOrCreateJobForSlackThread(threadTS, event.Channel)
+	jobResult, err := s.jobsService.GetOrCreateJobForSlackThread(threadTS, event.Channel)
 	if err != nil {
 		log.Printf("❌ Failed to get or create job for slack thread: %v", err)
 		return fmt.Errorf("failed to get or create job for slack thread: %w", err)
 	}
+	
+	job := jobResult.Job
+	isNewConversation := jobResult.Status == models.JobCreationStatusCreated
 
 	// Check if this job is already assigned to an agent or assign to new agent
 	clientID, err := s.getOrAssignAgentForJob(job, threadTS)
@@ -247,8 +250,8 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent) e
 
 	// Only send to agent if status is IN_PROGRESS (not queued)
 	if messageStatus == models.ProcessedSlackMessageStatusInProgress {
-		// Send appropriate message to the assigned agent
-		if event.ThreadTs == "" {
+		// Send appropriate message to the assigned agent based on whether this is a new conversation
+		if isNewConversation {
 			if err := s.sendStartConversationToAgent(clientID, processedMessage); err != nil {
 				return fmt.Errorf("failed to send start conversation message: %w", err)
 			}
