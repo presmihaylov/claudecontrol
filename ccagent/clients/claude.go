@@ -10,12 +10,12 @@ import (
 )
 
 type ClaudeClient struct {
-	apiKey string
+	anthroApiKey string
 }
 
-func NewClaudeClient(apiKey string) *ClaudeClient {
+func NewClaudeClient(anthroApiKey string) *ClaudeClient {
 	return &ClaudeClient{
-		apiKey: apiKey,
+		anthroApiKey: anthroApiKey,
 	}
 }
 
@@ -36,7 +36,7 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "CLAUDE_CONFIG_DIR=.ccagent/claude")
-	cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.apiKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.anthroApiKey))
 
 	log.Info("Running Claude command", "command", "claude", "env", "CLAUDE_CONFIG_DIR=.ccagent/claude")
 	output, err := cmd.CombinedOutput()
@@ -71,7 +71,7 @@ func (c *ClaudeClient) StartNewSessionWithConfigDir(prompt, configDir string) (s
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("CLAUDE_CONFIG_DIR=%s", configDir))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.apiKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.anthroApiKey))
 
 	log.Info("Running Claude command", "command", "claude", "env", fmt.Sprintf("CLAUDE_CONFIG_DIR=%s", configDir))
 	output, err := cmd.CombinedOutput()
