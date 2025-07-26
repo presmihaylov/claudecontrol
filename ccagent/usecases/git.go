@@ -149,8 +149,8 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 	// Generate commit message using Claude with isolated config directory
 	commitMessage, err := g.generateCommitMessageWithClaudeIsolated(currentBranch)
 	if err != nil {
-		log.Error("❌ Failed to generate commit message with Claude, using fallback", "error", err)
-		commitMessage = g.generateFallbackCommitMessage(currentBranch)
+		log.Error("❌ Failed to generate commit message with Claude", "error", err)
+		return nil, fmt.Errorf("failed to generate commit message with Claude: %w", err)
 	}
 
 	log.Info("📝 Generated commit message: %s", commitMessage)
@@ -219,30 +219,6 @@ func (g *GitUseCase) generateRandomBranchName() (string, error) {
 	return finalBranchName, nil
 }
 
-func (g *GitUseCase) generateFallbackCommitMessage(branchName string) string {
-	return "Complete task\n\n🤖 Generated with Claude Control"
-}
-
-func (g *GitUseCase) generateFallbackPRTitle(branchName string) string {
-	return "Complete Claude Control Task"
-}
-
-func (g *GitUseCase) generateFallbackPRBody(branchName, slackThreadLink string) string {
-	body := fmt.Sprintf(`## Summary
-Completed task via Claude Control.
-
-## Changes
-- Task implementation completed
-- All changes committed and ready for review
-
-**Branch:** %s  
-**Generated:** %s`, branchName, time.Now().Format("2006-01-02 15:04:05"))
-
-	// Append footer with Slack thread link
-	body += fmt.Sprintf("\n\n---\nGenerated with Claude Control from [this slack thread](%s)", slackThreadLink)
-	
-	return body
-}
 
 func (g *GitUseCase) generateCommitMessageWithClaudeIsolated(branchName string) (string, error) {
 	log.Info("🤖 Asking Claude to generate commit message with isolated config")
@@ -308,14 +284,14 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 	// Generate PR title and body using Claude with isolated config directories
 	prTitle, err := g.generatePRTitleWithClaudeIsolated(branchName)
 	if err != nil {
-		log.Error("❌ Failed to generate PR title with Claude, using fallback", "error", err)
-		prTitle = g.generateFallbackPRTitle(branchName)
+		log.Error("❌ Failed to generate PR title with Claude", "error", err)
+		return nil, fmt.Errorf("failed to generate PR title with Claude: %w", err)
 	}
 
 	prBody, err := g.generatePRBodyWithClaudeIsolated(branchName, slackThreadLink)
 	if err != nil {
-		log.Error("❌ Failed to generate PR body with Claude, using fallback", "error", err)
-		prBody = g.generateFallbackPRBody(branchName, slackThreadLink)
+		log.Error("❌ Failed to generate PR body with Claude", "error", err)
+		return nil, fmt.Errorf("failed to generate PR body with Claude: %w", err)
 	}
 
 	log.Info("📋 Generated PR title: %s", prTitle)
