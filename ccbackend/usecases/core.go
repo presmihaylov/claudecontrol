@@ -55,8 +55,15 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 
 	log.Printf("📤 Sending assistant message to Slack thread %s in channel %s", job.SlackThreadTS, job.SlackChannelID)
 
+	// Handle empty message from Claude
+	messageToSend := payload.Message
+	if strings.TrimSpace(messageToSend) == "" {
+		messageToSend = "(agent sent empty response)"
+		log.Printf("⚠️ Agent sent empty response, using fallback message")
+	}
+
 	_, _, err = s.slackClient.PostMessage(job.SlackChannelID,
-		slack.MsgOptionText(utils.ConvertMarkdownToSlack(payload.Message), false),
+		slack.MsgOptionText(utils.ConvertMarkdownToSlack(messageToSend), false),
 		slack.MsgOptionTS(job.SlackThreadTS),
 	)
 	if err != nil {
