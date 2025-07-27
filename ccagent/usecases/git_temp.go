@@ -1,2 +1,0 @@
-// Test line with correct format
-finalBody := cleanBody + fmt.Sprintf("\n\n---\nGenerated with [Claude Control](<http://claudecontrol.com|claudecontrol.com>) from [this slack thread](%s)", slackThreadLink)
