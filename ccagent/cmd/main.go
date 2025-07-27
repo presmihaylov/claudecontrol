@@ -338,12 +338,11 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 	}
 
 	// Setup conversation logging
-	logFile, err := cr.setupConversationLogging(payload.SlackMessageID)
+	_, err := cr.setupConversationLogging(payload.SlackMessageID)
 	if err != nil {
 		log.Error("❌ Failed to setup conversation logging: %v", err)
 		return fmt.Errorf("failed to setup conversation logging: %w", err)
 	}
-	defer logFile.Close()
 
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
 
@@ -433,14 +432,6 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 		log.Info("❌ Failed to unmarshal user message payload: %v", err)
 		return fmt.Errorf("failed to unmarshal user message payload: %w", err)
 	}
-
-	// Setup conversation logging
-	logFile, err := cr.setupConversationLogging(payload.SlackMessageID)
-	if err != nil {
-		log.Error("❌ Failed to setup conversation logging: %v", err)
-		return fmt.Errorf("failed to setup conversation logging: %w", err)
-	}
-	defer logFile.Close()
 
 	log.Info("💬 Continuing conversation with message: %s", payload.Message)
 
