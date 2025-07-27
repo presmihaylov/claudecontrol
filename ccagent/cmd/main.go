@@ -306,12 +306,6 @@ func (cr *CmdRunner) setupProgramLogging() (*os.File, error) {
 	return logFile, nil
 }
 
-func (cr *CmdRunner) setupConversationLogging(slackMessageID string) (*os.File, error) {
-	// This method is now deprecated since we setup logging at program start
-	// We return nil, nil to indicate no new log file was created
-	// Logging is already configured from setupProgramLogging()
-	return nil, nil
-}
 
 func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 	switch msg.Type {
@@ -352,10 +346,6 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 		log.Info("❌ Failed to unmarshal start conversation payload: %v", err)
 		return fmt.Errorf("failed to unmarshal start conversation payload: %w", err)
 	}
-
-	// Note: Logging is now setup at program start, so no need to setup conversation logging
-	// This call is kept for backward compatibility but does nothing
-	_, _ = cr.setupConversationLogging(payload.SlackMessageID)
 
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
 
