@@ -53,7 +53,16 @@ func run() error {
 	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo)
 	usersService := services.NewUsersService(usersRepo)
 	slackOAuthClient := clients.NewConcreteSlackClient()
-	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
+	
+	// Create API key validator for WebSocket connections (needed for SlackIntegrationsService creation)
+	var wsClient *clients.WebSocketClient
+	apiKeyValidator := func(apiKey string) (string, error) {
+		// This is a temporary validator for bootstrapping - will be updated after SlackIntegrationsService is created
+		return "", nil
+	}
+	wsClient = clients.NewWebSocketClient(apiKeyValidator)
+	
+	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret, agentsService, wsClient)
 
 	// Clear all active agents on startup
 	log.Printf("🧹 Cleaning up stale active agents from previous server runs")
@@ -61,9 +70,8 @@ func run() error {
 		log.Printf("⚠️ Failed to clear stale active agents: %v", err)
 	}
 
-	
-	// Create API key validator for WebSocket connections
-	apiKeyValidator := func(apiKey string) (string, error) {
+	// Update the API key validator now that SlackIntegrationsService is available
+	actualApiKeyValidator := func(apiKey string) (string, error) {
 		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(apiKey)
 		if err != nil {
 			return "", err
@@ -71,7 +79,8 @@ func run() error {
 		return integration.ID.String(), nil
 	}
 	
-	wsClient := clients.NewWebSocketClient(apiKeyValidator)
+	// Replace the temporary validator with the actual one
+	wsClient = clients.NewWebSocketClient(actualApiKeyValidator)
 	
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)

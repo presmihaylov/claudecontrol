@@ -21,14 +21,18 @@ type SlackIntegrationsService struct {
 	slackClient           clients.SlackClient
 	slackClientID         string
 	slackClientSecret     string
+	agentsService         *AgentsService
+	webSocketClient       *clients.WebSocketClient
 }
 
-func NewSlackIntegrationsService(repo *db.PostgresSlackIntegrationsRepository, slackClient clients.SlackClient, slackClientID, slackClientSecret string) *SlackIntegrationsService {
+func NewSlackIntegrationsService(repo *db.PostgresSlackIntegrationsRepository, slackClient clients.SlackClient, slackClientID, slackClientSecret string, agentsService *AgentsService, webSocketClient *clients.WebSocketClient) *SlackIntegrationsService {
 	return &SlackIntegrationsService{
 		slackIntegrationsRepo: repo,
 		slackClient:           slackClient,
 		slackClientID:         slackClientID,
 		slackClientSecret:     slackClientSecret,
+		agentsService:         agentsService,
+		webSocketClient:       webSocketClient,
 	}
 }
 
@@ -145,6 +149,21 @@ func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context,
 	// Store the secret key in the database
 	if err := s.slackIntegrationsRepo.GenerateCCAgentSecretKey(ctx, integrationID, user.ID, secretKey); err != nil {
 		return "", fmt.Errorf("failed to store CCAgent secret key: %w", err)
+	}
+
+	// Kill all active agents for this Slack integration
+	log.Printf("📋 Killing all active agents for integration: %s", integrationID)
+	
+	// First disconnect WebSocket clients
+	if s.webSocketClient != nil {
+		s.webSocketClient.DisconnectClientsBySlackIntegrationID(integrationID.String())
+	}
+	
+	// Then delete agents from database
+	if s.agentsService != nil {
+		if err := s.agentsService.DeleteAllActiveAgentsBySlackIntegrationID(ctx, integrationID); err != nil {
+			log.Printf("❌ Failed to delete agents for integration %s: %v", integrationID, err)
+		}
 	}
 
 	log.Printf("📋 Completed successfully - generated CCAgent secret key for integration: %s", integrationID)

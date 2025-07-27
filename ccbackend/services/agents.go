@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -222,5 +223,20 @@ func (s *AgentsService) GetAgentByWSConnectionID(wsConnectionID, slackIntegratio
 
 	log.Printf("📋 Completed successfully - retrieved agent %s for WS connection %s", agent.ID, wsConnectionID)
 	return agent, nil
+}
+
+func (s *AgentsService) DeleteAllActiveAgentsBySlackIntegrationID(ctx context.Context, slackIntegrationID uuid.UUID) error {
+	log.Printf("📋 Starting to delete all active agents for slack integration: %s", slackIntegrationID)
+
+	if slackIntegrationID == uuid.Nil {
+		return fmt.Errorf("slack integration ID cannot be nil")
+	}
+
+	if err := s.agentsRepo.DeleteAllActiveAgentsBySlackIntegrationID(slackIntegrationID); err != nil {
+		return fmt.Errorf("failed to delete all active agents by slack integration ID: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - deleted all active agents for slack integration: %s", slackIntegrationID)
+	return nil
 }
 

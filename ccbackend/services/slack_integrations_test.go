@@ -26,7 +26,7 @@ func setupSlackIntegrationsTest(t *testing.T) (*SlackIntegrationsService, *db.Po
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 	
 	mockClient := clients.NewMockSlackClient()
-	service := NewSlackIntegrationsService(repo, mockClient, "test-client-id", "test-client-secret")
+	service := NewSlackIntegrationsService(repo, mockClient, "test-client-id", "test-client-secret", nil, nil)
 
 	cleanup := func() {
 		dbConn.Close()

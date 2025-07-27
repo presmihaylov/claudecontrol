@@ -160,4 +160,20 @@ func (r *PostgresAgentsRepository) UpdateAgentJobAssignment(agentID uuid.UUID, j
 	return nil
 }
 
+func (r *PostgresAgentsRepository) DeleteAllActiveAgentsBySlackIntegrationID(slackIntegrationID uuid.UUID) error {
+	query := fmt.Sprintf("DELETE FROM %s.active_agents WHERE slack_integration_id = $1", r.schema)
+
+	result, err := r.db.Exec(query, slackIntegrationID)
+	if err != nil {
+		return fmt.Errorf("failed to delete active agents by slack integration ID: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return nil
+}
+
 

@@ -244,3 +244,28 @@ func (ws *WebSocketClient) invokeDisconnectionHooks(clientID string) {
 	}
 	log.Printf("✅ All disconnection hooks completed for client %s", clientID)
 }
+
+func (ws *WebSocketClient) DisconnectClientsBySlackIntegrationID(slackIntegrationID string) {
+	log.Printf("🔌 Starting to disconnect all clients for slack integration: %s", slackIntegrationID)
+	
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+	
+	var clientsToDisconnect []*Client
+	for _, client := range ws.clients {
+		if client.SlackIntegrationID == slackIntegrationID {
+			clientsToDisconnect = append(clientsToDisconnect, client)
+		}
+	}
+	
+	log.Printf("🔌 Found %d clients to disconnect for slack integration: %s", len(clientsToDisconnect), slackIntegrationID)
+	
+	for _, client := range clientsToDisconnect {
+		log.Printf("🔌 Closing connection for client %s", client.ID)
+		if err := client.ClientConn.Close(); err != nil {
+			log.Printf("❌ Failed to close connection for client %s: %v", client.ID, err)
+		}
+	}
+	
+	log.Printf("✅ Completed disconnecting clients for slack integration: %s", slackIntegrationID)
+}
