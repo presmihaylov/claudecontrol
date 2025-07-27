@@ -365,7 +365,7 @@ Please generate a professional pull request description. Include:
 
 Use proper markdown formatting.
 
-IMPORTANT: Do NOT include any "Generated with claudecontrol.com" or similar footer text. I will add that separately.
+IMPORTANT: Do NOT include any "Generated with [Claude Control](<http://claudecontrol.com|claudecontrol.com>)" or similar footer text. I will add that separately.
 
 Respond with ONLY the PR body, nothing else.`, branchName)
 
@@ -376,7 +376,7 @@ Respond with ONLY the PR body, nothing else.`, branchName)
 
 	// Append footer with Slack thread link
 	cleanBody := strings.TrimSpace(prBody)
-	finalBody := cleanBody + fmt.Sprintf("\n\n##\nGenerated with <http://claudecontrol.com|claudecontrol.com> from [this slack thread](%s)", slackThreadLink)
+	finalBody := cleanBody + fmt.Sprintf("\n\n---\nGenerated with [Claude Control](<http://claudecontrol.com|claudecontrol.com>) from [this slack thread](%s)", slackThreadLink)
 
 	return finalBody, nil
 }
@@ -412,7 +412,7 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	}
 
 	// Check if the expected footer is present
-	expectedFooter := fmt.Sprintf("Generated with <http://claudecontrol.com|claudecontrol.com> from [this slack thread](%s)", slackThreadLink)
+	expectedFooter := fmt.Sprintf("Generated with [Claude Control](<http://claudecontrol.com|claudecontrol.com>) from [this slack thread](%s)", slackThreadLink)
 	
 	if strings.Contains(currentDescription, expectedFooter) {
 		log.Info("✅ PR description already has correct Claude Control footer")
@@ -438,7 +438,7 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 		}
 		
 		// Skip separator lines that are part of footer
-		if trimmedLine == "##" {
+		if trimmedLine == "---" {
 			// Look ahead to see if this separator is followed by footer content
 			isFooterSeparator := false
 			for i := len(cleanedLines); i < len(lines)-1; i++ {
@@ -474,13 +474,13 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	restoredDescription := strings.Join(cleanedLines, "\n")
 	if restoredDescription != "" {
 		// Check if description already ends with a separator
-		if strings.HasSuffix(strings.TrimSpace(restoredDescription), "##") {
+		if strings.HasSuffix(strings.TrimSpace(restoredDescription), "---") {
 			restoredDescription += "\n" + expectedFooter
 		} else {
-			restoredDescription += "\n\n##\n" + expectedFooter
+			restoredDescription += "\n\n---\n" + expectedFooter
 		}
 	} else {
-		restoredDescription = "##\n" + expectedFooter
+		restoredDescription = "---\n" + expectedFooter
 	}
 
 	// Update the PR description
