@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
 	"ccagent/clients"
@@ -24,9 +26,10 @@ type CmdRunner struct {
 	sessionService *services.SessionService
 	claudeService  *services.ClaudeService
 	gitUseCase     *usecases.GitUseCase
+	verbose        bool
 }
 
-func NewCmdRunner(anthroApiKey string, permissionMode string) *CmdRunner {
+func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *CmdRunner {
 	log.Info("📋 Starting to initialize CmdRunner")
 	configService := services.NewConfigService()
 	sessionService := services.NewSessionService()
@@ -41,6 +44,7 @@ func NewCmdRunner(anthroApiKey string, permissionMode string) *CmdRunner {
 		sessionService: sessionService,
 		claudeService:  claudeService,
 		gitUseCase:     gitUseCase,
+		verbose:        verbose,
 	}
 }
 
@@ -88,7 +92,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
 	}
 
-	cmdRunner := NewCmdRunner(anthroApiKey, permissionMode)
+	cmdRunner := NewCmdRunner(anthroApiKey, permissionMode, opts.Verbose)
 
 	_, err = cmdRunner.configService.InitCCAgentConfig()
 	if err != nil {
@@ -265,6 +269,36 @@ func (cr *CmdRunner) connectWithRetry(serverURL, apiKey string, retryIntervals [
 	return nil, false
 }
 
+func (cr *CmdRunner) setupConversationLogging(slackMessageID string) (*os.File, error) {
+	// Create .ccagent/logs directory if it doesn't exist
+	logsDir := ".ccagent/logs"
+	if err := os.MkdirAll(logsDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create logs directory: %w", err)
+	}
+
+	// Create log file with timestamp and conversation ID
+	timestamp := time.Now().Format("20060102-150405")
+	logFileName := fmt.Sprintf("%s-%s.log", timestamp, slackMessageID)
+	logFilePath := filepath.Join(logsDir, logFileName)
+
+	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create log file: %w", err)
+	}
+
+	// Setup dual writer based on verbose flag
+	if cr.verbose {
+		// Write to both stdout and file
+		writer := io.MultiWriter(os.Stdout, logFile)
+		log.SetWriter(writer)
+	} else {
+		// Write only to file
+		log.SetWriter(logFile)
+	}
+
+	return logFile, nil
+}
+
 func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 	switch msg.Type {
 	case MessageTypeStartConversation:
@@ -303,6 +337,13 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal start conversation payload: %v", err)
 		return fmt.Errorf("failed to unmarshal start conversation payload: %w", err)
+	}
+
+	// Setup conversation logging
+	_, err := cr.setupConversationLogging(payload.SlackMessageID)
+	if err != nil {
+		log.Error("❌ Failed to setup conversation logging: %v", err)
+		return fmt.Errorf("failed to setup conversation logging: %w", err)
 	}
 
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)

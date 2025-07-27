@@ -2,17 +2,20 @@ package log
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 )
 
 // Global slog logger instance
 var logger *slog.Logger
+var currentWriter io.Writer = os.Stdout
+var currentLevel slog.Level = slog.Level(1000)
 
 func init() {
 	// Initialize with high level to disable logging by default
-	logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.Level(1000),
+	logger = slog.New(slog.NewTextHandler(currentWriter, &slog.HandlerOptions{
+		Level: currentLevel,
 	}))
 }
 
@@ -49,7 +52,23 @@ func Error(format string, args ...any) {
 }
 
 func SetLevel(level slog.Level) {
-	logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: level,
+	currentLevel = level
+	logger = slog.New(slog.NewTextHandler(currentWriter, &slog.HandlerOptions{
+		Level: currentLevel,
+	}))
+}
+
+func SetWriter(writer io.Writer) {
+	currentWriter = writer
+	logger = slog.New(slog.NewTextHandler(currentWriter, &slog.HandlerOptions{
+		Level: currentLevel,
+	}))
+}
+
+func SetWriterWithLevel(writer io.Writer, level slog.Level) {
+	currentWriter = writer
+	currentLevel = level
+	logger = slog.New(slog.NewTextHandler(currentWriter, &slog.HandlerOptions{
+		Level: currentLevel,
 	}))
 }
