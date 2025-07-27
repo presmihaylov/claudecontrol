@@ -104,7 +104,7 @@ func main() {
 	// Get WebSocket URL from environment variable with default fallback
 	wsURL := os.Getenv("CCAGENT_WS_API_URL")
 	if wsURL == "" {
-		wsURL = "https://claudecontrol.onrender.com/ws"
+		wsURL = "wss://claudecontrol.onrender.com/ws"
 	}
 
 	// Start WebSocket client
