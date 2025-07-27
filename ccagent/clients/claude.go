@@ -10,12 +10,14 @@ import (
 )
 
 type ClaudeClient struct {
-	anthroApiKey string
+	anthroApiKey   string
+	permissionMode string
 }
 
-func NewClaudeClient(anthroApiKey string) *ClaudeClient {
+func NewClaudeClient(anthroApiKey string, permissionMode string) *ClaudeClient {
 	return &ClaudeClient{
-		anthroApiKey: anthroApiKey,
+		anthroApiKey:   anthroApiKey,
+		permissionMode: permissionMode,
 	}
 }
 
@@ -25,7 +27,7 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 	// https://github.com/anthropics/claude-code/issues/3976
 	_ = sessionID
 	args := []string{
-		"--permission-mode", "bypassPermissions",
+		"--permission-mode", c.permissionMode,
 		"--continue",
 		"-p", prompt,
 	}
@@ -65,7 +67,7 @@ func (c *ClaudeClient) StartNewSessionWithConfigDir(prompt, configDir string) (s
 func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt, configDir string) (string, error) {
 	log.Info("📋 Starting to create new Claude session with config dir: %s", configDir)
 	args := []string{
-		"--permission-mode", "bypassPermissions",
+		"--permission-mode", c.permissionMode,
 		"-p", prompt,
 	}
 
