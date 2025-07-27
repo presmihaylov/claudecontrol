@@ -6,11 +6,13 @@ import (
 	"os"
 )
 
+// Global slog logger instance
 var logger *slog.Logger
 
 func init() {
+	// Initialize with high level to disable logging by default
 	logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.Level(1000), // Very high level to disable all logging by default
+		Level: slog.Level(1000),
 	}))
 }
 

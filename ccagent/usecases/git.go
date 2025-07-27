@@ -36,19 +36,19 @@ func (g *GitUseCase) ValidateGitEnvironment() error {
 
 	// Check if we're in a Git repository
 	if err := g.gitClient.IsGitRepository(); err != nil {
-		log.Error("❌ Not in a Git repository", "error", err)
+		log.Error("❌ Not in a Git repository: %v", err)
 		return fmt.Errorf("ccagent must be run from within a Git repository: %w", err)
 	}
 
 	// Check if remote repository exists
 	if err := g.gitClient.HasRemoteRepository(); err != nil {
-		log.Error("❌ No remote repository configured", "error", err)
+		log.Error("❌ No remote repository configured: %v", err)
 		return fmt.Errorf("Git repository must have a remote configured: %w", err)
 	}
 
 	// Check if GitHub CLI is available (for PR creation)
 	if err := g.gitClient.IsGitHubCLIAvailable(); err != nil {
-		log.Error("❌ GitHub CLI not available", "error", err)
+		log.Error("❌ GitHub CLI not available: %v", err)
 		return fmt.Errorf("GitHub CLI (gh) must be installed and configured: %w", err)
 	}
 
@@ -63,7 +63,7 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) error {
 	// Generate random branch name
 	branchName, err := g.generateRandomBranchName()
 	if err != nil {
-		log.Error("❌ Failed to generate random branch name", "error", err)
+		log.Error("❌ Failed to generate random branch name: %v", err)
 		return fmt.Errorf("failed to generate branch name: %w", err)
 	}
 
@@ -71,37 +71,37 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) error {
 
 	// Step 1: Reset hard current branch
 	if err := g.gitClient.ResetHard(); err != nil {
-		log.Error("❌ Failed to reset hard", "error", err)
+		log.Error("❌ Failed to reset hard: %v", err)
 		return fmt.Errorf("failed to reset hard: %w", err)
 	}
 
 	// Step 2: Clean untracked files
 	if err := g.gitClient.CleanUntracked(); err != nil {
-		log.Error("❌ Failed to clean untracked files", "error", err)
+		log.Error("❌ Failed to clean untracked files: %v", err)
 		return fmt.Errorf("failed to clean untracked files: %w", err)
 	}
 
 	// Step 3: Get default branch and checkout to it
 	defaultBranch, err := g.gitClient.GetDefaultBranch()
 	if err != nil {
-		log.Error("❌ Failed to get default branch", "error", err)
+		log.Error("❌ Failed to get default branch: %v", err)
 		return fmt.Errorf("failed to get default branch: %w", err)
 	}
 
 	if err := g.gitClient.CheckoutBranch(defaultBranch); err != nil {
-		log.Error("❌ Failed to checkout default branch", "branch", defaultBranch, "error", err)
+		log.Error("❌ Failed to checkout default branch %s: %v", defaultBranch, err)
 		return fmt.Errorf("failed to checkout default branch %s: %w", defaultBranch, err)
 	}
 
 	// Step 4: Pull latest changes
 	if err := g.gitClient.PullLatest(); err != nil {
-		log.Error("❌ Failed to pull latest changes", "error", err)
+		log.Error("❌ Failed to pull latest changes: %v", err)
 		return fmt.Errorf("failed to pull latest changes: %w", err)
 	}
 
 	// Step 5: Create and checkout new branch
 	if err := g.gitClient.CreateAndCheckoutBranch(branchName); err != nil {
-		log.Error("❌ Failed to create and checkout new branch", "branch", branchName, "error", err)
+		log.Error("❌ Failed to create and checkout new branch %s: %v", branchName, err)
 		return fmt.Errorf("failed to create and checkout new branch %s: %w", branchName, err)
 	}
 
@@ -116,7 +116,7 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 	// Check if there are any uncommitted changes
 	hasChanges, err := g.gitClient.HasUncommittedChanges()
 	if err != nil {
-		log.Error("❌ Failed to check for uncommitted changes", "error", err)
+		log.Error("❌ Failed to check for uncommitted changes: %v", err)
 		return nil, fmt.Errorf("failed to check for uncommitted changes: %w", err)
 	}
 
@@ -135,21 +135,21 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 
 	// Ensure .ccagent/ is in .gitignore
 	if err := g.gitClient.EnsureCCAgentInGitignore(); err != nil {
-		log.Error("❌ Failed to ensure .ccagent/ is in .gitignore", "error", err)
+		log.Error("❌ Failed to ensure .ccagent/ is in .gitignore: %v", err)
 		return nil, fmt.Errorf("failed to ensure .ccagent/ is in .gitignore: %w", err)
 	}
 
 	// Get current branch
 	currentBranch, err := g.gitClient.GetCurrentBranch()
 	if err != nil {
-		log.Error("❌ Failed to get current branch", "error", err)
+		log.Error("❌ Failed to get current branch: %v", err)
 		return nil, fmt.Errorf("failed to get current branch: %w", err)
 	}
 
 	// Generate commit message using Claude with isolated config directory
 	commitMessage, err := g.generateCommitMessageWithClaudeIsolated(currentBranch)
 	if err != nil {
-		log.Error("❌ Failed to generate commit message with Claude", "error", err)
+		log.Error("❌ Failed to generate commit message with Claude: %v", err)
 		return nil, fmt.Errorf("failed to generate commit message with Claude: %w", err)
 	}
 
@@ -157,40 +157,40 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 
 	// Add all changes
 	if err := g.gitClient.AddAll(); err != nil {
-		log.Error("❌ Failed to add all changes", "error", err)
+		log.Error("❌ Failed to add all changes: %v", err)
 		return nil, fmt.Errorf("failed to add all changes: %w", err)
 	}
 
 	// Commit with message
 	if err := g.gitClient.Commit(commitMessage); err != nil {
-		log.Error("❌ Failed to commit changes", "error", err)
+		log.Error("❌ Failed to commit changes: %v", err)
 		return nil, fmt.Errorf("failed to commit changes: %w", err)
 	}
 
 	// Get commit hash after successful commit
 	commitHash, err := g.gitClient.GetLatestCommitHash()
 	if err != nil {
-		log.Error("❌ Failed to get commit hash", "error", err)
+		log.Error("❌ Failed to get commit hash: %v", err)
 		return nil, fmt.Errorf("failed to get commit hash: %w", err)
 	}
 
 	// Get repository URL for commit link
 	repositoryURL, err := g.gitClient.GetRemoteURL()
 	if err != nil {
-		log.Error("❌ Failed to get repository URL", "error", err)
+		log.Error("❌ Failed to get repository URL: %v", err)
 		return nil, fmt.Errorf("failed to get repository URL: %w", err)
 	}
 
 	// Push current branch to remote
 	if err := g.gitClient.PushBranch(currentBranch); err != nil {
-		log.Error("❌ Failed to push branch", "branch", currentBranch, "error", err)
+		log.Error("❌ Failed to push branch %s: %v", currentBranch, err)
 		return nil, fmt.Errorf("failed to push branch %s: %w", currentBranch, err)
 	}
 
 	// Handle PR creation/update
 	prResult, err := g.handlePRCreationOrUpdate(currentBranch, slackThreadLink)
 	if err != nil {
-		log.Error("❌ Failed to handle PR creation/update", "error", err)
+		log.Error("❌ Failed to handle PR creation/update: %v", err)
 		return nil, fmt.Errorf("failed to handle PR creation/update: %w", err)
 	}
 
@@ -255,7 +255,7 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 	// Check if a PR already exists for this branch
 	hasExistingPR, err := g.gitClient.HasExistingPR(branchName)
 	if err != nil {
-		log.Error("❌ Failed to check for existing PR", "error", err)
+		log.Error("❌ Failed to check for existing PR: %v", err)
 		return nil, fmt.Errorf("failed to check for existing PR: %w", err)
 	}
 
@@ -265,7 +265,7 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 		// Get the PR URL for the existing PR
 		prURL, err := g.gitClient.GetPRURL(branchName)
 		if err != nil {
-			log.Error("❌ Failed to get PR URL for existing PR", "error", err)
+			log.Error("❌ Failed to get PR URL for existing PR: %v", err)
 			// Continue without the URL rather than failing
 			prURL = ""
 		}
@@ -284,13 +284,13 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 	// Generate PR title and body using Claude with isolated config directories
 	prTitle, err := g.generatePRTitleWithClaudeIsolated(branchName)
 	if err != nil {
-		log.Error("❌ Failed to generate PR title with Claude", "error", err)
+		log.Error("❌ Failed to generate PR title with Claude: %v", err)
 		return nil, fmt.Errorf("failed to generate PR title with Claude: %w", err)
 	}
 
 	prBody, err := g.generatePRBodyWithClaudeIsolated(branchName, slackThreadLink)
 	if err != nil {
-		log.Error("❌ Failed to generate PR body with Claude", "error", err)
+		log.Error("❌ Failed to generate PR body with Claude: %v", err)
 		return nil, fmt.Errorf("failed to generate PR body with Claude: %w", err)
 	}
 
@@ -299,14 +299,14 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 	// Get default branch for PR base
 	defaultBranch, err := g.gitClient.GetDefaultBranch()
 	if err != nil {
-		log.Error("❌ Failed to get default branch", "error", err)
+		log.Error("❌ Failed to get default branch: %v", err)
 		return nil, fmt.Errorf("failed to get default branch: %w", err)
 	}
 
 	// Create pull request
 	prURL, err := g.gitClient.CreatePullRequest(prTitle, prBody, defaultBranch)
 	if err != nil {
-		log.Error("❌ Failed to create pull request", "error", err)
+		log.Error("❌ Failed to create pull request: %v", err)
 		return nil, fmt.Errorf("failed to create pull request: %w", err)
 	}
 
@@ -387,14 +387,14 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	// Get current branch
 	currentBranch, err := g.gitClient.GetCurrentBranch()
 	if err != nil {
-		log.Error("❌ Failed to get current branch", "error", err)
+		log.Error("❌ Failed to get current branch: %v", err)
 		return fmt.Errorf("failed to get current branch: %w", err)
 	}
 
 	// Check if a PR exists for this branch
 	hasExistingPR, err := g.gitClient.HasExistingPR(currentBranch)
 	if err != nil {
-		log.Error("❌ Failed to check for existing PR", "error", err)
+		log.Error("❌ Failed to check for existing PR: %v", err)
 		return fmt.Errorf("failed to check for existing PR: %w", err)
 	}
 
@@ -407,7 +407,7 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	// Get current PR description
 	currentDescription, err := g.gitClient.GetPRDescription(currentBranch)
 	if err != nil {
-		log.Error("❌ Failed to get PR description", "error", err)
+		log.Error("❌ Failed to get PR description: %v", err)
 		return fmt.Errorf("failed to get PR description: %w", err)
 	}
 
@@ -485,7 +485,7 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 
 	// Update the PR description
 	if err := g.gitClient.UpdatePRDescription(currentBranch, restoredDescription); err != nil {
-		log.Error("❌ Failed to update PR description", "error", err)
+		log.Error("❌ Failed to update PR description: %v", err)
 		return fmt.Errorf("failed to update PR description: %w", err)
 	}
 
