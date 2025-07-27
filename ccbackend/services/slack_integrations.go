@@ -163,3 +163,37 @@ func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(secretKey stri
 	log.Printf("📋 Completed successfully - found slack integration for team: %s", integration.SlackTeamName)
 	return integration, nil
 }
+
+func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(teamID string) (*models.SlackIntegration, error) {
+	log.Printf("📋 Starting to get slack integration by team ID: %s", teamID)
+	
+	if teamID == "" {
+		return nil, fmt.Errorf("team ID cannot be empty")
+	}
+	
+	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByTeamID(teamID)
+	if err != nil {
+		log.Printf("❌ Failed to get slack integration by team ID: %v", err)
+		return nil, fmt.Errorf("failed to get slack integration by team ID: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found slack integration for team: %s", integration.SlackTeamName)
+	return integration, nil
+}
+
+func (s *SlackIntegrationsService) GetSlackIntegrationByID(id uuid.UUID) (*models.SlackIntegration, error) {
+	log.Printf("📋 Starting to get slack integration by ID: %s", id)
+	
+	if id == uuid.Nil {
+		return nil, fmt.Errorf("integration ID cannot be nil")
+	}
+	
+	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByID(id)
+	if err != nil {
+		log.Printf("❌ Failed to get slack integration by ID: %v", err)
+		return nil, fmt.Errorf("failed to get slack integration by ID: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found slack integration for team: %s", integration.SlackTeamName)
+	return integration, nil
+}

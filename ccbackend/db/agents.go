@@ -24,11 +24,11 @@ func NewPostgresAgentsRepository(db *sqlx.DB, schema string) *PostgresAgentsRepo
 
 func (r *PostgresAgentsRepository) CreateActiveAgent(agent *models.ActiveAgent) error {
 	query := fmt.Sprintf(`
-		INSERT INTO %s.active_agents (id, assigned_job_id, ws_connection_id, created_at, updated_at) 
-		VALUES ($1, $2, $3, NOW(), NOW()) 
-		RETURNING id, assigned_job_id, ws_connection_id, created_at, updated_at`, r.schema)
+		INSERT INTO %s.active_agents (id, assigned_job_id, ws_connection_id, slack_integration_id, created_at, updated_at) 
+		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+		RETURNING id, assigned_job_id, ws_connection_id, slack_integration_id, created_at, updated_at`, r.schema)
 
-	err := r.db.QueryRowx(query, agent.ID, agent.AssignedJobID, agent.WSConnectionID).StructScan(agent)
+	err := r.db.QueryRowx(query, agent.ID, agent.AssignedJobID, agent.WSConnectionID, agent.SlackIntegrationID).StructScan(agent)
 	if err != nil {
 		return fmt.Errorf("failed to create active agent: %w", err)
 	}
@@ -36,10 +36,10 @@ func (r *PostgresAgentsRepository) CreateActiveAgent(agent *models.ActiveAgent) 
 	return nil
 }
 
-func (r *PostgresAgentsRepository) DeleteActiveAgent(id uuid.UUID) error {
-	query := fmt.Sprintf("DELETE FROM %s.active_agents WHERE id = $1", r.schema)
+func (r *PostgresAgentsRepository) DeleteActiveAgent(id uuid.UUID, slackIntegrationID string) error {
+	query := fmt.Sprintf("DELETE FROM %s.active_agents WHERE id = $1 AND slack_integration_id = $2", r.schema)
 
-	result, err := r.db.Exec(query, id)
+	result, err := r.db.Exec(query, id, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to delete active agent: %w", err)
 	}
@@ -56,14 +56,14 @@ func (r *PostgresAgentsRepository) DeleteActiveAgent(id uuid.UUID) error {
 	return nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByID(id uuid.UUID) (*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAgentByID(id uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, assigned_job_id, ws_connection_id, created_at, updated_at 
+		SELECT id, assigned_job_id, ws_connection_id, slack_integration_id, created_at, updated_at 
 		FROM %s.active_agents 
-		WHERE id = $1`, r.schema)
+		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
 
 	agent := &models.ActiveAgent{}
-	err := r.db.Get(agent, query, id)
+	err := r.db.Get(agent, query, id, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("active agent with id %s not found", id)
@@ -74,14 +74,14 @@ func (r *PostgresAgentsRepository) GetAgentByID(id uuid.UUID) (*models.ActiveAge
 	return agent, nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(wsConnectionID string) (*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(wsConnectionID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, assigned_job_id, ws_connection_id, created_at, updated_at 
+		SELECT id, assigned_job_id, ws_connection_id, slack_integration_id, created_at, updated_at 
 		FROM %s.active_agents 
-		WHERE ws_connection_id = $1`, r.schema)
+		WHERE ws_connection_id = $1 AND slack_integration_id = $2`, r.schema)
 
 	agent := &models.ActiveAgent{}
-	err := r.db.Get(agent, query, wsConnectionID)
+	err := r.db.Get(agent, query, wsConnectionID, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("active agent with ws_connection_id %s not found", wsConnectionID)
@@ -92,15 +92,15 @@ func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(wsConnectionID strin
 	return agent, nil
 }
 
-func (r *PostgresAgentsRepository) GetAvailableAgents() ([]*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAvailableAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, assigned_job_id, ws_connection_id, created_at, updated_at 
+		SELECT id, assigned_job_id, ws_connection_id, slack_integration_id, created_at, updated_at 
 		FROM %s.active_agents 
-		WHERE assigned_job_id IS NULL
+		WHERE assigned_job_id IS NULL AND slack_integration_id = $1
 		ORDER BY created_at ASC`, r.schema)
 
 	var agents []*models.ActiveAgent
-	err := r.db.Select(&agents, query)
+	err := r.db.Select(&agents, query, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available agents: %w", err)
 	}
@@ -119,14 +119,14 @@ func (r *PostgresAgentsRepository) DeleteAllActiveAgents() error {
 	return nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID) (*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, assigned_job_id, ws_connection_id, created_at, updated_at 
+		SELECT id, assigned_job_id, ws_connection_id, slack_integration_id, created_at, updated_at 
 		FROM %s.active_agents 
-		WHERE assigned_job_id = $1`, r.schema)
+		WHERE assigned_job_id = $1 AND slack_integration_id = $2`, r.schema)
 
 	agent := &models.ActiveAgent{}
-	err := r.db.Get(agent, query, jobID)
+	err := r.db.Get(agent, query, jobID, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("active agent with assigned_job_id %s not found", jobID)
@@ -137,13 +137,13 @@ func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID) (*models.Act
 	return agent, nil
 }
 
-func (r *PostgresAgentsRepository) UpdateAgentJobAssignment(agentID uuid.UUID, jobID *uuid.UUID) error {
+func (r *PostgresAgentsRepository) UpdateAgentJobAssignment(agentID uuid.UUID, jobID *uuid.UUID, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		UPDATE %s.active_agents 
 		SET assigned_job_id = $2, updated_at = NOW() 
-		WHERE id = $1`, r.schema)
+		WHERE id = $1 AND slack_integration_id = $3`, r.schema)
 
-	result, err := r.db.Exec(query, agentID, jobID)
+	result, err := r.db.Exec(query, agentID, jobID, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to update agent job assignment: %w", err)
 	}

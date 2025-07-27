@@ -25,11 +25,11 @@ func NewPostgresJobsRepository(db *sqlx.DB, schema string) *PostgresJobsReposito
 
 func (r *PostgresJobsRepository) CreateJob(job *models.Job) error {
 	query := fmt.Sprintf(`
-		INSERT INTO %s.jobs (id, slack_thread_ts, slack_channel_id, created_at, updated_at) 
-		VALUES ($1, $2, $3, NOW(), NOW()) 
-		RETURNING id, slack_thread_ts, slack_channel_id, created_at, updated_at`, r.schema)
+		INSERT INTO %s.jobs (id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at) 
+		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+		RETURNING id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at`, r.schema)
 
-	err := r.db.QueryRowx(query, job.ID, job.SlackThreadTS, job.SlackChannelID).StructScan(job)
+	err := r.db.QueryRowx(query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackIntegrationID).StructScan(job)
 	if err != nil {
 		return fmt.Errorf("failed to create job: %w", err)
 	}
@@ -37,14 +37,14 @@ func (r *PostgresJobsRepository) CreateJob(job *models.Job) error {
 	return nil
 }
 
-func (r *PostgresJobsRepository) GetJobByID(id uuid.UUID) (*models.Job, error) {
+func (r *PostgresJobsRepository) GetJobByID(id uuid.UUID, slackIntegrationID string) (*models.Job, error) {
 	query := fmt.Sprintf(`
-		SELECT id, slack_thread_ts, slack_channel_id, created_at, updated_at 
+		SELECT id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at 
 		FROM %s.jobs 
-		WHERE id = $1`, r.schema)
+		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
 
 	job := &models.Job{}
-	err := r.db.Get(job, query, id)
+	err := r.db.Get(job, query, id, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("job with id %s not found", id)
@@ -55,14 +55,14 @@ func (r *PostgresJobsRepository) GetJobByID(id uuid.UUID) (*models.Job, error) {
 	return job, nil
 }
 
-func (r *PostgresJobsRepository) GetJobBySlackThread(threadTS, channelID string) (*models.Job, error) {
+func (r *PostgresJobsRepository) GetJobBySlackThread(threadTS, channelID, slackIntegrationID string) (*models.Job, error) {
 	query := fmt.Sprintf(`
-		SELECT id, slack_thread_ts, slack_channel_id, created_at, updated_at 
+		SELECT id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at 
 		FROM %s.jobs 
-		WHERE slack_thread_ts = $1 AND slack_channel_id = $2`, r.schema)
+		WHERE slack_thread_ts = $1 AND slack_channel_id = $2 AND slack_integration_id = $3`, r.schema)
 
 	job := &models.Job{}
-	err := r.db.Get(job, query, threadTS, channelID)
+	err := r.db.Get(job, query, threadTS, channelID, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("job with slack_thread_ts %s and slack_channel_id %s not found", threadTS, channelID)
@@ -77,10 +77,10 @@ func (r *PostgresJobsRepository) UpdateJob(job *models.Job) error {
 	query := fmt.Sprintf(`
 		UPDATE %s.jobs 
 		SET slack_thread_ts = $2, slack_channel_id = $3, updated_at = NOW() 
-		WHERE id = $1 
-		RETURNING id, slack_thread_ts, slack_channel_id, created_at, updated_at`, r.schema)
+		WHERE id = $1 AND slack_integration_id = $4
+		RETURNING id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at`, r.schema)
 
-	err := r.db.QueryRowx(query, job.ID, job.SlackThreadTS, job.SlackChannelID).StructScan(job)
+	err := r.db.QueryRowx(query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackIntegrationID).StructScan(job)
 	if err != nil {
 		return fmt.Errorf("failed to update job: %w", err)
 	}
@@ -88,13 +88,13 @@ func (r *PostgresJobsRepository) UpdateJob(job *models.Job) error {
 	return nil
 }
 
-func (r *PostgresJobsRepository) UpdateJobTimestamp(jobID uuid.UUID) error {
+func (r *PostgresJobsRepository) UpdateJobTimestamp(jobID uuid.UUID, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		UPDATE %s.jobs 
 		SET updated_at = NOW() 
-		WHERE id = $1`, r.schema)
+		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
 
-	_, err := r.db.Exec(query, jobID)
+	_, err := r.db.Exec(query, jobID, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
@@ -104,7 +104,7 @@ func (r *PostgresJobsRepository) UpdateJobTimestamp(jobID uuid.UUID) error {
 
 func (r *PostgresJobsRepository) GetIdleJobs(idleMinutes int) ([]*models.Job, error) {
 	query := fmt.Sprintf(`
-		SELECT j.id, j.slack_thread_ts, j.slack_channel_id, j.created_at, j.updated_at 
+		SELECT j.id, j.slack_thread_ts, j.slack_channel_id, j.slack_integration_id, j.created_at, j.updated_at 
 		FROM %s.jobs j
 		WHERE NOT EXISTS (
 			-- No messages that are not COMPLETED
@@ -131,12 +131,12 @@ func (r *PostgresJobsRepository) GetIdleJobs(idleMinutes int) ([]*models.Job, er
 	return jobs, nil
 }
 
-func (r *PostgresJobsRepository) DeleteJob(id uuid.UUID) error {
+func (r *PostgresJobsRepository) DeleteJob(id uuid.UUID, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		DELETE FROM %s.jobs 
-		WHERE id = $1`, r.schema)
+		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
 
-	result, err := r.db.Exec(query, id)
+	result, err := r.db.Exec(query, id, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to delete job: %w", err)
 	}
@@ -154,13 +154,13 @@ func (r *PostgresJobsRepository) DeleteJob(id uuid.UUID) error {
 }
 
 // TESTS_UpdateJobUpdatedAt updates the updated_at timestamp of a job for testing purposes
-func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedAt time.Time) error {
+func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedAt time.Time, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		UPDATE %s.jobs 
 		SET updated_at = $2 
-		WHERE id = $1`, r.schema)
+		WHERE id = $1 AND slack_integration_id = $3`, r.schema)
 
-	result, err := r.db.Exec(query, id, updatedAt)
+	result, err := r.db.Exec(query, id, updatedAt, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to update job updated_at: %w", err)
 	}

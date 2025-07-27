@@ -47,7 +47,7 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) {
 		}
 
 		log.Printf("🤖 Received assistant message from client %s: %s", client.ID, payload.Message)
-		if err := h.coreUseCase.ProcessAssistantMessage(client.ID, payload); err != nil {
+		if err := h.coreUseCase.ProcessAssistantMessage(client.ID, payload, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process assistant message from client %s: %v", client.ID, err)
 			return
 		}
@@ -60,7 +60,7 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) {
 		}
 
 		log.Printf("⚙️ Received system message from client %s: %s", client.ID, payload.Message)
-		if err := h.coreUseCase.ProcessSystemMessage(client.ID, payload); err != nil {
+		if err := h.coreUseCase.ProcessSystemMessage(client.ID, payload, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process system message from client %s: %v", client.ID, err)
 			return
 		}

@@ -24,7 +24,7 @@ func NewJobsService(repo *db.PostgresJobsRepository, processedSlackMessagesRepo 
 	}
 }
 
-func (s *JobsService) CreateJob(slackThreadTS, slackChannelID string) (*models.Job, error) {
+func (s *JobsService) CreateJob(slackThreadTS, slackChannelID, slackIntegrationID string) (*models.Job, error) {
 	log.Printf("📋 Starting to create job for slack thread: %s, channel: %s", slackThreadTS, slackChannelID)
 
 	if slackThreadTS == "" {
@@ -35,12 +35,21 @@ func (s *JobsService) CreateJob(slackThreadTS, slackChannelID string) (*models.J
 		return nil, fmt.Errorf("slack_channel_id cannot be empty")
 	}
 
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
 	id := uuid.New()
+	integrationUUID, err := uuid.Parse(slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid slack_integration_id format: %w", err)
+	}
 
 	job := &models.Job{
-		ID:             id,
-		SlackThreadTS:  slackThreadTS,
-		SlackChannelID: slackChannelID,
+		ID:                 id,
+		SlackThreadTS:      slackThreadTS,
+		SlackChannelID:     slackChannelID,
+		SlackIntegrationID: integrationUUID,
 	}
 
 	if err := s.jobsRepo.CreateJob(job); err != nil {
@@ -51,14 +60,18 @@ func (s *JobsService) CreateJob(slackThreadTS, slackChannelID string) (*models.J
 	return job, nil
 }
 
-func (s *JobsService) GetJobByID(id uuid.UUID) (*models.Job, error) {
+func (s *JobsService) GetJobByID(id uuid.UUID, slackIntegrationID string) (*models.Job, error) {
 	log.Printf("📋 Starting to get job by ID: %s", id)
 
 	if id == uuid.Nil {
 		return nil, fmt.Errorf("job ID cannot be nil")
 	}
 
-	job, err := s.jobsRepo.GetJobByID(id)
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	job, err := s.jobsRepo.GetJobByID(id, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}
@@ -67,7 +80,7 @@ func (s *JobsService) GetJobByID(id uuid.UUID) (*models.Job, error) {
 	return job, nil
 }
 
-func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID string) (*models.JobCreationResult, error) {
+func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID, slackIntegrationID string) (*models.JobCreationResult, error) {
 	log.Printf("📋 Starting to get or create job for slack thread: %s, channel: %s", threadTS, channelID)
 
 	if threadTS == "" {
@@ -78,8 +91,12 @@ func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID string) (
 		return nil, fmt.Errorf("slack_channel_id cannot be empty")
 	}
 
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
 	// Try to find existing job first
-	existingJob, err := s.jobsRepo.GetJobBySlackThread(threadTS, channelID)
+	existingJob, err := s.jobsRepo.GetJobBySlackThread(threadTS, channelID, slackIntegrationID)
 	if err == nil {
 		log.Printf("📋 Completed successfully - found existing job with ID: %s", existingJob.ID)
 		return &models.JobCreationResult{
@@ -90,7 +107,7 @@ func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID string) (
 
 	// If not found, create a new job
 	if strings.Contains(fmt.Sprintf("%v", err), "not found") {
-		newJob, createErr := s.CreateJob(threadTS, channelID)
+		newJob, createErr := s.CreateJob(threadTS, channelID, slackIntegrationID)
 		if createErr != nil {
 			return nil, fmt.Errorf("failed to create new job: %w", createErr)
 		}
@@ -105,14 +122,18 @@ func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID string) (
 	return nil, fmt.Errorf("failed to get job by slack thread: %w", err)
 }
 
-func (s *JobsService) UpdateJobTimestamp(jobID uuid.UUID) error {
+func (s *JobsService) UpdateJobTimestamp(jobID uuid.UUID, slackIntegrationID string) error {
 	log.Printf("📋 Starting to update job timestamp for ID: %s", jobID)
 
 	if jobID == uuid.Nil {
 		return fmt.Errorf("job ID cannot be nil")
 	}
 
-	if err := s.jobsRepo.UpdateJobTimestamp(jobID); err != nil {
+	if slackIntegrationID == "" {
+		return fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	if err := s.jobsRepo.UpdateJobTimestamp(jobID, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
 
@@ -121,7 +142,7 @@ func (s *JobsService) UpdateJobTimestamp(jobID uuid.UUID) error {
 }
 
 func (s *JobsService) GetIdleJobs(idleMinutes int) ([]*models.Job, error) {
-	log.Printf("📋 Starting to get idle jobs older than %d minutes", idleMinutes)
+	log.Printf("📋 Starting to get idle jobs older than %d minutes across all integrations", idleMinutes)
 
 	if idleMinutes <= 0 {
 		return nil, fmt.Errorf("idle minutes must be greater than 0")
@@ -136,18 +157,22 @@ func (s *JobsService) GetIdleJobs(idleMinutes int) ([]*models.Job, error) {
 	return jobs, nil
 }
 
-func (s *JobsService) DeleteJob(id uuid.UUID) error {
+func (s *JobsService) DeleteJob(id uuid.UUID, slackIntegrationID string) error {
 	log.Printf("📋 Starting to delete job with ID: %s", id)
 
 	if id == uuid.Nil {
 		return fmt.Errorf("job ID cannot be nil")
 	}
 
-	if err := s.processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(id); err != nil {
+	if slackIntegrationID == "" {
+		return fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	if err := s.processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(id, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to delete processed slack messages for job: %w", err)
 	}
 
-	if err := s.jobsRepo.DeleteJob(id); err != nil {
+	if err := s.jobsRepo.DeleteJob(id, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to delete job: %w", err)
 	}
 
@@ -155,7 +180,7 @@ func (s *JobsService) DeleteJob(id uuid.UUID) error {
 	return nil
 }
 
-func (s *JobsService) CreateProcessedSlackMessage(jobID uuid.UUID, slackChannelID, slackTS, textContent string, status models.ProcessedSlackMessageStatus) (*models.ProcessedSlackMessage, error) {
+func (s *JobsService) CreateProcessedSlackMessage(jobID uuid.UUID, slackChannelID, slackTS, textContent, slackIntegrationID string, status models.ProcessedSlackMessageStatus) (*models.ProcessedSlackMessage, error) {
 	log.Printf("📋 Starting to create processed slack message for job: %s, channel: %s, ts: %s", jobID, slackChannelID, slackTS)
 
 	if jobID == uuid.Nil {
@@ -174,15 +199,24 @@ func (s *JobsService) CreateProcessedSlackMessage(jobID uuid.UUID, slackChannelI
 		return nil, fmt.Errorf("text_content cannot be empty")
 	}
 
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
 	id := uuid.New()
+	integrationUUID, err := uuid.Parse(slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid slack_integration_id format: %w", err)
+	}
 
 	message := &models.ProcessedSlackMessage{
-		ID:             id,
-		JobID:          jobID,
-		SlackChannelID: slackChannelID,
-		SlackTS:        slackTS,
-		TextContent:    textContent,
-		Status:         status,
+		ID:                 id,
+		JobID:              jobID,
+		SlackChannelID:     slackChannelID,
+		SlackTS:            slackTS,
+		TextContent:        textContent,
+		Status:             status,
+		SlackIntegrationID: integrationUUID,
 	}
 
 	if err := s.processedSlackMessagesRepo.CreateProcessedSlackMessage(message); err != nil {
@@ -193,14 +227,18 @@ func (s *JobsService) CreateProcessedSlackMessage(jobID uuid.UUID, slackChannelI
 	return message, nil
 }
 
-func (s *JobsService) UpdateProcessedSlackMessage(id uuid.UUID, status models.ProcessedSlackMessageStatus) (*models.ProcessedSlackMessage, error) {
+func (s *JobsService) UpdateProcessedSlackMessage(id uuid.UUID, status models.ProcessedSlackMessageStatus, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
 	log.Printf("📋 Starting to update processed slack message status for ID: %s to %s", id, status)
 
 	if id == uuid.Nil {
 		return nil, fmt.Errorf("processed slack message ID cannot be nil")
 	}
 
-	updatedMessage, err := s.processedSlackMessagesRepo.UpdateProcessedSlackMessageStatus(id, status)
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	updatedMessage, err := s.processedSlackMessagesRepo.UpdateProcessedSlackMessageStatus(id, status, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update processed slack message status: %w", err)
 	}
@@ -209,14 +247,18 @@ func (s *JobsService) UpdateProcessedSlackMessage(id uuid.UUID, status models.Pr
 	return updatedMessage, nil
 }
 
-func (s *JobsService) GetProcessedMessagesByJobIDAndStatus(jobID uuid.UUID, status models.ProcessedSlackMessageStatus) ([]*models.ProcessedSlackMessage, error) {
+func (s *JobsService) GetProcessedMessagesByJobIDAndStatus(jobID uuid.UUID, status models.ProcessedSlackMessageStatus, slackIntegrationID string) ([]*models.ProcessedSlackMessage, error) {
 	log.Printf("📋 Starting to get processed messages for job: %s with status: %s", jobID, status)
 
 	if jobID == uuid.Nil {
 		return nil, fmt.Errorf("job ID cannot be nil")
 	}
 
-	messages, err := s.processedSlackMessagesRepo.GetProcessedMessagesByJobIDAndStatus(jobID, status)
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	messages, err := s.processedSlackMessagesRepo.GetProcessedMessagesByJobIDAndStatus(jobID, status, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed messages: %w", err)
 	}
@@ -225,14 +267,18 @@ func (s *JobsService) GetProcessedMessagesByJobIDAndStatus(jobID uuid.UUID, stat
 	return messages, nil
 }
 
-func (s *JobsService) GetProcessedSlackMessageByID(id uuid.UUID) (*models.ProcessedSlackMessage, error) {
+func (s *JobsService) GetProcessedSlackMessageByID(id uuid.UUID, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
 	log.Printf("📋 Starting to get processed slack message by ID: %s", id)
 
 	if id == uuid.Nil {
 		return nil, fmt.Errorf("processed slack message ID cannot be nil")
 	}
 
-	message, err := s.processedSlackMessagesRepo.GetProcessedSlackMessageByID(id)
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	message, err := s.processedSlackMessagesRepo.GetProcessedSlackMessageByID(id, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed slack message: %w", err)
 	}
@@ -242,14 +288,18 @@ func (s *JobsService) GetProcessedSlackMessageByID(id uuid.UUID) (*models.Proces
 }
 
 // TESTS_UpdateJobUpdatedAt updates the updated_at timestamp of a job for testing purposes
-func (s *JobsService) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedAt time.Time) error {
+func (s *JobsService) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedAt time.Time, slackIntegrationID string) error {
 	log.Printf("📋 Starting to update job updated_at for testing purposes: %s to %s", id, updatedAt)
 
 	if id == uuid.Nil {
 		return fmt.Errorf("job ID cannot be nil")
 	}
 
-	if err := s.jobsRepo.TESTS_UpdateJobUpdatedAt(id, updatedAt); err != nil {
+	if slackIntegrationID == "" {
+		return fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	if err := s.jobsRepo.TESTS_UpdateJobUpdatedAt(id, updatedAt, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to update job updated_at: %w", err)
 	}
 
@@ -258,14 +308,18 @@ func (s *JobsService) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedAt time.Time
 }
 
 // TESTS_UpdateProcessedSlackMessageUpdatedAt updates the updated_at timestamp of a processed slack message for testing purposes
-func (s *JobsService) TESTS_UpdateProcessedSlackMessageUpdatedAt(id uuid.UUID, updatedAt time.Time) error {
+func (s *JobsService) TESTS_UpdateProcessedSlackMessageUpdatedAt(id uuid.UUID, updatedAt time.Time, slackIntegrationID string) error {
 	log.Printf("📋 Starting to update processed slack message updated_at for testing purposes: %s to %s", id, updatedAt)
 
 	if id == uuid.Nil {
 		return fmt.Errorf("processed slack message ID cannot be nil")
 	}
 
-	if err := s.processedSlackMessagesRepo.TESTS_UpdateProcessedSlackMessageUpdatedAt(id, updatedAt); err != nil {
+	if slackIntegrationID == "" {
+		return fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	if err := s.processedSlackMessagesRepo.TESTS_UpdateProcessedSlackMessageUpdatedAt(id, updatedAt, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to update processed slack message updated_at: %w", err)
 	}
 
