@@ -94,6 +94,13 @@ func main() {
 
 	cmdRunner := NewCmdRunner(anthroApiKey, permissionMode, opts.Verbose)
 
+	// Setup program-wide logging from start
+	_, err = cmdRunner.setupProgramLogging()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error setting up program logging: %v\n", err)
+		os.Exit(1)
+	}
+
 	_, err = cmdRunner.configService.InitCCAgentConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing CCAgent config: %v\n", err)
@@ -269,16 +276,16 @@ func (cr *CmdRunner) connectWithRetry(serverURL, apiKey string, retryIntervals [
 	return nil, false
 }
 
-func (cr *CmdRunner) setupConversationLogging(slackMessageID string) (*os.File, error) {
+func (cr *CmdRunner) setupProgramLogging() (*os.File, error) {
 	// Create .ccagent/logs directory if it doesn't exist
 	logsDir := ".ccagent/logs"
 	if err := os.MkdirAll(logsDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create logs directory: %w", err)
 	}
 
-	// Create log file with timestamp and conversation ID
+	// Create log file with timestamp only
 	timestamp := time.Now().Format("20060102-150405")
-	logFileName := fmt.Sprintf("%s-%s.log", timestamp, slackMessageID)
+	logFileName := fmt.Sprintf("%s.log", timestamp)
 	logFilePath := filepath.Join(logsDir, logFileName)
 
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -297,6 +304,13 @@ func (cr *CmdRunner) setupConversationLogging(slackMessageID string) (*os.File, 
 	}
 
 	return logFile, nil
+}
+
+func (cr *CmdRunner) setupConversationLogging(slackMessageID string) (*os.File, error) {
+	// This method is now deprecated since we setup logging at program start
+	// We return nil, nil to indicate no new log file was created
+	// Logging is already configured from setupProgramLogging()
+	return nil, nil
 }
 
 func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
@@ -339,12 +353,9 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 		return fmt.Errorf("failed to unmarshal start conversation payload: %w", err)
 	}
 
-	// Setup conversation logging
-	_, err := cr.setupConversationLogging(payload.SlackMessageID)
-	if err != nil {
-		log.Error("❌ Failed to setup conversation logging: %v", err)
-		return fmt.Errorf("failed to setup conversation logging: %w", err)
-	}
+	// Note: Logging is now setup at program start, so no need to setup conversation logging
+	// This call is kept for backward compatibility but does nothing
+	_, _ = cr.setupConversationLogging(payload.SlackMessageID)
 
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
 
