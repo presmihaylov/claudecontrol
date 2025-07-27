@@ -431,10 +431,6 @@ func (s *CoreUseCase) DeregisterAgent(clientID string) {
 	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
-		// Still try to delete the agent record if it exists
-		if deleteErr := s.agentsService.DeleteActiveAgentByWsConnectionID(clientID); deleteErr != nil {
-			log.Printf("❌ Failed to deregister agent for client %s: %v", clientID, deleteErr)
-		}
 		return
 	}
 
