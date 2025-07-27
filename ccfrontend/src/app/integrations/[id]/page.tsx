@@ -206,25 +206,25 @@ export default function IntegrationDetail() {
 						</CardHeader>
 					</Card>
 
-					{/* CCAgent Secret Key Section */}
+					{/* ccagent Secret Key Section */}
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<Key className="h-5 w-5" />
-								CCAgent Secret Key
+								ccagent Secret Key
 							</CardTitle>
 							<CardDescription>
-								This secret key is used by the CCAgent CLI to authenticate with your Slack
+								This secret key is used by the ccagent CLI to authenticate with your Slack
 								workspace.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							{/* Download CCAgent Button */}
+							{/* Download ccagent Button */}
 							<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
 								<div className="space-y-1">
-									<h4 className="font-medium">Download CCAgent</h4>
+									<h4 className="font-medium">Download ccagent</h4>
 									<p className="text-sm text-muted-foreground">
-										Download the CCAgent CLI tool to start using Claude Control with your Slack
+										Download the ccagent CLI tool to start using Claude Control with your Slack
 										workspace.
 									</p>
 								</div>
@@ -267,7 +267,7 @@ export default function IntegrationDetail() {
 							) : (
 								<div className="space-y-2">
 									<p className="text-sm text-muted-foreground">
-										No secret key has been generated yet. Generate one to start using CCAgent with
+										No secret key has been generated yet. Generate one to start using ccagent with
 										this workspace.
 									</p>
 									<Button
@@ -294,7 +294,7 @@ export default function IntegrationDetail() {
 								{integration.slack_team_name}"?
 								<br />
 								<br />
-								<strong>Warning:</strong> This will invalidate the old key and any running CCAgent
+								<strong>Warning:</strong> This will invalidate the old key and any running ccagent
 								instances using the old key will stop working until you update them with the new
 								key.
 							</DialogDescription>
@@ -314,7 +314,7 @@ export default function IntegrationDetail() {
 				<Dialog open={secretKeyDialogOpen} onOpenChange={setSecretKeyDialogOpen}>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>Your CCAgent Secret Key</DialogTitle>
+							<DialogTitle>Your ccagent Secret Key</DialogTitle>
 							<DialogDescription>
 								Copy this secret key and save it somewhere safe. You won't be able to see it again
 								after closing this dialog.
