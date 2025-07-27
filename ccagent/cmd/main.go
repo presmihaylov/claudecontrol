@@ -377,7 +377,7 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 - Be more explicit about errors and failures with clear emoji indicators
 - Use clear file paths with line numbers for easy navigation
 
-IMPORTANT: If you are editing a pull request description, never include or override the "Generated with claudecontrol.com from [this slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
+IMPORTANT: If you are editing a pull request description, never include or override the "Generated with [Claude Control](<http://claudecontrol.com|claudecontrol.com>) from [this slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
 `
 
 	output, err := cr.claudeClient.StartNewSessionWithSystemPrompt(payload.Message, behaviourInstructions, ".ccagent/claude")
