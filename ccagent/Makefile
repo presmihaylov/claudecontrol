@@ -1,4 +1,4 @@
-.PHONY: build clean
+.PHONY: build clean build-prod
 
 run:
 	go run cmd/*.go --verbose
@@ -9,3 +9,6 @@ build:
 
 clean:
 	rm -rf bin/
+
+build-prod:
+	./scripts/build_binaries.sh
