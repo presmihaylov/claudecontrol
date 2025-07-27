@@ -58,11 +58,16 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
+	port, err := getEnvRequired("PORT")
+	if err != nil {
+		return nil, err
+	}
+
 	config := &AppConfig{
 		SlackSigningSecret:   slackSigningSecret,
 		SlackClientID:        slackClientID,
 		SlackClientSecret:    slackClientSecret,
-		Port:                 getEnvWithDefault("PORT", "8080"),
+		Port:                 port,
 		DatabaseURL:          databaseURL,
 		DatabaseSchema:       databaseSchema,
 		ClerkSecretKey:       clerkSecretKey,
