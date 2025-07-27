@@ -7,14 +7,15 @@ import (
 
 	"ccagent/clients"
 	"ccagent/core/log"
+	"ccagent/services"
 
 	"github.com/google/uuid"
 	"github.com/lucasepe/codename"
 )
 
 type GitUseCase struct {
-	gitClient    *clients.GitClient
-	claudeClient *clients.ClaudeClient
+	gitClient     *clients.GitClient
+	claudeService *services.ClaudeService
 }
 
 type AutoCommitResult struct {
@@ -24,12 +25,13 @@ type AutoCommitResult struct {
 	RepositoryURL   string
 }
 
-func NewGitUseCase(gitClient *clients.GitClient, claudeClient *clients.ClaudeClient) *GitUseCase {
+func NewGitUseCase(gitClient *clients.GitClient, claudeService *services.ClaudeService) *GitUseCase {
 	return &GitUseCase{
-		gitClient:    gitClient,
-		claudeClient: claudeClient,
+		gitClient:     gitClient,
+		claudeService: claudeService,
 	}
 }
+
 
 func (g *GitUseCase) ValidateGitEnvironment() error {
 	log.Info("📋 Starting to validate Git environment")
@@ -241,7 +243,7 @@ Fix user authentication validation
 
 YOUR RESPONSE MUST BE THE COMMIT MESSAGE ONLY.`, branchName)
 
-	commitMessage, err := g.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
+	commitMessage, err := g.claudeService.StartNewConversationWithConfigDir(prompt, configDir)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate commit message: %w", err)
 	}
@@ -342,7 +344,7 @@ Examples:
 
 Respond with ONLY the short title, nothing else.`, branchName)
 
-	prTitle, err := g.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
+	prTitle, err := g.claudeService.StartNewConversationWithConfigDir(prompt, configDir)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate PR title: %w", err)
 	}
@@ -365,18 +367,18 @@ Please generate a professional pull request description. Include:
 
 Use proper markdown formatting.
 
-IMPORTANT: Do NOT include any "Generated with [Claude Control](<http://claudecontrol.com|claudecontrol.com>)" or similar footer text. I will add that separately.
+IMPORTANT: Do NOT include any "Generated with Claude Control" or similar footer text. I will add that separately.
 
 Respond with ONLY the PR body, nothing else.`, branchName)
 
-	prBody, err := g.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
+	prBody, err := g.claudeService.StartNewConversationWithConfigDir(prompt, configDir)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate PR body: %w", err)
 	}
 
 	// Append footer with Slack thread link
 	cleanBody := strings.TrimSpace(prBody)
-	finalBody := cleanBody + fmt.Sprintf("\n\n---\nGenerated with [Claude Control](<http://claudecontrol.com|claudecontrol.com>) from [this slack thread](%s)", slackThreadLink)
+	finalBody := cleanBody + fmt.Sprintf("\n\n---\nGenerated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
 
 	return finalBody, nil
 }
@@ -412,7 +414,7 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	}
 
 	// Check if the expected footer is present
-	expectedFooter := fmt.Sprintf("Generated with [Claude Control](<http://claudecontrol.com|claudecontrol.com>) from [this slack thread](%s)", slackThreadLink)
+	expectedFooter := fmt.Sprintf("Generated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
 	
 	if strings.Contains(currentDescription, expectedFooter) {
 		log.Info("✅ PR description already has correct Claude Control footer")
