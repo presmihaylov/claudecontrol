@@ -81,9 +81,9 @@ func main() {
 
 	cmdRunner := NewCmdRunner(anthroApiKey)
 
-	_, err = cmdRunner.configService.GetOrCreateConfig()
+	_, err = cmdRunner.configService.InitCCAgentConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing config: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error initializing CCAgent config: %v\n", err)
 		os.Exit(1)
 	}
 

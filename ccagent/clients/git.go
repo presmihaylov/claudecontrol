@@ -22,7 +22,7 @@ func (g *GitClient) CheckoutBranch(branchName string) error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Git checkout failed", "branch", branchName, "error", err, "output", string(output))
+		log.Error("❌ Git checkout failed for branch %s: %v\nOutput: %s", branchName, err, string(output))
 		return fmt.Errorf("git checkout failed: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -38,7 +38,7 @@ func (g *GitClient) PullLatest() error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Git pull failed", "error", err, "output", string(output))
+		log.Error("❌ Git pull failed: %v\nOutput: %s", err, string(output))
 		return fmt.Errorf("git pull failed: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -54,7 +54,7 @@ func (g *GitClient) ResetHard() error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Git reset hard failed", "error", err, "output", string(output))
+		log.Error("❌ Git reset hard failed: %v\nOutput: %s", err, string(output))
 		return fmt.Errorf("git reset hard failed: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -70,7 +70,7 @@ func (g *GitClient) CleanUntracked() error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Git clean failed", "error", err, "output", string(output))
+		log.Error("❌ Git clean failed: %v\nOutput: %s", err, string(output))
 		return fmt.Errorf("git clean failed: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -86,7 +86,7 @@ func (g *GitClient) AddAll() error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Git add failed", "error", err, "output", string(output))
+		log.Error("❌ Git add failed: %v\nOutput: %s", err, string(output))
 		return fmt.Errorf("git add failed: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -102,7 +102,7 @@ func (g *GitClient) Commit(message string) error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Git commit failed", "message", message, "error", err, "output", string(output))
+		log.Error("❌ Git commit failed with message '%s': %v\nOutput: %s", message, err, string(output))
 		return fmt.Errorf("git commit failed: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -118,7 +118,7 @@ func (g *GitClient) PushBranch(branchName string) error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Git push failed", "branch", branchName, "error", err, "output", string(output))
+		log.Error("❌ Git push failed for branch %s: %v\nOutput: %s", branchName, err, string(output))
 		return fmt.Errorf("git push failed: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -134,7 +134,7 @@ func (g *GitClient) CreatePullRequest(title, body, baseBranch string) (string, e
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ GitHub PR creation failed", "title", title, "error", err, "output", string(output))
+		log.Error("❌ GitHub PR creation failed for title '%s': %v\nOutput: %s", title, err, string(output))
 		return "", fmt.Errorf("github pr creation failed: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -153,7 +153,7 @@ func (g *GitClient) GetPRURL(branchName string) (string, error) {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Failed to get PR URL", "branch", branchName, "error", err, "output", string(output))
+		log.Error("❌ Failed to get PR URL for branch %s: %v\nOutput: %s", branchName, err, string(output))
 		return "", fmt.Errorf("failed to get PR URL: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -171,7 +171,7 @@ func (g *GitClient) GetCurrentBranch() (string, error) {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Failed to get current branch", "error", err, "output", string(output))
+		log.Error("❌ Failed to get current branch: %v\nOutput: %s", err, string(output))
 		return "", fmt.Errorf("failed to get current branch: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -227,7 +227,7 @@ func (g *GitClient) CreateAndCheckoutBranch(branchName string) error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Git checkout -b failed", "branch", branchName, "error", err, "output", string(output))
+		log.Error("❌ Git checkout -b failed for branch %s: %v\nOutput: %s", branchName, err, string(output))
 		return fmt.Errorf("git checkout -b failed: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -243,7 +243,7 @@ func (g *GitClient) IsGitRepository() error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Not a Git repository", "error", err, "output", string(output))
+		log.Error("❌ Not a Git repository: %v\nOutput: %s", err, string(output))
 		return fmt.Errorf("not a git repository: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -259,7 +259,7 @@ func (g *GitClient) HasRemoteRepository() error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Failed to check remotes", "error", err, "output", string(output))
+		log.Error("❌ Failed to check remotes: %v\nOutput: %s", err, string(output))
 		return fmt.Errorf("failed to check git remotes: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -282,7 +282,7 @@ func (g *GitClient) IsGitHubCLIAvailable() error {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ GitHub CLI not found", "error", err, "output", string(output))
+		log.Error("❌ GitHub CLI not found: %v\nOutput: %s", err, string(output))
 		return fmt.Errorf("github cli (gh) not found: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -291,7 +291,7 @@ func (g *GitClient) IsGitHubCLIAvailable() error {
 	output, err = cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ GitHub CLI not authenticated", "error", err, "output", string(output))
+		log.Error("❌ GitHub CLI not authenticated: %v\nOutput: %s", err, string(output))
 		return fmt.Errorf("github cli not authenticated (run 'gh auth login'): %w\nOutput: %s", err, string(output))
 	}
 	
@@ -308,7 +308,7 @@ func (g *GitClient) HasUncommittedChanges() (bool, error) {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Failed to check git status", "error", err, "output", string(output))
+		log.Error("❌ Failed to check git status: %v\nOutput: %s", err, string(output))
 		return false, fmt.Errorf("failed to check git status: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -366,7 +366,7 @@ func (g *GitClient) EnsureCCAgentInGitignore() error {
 	
 	// Write updated .gitignore
 	if err := g.writeFileContent(gitignorePath, newContent); err != nil {
-		log.Error("❌ Failed to write .gitignore", "error", err)
+		log.Error("❌ Failed to write .gitignore: %v", err)
 		return fmt.Errorf("failed to write .gitignore: %w", err)
 	}
 	
@@ -399,7 +399,7 @@ func (g *GitClient) HasExistingPR(branchName string) (bool, error) {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Failed to check for existing PR", "branch", branchName, "error", err, "output", string(output))
+		log.Error("❌ Failed to check for existing PR for branch %s: %v\nOutput: %s", branchName, err, string(output))
 		return false, fmt.Errorf("failed to check for existing PR: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -424,7 +424,7 @@ func (g *GitClient) GetLatestCommitHash() (string, error) {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Failed to get latest commit hash", "error", err, "output", string(output))
+		log.Error("❌ Failed to get latest commit hash: %v\nOutput: %s", err, string(output))
 		return "", fmt.Errorf("failed to get latest commit hash: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -441,7 +441,7 @@ func (g *GitClient) GetRemoteURL() (string, error) {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Failed to get remote URL", "error", err, "output", string(output))
+		log.Error("❌ Failed to get remote URL: %v\nOutput: %s", err, string(output))
 		return "", fmt.Errorf("failed to get remote URL: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -469,7 +469,7 @@ func (g *GitClient) GetPRDescription(branchName string) (string, error) {
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Failed to get PR description", "branch", branchName, "error", err, "output", string(output))
+		log.Error("❌ Failed to get PR description for branch %s: %v\nOutput: %s", branchName, err, string(output))
 		return "", fmt.Errorf("failed to get PR description: %w\nOutput: %s", err, string(output))
 	}
 	
@@ -486,7 +486,7 @@ func (g *GitClient) UpdatePRDescription(branchName, newDescription string) error
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Error("❌ Failed to update PR description", "branch", branchName, "error", err, "output", string(output))
+		log.Error("❌ Failed to update PR description for branch %s: %v\nOutput: %s", branchName, err, string(output))
 		return fmt.Errorf("failed to update PR description: %w\nOutput: %s", err, string(output))
 	}
 	
