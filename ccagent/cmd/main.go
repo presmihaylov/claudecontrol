@@ -26,11 +26,11 @@ type CmdRunner struct {
 	gitUseCase     *usecases.GitUseCase
 }
 
-func NewCmdRunner(anthroApiKey string) *CmdRunner {
+func NewCmdRunner(anthroApiKey string, permissionMode string) *CmdRunner {
 	log.Info("📋 Starting to initialize CmdRunner")
 	configService := services.NewConfigService()
 	sessionService := services.NewSessionService()
-	claudeClient := clients.NewClaudeClient(anthroApiKey)
+	claudeClient := clients.NewClaudeClient(anthroApiKey, permissionMode)
 	gitClient := clients.NewGitClient()
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeClient)
 
@@ -44,8 +44,9 @@ func NewCmdRunner(anthroApiKey string) *CmdRunner {
 }
 
 type Options struct {
-	Verbose bool   `short:"v" long:"verbose" description:"Enable verbose logging"`
-	URL     string `short:"u" long:"url" default:"ws://localhost:8080/ws" description:"WebSocket server URL"`
+	Verbose            bool   `short:"v" long:"verbose" description:"Enable verbose logging"`
+	URL                string `short:"u" long:"url" default:"ws://localhost:8080/ws" description:"WebSocket server URL"`
+	BypassPermissions  bool   `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 }
 
 func main() {
@@ -79,7 +80,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	cmdRunner := NewCmdRunner(anthroApiKey)
+	// Determine permission mode based on flag
+	permissionMode := "acceptEdits"
+	if opts.BypassPermissions {
+		permissionMode = "bypassPermissions"
+		fmt.Fprintf(os.Stderr, "Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
+	}
+
+	cmdRunner := NewCmdRunner(anthroApiKey, permissionMode)
 
 	_, err = cmdRunner.configService.InitCCAgentConfig()
 	if err != nil {
