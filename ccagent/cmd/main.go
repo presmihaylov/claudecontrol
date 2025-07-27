@@ -45,7 +45,6 @@ func NewCmdRunner(anthroApiKey string, permissionMode string) *CmdRunner {
 
 type Options struct {
 	Verbose            bool   `short:"v" long:"verbose" description:"Enable verbose logging"`
-	URL                string `short:"u" long:"url" default:"ws://localhost:8080/ws" description:"WebSocket server URL"`
 	BypassPermissions  bool   `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 }
 
@@ -102,8 +101,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Get WebSocket URL from environment variable with default fallback
+	wsURL := os.Getenv("CCAGENT_WS_API_URL")
+	if wsURL == "" {
+		wsURL = "https://claudecontrol.onrender.com/ws"
+	}
+
 	// Start WebSocket client
-	err = cmdRunner.startWebSocketClient(opts.URL, ccagentApiKey)
+	err = cmdRunner.startWebSocketClient(wsURL, ccagentApiKey)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting WebSocket client: %v\n", err)
 		os.Exit(1)
