@@ -23,7 +23,7 @@ type Client struct {
 }
 
 type MessageHandlerFunc func(client *Client, msg any)
-type ConnectionHookFunc func(clientID string)
+type ConnectionHookFunc func(clientID string) error
 type APIKeyValidatorFunc func(apiKey string) (string, error)
 
 type WebSocketClient struct {
@@ -217,7 +217,9 @@ func (ws *WebSocketClient) invokeConnectionHooks(clientID string) {
 	log.Printf("🔗 Invoking %d connection hooks for client %s", len(ws.connectionHooks), clientID)
 	for i, hook := range ws.connectionHooks {
 		log.Printf("🎯 Executing connection hook %d for client %s", i+1, clientID)
-		hook(clientID)
+		if err := hook(clientID); err != nil {
+			log.Printf("❌ Connection hook %d failed for client %s: %v", i+1, clientID, err)
+		}
 	}
 	log.Printf("✅ All connection hooks completed for client %s", clientID)
 }
@@ -228,7 +230,9 @@ func (ws *WebSocketClient) invokeDisconnectionHooks(clientID string) {
 	log.Printf("🔌 Invoking %d disconnection hooks for client %s", len(ws.disconnectionHooks), clientID)
 	for i, hook := range ws.disconnectionHooks {
 		log.Printf("🎯 Executing disconnection hook %d for client %s", i+1, clientID)
-		hook(clientID)
+		if err := hook(clientID); err != nil {
+			log.Printf("❌ Disconnection hook %d failed for client %s: %v", i+1, clientID, err)
+		}
 	}
 	log.Printf("✅ All disconnection hooks completed for client %s", clientID)
 }

@@ -412,26 +412,25 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS string) (
 	}
 }
 
-func (s *CoreUseCase) RegisterAgent(clientID string) {
+func (s *CoreUseCase) RegisterAgent(clientID string) error {
 	log.Printf("📋 Starting to register agent for client %s", clientID)
 
 	_, err := s.agentsService.CreateActiveAgent(clientID, nil)
 	if err != nil {
-		log.Printf("❌ Failed to register agent for client %s: %v", clientID, err)
-		return
+		return fmt.Errorf("failed to register agent for client %s: %w", clientID, err)
 	}
 
 	log.Printf("📋 Completed successfully - registered agent for client %s", clientID)
+	return nil
 }
 
-func (s *CoreUseCase) DeregisterAgent(clientID string) {
+func (s *CoreUseCase) DeregisterAgent(clientID string) error {
 	log.Printf("📋 Starting to deregister agent for client %s", clientID)
 
 	// First, get the agent to check for assigned jobs
 	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID)
 	if err != nil {
-		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
-		return
+		return fmt.Errorf("failed to find agent for client %s: %w", clientID, err)
 	}
 
 	// If agent has an assigned job, clean it up and send Slack notification
@@ -467,11 +466,11 @@ func (s *CoreUseCase) DeregisterAgent(clientID string) {
 	// Delete the agent record
 	err = s.agentsService.DeleteActiveAgentByWsConnectionID(clientID)
 	if err != nil {
-		log.Printf("❌ Failed to deregister agent for client %s: %v", clientID, err)
-		return
+		return fmt.Errorf("failed to deregister agent for client %s: %w", clientID, err)
 	}
 
 	log.Printf("📋 Completed successfully - deregistered agent for client %s", clientID)
+	return nil
 }
 
 func (s *CoreUseCase) CleanupIdleJobs() {
