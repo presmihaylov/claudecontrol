@@ -8,7 +8,6 @@ import (
 )
 
 type AppConfig struct {
-	SlackBotToken        string
 	SlackSigningSecret   string
 	SlackClientID        string
 	SlackClientSecret    string
@@ -22,11 +21,6 @@ type AppConfig struct {
 func LoadConfig() (*AppConfig, error) {
 	if err := godotenv.Load(); err != nil {
 		fmt.Println("⚠️ Could not load .env file, continuing with system env vars")
-	}
-
-	slackBotToken, err := getEnvRequired("SLACK_BOT_TOKEN")
-	if err != nil {
-		return nil, err
 	}
 
 	slackSigningSecret, err := getEnvRequired("SLACK_SIGNING_SECRET")
@@ -65,7 +59,6 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	config := &AppConfig{
-		SlackBotToken:        slackBotToken,
 		SlackSigningSecret:   slackSigningSecret,
 		SlackClientID:        slackClientID,
 		SlackClientSecret:    slackClientSecret,

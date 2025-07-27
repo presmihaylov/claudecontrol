@@ -1,96 +1,31 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 
 	"ccbackend/models"
+	"ccbackend/services"
 	"ccbackend/usecases"
-	"ccbackend/utils"
 
 	"github.com/gorilla/mux"
-	"github.com/slack-go/slack"
 )
 
 type SlackWebhooksHandler struct {
-	slackClient   *slack.Client
-	signingSecret string
-	coreUseCase   *usecases.CoreUseCase
+	signingSecret            string
+	coreUseCase              *usecases.CoreUseCase
+	slackIntegrationsService *services.SlackIntegrationsService
 }
 
-func NewSlackWebhooksHandler(slackClient *slack.Client, signingSecret string, coreUseCase *usecases.CoreUseCase) *SlackWebhooksHandler {
+func NewSlackWebhooksHandler(signingSecret string, coreUseCase *usecases.CoreUseCase, slackIntegrationsService *services.SlackIntegrationsService) *SlackWebhooksHandler {
 	return &SlackWebhooksHandler{
-		slackClient:   slackClient,
-		signingSecret: signingSecret,
-		coreUseCase:   coreUseCase,
+		signingSecret:            signingSecret,
+		coreUseCase:              coreUseCase,
+		slackIntegrationsService: slackIntegrationsService,
 	}
 }
 
-func (h *SlackWebhooksHandler) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
-	log.Printf("⚡ Slack command received from %s", r.RemoteAddr)
-	var buf bytes.Buffer
-	tee := io.TeeReader(r.Body, &buf)
-
-	verifier, err := slack.NewSecretsVerifier(r.Header, h.signingSecret)
-	if err != nil {
-		log.Printf("❌ Invalid secret verifier: %v", err)
-		http.Error(w, "invalid secret verifier", http.StatusUnauthorized)
-		return
-	}
-
-	if _, err := io.Copy(&verifier, tee); err != nil {
-		log.Printf("❌ Failed to read request body: %v", err)
-		http.Error(w, "failed to read body", http.StatusInternalServerError)
-		return
-	}
-
-	if err := verifier.Ensure(); err != nil {
-		log.Printf("❌ Slack signature verification failed: %v", err)
-		http.Error(w, "signature verification failed", http.StatusUnauthorized)
-		return
-	}
-
-	log.Printf("✅ Slack signature verification successful")
-
-	r.Body = io.NopCloser(&buf)
-
-	command, err := slack.SlashCommandParse(r)
-	if err != nil {
-		log.Printf("❌ Failed to parse slash command: %v", err)
-		http.Error(w, "failed to parse slash command", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("⚡ Parsed slash command: %s from user %s in channel %s", command.Command, command.UserID, command.ChannelID)
-
-	if command.Command == "/cc" {
-		log.Printf("🎯 Processing /cc command with text: %s", command.Text)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-
-		go func() {
-			_, _, err := h.slackClient.PostMessage(command.ChannelID,
-				slack.MsgOptionText(utils.ConvertMarkdownToSlack("echo "+command.Text), false),
-				slack.MsgOptionPostMessageParameters(slack.PostMessageParameters{
-					AsUser: true,
-				}),
-			)
-			if err != nil {
-				log.Printf("❌ Failed to post message: %v", err)
-			} else {
-				log.Printf("✅ /cc command response posted successfully to channel %s", command.ChannelID)
-			}
-		}()
-
-		return
-	}
-
-	log.Printf("⚠️ Unknown slash command: %s", command.Command)
-	w.WriteHeader(http.StatusOK)
-}
 
 func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Request) {
 	log.Printf("📨 Slack event received from %s", r.RemoteAddr)
@@ -121,6 +56,25 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 	}
 
 	log.Printf("📞 Event callback received from Slack")
+	
+	// Extract team_id from the event
+	teamID, ok := body["team_id"].(string)
+	if !ok || teamID == "" {
+		log.Printf("❌ Team ID not found in Slack event")
+		http.Error(w, "team_id not found", http.StatusBadRequest)
+		return
+	}
+	
+	// Lookup slack integration by team_id
+	slackIntegration, err := h.slackIntegrationsService.GetSlackIntegrationByTeamID(teamID)
+	if err != nil {
+		log.Printf("❌ Failed to find slack integration for team %s: %v", teamID, err)
+		http.Error(w, "integration not found", http.StatusNotFound)
+		return
+	}
+	
+	log.Printf("🔑 Found slack integration for team %s (ID: %s)", teamID, slackIntegration.ID)
+	
 	event := body["event"].(map[string]any)
 	eventType := event["type"].(string)
 	if eventType != "app_mention" {
@@ -149,7 +103,7 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 		ThreadTs: threadTs,
 	}
 
-	if err := h.coreUseCase.ProcessSlackMessageEvent(slackEvent); err != nil {
+	if err := h.coreUseCase.ProcessSlackMessageEvent(slackEvent, slackIntegration.ID.String()); err != nil {
 		log.Printf("❌ Failed to process Slack message event: %v", err)
 	}
 
@@ -158,9 +112,6 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 
 func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
 	log.Printf("🚀 Registering Slack webhook endpoints")
-	
-	router.HandleFunc("/slack/commands", h.HandleSlackCommand).Methods("POST")
-	log.Printf("✅ POST /slack/commands endpoint registered")
 	
 	router.HandleFunc("/slack/events", h.HandleSlackEvent).Methods("POST")
 	log.Printf("✅ POST /slack/events endpoint registered")

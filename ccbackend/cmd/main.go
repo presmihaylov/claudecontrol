@@ -20,7 +20,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
-	"github.com/slack-go/slack"
 )
 
 func main() {
@@ -62,7 +61,6 @@ func run() error {
 		log.Printf("⚠️ Failed to clear stale active agents: %v", err)
 	}
 
-	slackClient := slack.New(cfg.SlackBotToken)
 	
 	// Create API key validator for WebSocket connections
 	apiKeyValidator := func(apiKey string) (string, error) {
@@ -75,9 +73,9 @@ func run() error {
 	
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)
 	
-	coreUseCase := usecases.NewCoreUseCase(slackClient, wsClient, agentsService, jobsService)
+	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
-	slackHandler := handlers.NewSlackWebhooksHandler(slackClient, cfg.SlackSigningSecret, coreUseCase)
+	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, cfg.ClerkSecretKey)
 	

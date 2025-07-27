@@ -157,3 +157,43 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(sec
 
 	return &integration, nil
 }
+
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(teamID string) (*models.SlackIntegration, error) {
+	if teamID == "" {
+		return nil, fmt.Errorf("team ID cannot be empty")
+	}
+
+	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.slack_integrations 
+		WHERE slack_team_id = $1`, columnsStr, r.schema)
+
+	var integration models.SlackIntegration
+	err := r.db.Get(&integration, query, teamID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slack integration by team ID: %w", err)
+	}
+
+	return &integration, nil
+}
+
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(id uuid.UUID) (*models.SlackIntegration, error) {
+	if id == uuid.Nil {
+		return nil, fmt.Errorf("integration ID cannot be nil")
+	}
+
+	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.slack_integrations 
+		WHERE id = $1`, columnsStr, r.schema)
+
+	var integration models.SlackIntegration
+	err := r.db.Get(&integration, query, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slack integration by ID: %w", err)
+	}
+
+	return &integration, nil
+}
