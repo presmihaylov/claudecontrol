@@ -86,6 +86,13 @@ func run() error {
 	wsClient.RegisterWithRouter(router)
 	slackHandler.SetupEndpoints(router)
 	dashboardHandler.SetupEndpoints(router, authMiddleware)
+	
+	// Health check endpoint
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}).Methods("GET")
 
 	// Register WebSocket hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
