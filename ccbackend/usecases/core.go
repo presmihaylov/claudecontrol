@@ -427,7 +427,49 @@ func (s *CoreUseCase) RegisterAgent(clientID string) {
 func (s *CoreUseCase) DeregisterAgent(clientID string) {
 	log.Printf("📋 Starting to deregister agent for client %s", clientID)
 
-	err := s.agentsService.DeleteActiveAgentByWsConnectionID(clientID)
+	// First, get the agent to check for assigned jobs
+	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID)
+	if err != nil {
+		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
+		// Still try to delete the agent record if it exists
+		if deleteErr := s.agentsService.DeleteActiveAgentByWsConnectionID(clientID); deleteErr != nil {
+			log.Printf("❌ Failed to deregister agent for client %s: %v", clientID, deleteErr)
+		}
+		return
+	}
+
+	// If agent has an assigned job, clean it up and send Slack notification
+	if agent.AssignedJobID != nil {
+		log.Printf("🧹 Agent %s has assigned job %s, cleaning up", agent.ID, *agent.AssignedJobID)
+		
+		// Get the job to find Slack thread information
+		job, err := s.jobsService.GetJobByID(*agent.AssignedJobID)
+		if err != nil {
+			log.Printf("❌ Failed to get job %s for cleanup: %v", *agent.AssignedJobID, err)
+		} else {
+			// Send abandonment message to Slack thread
+			abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
+			_, _, err = s.slackClient.PostMessage(job.SlackChannelID,
+				slack.MsgOptionText(utils.ConvertMarkdownToSlack(abandonmentMessage), false),
+				slack.MsgOptionTS(job.SlackThreadTS),
+			)
+			if err != nil {
+				log.Printf("⚠️ Failed to send abandonment message to Slack thread %s: %v", job.SlackThreadTS, err)
+			} else {
+				log.Printf("📤 Sent abandonment message to Slack thread %s", job.SlackThreadTS)
+			}
+
+			// Delete the job
+			if err := s.jobsService.DeleteJob(job.ID); err != nil {
+				log.Printf("❌ Failed to delete abandoned job %s: %v", job.ID, err)
+			} else {
+				log.Printf("🗑️ Deleted abandoned job %s", job.ID)
+			}
+		}
+	}
+
+	// Delete the agent record
+	err = s.agentsService.DeleteActiveAgentByWsConnectionID(clientID)
 	if err != nil {
 		log.Printf("❌ Failed to deregister agent for client %s: %v", clientID, err)
 		return
