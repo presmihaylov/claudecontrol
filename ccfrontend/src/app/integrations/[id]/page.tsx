@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { ArrowLeft, Copy, Key, RefreshCw, Slack } from "lucide-react";
+import { ArrowLeft, Copy, Download, Key, RefreshCw, Slack } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -219,6 +219,29 @@ export default function IntegrationDetail() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
+							{/* Download CCAgent Button */}
+							<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+								<div className="space-y-1">
+									<h4 className="font-medium">Download CCAgent</h4>
+									<p className="text-sm text-muted-foreground">
+										Download the CCAgent CLI tool to start using Claude Control with your Slack
+										workspace.
+									</p>
+								</div>
+								<Button
+									variant="outline"
+									onClick={() =>
+										window.open(
+											"https://drive.google.com/drive/folders/12M6c9Ql9PObqKBPWbrHCMcNCcvXHMLFH?usp=sharing",
+											"_blank",
+										)
+									}
+									className="flex items-center gap-2"
+								>
+									<Download className="h-4 w-4" />
+									Download
+								</Button>
+							</div>
 							{hasSecretKey ? (
 								<div className="space-y-2">
 									<p className="text-sm text-muted-foreground">
