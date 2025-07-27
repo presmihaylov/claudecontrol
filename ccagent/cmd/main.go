@@ -24,7 +24,7 @@ import (
 type CmdRunner struct {
 	configService  *services.ConfigService
 	sessionService *services.SessionService
-	claudeClient   *clients.ClaudeClient
+	claudeService  *services.ClaudeService
 	gitUseCase     *usecases.GitUseCase
 	verbose        bool
 }
@@ -34,14 +34,15 @@ func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *Cmd
 	configService := services.NewConfigService()
 	sessionService := services.NewSessionService()
 	claudeClient := clients.NewClaudeClient(anthroApiKey, permissionMode)
+	claudeService := services.NewClaudeService(claudeClient)
 	gitClient := clients.NewGitClient()
-	gitUseCase := usecases.NewGitUseCase(gitClient, claudeClient)
+	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService)
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
 		configService:  configService,
 		sessionService: sessionService,
-		claudeClient:   claudeClient,
+		claudeService:  claudeService,
 		gitUseCase:     gitUseCase,
 		verbose:        verbose,
 	}
@@ -51,6 +52,7 @@ type Options struct {
 	Verbose            bool   `short:"v" long:"verbose" description:"Enable verbose logging"`
 	BypassPermissions  bool   `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 }
+
 
 func main() {
 	var opts Options
@@ -377,10 +379,10 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 - Be more explicit about errors and failures with clear emoji indicators
 - Use clear file paths with line numbers for easy navigation
 
-IMPORTANT: If you are editing a pull request description, never include or override the "Generated with [Claude Control](<http://claudecontrol.com|claudecontrol.com>) from [this slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
+IMPORTANT: If you are editing a pull request description, never include or override the "Generated with [Claude Control](https://claudecontrol.com) from this [slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
 `
 
-	output, err := cr.claudeClient.StartNewSessionWithSystemPrompt(payload.Message, behaviourInstructions, ".ccagent/claude")
+	output, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions, ".ccagent/claude")
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
 		return fmt.Errorf("error starting Claude session: %w", err)
@@ -437,7 +439,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 
 	// For now, we'll use a dummy session ID since ContinueSession isn't working properly
 	// according to the comment in claude.go
-	output, err := cr.claudeClient.ContinueSession("dummy-session", payload.Message)
+	output, err := cr.claudeService.ContinueConversation("dummy-session", payload.Message)
 	if err != nil {
 		log.Info("❌ Error continuing Claude session: %v", err)
 		return fmt.Errorf("error continuing Claude session: %w", err)
