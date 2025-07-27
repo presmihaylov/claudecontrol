@@ -412,28 +412,65 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS string) (
 	}
 }
 
-func (s *CoreUseCase) RegisterAgent(clientID string) {
+func (s *CoreUseCase) RegisterAgent(clientID string) error {
 	log.Printf("📋 Starting to register agent for client %s", clientID)
 
 	_, err := s.agentsService.CreateActiveAgent(clientID, nil)
 	if err != nil {
-		log.Printf("❌ Failed to register agent for client %s: %v", clientID, err)
-		return
+		return fmt.Errorf("failed to register agent for client %s: %w", clientID, err)
 	}
 
 	log.Printf("📋 Completed successfully - registered agent for client %s", clientID)
+	return nil
 }
 
-func (s *CoreUseCase) DeregisterAgent(clientID string) {
+func (s *CoreUseCase) DeregisterAgent(clientID string) error {
 	log.Printf("📋 Starting to deregister agent for client %s", clientID)
 
-	err := s.agentsService.DeleteActiveAgentByWsConnectionID(clientID)
+	// First, get the agent to check for assigned jobs
+	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID)
 	if err != nil {
-		log.Printf("❌ Failed to deregister agent for client %s: %v", clientID, err)
-		return
+		return fmt.Errorf("failed to find agent for client %s: %w", clientID, err)
+	}
+
+	// If agent has an assigned job, clean it up and send Slack notification
+	if agent.AssignedJobID != nil {
+		log.Printf("🧹 Agent %s has assigned job %s, cleaning up", agent.ID, *agent.AssignedJobID)
+		
+		// Get the job to find Slack thread information
+		job, err := s.jobsService.GetJobByID(*agent.AssignedJobID)
+		if err != nil {
+			log.Printf("❌ Failed to get job %s for cleanup: %v", *agent.AssignedJobID, err)
+		} else {
+			// Send abandonment message to Slack thread
+			abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
+			_, _, err = s.slackClient.PostMessage(job.SlackChannelID,
+				slack.MsgOptionText(utils.ConvertMarkdownToSlack(abandonmentMessage), false),
+				slack.MsgOptionTS(job.SlackThreadTS),
+			)
+			if err != nil {
+				log.Printf("⚠️ Failed to send abandonment message to Slack thread %s: %v", job.SlackThreadTS, err)
+			} else {
+				log.Printf("📤 Sent abandonment message to Slack thread %s", job.SlackThreadTS)
+			}
+
+			// Delete the job
+			if err := s.jobsService.DeleteJob(job.ID); err != nil {
+				log.Printf("❌ Failed to delete abandoned job %s: %v", job.ID, err)
+			} else {
+				log.Printf("🗑️ Deleted abandoned job %s", job.ID)
+			}
+		}
+	}
+
+	// Delete the agent record
+	err = s.agentsService.DeleteActiveAgentByWsConnectionID(clientID)
+	if err != nil {
+		return fmt.Errorf("failed to deregister agent for client %s: %w", clientID, err)
 	}
 
 	log.Printf("📋 Completed successfully - deregistered agent for client %s", clientID)
+	return nil
 }
 
 func (s *CoreUseCase) CleanupIdleJobs() {
