@@ -17,6 +17,7 @@ import (
 	"ccagent/services"
 	"ccagent/usecases"
 
+	"github.com/gammazero/workerpool"
 	"github.com/gorilla/websocket"
 	"github.com/jessevdk/go-flags"
 )
@@ -177,9 +178,15 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
 
+		// Initialize worker pool with 1 worker for sequential processing
+		wp := workerpool.New(1)
+		defer wp.StopWait()
+
 		// Start message reading goroutine
 		go func() {
 			defer close(done)
+			defer wp.StopWait() // Ensure all queued messages complete
+			
 			for {
 				var msg UnknownMessage
 				err := conn.ReadJSON(&msg)
@@ -192,7 +199,11 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				}
 
 				log.Info("📨 Received message type: %s", msg.Type)
-				cr.handleMessage(msg, conn)
+				
+				// NON-BLOCKING: Submit to worker pool
+				wp.Submit(func() {
+					cr.handleMessage(msg, conn)
+				})
 			}
 		}()
 

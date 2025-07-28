@@ -9,4 +9,8 @@ require (
 	github.com/lucasepe/codename v0.2.0
 )
 
-require golang.org/x/sys v0.21.0 // indirect
+require (
+	github.com/gammazero/deque v0.2.0 // indirect
+	github.com/gammazero/workerpool v1.1.3 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+)
