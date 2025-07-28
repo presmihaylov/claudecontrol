@@ -19,7 +19,7 @@ func NewClaudeService(claudeClient *clients.ClaudeClient) *ClaudeService {
 
 func (c *ClaudeService) StartNewConversation(prompt string) (string, error) {
 	log.Info("📋 Starting to start new Claude conversation")
-	
+
 	messages, err := c.claudeClient.StartNewSession(prompt)
 	if err != nil {
 		log.Error("Failed to start new Claude session: %v", err)
@@ -39,9 +39,10 @@ func (c *ClaudeService) StartNewConversation(prompt string) (string, error) {
 	return result, nil
 }
 
+// Testing - delete this
 func (c *ClaudeService) StartNewConversationWithConfigDir(prompt, configDir string) (string, error) {
 	log.Info("📋 Starting to start new Claude conversation with config dir: %s", configDir)
-	
+
 	messages, err := c.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
 	if err != nil {
 		log.Error("Failed to start new Claude session with config dir: %v", err)
@@ -63,7 +64,7 @@ func (c *ClaudeService) StartNewConversationWithConfigDir(prompt, configDir stri
 
 func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPrompt, configDir string) (string, error) {
 	log.Info("📋 Starting to start new Claude conversation with system prompt")
-	
+
 	messages, err := c.claudeClient.StartNewSessionWithSystemPrompt(prompt, systemPrompt, configDir)
 	if err != nil {
 		log.Error("Failed to start new Claude session with system prompt: %v", err)
@@ -85,7 +86,7 @@ func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPromp
 
 func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (string, error) {
 	log.Info("📋 Starting to continue Claude conversation: %s", sessionID)
-	
+
 	messages, err := c.claudeClient.ContinueSession(sessionID, prompt)
 	if err != nil {
 		log.Error("Failed to continue Claude session: %v", err)
@@ -124,3 +125,4 @@ func (c *ClaudeService) extractClaudeResult(messages []clients.ClaudeMessage) (s
 	}
 	return "", fmt.Errorf("no assistant message with text content found")
 }
+
