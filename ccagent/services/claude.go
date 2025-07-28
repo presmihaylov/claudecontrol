@@ -39,7 +39,6 @@ func (c *ClaudeService) StartNewConversation(prompt string) (string, error) {
 	return result, nil
 }
 
-// Testing - delete this
 func (c *ClaudeService) StartNewConversationWithConfigDir(prompt, configDir string) (string, error) {
 	log.Info("📋 Starting to start new Claude conversation with config dir: %s", configDir)
 
@@ -125,4 +124,3 @@ func (c *ClaudeService) extractClaudeResult(messages []clients.ClaudeMessage) (s
 	}
 	return "", fmt.Errorf("no assistant message with text content found")
 }
-
