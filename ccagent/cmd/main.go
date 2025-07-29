@@ -411,6 +411,7 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
+			JobID:          payload.JobID,
 			Message:        output,
 			SlackMessageID: payload.SlackMessageID,
 		},
@@ -468,6 +469,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
+			JobID:          payload.JobID,
 			Message:        output,
 			SlackMessageID: payload.SlackMessageID,
 		},
