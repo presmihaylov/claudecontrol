@@ -433,43 +433,7 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 	if err != nil {
 		// Job not assigned to any agent yet - need to assign to an available agent
 		if strings.Contains(fmt.Sprintf("%v", err), "not found") {
-			log.Printf("📝 Job %s not yet assigned, looking for available agent", job.ID)
-
-			availableAgents, err := s.agentsService.GetAvailableAgents(slackIntegrationID)
-			if err != nil {
-				log.Printf("❌ Failed to get available agents: %v", err)
-				return "", fmt.Errorf("failed to get available agents: %w", err)
-			}
-
-			if len(availableAgents) == 0 {
-				// Return empty string to signal no available agents
-				return "", nil
-			}
-
-			// Get active WebSocket connections to reconcile with database agents
-			connectedClientIDs := s.wsClient.GetClientIDs()
-			log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
-
-			// Filter available agents to only those with active WebSocket connections
-			connectedAgents := lo.Filter(availableAgents, func(agent *models.ActiveAgent, _ int) bool {
-				return lo.Contains(connectedClientIDs, agent.WSConnectionID)
-			})
-
-			if len(connectedAgents) == 0 {
-				log.Printf("⚠️ No available agents have active WebSocket connections")
-				return "", nil
-			}
-
-			selectedAgent := connectedAgents[0]
-
-			// Assign the job to the selected agent
-			if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, job.ID, slackIntegrationID); err != nil {
-				log.Printf("❌ Failed to assign job %s to agent %s: %v", job.ID, selectedAgent.ID, err)
-				return "", fmt.Errorf("failed to assign job to agent: %w", err)
-			}
-
-			log.Printf("✅ Assigned job %s to agent %s for slack thread %s", job.ID, selectedAgent.ID, threadTS)
-			return selectedAgent.WSConnectionID, nil
+			return s.assignJobToAvailableAgent(job, threadTS, slackIntegrationID)
 		}
 
 		// Some other error occurred
@@ -484,9 +448,48 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 		return existingAgent.WSConnectionID, nil
 	}
 
-	// Existing agent doesn't have active connection - return empty to signal no available agents
+	// Existing agent doesn't have active connection - return error to signal no available agents
 	log.Printf("⚠️ Job %s assigned to agent %s but no active WebSocket connection found", job.ID, existingAgent.ID)
-	return "", nil
+	return "", fmt.Errorf("no active agents available for job assignment")
+}
+
+func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slackIntegrationID string) (string, error) {
+	log.Printf("📝 Job %s not yet assigned, looking for available agent", job.ID)
+
+	availableAgents, err := s.agentsService.GetAvailableAgents(slackIntegrationID)
+	if err != nil {
+		log.Printf("❌ Failed to get available agents: %v", err)
+		return "", fmt.Errorf("failed to get available agents: %w", err)
+	}
+
+	if len(availableAgents) == 0 {
+		return "", fmt.Errorf("no available agents found for job assignment")
+	}
+
+	// Get active WebSocket connections to reconcile with database agents
+	connectedClientIDs := s.wsClient.GetClientIDs()
+	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
+
+	// Filter available agents to only those with active WebSocket connections
+	connectedAgents := lo.Filter(availableAgents, func(agent *models.ActiveAgent, _ int) bool {
+		return lo.Contains(connectedClientIDs, agent.WSConnectionID)
+	})
+
+	if len(connectedAgents) == 0 {
+		log.Printf("⚠️ No available agents have active WebSocket connections")
+		return "", fmt.Errorf("no agents with active WebSocket connections available for job assignment")
+	}
+
+	selectedAgent := connectedAgents[0]
+
+	// Assign the job to the selected agent
+	if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, job.ID, slackIntegrationID); err != nil {
+		log.Printf("❌ Failed to assign job %s to agent %s: %v", job.ID, selectedAgent.ID, err)
+		return "", fmt.Errorf("failed to assign job to agent: %w", err)
+	}
+
+	log.Printf("✅ Assigned job %s to agent %s for slack thread %s", job.ID, selectedAgent.ID, threadTS)
+	return selectedAgent.WSConnectionID, nil
 }
 
 func (s *CoreUseCase) RegisterAgent(clientID string) error {
