@@ -169,6 +169,7 @@ CREATE TABLE {schema}.active_agents (
 ```bash
 cd ccbackend && make build  # Build first to catch compilation issues
 cd ccbackend && make test   # Then run tests
+cd ccagent && make build    # Build ccagent to catch compilation issues
 cd ccfrontend && bun run build && bun run lint  # Build and lint frontend
 ```
 
