@@ -99,6 +99,18 @@ func (s *SlackIntegrationsService) GetSlackIntegrationsByUserID(userID uuid.UUID
 	return integrations, nil
 }
 
+func (s *SlackIntegrationsService) GetAllSlackIntegrations() ([]*models.SlackIntegration, error) {
+	log.Printf("📋 Starting to get all Slack integrations")
+
+	integrations, err := s.slackIntegrationsRepo.GetAllSlackIntegrations()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all slack integrations: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found %d Slack integrations", len(integrations))
+	return integrations, nil
+}
+
 func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, integrationID uuid.UUID) error {
 	log.Printf("📋 Starting to delete Slack integration: %s", integrationID)
 

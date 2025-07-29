@@ -109,6 +109,22 @@ func (r *PostgresAgentsRepository) GetAvailableAgents(slackIntegrationID string)
 	return agents, nil
 }
 
+func (r *PostgresAgentsRepository) GetAllActiveAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
+	query := fmt.Sprintf(`
+		SELECT id, ws_connection_id, slack_integration_id, created_at, updated_at 
+		FROM %s.active_agents 
+		WHERE slack_integration_id = $1
+		ORDER BY created_at ASC`, r.schema)
+
+	var agents []*models.ActiveAgent
+	err := r.db.Select(&agents, query, slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all active agents: %w", err)
+	}
+
+	return agents, nil
+}
+
 func (r *PostgresAgentsRepository) DeleteAllActiveAgents() error {
 	query := fmt.Sprintf("DELETE FROM %s.active_agents", r.schema)
 

@@ -99,11 +99,22 @@ func run() error {
 	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
 	wsClient.RegisterMessageHandler(wsHandler.HandleMessage)
 
-	// Start periodic cleanup of idle jobs
+	// Run initial cleanup of stale agents after WebSocket server is ready
+	log.Printf("🧹 Running initial stale agent cleanup")
+	if err := coreUseCase.CleanupStaleActiveAgents(); err != nil {
+		log.Printf("⚠️ Initial stale agent cleanup encountered errors: %v", err)
+	}
+
+	// Start periodic cleanup of idle jobs and stale agents
 	cleanupTicker := time.NewTicker(2 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
-			coreUseCase.CleanupIdleJobs()
+			if err := coreUseCase.CleanupIdleJobs(); err != nil {
+				log.Printf("⚠️ Periodic idle job cleanup encountered errors: %v", err)
+			}
+			if err := coreUseCase.CleanupStaleActiveAgents(); err != nil {
+				log.Printf("⚠️ Periodic stale agent cleanup encountered errors: %v", err)
+			}
 		}
 	}()
 	defer cleanupTicker.Stop()
