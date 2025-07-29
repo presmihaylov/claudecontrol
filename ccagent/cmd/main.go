@@ -54,10 +54,9 @@ func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *Cmd
 }
 
 type Options struct {
-	Verbose            bool   `short:"v" long:"verbose" description:"Enable verbose logging"`
-	BypassPermissions  bool   `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
+	Verbose           bool `short:"v" long:"verbose" description:"Enable verbose logging"`
+	BypassPermissions bool `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 }
-
 
 func main() {
 	var opts Options
@@ -190,7 +189,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		go func() {
 			defer close(done)
 			defer wp.StopWait() // Ensure all queued messages complete
-			
+
 			for {
 				var msg UnknownMessage
 				err := conn.ReadJSON(&msg)
@@ -203,7 +202,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				}
 
 				log.Info("📨 Received message type: %s", msg.Type)
-				
+
 				// NON-BLOCKING: Submit to worker pool
 				wp.Submit(func() {
 					cr.handleMessage(msg, conn)
@@ -219,12 +218,10 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				// Connection closed, trigger reconnection
 				conn.Close()
 				log.Info("🔄 Connection lost, attempting to reconnect...")
-				break
 			case <-reconnect:
 				// Connection lost from read goroutine, trigger reconnection
 				conn.Close()
 				log.Info("🔄 Connection lost, attempting to reconnect...")
-				break
 			case <-interrupt:
 				log.Info("🔌 Interrupt received, closing connection...")
 
@@ -321,7 +318,6 @@ func (cr *CmdRunner) setupProgramLogging() (*os.File, error) {
 	return logFile, nil
 }
 
-
 func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 	switch msg.Type {
 	case MessageTypeStartConversation:
@@ -417,7 +413,7 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 	if commitResult != nil && commitResult.BranchName != "" {
 		finalBranchName = commitResult.BranchName
 	}
-	
+
 	cr.appState.UpdateJobData(payload.JobID, models.JobData{
 		JobID:           payload.JobID,
 		BranchName:      finalBranchName,
@@ -498,7 +494,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	if commitResult != nil && commitResult.BranchName != "" {
 		finalBranchName = commitResult.BranchName
 	}
-	
+
 	cr.appState.UpdateJobData(payload.JobID, models.JobData{
 		JobID:           payload.JobID,
 		BranchName:      finalBranchName,
