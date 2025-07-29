@@ -15,6 +15,7 @@ import (
 
 	"ccagent/clients"
 	"ccagent/core/log"
+	"ccagent/models"
 	"ccagent/services"
 	"ccagent/usecases"
 
@@ -28,6 +29,7 @@ type CmdRunner struct {
 	sessionService *services.SessionService
 	claudeService  *services.ClaudeService
 	gitUseCase     *usecases.GitUseCase
+	appState       *models.AppState
 	verbose        bool
 }
 
@@ -39,6 +41,7 @@ func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *Cmd
 	claudeService := services.NewClaudeService(claudeClient)
 	gitClient := clients.NewGitClient()
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService)
+	appState := models.NewAppState()
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
@@ -46,15 +49,15 @@ func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *Cmd
 		sessionService: sessionService,
 		claudeService:  claudeService,
 		gitUseCase:     gitUseCase,
+		appState:       appState,
 		verbose:        verbose,
 	}
 }
 
 type Options struct {
-	Verbose            bool   `short:"v" long:"verbose" description:"Enable verbose logging"`
-	BypassPermissions  bool   `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
+	Verbose           bool `short:"v" long:"verbose" description:"Enable verbose logging"`
+	BypassPermissions bool `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 }
-
 
 func main() {
 	var opts Options
@@ -187,7 +190,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		go func() {
 			defer close(done)
 			defer wp.StopWait() // Ensure all queued messages complete
-			
+
 			for {
 				var msg UnknownMessage
 				err := conn.ReadJSON(&msg)
@@ -200,7 +203,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				}
 
 				log.Info("📨 Received message type: %s", msg.Type)
-				
+
 				// NON-BLOCKING: Submit to worker pool
 				wp.Submit(func() {
 					cr.handleMessage(msg, conn)
@@ -216,12 +219,10 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				// Connection closed, trigger reconnection
 				conn.Close()
 				log.Info("🔄 Connection lost, attempting to reconnect...")
-				break
 			case <-reconnect:
 				// Connection lost from read goroutine, trigger reconnection
 				conn.Close()
 				log.Info("🔄 Connection lost, attempting to reconnect...")
-				break
 			case <-interrupt:
 				log.Info("🔌 Interrupt received, closing connection...")
 
@@ -318,7 +319,6 @@ func (cr *CmdRunner) setupProgramLogging() (*os.File, error) {
 	return logFile, nil
 }
 
-
 func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 	switch msg.Type {
 	case MessageTypeStartConversation:
@@ -362,7 +362,8 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
 
 	// Prepare Git environment for new conversation - FAIL if this doesn't work
-	if err := cr.gitUseCase.PrepareForNewConversation(payload.Message); err != nil {
+	branchName, err := cr.gitUseCase.PrepareForNewConversation(payload.Message)
+	if err != nil {
 		log.Error("❌ Failed to prepare Git environment: %v", err)
 		return fmt.Errorf("failed to prepare Git environment: %w", err)
 	}
@@ -395,7 +396,7 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 IMPORTANT: If you are editing a pull request description, never include or override the "Generated with [Claude Control](https://claudecontrol.com) from this [slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
 `
 
-	output, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions, ".ccagent/claude")
+	claudeResult, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions, ".ccagent/claude")
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
 		return fmt.Errorf("error starting Claude session: %w", err)
@@ -408,11 +409,24 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		return fmt.Errorf("auto-commit failed: %w", err)
 	}
 
+	// Update JobData with conversation info (use commitResult.BranchName if available, otherwise branchName)
+	finalBranchName := branchName
+	if commitResult != nil && commitResult.BranchName != "" {
+		finalBranchName = commitResult.BranchName
+	}
+
+	cr.appState.UpdateJobData(payload.JobID, models.JobData{
+		JobID:           payload.JobID,
+		BranchName:      finalBranchName,
+		ClaudeSessionID: claudeResult.SessionID,
+	})
+
 	// Send assistant response back first
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
-			Message:        output,
+			JobID:          payload.JobID,
+			Message:        claudeResult.Output,
 			SlackMessageID: payload.SlackMessageID,
 		},
 	}
@@ -450,9 +464,20 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 
 	log.Info("💬 Continuing conversation with message: %s", payload.Message)
 
-	// For now, we'll use a dummy session ID since ContinueSession isn't working properly
-	// according to the comment in claude.go
-	output, err := cr.claudeService.ContinueConversation("dummy-session", payload.Message)
+	// Get the current job data to retrieve the Claude session ID
+	jobData, exists := cr.appState.GetJobData(payload.JobID)
+	if !exists {
+		log.Info("❌ JobID %s not found in AppState", payload.JobID)
+		return fmt.Errorf("job %s not found - conversation may have been started elsewhere", payload.JobID)
+	}
+
+	sessionID := jobData.ClaudeSessionID
+	if sessionID == "" {
+		log.Info("❌ No Claude session ID found for job %s", payload.JobID)
+		return fmt.Errorf("no active Claude session found for job %s", payload.JobID)
+	}
+
+	claudeResult, err := cr.claudeService.ContinueConversation(sessionID, payload.Message)
 	if err != nil {
 		log.Info("❌ Error continuing Claude session: %v", err)
 		return fmt.Errorf("error continuing Claude session: %w", err)
@@ -465,11 +490,24 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 		return fmt.Errorf("auto-commit failed: %w", err)
 	}
 
+	// Update JobData with latest session ID and branch name from commit result
+	finalBranchName := jobData.BranchName
+	if commitResult != nil && commitResult.BranchName != "" {
+		finalBranchName = commitResult.BranchName
+	}
+
+	cr.appState.UpdateJobData(payload.JobID, models.JobData{
+		JobID:           payload.JobID,
+		BranchName:      finalBranchName,
+		ClaudeSessionID: claudeResult.SessionID,
+	})
+
 	// Send assistant response back first
 	response := UnknownMessage{
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
-			Message:        output,
+			JobID:          payload.JobID,
+			Message:        claudeResult.Output,
 			SlackMessageID: payload.SlackMessageID,
 		},
 	}

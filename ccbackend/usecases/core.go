@@ -332,6 +332,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 	startConversationMessage := models.UnknownMessage{
 		Type: models.MessageTypeStartConversation,
 		Payload: models.StartConversationPayload{
+			JobID:            message.JobID.String(),
 			Message:          message.TextContent,
 			SlackMessageID:   message.ID.String(),
 			SlackMessageLink: permalink,
@@ -363,6 +364,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 	userMessage := models.UnknownMessage{
 		Type: models.MessageTypeUserMessage,
 		Payload: models.UserMessagePayload{
+			JobID:            message.JobID.String(),
 			Message:          message.TextContent,
 			SlackMessageID:   message.ID.String(),
 			SlackMessageLink: permalink,
