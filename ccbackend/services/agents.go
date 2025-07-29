@@ -18,7 +18,7 @@ func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
 	return &AgentsService{agentsRepo: repo}
 }
 
-func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID string, assignedJobID *uuid.UUID) (*models.ActiveAgent, error) {
+func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to create active agent for wsConnectionID: %s", wsConnectionID)
 
 	if wsConnectionID == "" {
@@ -37,7 +37,6 @@ func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID str
 
 	agent := &models.ActiveAgent{
 		ID:                 id,
-		AssignedJobID:      assignedJobID,
 		WSConnectionID:     wsConnectionID,
 		SlackIntegrationID: integrationUUID,
 	}
@@ -142,8 +141,8 @@ func (s *AgentsService) DeleteAllActiveAgents() error {
 	return nil
 }
 
-func (s *AgentsService) AssignJobToAgent(agentID, jobID uuid.UUID, slackIntegrationID string) error {
-	log.Printf("📋 Starting to assign job %s to agent %s", jobID, agentID)
+func (s *AgentsService) AssignAgentToJob(agentID, jobID uuid.UUID, slackIntegrationID string) error {
+	log.Printf("📋 Starting to assign agent %s to job %s", agentID, jobID)
 
 	if agentID == uuid.Nil {
 		return fmt.Errorf("agent ID cannot be nil")
@@ -157,30 +156,46 @@ func (s *AgentsService) AssignJobToAgent(agentID, jobID uuid.UUID, slackIntegrat
 		return fmt.Errorf("slack_integration_id cannot be empty")
 	}
 
-	if err := s.agentsRepo.UpdateAgentJobAssignment(agentID, &jobID, slackIntegrationID); err != nil {
-		return fmt.Errorf("failed to assign job to agent: %w", err)
+	integrationUUID, err := uuid.Parse(slackIntegrationID)
+	if err != nil {
+		return fmt.Errorf("invalid slack_integration_id format: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - assigned job %s to agent %s", jobID, agentID)
+	assignment := &models.AgentJobAssignment{
+		ID:                 uuid.New(),
+		AgentID:            agentID,
+		JobID:              jobID,
+		SlackIntegrationID: integrationUUID,
+	}
+
+	if err := s.agentsRepo.AssignAgentToJob(assignment); err != nil {
+		return fmt.Errorf("failed to assign agent to job: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - assigned agent %s to job %s", agentID, jobID)
 	return nil
 }
 
-func (s *AgentsService) UnassignJobFromAgent(agentID uuid.UUID, slackIntegrationID string) error {
-	log.Printf("📋 Starting to unassign job from agent %s", agentID)
+func (s *AgentsService) UnassignAgentFromJob(agentID, jobID uuid.UUID, slackIntegrationID string) error {
+	log.Printf("📋 Starting to unassign agent %s from job %s", agentID, jobID)
 
 	if agentID == uuid.Nil {
 		return fmt.Errorf("agent ID cannot be nil")
+	}
+
+	if jobID == uuid.Nil {
+		return fmt.Errorf("job ID cannot be nil")
 	}
 
 	if slackIntegrationID == "" {
 		return fmt.Errorf("slack_integration_id cannot be empty")
 	}
 
-	if err := s.agentsRepo.UpdateAgentJobAssignment(agentID, nil, slackIntegrationID); err != nil {
-		return fmt.Errorf("failed to unassign job from agent: %w", err)
+	if err := s.agentsRepo.UnassignAgentFromJob(agentID, jobID, slackIntegrationID); err != nil {
+		return fmt.Errorf("failed to unassign agent from job: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - unassigned job from agent %s", agentID)
+	log.Printf("📋 Completed successfully - unassigned agent %s from job %s", agentID, jobID)
 	return nil
 }
 
@@ -222,5 +237,25 @@ func (s *AgentsService) GetAgentByWSConnectionID(wsConnectionID, slackIntegratio
 
 	log.Printf("📋 Completed successfully - retrieved agent %s for WS connection %s", agent.ID, wsConnectionID)
 	return agent, nil
+}
+
+func (s *AgentsService) GetActiveAgentJobAssignments(agentID uuid.UUID, slackIntegrationID string) ([]uuid.UUID, error) {
+	log.Printf("📋 Starting to get active job assignments for agent %s", agentID)
+
+	if agentID == uuid.Nil {
+		return nil, fmt.Errorf("agent ID cannot be nil")
+	}
+
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	jobIDs, err := s.agentsRepo.GetActiveAgentJobAssignments(agentID, slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active agent job assignments: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - retrieved %d job assignments for agent %s", len(jobIDs), agentID)
+	return jobIDs, nil
 }
 
