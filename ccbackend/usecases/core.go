@@ -571,23 +571,23 @@ func (s *CoreUseCase) DeregisterAgent(clientID string) error {
 	return nil
 }
 
-func (s *CoreUseCase) CleanupIdleJobs() {
+func (s *CoreUseCase) CleanupIdleJobs() error {
 	log.Printf("📋 Starting to cleanup idle jobs older than 5 minutes")
 
 	// Get jobs that haven't been updated in the last 5 minutes across all integrations
 	idleJobs, err := s.jobsService.GetIdleJobs(5)
 	if err != nil {
-		log.Printf("❌ Failed to get idle jobs: %v", err)
-		return
+		return fmt.Errorf("failed to get idle jobs: %w", err)
 	}
 
 	if len(idleJobs) == 0 {
 		log.Printf("📋 No idle jobs found")
-		return
+		return nil
 	}
 
 	log.Printf("🧹 Found %d idle jobs to cleanup across all integrations", len(idleJobs))
 
+	var cleanupErrors []string
 	for _, job := range idleJobs {
 		slackIntegrationID := job.SlackIntegrationID.String()
 
@@ -595,12 +595,12 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 		assignedAgent, err := s.agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
 		if err != nil {
 			if !strings.Contains(fmt.Sprintf("%v", err), "not found") {
-				log.Printf("❌ Failed to check agent assignment for job %s: %v", job.ID, err)
+				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to check agent assignment for job %s: %v", job.ID, err))
 				continue
 			}
 		} else {
 			if err := s.agentsService.UnassignAgentFromJob(assignedAgent.ID, job.ID, slackIntegrationID); err != nil {
-				log.Printf("❌ Failed to unassign agent %s from idle job %s: %v", assignedAgent.ID, job.ID, err)
+				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to unassign agent %s from idle job %s: %v", assignedAgent.ID, job.ID, err))
 				continue
 			}
 			log.Printf("✅ Unassigned agent %s from idle job %s", assignedAgent.ID, job.ID)
@@ -620,7 +620,7 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 
 		// Delete the idle job
 		if err := s.jobsService.DeleteJob(job.ID, slackIntegrationID); err != nil {
-			log.Printf("❌ Failed to delete idle job %s: %v", job.ID, err)
+			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete idle job %s: %v", job.ID, err))
 			continue
 		}
 
@@ -645,5 +645,82 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 		}
 	}
 
+	log.Printf("📋 Completed cleanup - processed %d idle jobs", len(idleJobs))
+
+	// Return error if there were any cleanup failures
+	if len(cleanupErrors) > 0 {
+		return fmt.Errorf("idle job cleanup encountered %d errors: %s", len(cleanupErrors), strings.Join(cleanupErrors, "; "))
+	}
+
 	log.Printf("📋 Completed successfully - cleaned up %d idle jobs", len(idleJobs))
+	return nil
+}
+
+func (s *CoreUseCase) CleanupStaleActiveAgents() error {
+	log.Printf("📋 Starting to cleanup stale active agents")
+
+	// Get all slack integrations
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
+	if err != nil {
+		return fmt.Errorf("failed to get slack integrations: %w", err)
+	}
+
+	if len(integrations) == 0 {
+		log.Printf("📋 No slack integrations found")
+		return nil
+	}
+
+	totalStaleAgents := 0
+	var cleanupErrors []string
+	connectedClientIDs := s.wsClient.GetClientIDs()
+	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
+
+	// Create a map for faster lookup
+	connectedClientsMap := make(map[string]bool)
+	for _, clientID := range connectedClientIDs {
+		connectedClientsMap[clientID] = true
+	}
+
+	for _, integration := range integrations {
+		slackIntegrationID := integration.ID.String()
+		
+		// Get all active agents for this integration
+		agents, err := s.agentsService.GetAllActiveAgents(slackIntegrationID)
+		if err != nil {
+			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to get active agents for integration %s: %v", slackIntegrationID, err))
+			continue
+		}
+
+		if len(agents) == 0 {
+			continue
+		}
+
+		log.Printf("🔍 Checking %d active agents for integration %s", len(agents), slackIntegrationID)
+
+		// Check each agent to see if their WebSocket connection still exists
+		for _, agent := range agents {
+			if !connectedClientsMap[agent.WSConnectionID] {
+				log.Printf("🧹 Found stale agent %s (WebSocket ID: %s) - no corresponding connection", agent.ID, agent.WSConnectionID)
+				
+				// Delete the stale agent - CASCADE DELETE will automatically clean up job assignments
+				if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
+					cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete stale agent %s: %v", agent.ID, err))
+					continue
+				}
+				
+				log.Printf("✅ Deleted stale agent %s (CASCADE DELETE cleaned up job assignments)", agent.ID)
+				totalStaleAgents++
+			}
+		}
+	}
+
+	log.Printf("📋 Completed cleanup - removed %d stale active agents", totalStaleAgents)
+
+	// Return error if there were any cleanup failures
+	if len(cleanupErrors) > 0 {
+		return fmt.Errorf("stale agent cleanup encountered %d errors: %s", len(cleanupErrors), strings.Join(cleanupErrors, "; "))
+	}
+
+	log.Printf("📋 Completed successfully - cleaned up %d stale active agents", totalStaleAgents)
+	return nil
 }
