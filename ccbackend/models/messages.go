@@ -15,18 +15,21 @@ type UnknownMessage struct {
 }
 
 type StartConversationPayload struct {
+	JobID           string `json:"job_id"`
 	Message         string `json:"message"`
 	SlackMessageID  string `json:"slack_message_id"`
 	SlackMessageLink string `json:"slack_message_link"`
 }
 
 type UserMessagePayload struct {
+	JobID            string `json:"job_id"`
 	Message          string `json:"message"`
 	SlackMessageID   string `json:"slack_message_id"`
 	SlackMessageLink string `json:"slack_message_link"`
 }
 
 type AssistantMessagePayload struct {
+	JobID          string `json:"job_id"`
 	Message        string `json:"message"`
 	SlackMessageID string `json:"slack_message_id"`
 }
