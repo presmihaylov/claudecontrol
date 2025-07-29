@@ -21,6 +21,7 @@
       "Bash(git branch:*)",
       "Bash(git remote -v:*)",
       "Bash(git config --get:*)",
+      "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(gh pr:*)",
