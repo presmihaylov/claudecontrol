@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"ccagent/clients"
@@ -527,6 +528,20 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 	return nil
 }
 
+func extractPRNumber(prURL string) string {
+	if prURL == "" {
+		return ""
+	}
+	
+	// Extract PR number from URL like https://github.com/user/repo/pull/1234
+	parts := strings.Split(prURL, "/")
+	if len(parts) > 0 && parts[len(parts)-1] != "" {
+		return "#" + parts[len(parts)-1]
+	}
+	
+	return ""
+}
+
 func (cr *CmdRunner) sendGitActivitySystemMessage(conn *websocket.Conn, commitResult *usecases.AutoCommitResult, slackMessageID string) error {
 	if commitResult == nil {
 		return nil
@@ -547,6 +562,15 @@ func (cr *CmdRunner) sendGitActivitySystemMessage(conn *websocket.Conn, commitRe
 		}
 		commitURL := fmt.Sprintf("%s/commit/%s", commitResult.RepositoryURL, commitResult.CommitHash)
 		message := fmt.Sprintf("New commit added: <%s|%s>", commitURL, shortHash)
+		
+		// Add PR link if available
+		if commitResult.PullRequestLink != "" {
+			prNumber := extractPRNumber(commitResult.PullRequestLink)
+			if prNumber != "" {
+				message += fmt.Sprintf(" in <%s|%s>", commitResult.PullRequestLink, prNumber)
+			}
+		}
+		
 		if err := cr.sendSystemMessage(conn, message, slackMessageID); err != nil {
 			log.Info("❌ Failed to send commit system message: %v", err)
 			return fmt.Errorf("failed to send commit system message: %w", err)
