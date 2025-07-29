@@ -51,11 +51,12 @@
       
       "Bash(make test:*)",
       "Bash(make build:*)",
+      "Bash(go mod:*)",
+      "Bash(go get:*)",
       
       "Bash(make -n:*)",
       
       "Bash(man :*)",
-      "Bash(pydoc:*)",
       "Bash(which :*)"
     ],
     "deny": []
