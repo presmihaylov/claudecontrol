@@ -23,6 +23,7 @@ type AutoCommitResult struct {
 	PullRequestLink string
 	CommitHash      string
 	RepositoryURL   string
+	BranchName      string
 }
 
 func NewGitUseCase(gitClient *clients.GitClient, claudeService *services.ClaudeService) *GitUseCase {
@@ -59,14 +60,14 @@ func (g *GitUseCase) ValidateGitEnvironment() error {
 	return nil
 }
 
-func (g *GitUseCase) PrepareForNewConversation(conversationHint string) error {
+func (g *GitUseCase) PrepareForNewConversation(conversationHint string) (string, error) {
 	log.Info("📋 Starting to prepare for new conversation")
 
 	// Generate random branch name
 	branchName, err := g.generateRandomBranchName()
 	if err != nil {
 		log.Error("❌ Failed to generate random branch name: %v", err)
-		return fmt.Errorf("failed to generate branch name: %w", err)
+		return "", fmt.Errorf("failed to generate branch name: %w", err)
 	}
 
 	log.Info("🌿 Generated branch name: %s", branchName)
@@ -74,46 +75,53 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) error {
 	// Step 1: Reset hard current branch
 	if err := g.gitClient.ResetHard(); err != nil {
 		log.Error("❌ Failed to reset hard: %v", err)
-		return fmt.Errorf("failed to reset hard: %w", err)
+		return "", fmt.Errorf("failed to reset hard: %w", err)
 	}
 
 	// Step 2: Clean untracked files
 	if err := g.gitClient.CleanUntracked(); err != nil {
 		log.Error("❌ Failed to clean untracked files: %v", err)
-		return fmt.Errorf("failed to clean untracked files: %w", err)
+		return "", fmt.Errorf("failed to clean untracked files: %w", err)
 	}
 
 	// Step 3: Get default branch and checkout to it
 	defaultBranch, err := g.gitClient.GetDefaultBranch()
 	if err != nil {
 		log.Error("❌ Failed to get default branch: %v", err)
-		return fmt.Errorf("failed to get default branch: %w", err)
+		return "", fmt.Errorf("failed to get default branch: %w", err)
 	}
 
 	if err := g.gitClient.CheckoutBranch(defaultBranch); err != nil {
 		log.Error("❌ Failed to checkout default branch %s: %v", defaultBranch, err)
-		return fmt.Errorf("failed to checkout default branch %s: %w", defaultBranch, err)
+		return "", fmt.Errorf("failed to checkout default branch %s: %w", defaultBranch, err)
 	}
 
 	// Step 4: Pull latest changes
 	if err := g.gitClient.PullLatest(); err != nil {
 		log.Error("❌ Failed to pull latest changes: %v", err)
-		return fmt.Errorf("failed to pull latest changes: %w", err)
+		return "", fmt.Errorf("failed to pull latest changes: %w", err)
 	}
 
 	// Step 5: Create and checkout new branch
 	if err := g.gitClient.CreateAndCheckoutBranch(branchName); err != nil {
 		log.Error("❌ Failed to create and checkout new branch %s: %v", branchName, err)
-		return fmt.Errorf("failed to create and checkout new branch %s: %w", branchName, err)
+		return "", fmt.Errorf("failed to create and checkout new branch %s: %w", branchName, err)
 	}
 
 	log.Info("✅ Successfully prepared for new conversation on branch: %s", branchName)
 	log.Info("📋 Completed successfully - prepared for new conversation")
-	return nil
+	return branchName, nil
 }
 
 func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCommitResult, error) {
 	log.Info("📋 Starting to auto-commit changes if needed")
+
+	// Get current branch first (needed for both cases)
+	currentBranch, err := g.gitClient.GetCurrentBranch()
+	if err != nil {
+		log.Error("❌ Failed to get current branch: %v", err)
+		return nil, fmt.Errorf("failed to get current branch: %w", err)
+	}
 
 	// Check if there are any uncommitted changes
 	hasChanges, err := g.gitClient.HasUncommittedChanges()
@@ -130,6 +138,7 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 			PullRequestLink: "",
 			CommitHash:      "",
 			RepositoryURL:   "",
+			BranchName:      currentBranch,
 		}, nil
 	}
 
@@ -141,12 +150,6 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 		return nil, fmt.Errorf("failed to ensure .ccagent/ is in .gitignore: %w", err)
 	}
 
-	// Get current branch
-	currentBranch, err := g.gitClient.GetCurrentBranch()
-	if err != nil {
-		log.Error("❌ Failed to get current branch: %v", err)
-		return nil, fmt.Errorf("failed to get current branch: %w", err)
-	}
 
 	// Generate commit message using Claude with isolated config directory
 	commitMessage, err := g.generateCommitMessageWithClaudeIsolated(currentBranch)
@@ -278,6 +281,7 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 			PullRequestLink: prURL,
 			CommitHash:      "", // Will be filled in by caller
 			RepositoryURL:   "", // Will be filled in by caller
+			BranchName:      branchName,
 		}, nil
 	}
 
@@ -319,6 +323,7 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 		PullRequestLink: prURL,
 		CommitHash:      "", // Will be filled in by caller
 		RepositoryURL:   "", // Will be filled in by caller
+		BranchName:      branchName,
 	}, nil
 }
 
