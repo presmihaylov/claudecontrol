@@ -75,6 +75,22 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(userI
 	return integrations, nil
 }
 
+func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations() ([]*models.SlackIntegration, error) {
+	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.slack_integrations 
+		ORDER BY created_at DESC`, columnsStr, r.schema)
+
+	var integrations []*models.SlackIntegration
+	err := r.db.Select(&integrations, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all slack integrations: %w", err)
+	}
+
+	return integrations, nil
+}
+
 func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integrationID, userID uuid.UUID) error {
 	if integrationID == uuid.Nil {
 		return fmt.Errorf("integration ID cannot be nil")

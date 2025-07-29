@@ -647,3 +647,80 @@ func (s *CoreUseCase) CleanupIdleJobs() {
 
 	log.Printf("📋 Completed successfully - cleaned up %d idle jobs", len(idleJobs))
 }
+
+func (s *CoreUseCase) CleanupStaleActiveAgents() {
+	log.Printf("📋 Starting to cleanup stale active agents")
+
+	// Get all slack integrations
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
+	if err != nil {
+		log.Printf("❌ Failed to get slack integrations: %v", err)
+		return
+	}
+
+	if len(integrations) == 0 {
+		log.Printf("📋 No slack integrations found")
+		return
+	}
+
+	totalStaleAgents := 0
+	connectedClientIDs := s.wsClient.GetClientIDs()
+	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
+
+	// Create a map for faster lookup
+	connectedClientsMap := make(map[string]bool)
+	for _, clientID := range connectedClientIDs {
+		connectedClientsMap[clientID] = true
+	}
+
+	for _, integration := range integrations {
+		slackIntegrationID := integration.ID.String()
+		
+		// Get all active agents for this integration
+		agents, err := s.agentsService.GetAllActiveAgents(slackIntegrationID)
+		if err != nil {
+			log.Printf("❌ Failed to get active agents for integration %s: %v", slackIntegrationID, err)
+			continue
+		}
+
+		if len(agents) == 0 {
+			continue
+		}
+
+		log.Printf("🔍 Checking %d active agents for integration %s", len(agents), slackIntegrationID)
+
+		// Check each agent to see if their WebSocket connection still exists
+		for _, agent := range agents {
+			if !connectedClientsMap[agent.WSConnectionID] {
+				log.Printf("🧹 Found stale agent %s (WebSocket ID: %s) - no corresponding connection", agent.ID, agent.WSConnectionID)
+				
+				// Clean up jobs first
+				jobs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, slackIntegrationID)
+				if err != nil {
+					log.Printf("❌ Failed to get jobs for stale agent %s: %v", agent.ID, err)
+				} else if len(jobs) > 0 {
+					log.Printf("🧹 Stale agent %s has %d assigned job(s), cleaning up", agent.ID, len(jobs))
+					
+					// Unassign from all jobs
+					for _, jobID := range jobs {
+						if err := s.agentsService.UnassignAgentFromJob(agent.ID, jobID, slackIntegrationID); err != nil {
+							log.Printf("❌ Failed to unassign stale agent %s from job %s: %v", agent.ID, jobID, err)
+						} else {
+							log.Printf("✅ Unassigned stale agent %s from job %s", agent.ID, jobID)
+						}
+					}
+				}
+
+				// Delete the stale agent
+				if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
+					log.Printf("❌ Failed to delete stale agent %s: %v", agent.ID, err)
+				} else {
+					log.Printf("✅ Deleted stale agent %s", agent.ID)
+					totalStaleAgents++
+				}
+			}
+		}
+	}
+
+	log.Printf("📋 Completed successfully - cleaned up %d stale active agents", totalStaleAgents)
+}

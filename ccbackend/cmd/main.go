@@ -99,11 +99,16 @@ func run() error {
 	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
 	wsClient.RegisterMessageHandler(wsHandler.HandleMessage)
 
-	// Start periodic cleanup of idle jobs
+	// Run initial cleanup of stale agents after WebSocket server is ready
+	log.Printf("🧹 Running initial stale agent cleanup")
+	coreUseCase.CleanupStaleActiveAgents()
+
+	// Start periodic cleanup of idle jobs and stale agents
 	cleanupTicker := time.NewTicker(2 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
 			coreUseCase.CleanupIdleJobs()
+			coreUseCase.CleanupStaleActiveAgents()
 		}
 	}()
 	defer cleanupTicker.Stop()
