@@ -705,10 +705,11 @@ func (s *CoreUseCase) CleanupStaleActiveAgents() error {
 				// Delete the stale agent - CASCADE DELETE will automatically clean up job assignments
 				if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
 					cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete stale agent %s: %v", agent.ID, err))
-				} else {
-					log.Printf("✅ Deleted stale agent %s (CASCADE DELETE cleaned up job assignments)", agent.ID)
-					totalStaleAgents++
+					continue
 				}
+				
+				log.Printf("✅ Deleted stale agent %s (CASCADE DELETE cleaned up job assignments)", agent.ID)
+				totalStaleAgents++
 			}
 		}
 	}
