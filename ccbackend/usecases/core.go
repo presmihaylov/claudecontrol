@@ -702,26 +702,6 @@ func (s *CoreUseCase) CleanupStaleActiveAgents() error {
 			if !connectedClientsMap[agent.WSConnectionID] {
 				log.Printf("🧹 Found stale agent %s (WebSocket ID: %s) - no corresponding connection", agent.ID, agent.WSConnectionID)
 				
-				// Get job assignments for notification purposes (optional - don't fail cleanup if this fails)
-				jobs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, slackIntegrationID)
-				if err != nil {
-					log.Printf("⚠️ Failed to get jobs for stale agent %s notification: %v", agent.ID, err)
-				} else if len(jobs) > 0 {
-					log.Printf("📤 Stale agent %s had %d assigned job(s) - jobs will become unassigned", agent.ID, len(jobs))
-					
-					// Send notification to first job's Slack thread (best effort - don't fail cleanup if this fails)
-					if firstJob, err := s.jobsService.GetJobByID(jobs[0], slackIntegrationID); err == nil {
-						if slackClient, err := s.getSlackClientForIntegration(slackIntegrationID); err == nil {
-							abandonmentMessage := ":warning: Agent disconnected - job is now unassigned and available for pickup"
-							slackClient.PostMessage(firstJob.SlackChannelID,
-								slack.MsgOptionText(utils.ConvertMarkdownToSlack(abandonmentMessage), false),
-								slack.MsgOptionTS(firstJob.SlackThreadTS),
-							)
-							log.Printf("📤 Sent stale agent notification to Slack thread %s", firstJob.SlackThreadTS)
-						}
-					}
-				}
-				
 				// Delete the stale agent - CASCADE DELETE will automatically clean up job assignments
 				if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
 					cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete stale agent %s: %v", agent.ID, err))
