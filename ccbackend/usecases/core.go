@@ -11,6 +11,7 @@ import (
 	"ccbackend/utils"
 
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"github.com/slack-go/slack"
 )
 
@@ -449,24 +450,17 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 			connectedClientIDs := s.wsClient.GetClientIDs()
 			log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
-			// Find first available agent that has an active WebSocket connection
-			var selectedAgent *models.ActiveAgent
-			for _, agent := range availableAgents {
-				for _, clientID := range connectedClientIDs {
-					if agent.WSConnectionID == clientID {
-						selectedAgent = agent
-						break
-					}
-				}
-				if selectedAgent != nil {
-					break
-				}
-			}
+			// Filter available agents to only those with active WebSocket connections
+			connectedAgents := lo.Filter(availableAgents, func(agent *models.ActiveAgent, _ int) bool {
+				return lo.Contains(connectedClientIDs, agent.WSConnectionID)
+			})
 
-			if selectedAgent == nil {
+			if len(connectedAgents) == 0 {
 				log.Printf("⚠️ No available agents have active WebSocket connections")
 				return "", nil
 			}
+
+			selectedAgent := connectedAgents[0]
 
 			// Assign the job to the selected agent
 			if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, job.ID, slackIntegrationID); err != nil {
@@ -485,11 +479,9 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 
 	// Job is already assigned to an agent - verify it still has an active connection
 	connectedClientIDs := s.wsClient.GetClientIDs()
-	for _, clientID := range connectedClientIDs {
-		if existingAgent.WSConnectionID == clientID {
-			log.Printf("🔄 Job %s already assigned to agent %s with active connection, routing message to existing agent", job.ID, existingAgent.ID)
-			return existingAgent.WSConnectionID, nil
-		}
+	if lo.Contains(connectedClientIDs, existingAgent.WSConnectionID) {
+		log.Printf("🔄 Job %s already assigned to agent %s with active connection, routing message to existing agent", job.ID, existingAgent.ID)
+		return existingAgent.WSConnectionID, nil
 	}
 
 	// Existing agent doesn't have active connection - return empty to signal no available agents
