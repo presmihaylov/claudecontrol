@@ -445,16 +445,37 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 				return "", nil
 			}
 
-			firstAgent := availableAgents[0]
+			// Get active WebSocket connections to reconcile with database agents
+			connectedClientIDs := s.wsClient.GetClientIDs()
+			log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
+
+			// Find first available agent that has an active WebSocket connection
+			var selectedAgent *models.ActiveAgent
+			for _, agent := range availableAgents {
+				for _, clientID := range connectedClientIDs {
+					if agent.WSConnectionID == clientID {
+						selectedAgent = agent
+						break
+					}
+				}
+				if selectedAgent != nil {
+					break
+				}
+			}
+
+			if selectedAgent == nil {
+				log.Printf("⚠️ No available agents have active WebSocket connections")
+				return "", nil
+			}
 
 			// Assign the job to the selected agent
-			if err := s.agentsService.AssignAgentToJob(firstAgent.ID, job.ID, slackIntegrationID); err != nil {
-				log.Printf("❌ Failed to assign job %s to agent %s: %v", job.ID, firstAgent.ID, err)
+			if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, job.ID, slackIntegrationID); err != nil {
+				log.Printf("❌ Failed to assign job %s to agent %s: %v", job.ID, selectedAgent.ID, err)
 				return "", fmt.Errorf("failed to assign job to agent: %w", err)
 			}
 
-			log.Printf("✅ Assigned job %s to agent %s for slack thread %s", job.ID, firstAgent.ID, threadTS)
-			return firstAgent.WSConnectionID, nil
+			log.Printf("✅ Assigned job %s to agent %s for slack thread %s", job.ID, selectedAgent.ID, threadTS)
+			return selectedAgent.WSConnectionID, nil
 		}
 
 		// Some other error occurred
@@ -462,9 +483,18 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 		return "", fmt.Errorf("failed to check for existing agent assignment: %w", err)
 	}
 
-	// Job is already assigned to an agent - use that agent
-	log.Printf("🔄 Job %s already assigned to agent %s, routing message to existing agent", job.ID, existingAgent.ID)
-	return existingAgent.WSConnectionID, nil
+	// Job is already assigned to an agent - verify it still has an active connection
+	connectedClientIDs := s.wsClient.GetClientIDs()
+	for _, clientID := range connectedClientIDs {
+		if existingAgent.WSConnectionID == clientID {
+			log.Printf("🔄 Job %s already assigned to agent %s with active connection, routing message to existing agent", job.ID, existingAgent.ID)
+			return existingAgent.WSConnectionID, nil
+		}
+	}
+
+	// Existing agent doesn't have active connection - return empty to signal no available agents
+	log.Printf("⚠️ Job %s assigned to agent %s but no active WebSocket connection found", job.ID, existingAgent.ID)
+	return "", nil
 }
 
 func (s *CoreUseCase) RegisterAgent(clientID string) error {
