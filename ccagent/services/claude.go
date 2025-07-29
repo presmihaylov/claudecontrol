@@ -7,6 +7,12 @@ import (
 	"ccagent/core/log"
 )
 
+// ClaudeResult represents the result of a Claude conversation
+type ClaudeResult struct {
+	Output    string
+	SessionID string
+}
+
 type ClaudeService struct {
 	claudeClient *clients.ClaudeClient
 }
@@ -17,22 +23,27 @@ func NewClaudeService(claudeClient *clients.ClaudeClient) *ClaudeService {
 	}
 }
 
-func (c *ClaudeService) StartNewConversation(prompt string) (string, error) {
+func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, error) {
 	log.Info("📋 Starting to start new Claude conversation")
 
 	messages, err := c.claudeClient.StartNewSession(prompt)
 	if err != nil {
 		log.Error("Failed to start new Claude session: %v", err)
-		return "", fmt.Errorf("failed to start new Claude session: %w", err)
+		return nil, fmt.Errorf("failed to start new Claude session: %w", err)
 	}
 
 	sessionID := c.extractSessionID(messages)
 	log.Info("📋 Claude session ID: %s", sessionID)
 
-	result, err := c.extractClaudeResult(messages)
+	output, err := c.extractClaudeResult(messages)
 	if err != nil {
 		log.Error("Failed to extract Claude result: %v", err)
-		return "", fmt.Errorf("failed to extract Claude result: %w", err)
+		return nil, fmt.Errorf("failed to extract Claude result: %w", err)
+	}
+
+	result := &ClaudeResult{
+		Output:    output,
+		SessionID: sessionID,
 	}
 
 	log.Info("📋 Completed successfully - started new Claude conversation with session: %s", sessionID)
@@ -61,44 +72,54 @@ func (c *ClaudeService) StartNewConversationWithConfigDir(prompt, configDir stri
 	return result, nil
 }
 
-func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPrompt, configDir string) (string, error) {
+func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPrompt, configDir string) (*ClaudeResult, error) {
 	log.Info("📋 Starting to start new Claude conversation with system prompt")
 
 	messages, err := c.claudeClient.StartNewSessionWithSystemPrompt(prompt, systemPrompt, configDir)
 	if err != nil {
 		log.Error("Failed to start new Claude session with system prompt: %v", err)
-		return "", fmt.Errorf("failed to start new Claude session with system prompt: %w", err)
+		return nil, fmt.Errorf("failed to start new Claude session with system prompt: %w", err)
 	}
 
 	sessionID := c.extractSessionID(messages)
 	log.Info("📋 Claude session ID: %s", sessionID)
 
-	result, err := c.extractClaudeResult(messages)
+	output, err := c.extractClaudeResult(messages)
 	if err != nil {
 		log.Error("Failed to extract Claude result: %v", err)
-		return "", fmt.Errorf("failed to extract Claude result: %w", err)
+		return nil, fmt.Errorf("failed to extract Claude result: %w", err)
 	}
 
-	log.Info("📋 Completed successfully - started new Claude conversation with session: %s", sessionID)
+	result := &ClaudeResult{
+		Output:    output,
+		SessionID: sessionID,
+	}
+
+	log.Info("📋 Completed successfully - started new Claude conversation with system prompt, session: %s", sessionID)
 	return result, nil
 }
 
-func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (string, error) {
+func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeResult, error) {
 	log.Info("📋 Starting to continue Claude conversation: %s", sessionID)
 
 	messages, err := c.claudeClient.ContinueSession(sessionID, prompt)
 	if err != nil {
 		log.Error("Failed to continue Claude session: %v", err)
-		return "", fmt.Errorf("failed to continue Claude session: %w", err)
+		return nil, fmt.Errorf("failed to continue Claude session: %w", err)
 	}
 
 	actualSessionID := c.extractSessionID(messages)
 	log.Info("📋 Claude session ID: %s", actualSessionID)
 
-	result, err := c.extractClaudeResult(messages)
+	output, err := c.extractClaudeResult(messages)
 	if err != nil {
 		log.Error("Failed to extract Claude result: %v", err)
-		return "", fmt.Errorf("failed to extract Claude result: %w", err)
+		return nil, fmt.Errorf("failed to extract Claude result: %w", err)
+	}
+
+	result := &ClaudeResult{
+		Output:    output,
+		SessionID: actualSessionID,
 	}
 
 	log.Info("📋 Completed successfully - continued Claude conversation with session: %s", actualSessionID)
