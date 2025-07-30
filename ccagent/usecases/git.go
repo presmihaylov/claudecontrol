@@ -43,6 +43,12 @@ func (g *GitUseCase) ValidateGitEnvironment() error {
 		return fmt.Errorf("ccagent must be run from within a Git repository: %w", err)
 	}
 
+	// Check if we're at the Git repository root
+	if err := g.gitClient.IsGitRepositoryRoot(); err != nil {
+		log.Error("❌ Not at Git repository root: %v", err)
+		return fmt.Errorf("ccagent must be run from the Git repository root: %w", err)
+	}
+
 	// Check if remote repository exists
 	if err := g.gitClient.HasRemoteRepository(); err != nil {
 		log.Error("❌ No remote repository configured: %v", err)
