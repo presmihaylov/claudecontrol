@@ -35,6 +35,15 @@ export default function Home() {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [integrationToDelete, setIntegrationToDelete] = useState<SlackIntegration | null>(null);
 
+	const welcomeMessages = [
+		"Weelcome to Claude Control! 🎉",
+		"Weelcome back, friend! 👋",
+		"Weelcome aboard the Claude train! 🚂",
+		"Weelcome to your AI command center! 🤖",
+		"Weelcome to the future of automation! ⚡"
+	];
+	const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+
 	// Authenticate user with backend and fetch integrations when they first sign in
 	useEffect(() => {
 		const authenticateUserAndFetchIntegrations = async () => {
@@ -177,7 +186,10 @@ export default function Home() {
 			<header className="border-b">
 				<div className="container mx-auto px-4 py-4 flex items-center justify-between">
 					<div />
-					<h1 className="text-2xl font-semibold">Claude Control</h1>
+					<div className="text-center">
+						<h1 className="text-2xl font-semibold">Claude Control</h1>
+						<p className="text-sm text-muted-foreground mt-1">{randomWelcome}</p>
+					</div>
 					<Button variant="outline" size="sm" onClick={() => signOut()}>
 						Logout
 					</Button>
