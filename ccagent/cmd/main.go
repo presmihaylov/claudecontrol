@@ -57,7 +57,7 @@ func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *Cmd
 
 type Options struct {
 	Verbose           bool `short:"v" long:"verbose" description:"Enable verbose logging"`
-	BypassPermissions bool `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
+	BypassPermissions bool `long:"bypassPermission" description:"Use bypassPermission mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 }
 
 func main() {
@@ -94,8 +94,8 @@ func main() {
 	// Determine permission mode based on flag
 	permissionMode := "acceptEdits"
 	if opts.BypassPermissions {
-		permissionMode = "bypassPermissions"
-		fmt.Fprintf(os.Stderr, "Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
+		permissionMode = "bypassPermission"
+		fmt.Fprintf(os.Stderr, "Warning: --bypassPermission flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
 	}
 
 	cmdRunner := NewCmdRunner(anthroApiKey, permissionMode, opts.Verbose)
