@@ -23,14 +23,11 @@ func NewClaudeClient(anthroApiKey string, permissionMode string) *ClaudeClient {
 
 func (c *ClaudeClient) ContinueSession(sessionID, prompt string) ([]ClaudeMessage, error) {
 	log.Info("📋 Starting to continue Claude session: %s", sessionID)
-	// Not used at the moment, because claude code doesn't support continuing sessions due to a bug:
-	// https://github.com/anthropics/claude-code/issues/3976
-	_ = sessionID
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--output-format", "stream-json",
 		"--verbose",
-		"--continue",
+		"--resume", sessionID,
 		"-p", prompt,
 	}
 
