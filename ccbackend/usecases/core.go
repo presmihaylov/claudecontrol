@@ -219,6 +219,34 @@ func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.Syste
 	return nil
 }
 
+func (s *CoreUseCase) ProcessProcessingSlackMessage(clientID string, payload models.ProcessingSlackMessagePayload, slackIntegrationID string) error {
+	log.Printf("📋 Starting to process processing slack message notification from client %s", clientID)
+
+	// Validate SlackMessageID is provided
+	if payload.SlackMessageID == "" {
+		log.Printf("⚠️ Processing slack message notification has no SlackMessageID")
+		return fmt.Errorf("SlackMessageID is required")
+	}
+
+	utils.AssertInvariant(uuid.Validate(payload.SlackMessageID) == nil, "SlackMessageID is not in UUID format")
+	messageID := uuid.MustParse(payload.SlackMessageID)
+
+	// Get the ProcessedSlackMessage to find the correct channel and update emoji
+	processedMessage, err := s.jobsService.GetProcessedSlackMessageByID(messageID, slackIntegrationID)
+	if err != nil {
+		log.Printf("❌ Failed to get processed slack message %s: %v", messageID, err)
+		return fmt.Errorf("failed to get processed slack message: %w", err)
+	}
+
+	// Update the slack message reaction to show agent is now processing (eyes emoji)
+	if err := s.updateSlackMessageReaction(processedMessage.SlackChannelID, processedMessage.SlackTS, "eyes", slackIntegrationID); err != nil {
+		return fmt.Errorf("failed to update slack message reaction to eyes: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated slack message emoji to eyes for message %s", messageID)
+	return nil
+}
+
 func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process Slack message event from %s in %s: %s", event.User, event.Channel, event.Text)
 
@@ -397,7 +425,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) string {
 	switch status {
 	case models.ProcessedSlackMessageStatusInProgress:
-		return "eyes"
+		return "hourglass"
 	case models.ProcessedSlackMessageStatusQueued:
 		return "hourglass"
 	case models.ProcessedSlackMessageStatusCompleted:
