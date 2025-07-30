@@ -3,6 +3,7 @@ package usecases
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
 	"ccbackend/clients"
@@ -456,42 +457,74 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 }
 
 func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slackIntegrationID string) (string, error) {
-	log.Printf("📝 Job %s not yet assigned, looking for available agent", job.ID)
+	log.Printf("📝 Job %s not yet assigned, looking for any active agent", job.ID)
 
-	availableAgents, err := s.agentsService.GetAvailableAgents(slackIntegrationID)
+	allAgents, err := s.agentsService.GetAllActiveAgents(slackIntegrationID)
 	if err != nil {
-		log.Printf("❌ Failed to get available agents: %v", err)
-		return "", fmt.Errorf("failed to get available agents: %w", err)
+		log.Printf("❌ Failed to get all active agents: %v", err)
+		return "", fmt.Errorf("failed to get all active agents: %w", err)
 	}
 
-	if len(availableAgents) == 0 {
-		return "", fmt.Errorf("no available agents found for job assignment")
+	if len(allAgents) == 0 {
+		return "", fmt.Errorf("no active agents found for job assignment")
 	}
 
 	// Get active WebSocket connections to reconcile with database agents
 	connectedClientIDs := s.wsClient.GetClientIDs()
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
-	// Filter available agents to only those with active WebSocket connections
-	connectedAgents := lo.Filter(availableAgents, func(agent *models.ActiveAgent, _ int) bool {
+	// Filter all agents to only those with active WebSocket connections
+	connectedAgents := lo.Filter(allAgents, func(agent *models.ActiveAgent, _ int) bool {
 		return lo.Contains(connectedClientIDs, agent.WSConnectionID)
 	})
 
 	if len(connectedAgents) == 0 {
-		log.Printf("⚠️ No available agents have active WebSocket connections")
+		log.Printf("⚠️ No agents have active WebSocket connections")
 		return "", fmt.Errorf("no agents with active WebSocket connections available for job assignment")
 	}
 
-	selectedAgent := connectedAgents[0]
+	// Sort agents by load (number of assigned jobs) to select the least loaded agent
+	sortedAgents, err := s.sortAgentsByLoad(connectedAgents, slackIntegrationID)
+	if err != nil {
+		log.Printf("❌ Failed to sort agents by load: %v", err)
+		return "", fmt.Errorf("failed to sort agents by load: %w", err)
+	}
 
-	// Assign the job to the selected agent
+	selectedAgent := sortedAgents[0].agent
+	log.Printf("🎯 Selected agent %s with %d current job assignments (least loaded)", selectedAgent.ID, sortedAgents[0].load)
+
+	// Assign the job to the selected agent (agents can now handle multiple jobs simultaneously)
 	if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, job.ID, slackIntegrationID); err != nil {
 		log.Printf("❌ Failed to assign job %s to agent %s: %v", job.ID, selectedAgent.ID, err)
 		return "", fmt.Errorf("failed to assign job to agent: %w", err)
 	}
 
-	log.Printf("✅ Assigned job %s to agent %s for slack thread %s", job.ID, selectedAgent.ID, threadTS)
+	log.Printf("✅ Assigned job %s to agent %s for slack thread %s (agent can handle multiple jobs)", job.ID, selectedAgent.ID, threadTS)
 	return selectedAgent.WSConnectionID, nil
+}
+
+type agentWithLoad struct {
+	agent *models.ActiveAgent
+	load  int
+}
+
+func (s *CoreUseCase) sortAgentsByLoad(agents []*models.ActiveAgent, slackIntegrationID string) ([]agentWithLoad, error) {
+	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
+	
+	for _, agent := range agents {
+		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, slackIntegrationID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
+		}
+		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: len(jobIDs)})
+	}
+
+	// Sort by load (ascending - least loaded first)
+	sort.Slice(agentsWithLoad, func(i, j int) bool {
+		return agentsWithLoad[i].load < agentsWithLoad[j].load
+	})
+
+	return agentsWithLoad, nil
 }
 
 func (s *CoreUseCase) RegisterAgent(clientID string) error {
