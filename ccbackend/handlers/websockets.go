@@ -78,6 +78,19 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) {
 			return
 		}
 
+	case models.MessageTypeJobComplete:
+		var payload models.JobCompletePayload
+		if err := unmarshalPayload(parsedMsg.Payload, &payload); err != nil {
+			log.Printf("❌ Failed to unmarshal job complete payload from client %s: %v", client.ID, err)
+			return
+		}
+
+		log.Printf("✅ Received job complete notification from client %s for job: %s, reason: %s", client.ID, payload.JobID, payload.Reason)
+		if err := h.coreUseCase.ProcessJobComplete(client.ID, payload, client.SlackIntegrationID); err != nil {
+			log.Printf("❌ Failed to process job complete notification from client %s: %v", client.ID, err)
+			return
+		}
+
 	default:
 		log.Printf("⚠️ Unknown message type '%s' from client %s", parsedMsg.Type, client.ID)
 		return

@@ -8,6 +8,8 @@ const (
 	MessageTypeJobUnassigned         = "job_unassigned_v1"
 	MessageTypeSystemMessage         = "system_message_v1"
 	MessageTypeProcessingSlackMessage = "processing_slack_message_v1"
+	MessageTypeCheckIdleJobs         = "check_idle_jobs_v1"
+	MessageTypeJobComplete           = "job_complete_v1"
 )
 
 type UnknownMessage struct {
@@ -44,4 +46,13 @@ type SystemMessagePayload struct {
 
 type ProcessingSlackMessagePayload struct {
 	SlackMessageID string `json:"slack_message_id"`
+}
+
+type CheckIdleJobsPayload struct {
+	// Empty payload - agent checks all its jobs
+}
+
+type JobCompletePayload struct {
+	JobID  string `json:"job_id"`
+	Reason string `json:"reason"`
 }

@@ -2,6 +2,7 @@ package models
 
 import (
 	"sync"
+	"time"
 )
 
 // JobData tracks the state of a specific job/conversation
@@ -9,6 +10,7 @@ type JobData struct {
 	JobID           string
 	BranchName      string
 	ClaudeSessionID string
+	UpdatedAt       time.Time
 }
 
 // AppState manages the state of all active jobs
@@ -44,37 +46,8 @@ func (a *AppState) GetJobData(jobID string) (*JobData, bool) {
 		JobID:           data.JobID,
 		BranchName:      data.BranchName,
 		ClaudeSessionID: data.ClaudeSessionID,
+		UpdatedAt:       data.UpdatedAt,
 	}, true
-}
-
-// UpdateClaudeSessionID updates only the Claude session ID for a job
-func (a *AppState) UpdateClaudeSessionID(jobID, sessionID string) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-	if data, exists := a.jobs[jobID]; exists {
-		data.ClaudeSessionID = sessionID
-	} else {
-		// Initialize if doesn't exist
-		a.jobs[jobID] = &JobData{
-			JobID:           jobID,
-			ClaudeSessionID: sessionID,
-		}
-	}
-}
-
-// UpdateBranchName updates only the branch name for a job
-func (a *AppState) UpdateBranchName(jobID, branchName string) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-	if data, exists := a.jobs[jobID]; exists {
-		data.BranchName = branchName
-	} else {
-		// Initialize if doesn't exist
-		a.jobs[jobID] = &JobData{
-			JobID:      jobID,
-			BranchName: branchName,
-		}
-	}
 }
 
 // RemoveJob removes job data for a given JobID
@@ -98,3 +71,4 @@ func (a *AppState) GetAllJobs() map[string]JobData {
 	}
 	return result
 }
+

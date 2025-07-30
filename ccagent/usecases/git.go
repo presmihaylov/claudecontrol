@@ -560,3 +560,29 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	log.Info("📋 Completed successfully - restored PR description footer")
 	return nil
 }
+
+func (g *GitUseCase) CheckPRStatus(branchName string) (string, error) {
+	log.Info("📋 Starting to check PR status for branch: %s", branchName)
+
+	// First check if a PR exists for this branch
+	hasExistingPR, err := g.gitClient.HasExistingPR(branchName)
+	if err != nil {
+		log.Error("❌ Failed to check for existing PR for branch %s: %v", branchName, err)
+		return "", fmt.Errorf("failed to check for existing PR: %w", err)
+	}
+
+	if !hasExistingPR {
+		log.Info("📋 No PR found for branch %s", branchName)
+		return "no_pr", nil
+	}
+
+	// Get PR status using GitHub CLI
+	prStatus, err := g.gitClient.GetPRState(branchName)
+	if err != nil {
+		log.Error("❌ Failed to get PR state for branch %s: %v", branchName, err)
+		return "", fmt.Errorf("failed to get PR state: %w", err)
+	}
+
+	log.Info("📋 Completed successfully - PR status for branch %s: %s", branchName, prStatus)
+	return prStatus, nil
+}
