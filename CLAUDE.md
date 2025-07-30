@@ -66,9 +66,8 @@ go run main.go ws://localhost:3000/ws  # Connect to ccbackend
 
 ### Backend Component Organization
 - `main.go`: Server setup, environment loading, port 3000
-- `commands.go`: Slack slash command handlers (`/cc` command)
-- `events.go`: Slack event processing (app mentions, URL verification)  
-- `websockets.go`: WebSocket server with pluggable message handlers
+- `handlers/slack.go`: Slack event processing (app mentions, URL verification)  
+- `clients/websockets.go`: WebSocket server with pluggable message handlers
 
 ### WebSocket Server Architecture
 The WebSocket implementation uses a refactored design:
@@ -88,7 +87,7 @@ SLACK_BOT_TOKEN=<slack_bot_token>
 ```
 
 ### Key Integration Points
-- **Slack Webhooks**: `/slack/commands` and `/slack/events` endpoints
+- **Slack Webhooks**: `/slack/events` endpoint for app mentions and URL verification
 - **WebSocket Endpoint**: `/ws` for real-time client connections
 - **Claude Code Integration**: ccagent executes with `--permission-mode bypassPermissions`
 
