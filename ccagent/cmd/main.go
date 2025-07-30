@@ -683,7 +683,7 @@ func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn
 			shouldComplete = false
 		} else {
 			log.Info("⏰ Job %s has no PR and is idle - marking as complete", jobID)
-			reason = "Job complete - thread is inactive"
+			reason = "Job complete - Thread is inactive"
 			shouldComplete = true
 		}
 	default:
