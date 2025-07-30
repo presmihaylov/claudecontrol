@@ -21,6 +21,7 @@ type GitUseCase struct {
 type AutoCommitResult struct {
 	JustCreatedPR    bool
 	PullRequestLink string
+	PullRequestID   string  // GitHub PR number (e.g., "123")
 	CommitHash      string
 	RepositoryURL   string
 	BranchName      string
@@ -202,6 +203,7 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 		return &AutoCommitResult{
 			JustCreatedPR:    false,
 			PullRequestLink: "",
+			PullRequestID:   "",
 			CommitHash:      "",
 			RepositoryURL:   "",
 			BranchName:      currentBranch,
@@ -268,6 +270,11 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 	// Update the result with commit information
 	prResult.CommitHash = commitHash
 	prResult.RepositoryURL = repositoryURL
+	
+	// Extract and store PR ID from the PR URL if available
+	if prResult.PullRequestLink != "" {
+		prResult.PullRequestID = g.gitClient.ExtractPRIDFromURL(prResult.PullRequestLink)
+	}
 
 	log.Info("✅ Successfully auto-committed and pushed changes")
 	log.Info("📋 Completed successfully - auto-committed changes")
@@ -345,6 +352,7 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 		return &AutoCommitResult{
 			JustCreatedPR:    false,
 			PullRequestLink: prURL,
+			PullRequestID:   g.gitClient.ExtractPRIDFromURL(prURL),
 			CommitHash:      "", // Will be filled in by caller
 			RepositoryURL:   "", // Will be filled in by caller
 			BranchName:      branchName,
@@ -387,6 +395,7 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 	return &AutoCommitResult{
 		JustCreatedPR:    true,
 		PullRequestLink: prURL,
+		PullRequestID:   g.gitClient.ExtractPRIDFromURL(prURL),
 		CommitHash:      "", // Will be filled in by caller
 		RepositoryURL:   "", // Will be filled in by caller
 		BranchName:      branchName,
@@ -590,5 +599,19 @@ func (g *GitUseCase) CheckPRStatus(branchName string) (string, error) {
 	}
 
 	log.Info("📋 Completed successfully - PR status for branch %s: %s", branchName, prStatus)
+	return prStatus, nil
+}
+
+func (g *GitUseCase) CheckPRStatusByID(prID string) (string, error) {
+	log.Info("📋 Starting to check PR status by ID: %s", prID)
+
+	// Get PR status directly by PR ID using GitHub CLI
+	prStatus, err := g.gitClient.GetPRStateByID(prID)
+	if err != nil {
+		log.Error("❌ Failed to get PR state for PR ID %s: %v", prID, err)
+		return "", fmt.Errorf("failed to get PR state by ID: %w", err)
+	}
+
+	log.Info("📋 Completed successfully - PR status for ID %s: %s", prID, prStatus)
 	return prStatus, nil
 }
