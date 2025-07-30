@@ -541,3 +541,34 @@ func (g *GitClient) GetPRState(branchName string) (string, error) {
 	log.Info("📋 Completed successfully - got PR state")
 	return strings.ToLower(state), nil
 }
+
+func (g *GitClient) ExtractPRIDFromURL(prURL string) string {
+	if prURL == "" {
+		return ""
+	}
+	
+	// Extract PR number from URL like https://github.com/user/repo/pull/1234
+	parts := strings.Split(prURL, "/")
+	if len(parts) > 0 && parts[len(parts)-1] != "" {
+		return parts[len(parts)-1]
+	}
+	
+	return ""
+}
+
+func (g *GitClient) GetPRStateByID(prID string) (string, error) {
+	log.Info("📋 Starting to get PR state by ID: %s", prID)
+	
+	cmd := exec.Command("gh", "pr", "view", prID, "--json", "state", "--jq", ".state")
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		log.Error("❌ Failed to get PR state for PR ID %s: %v\nOutput: %s", prID, err, string(output))
+		return "", fmt.Errorf("failed to get PR state by ID: %w\nOutput: %s", err, string(output))
+	}
+	
+	state := strings.TrimSpace(string(output))
+	log.Info("✅ Retrieved PR state by ID: %s", state)
+	log.Info("📋 Completed successfully - got PR state by ID")
+	return strings.ToLower(state), nil
+}

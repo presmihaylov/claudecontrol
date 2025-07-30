@@ -427,10 +427,17 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		finalBranchName = commitResult.BranchName
 	}
 
+	// Extract PR ID from commit result if available
+	prID := ""
+	if commitResult != nil && commitResult.PullRequestID != "" {
+		prID = commitResult.PullRequestID
+	}
+
 	cr.appState.UpdateJobData(payload.JobID, models.JobData{
 		JobID:           payload.JobID,
 		BranchName:      finalBranchName,
 		ClaudeSessionID: claudeResult.SessionID,
+		PullRequestID:   prID,
 		UpdatedAt:       time.Now(),
 	})
 
@@ -525,10 +532,17 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 		finalBranchName = commitResult.BranchName
 	}
 
+	// Extract PR ID from existing job data or commit result
+	prID := jobData.PullRequestID
+	if commitResult != nil && commitResult.PullRequestID != "" {
+		prID = commitResult.PullRequestID
+	}
+
 	cr.appState.UpdateJobData(payload.JobID, models.JobData{
 		JobID:           payload.JobID,
 		BranchName:      finalBranchName,
 		ClaudeSessionID: claudeResult.SessionID,
+		PullRequestID:   prID,
 		UpdatedAt:       time.Now(),
 	})
 
@@ -621,11 +635,24 @@ func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn
 		return fmt.Errorf("failed to switch to job branch %s: %w", jobData.BranchName, err)
 	}
 
-	// Check if there's an open PR for this branch
-	prStatus, err := cr.gitUseCase.CheckPRStatus(jobData.BranchName)
-	if err != nil {
-		log.Error("❌ Failed to check PR status for branch %s: %v", jobData.BranchName, err)
-		return fmt.Errorf("failed to check PR status for branch %s: %w", jobData.BranchName, err)
+	var prStatus string
+	var err error
+
+	// Use stored PR ID if available, otherwise fall back to branch-based check
+	if jobData.PullRequestID != "" {
+		log.Info("ℹ️ Using stored PR ID %s for job %s", jobData.PullRequestID, jobID)
+		prStatus, err = cr.gitUseCase.CheckPRStatusByID(jobData.PullRequestID)
+		if err != nil {
+			log.Error("❌ Failed to check PR status by ID %s: %v", jobData.PullRequestID, err)
+			return fmt.Errorf("failed to check PR status by ID %s: %w", jobData.PullRequestID, err)
+		}
+	} else {
+		log.Info("ℹ️ No stored PR ID for job %s, using branch-based check", jobID)
+		prStatus, err = cr.gitUseCase.CheckPRStatus(jobData.BranchName)
+		if err != nil {
+			log.Error("❌ Failed to check PR status for branch %s: %v", jobData.BranchName, err)
+			return fmt.Errorf("failed to check PR status for branch %s: %w", jobData.BranchName, err)
+		}
 	}
 
 	var reason string
@@ -652,12 +679,12 @@ func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn
 		}
 
 		if jobData.UpdatedAt.Add(5 * time.Minute).After(time.Now()) {
+			log.Info("ℹ️ Job %s has no PR but is still active - not marking as complete", jobID)
+			shouldComplete = false
+		} else {
 			log.Info("⏰ Job %s has no PR and is idle - marking as complete", jobID)
 			reason = "Job is now complete"
 			shouldComplete = true
-		} else {
-			log.Info("ℹ️ Job %s has no PR but is still active - not marking as complete", jobID)
-			shouldComplete = false
 		}
 	default:
 		log.Info("ℹ️ Job %s PR status unclear (%s) - keeping active", jobID, prStatus)
