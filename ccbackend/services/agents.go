@@ -146,6 +146,123 @@ func (s *AgentsService) GetAllActiveAgents(slackIntegrationID string) ([]*models
 	return agents, nil
 }
 
+// GetConnectedActiveAgents returns only agents that have active WebSocket connections
+func (s *AgentsService) GetConnectedActiveAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
+	log.Printf("📋 Starting to get connected active agents")
+
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	// Get all active agents from database
+	allAgents, err := s.agentsRepo.GetAllActiveAgents(slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all active agents: %w", err)
+	}
+
+	log.Printf("🔍 Found %d total agents in database, filtering by %d connected WebSocket clients", len(allAgents), len(connectedClientIDs))
+
+	// Create a map for faster lookup of connected client IDs
+	connectedClientsMap := make(map[string]bool)
+	for _, clientID := range connectedClientIDs {
+		connectedClientsMap[clientID] = true
+	}
+
+	// Filter agents to only those with active WebSocket connections
+	var connectedAgents []*models.ActiveAgent
+	for _, agent := range allAgents {
+		if connectedClientsMap[agent.WSConnectionID] {
+			connectedAgents = append(connectedAgents, agent)
+		}
+	}
+
+	log.Printf("📋 Completed successfully - retrieved %d connected active agents", len(connectedAgents))
+	return connectedAgents, nil
+}
+
+// GetConnectedAvailableAgents returns only available agents that have active WebSocket connections
+func (s *AgentsService) GetConnectedAvailableAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
+	log.Printf("📋 Starting to get connected available agents")
+
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	// Get all available agents from database
+	availableAgents, err := s.agentsRepo.GetAvailableAgents(slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get available agents: %w", err)
+	}
+
+	log.Printf("🔍 Found %d available agents in database, filtering by %d connected WebSocket clients", len(availableAgents), len(connectedClientIDs))
+
+	// Create a map for faster lookup of connected client IDs
+	connectedClientsMap := make(map[string]bool)
+	for _, clientID := range connectedClientIDs {
+		connectedClientsMap[clientID] = true
+	}
+
+	// Filter agents to only those with active WebSocket connections
+	var connectedAvailableAgents []*models.ActiveAgent
+	for _, agent := range availableAgents {
+		if connectedClientsMap[agent.WSConnectionID] {
+			connectedAvailableAgents = append(connectedAvailableAgents, agent)
+		}
+	}
+
+	log.Printf("📋 Completed successfully - retrieved %d connected available agents", len(connectedAvailableAgents))
+	return connectedAvailableAgents, nil
+}
+
+// CheckAgentHasActiveConnection verifies if an agent has an active WebSocket connection
+func (s *AgentsService) CheckAgentHasActiveConnection(agent *models.ActiveAgent, connectedClientIDs []string) bool {
+	log.Printf("📋 Starting to check if agent %s has active connection", agent.ID)
+
+	// Create a map for faster lookup
+	connectedClientsMap := make(map[string]bool)
+	for _, clientID := range connectedClientIDs {
+		connectedClientsMap[clientID] = true
+	}
+
+	hasConnection := connectedClientsMap[agent.WSConnectionID]
+	log.Printf("📋 Completed check - agent %s has active connection: %t", agent.ID, hasConnection)
+	return hasConnection
+}
+
+// GetStaleAgents returns agents that don't have active WebSocket connections
+func (s *AgentsService) GetStaleAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
+	log.Printf("📋 Starting to get stale agents")
+
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	// Get all active agents from database
+	allAgents, err := s.agentsRepo.GetAllActiveAgents(slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all active agents: %w", err)
+	}
+
+	log.Printf("🔍 Found %d total agents in database, checking against %d connected WebSocket clients", len(allAgents), len(connectedClientIDs))
+
+	// Create a map for faster lookup of connected client IDs
+	connectedClientsMap := make(map[string]bool)
+	for _, clientID := range connectedClientIDs {
+		connectedClientsMap[clientID] = true
+	}
+
+	// Filter agents to only those WITHOUT active WebSocket connections
+	var staleAgents []*models.ActiveAgent
+	for _, agent := range allAgents {
+		if !connectedClientsMap[agent.WSConnectionID] {
+			staleAgents = append(staleAgents, agent)
+		}
+	}
+
+	log.Printf("📋 Completed successfully - found %d stale agents", len(staleAgents))
+	return staleAgents, nil
+}
+
 func (s *AgentsService) DeleteAllActiveAgents() error {
 	log.Printf("📋 Starting to delete all active agents")
 
