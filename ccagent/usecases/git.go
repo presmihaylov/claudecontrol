@@ -60,6 +60,51 @@ func (g *GitUseCase) ValidateGitEnvironment() error {
 	return nil
 }
 
+// SwitchToJobBranch switches to the specified branch, discarding local changes and pulling latest from main
+func (g *GitUseCase) SwitchToJobBranch(branchName string) error {
+	log.Info("📋 Starting to switch to job branch: %s", branchName)
+
+	// Step 1: Reset hard current branch to discard uncommitted changes
+	if err := g.gitClient.ResetHard(); err != nil {
+		log.Error("❌ Failed to reset hard: %v", err)
+		return fmt.Errorf("failed to reset hard: %w", err)
+	}
+
+	// Step 2: Clean untracked files
+	if err := g.gitClient.CleanUntracked(); err != nil {
+		log.Error("❌ Failed to clean untracked files: %v", err)
+		return fmt.Errorf("failed to clean untracked files: %w", err)
+	}
+
+	// Step 3: Get default branch and checkout to it
+	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	if err != nil {
+		log.Error("❌ Failed to get default branch: %v", err)
+		return fmt.Errorf("failed to get default branch: %w", err)
+	}
+
+	if err := g.gitClient.CheckoutBranch(defaultBranch); err != nil {
+		log.Error("❌ Failed to checkout default branch %s: %v", defaultBranch, err)
+		return fmt.Errorf("failed to checkout default branch %s: %w", defaultBranch, err)
+	}
+
+	// Step 4: Pull latest changes
+	if err := g.gitClient.PullLatest(); err != nil {
+		log.Error("❌ Failed to pull latest changes: %v", err)
+		return fmt.Errorf("failed to pull latest changes: %w", err)
+	}
+
+	// Step 5: Checkout target branch
+	if err := g.gitClient.CheckoutBranch(branchName); err != nil {
+		log.Error("❌ Failed to checkout target branch %s: %v", branchName, err)
+		return fmt.Errorf("failed to checkout target branch %s: %w", branchName, err)
+	}
+
+	log.Info("✅ Successfully switched to job branch: %s", branchName)
+	log.Info("📋 Completed successfully - switched to job branch")
+	return nil
+}
+
 func (g *GitUseCase) PrepareForNewConversation(conversationHint string) (string, error) {
 	log.Info("📋 Starting to prepare for new conversation")
 
@@ -72,37 +117,13 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) (string,
 
 	log.Info("🌿 Generated branch name: %s", branchName)
 
-	// Step 1: Reset hard current branch
-	if err := g.gitClient.ResetHard(); err != nil {
-		log.Error("❌ Failed to reset hard: %v", err)
-		return "", fmt.Errorf("failed to reset hard: %w", err)
+	// Use the common branch switching logic to get to main and pull latest
+	if err := g.resetAndPullMain(); err != nil {
+		log.Error("❌ Failed to reset and pull main: %v", err)
+		return "", fmt.Errorf("failed to reset and pull main: %w", err)
 	}
 
-	// Step 2: Clean untracked files
-	if err := g.gitClient.CleanUntracked(); err != nil {
-		log.Error("❌ Failed to clean untracked files: %v", err)
-		return "", fmt.Errorf("failed to clean untracked files: %w", err)
-	}
-
-	// Step 3: Get default branch and checkout to it
-	defaultBranch, err := g.gitClient.GetDefaultBranch()
-	if err != nil {
-		log.Error("❌ Failed to get default branch: %v", err)
-		return "", fmt.Errorf("failed to get default branch: %w", err)
-	}
-
-	if err := g.gitClient.CheckoutBranch(defaultBranch); err != nil {
-		log.Error("❌ Failed to checkout default branch %s: %v", defaultBranch, err)
-		return "", fmt.Errorf("failed to checkout default branch %s: %w", defaultBranch, err)
-	}
-
-	// Step 4: Pull latest changes
-	if err := g.gitClient.PullLatest(); err != nil {
-		log.Error("❌ Failed to pull latest changes: %v", err)
-		return "", fmt.Errorf("failed to pull latest changes: %w", err)
-	}
-
-	// Step 5: Create and checkout new branch
+	// Create and checkout new branch
 	if err := g.gitClient.CreateAndCheckoutBranch(branchName); err != nil {
 		log.Error("❌ Failed to create and checkout new branch %s: %v", branchName, err)
 		return "", fmt.Errorf("failed to create and checkout new branch %s: %w", branchName, err)
@@ -111,6 +132,45 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) (string,
 	log.Info("✅ Successfully prepared for new conversation on branch: %s", branchName)
 	log.Info("📋 Completed successfully - prepared for new conversation")
 	return branchName, nil
+}
+
+// resetAndPullMain is a helper that resets current branch, goes to main, and pulls latest
+func (g *GitUseCase) resetAndPullMain() error {
+	log.Info("📋 Starting to reset and pull main")
+
+	// Step 1: Reset hard current branch to discard uncommitted changes
+	if err := g.gitClient.ResetHard(); err != nil {
+		log.Error("❌ Failed to reset hard: %v", err)
+		return fmt.Errorf("failed to reset hard: %w", err)
+	}
+
+	// Step 2: Clean untracked files
+	if err := g.gitClient.CleanUntracked(); err != nil {
+		log.Error("❌ Failed to clean untracked files: %v", err)
+		return fmt.Errorf("failed to clean untracked files: %w", err)
+	}
+
+	// Step 3: Get default branch and checkout to it
+	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	if err != nil {
+		log.Error("❌ Failed to get default branch: %v", err)
+		return fmt.Errorf("failed to get default branch: %w", err)
+	}
+
+	if err := g.gitClient.CheckoutBranch(defaultBranch); err != nil {
+		log.Error("❌ Failed to checkout default branch %s: %v", defaultBranch, err)
+		return fmt.Errorf("failed to checkout default branch %s: %w", defaultBranch, err)
+	}
+
+	// Step 4: Pull latest changes
+	if err := g.gitClient.PullLatest(); err != nil {
+		log.Error("❌ Failed to pull latest changes: %v", err)
+		return fmt.Errorf("failed to pull latest changes: %w", err)
+	}
+
+	log.Info("✅ Successfully reset and pulled main")
+	log.Info("📋 Completed successfully - reset and pulled main")
+	return nil
 }
 
 func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCommitResult, error) {

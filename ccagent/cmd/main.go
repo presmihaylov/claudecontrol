@@ -18,6 +18,7 @@ import (
 	"ccagent/models"
 	"ccagent/services"
 	"ccagent/usecases"
+	"ccagent/utils"
 
 	"github.com/gammazero/workerpool"
 	"github.com/gorilla/websocket"
@@ -464,7 +465,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 
 	log.Info("💬 Continuing conversation with message: %s", payload.Message)
 
-	// Get the current job data to retrieve the Claude session ID
+	// Get the current job data to retrieve the Claude session ID and branch
 	jobData, exists := cr.appState.GetJobData(payload.JobID)
 	if !exists {
 		log.Info("❌ JobID %s not found in AppState", payload.JobID)
@@ -476,6 +477,16 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 		log.Info("❌ No Claude session ID found for job %s", payload.JobID)
 		return fmt.Errorf("no active Claude session found for job %s", payload.JobID)
 	}
+
+	// Assert that BranchName is never empty
+	utils.AssertInvariant(jobData.BranchName != "", "BranchName must not be empty for job "+payload.JobID)
+
+	// Switch to the job's branch before continuing the conversation
+	if err := cr.gitUseCase.SwitchToJobBranch(jobData.BranchName); err != nil {
+		log.Error("❌ Failed to switch to job branch %s: %v", jobData.BranchName, err)
+		return fmt.Errorf("failed to switch to job branch %s: %w", jobData.BranchName, err)
+	}
+	log.Info("✅ Successfully switched to job branch: %s", jobData.BranchName)
 
 	claudeResult, err := cr.claudeService.ContinueConversation(sessionID, payload.Message)
 	if err != nil {
