@@ -46,6 +46,22 @@ func (s *CoreUseCase) getSlackClientForIntegration(slackIntegrationID string) (*
 	return slack.New(integration.SlackAuthToken), nil
 }
 
+func (s *CoreUseCase) validateJobBelongsToAgent(agentID, jobID uuid.UUID, slackIntegrationID string) error {
+	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(agentID, slackIntegrationID)
+	if err != nil {
+		return fmt.Errorf("failed to get jobs for agent: %w", err)
+	}
+	
+	for _, assignedJobID := range agentJobs {
+		if assignedJobID == jobID {
+			return nil
+		}
+	}
+	
+	log.Printf("❌ Agent %s is not assigned to job %s", agentID, jobID)
+	return fmt.Errorf("agent %s is not assigned to job %s", agentID, jobID)
+}
+
 func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.AssistantMessagePayload, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process assistant message from client %s: %s", clientID, payload.Message)
 
@@ -56,21 +72,20 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 		return fmt.Errorf("failed to find agent for client: %w", err)
 	}
 
-	// Get active jobs for agent
-	jobs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, slackIntegrationID)
+	// Get the specific job from the payload to find the Slack thread information
+	utils.AssertInvariant(payload.JobID != "", "JobID is empty in AssistantMessage payload")
+	utils.AssertInvariant(uuid.Validate(payload.JobID) == nil, "JobID is not in UUID format")
+	
+	jobID := uuid.MustParse(payload.JobID)
+	job, err := s.jobsService.GetJobByID(jobID, slackIntegrationID)
 	if err != nil {
-		return fmt.Errorf("failed to get jobs for agent: %w", err)
-	}
-	if len(jobs) == 0 {
-		log.Printf("⚠️ Agent %s has no assigned jobs, cannot determine Slack thread", agent.ID)
-		return nil
+		log.Printf("❌ Failed to get job %s: %v", jobID, err)
+		return fmt.Errorf("failed to get job: %w", err)
 	}
 
-	// Get the job to find the Slack thread information (use first job for current single-job behavior)
-	job, err := s.jobsService.GetJobByID(jobs[0], slackIntegrationID)
-	if err != nil {
-		log.Printf("❌ Failed to get job %s for agent %s: %v", jobs[0], agent.ID, err)
-		return fmt.Errorf("failed to get job for agent: %w", err)
+	// Validate that this agent is actually assigned to this job
+	if err := s.validateJobBelongsToAgent(agent.ID, jobID, slackIntegrationID); err != nil {
+		return err
 	}
 
 	log.Printf("📤 Sending assistant message to Slack thread %s in channel %s", job.SlackThreadTS, job.SlackChannelID)
