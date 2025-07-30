@@ -12,7 +12,6 @@ import (
 	"ccbackend/utils"
 
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 	"github.com/slack-go/slack"
 )
 
@@ -489,7 +488,7 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 
 	// Job is already assigned to an agent - verify it still has an active connection
 	connectedClientIDs := s.wsClient.GetClientIDs()
-	if lo.Contains(connectedClientIDs, existingAgent.WSConnectionID) {
+	if s.agentsService.CheckAgentHasActiveConnection(existingAgent, connectedClientIDs) {
 		log.Printf("🔄 Job %s already assigned to agent %s with active connection, routing message to existing agent", job.ID, existingAgent.ID)
 		return existingAgent.WSConnectionID, nil
 	}
@@ -502,24 +501,16 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slackIntegrationID string) (string, error) {
 	log.Printf("📝 Job %s not yet assigned, looking for any active agent", job.ID)
 
-	allAgents, err := s.agentsService.GetAllActiveAgents(slackIntegrationID)
-	if err != nil {
-		log.Printf("❌ Failed to get all active agents: %v", err)
-		return "", fmt.Errorf("failed to get all active agents: %w", err)
-	}
-
-	if len(allAgents) == 0 {
-		return "", fmt.Errorf("no active agents found for job assignment")
-	}
-
-	// Get active WebSocket connections to reconcile with database agents
+	// Get active WebSocket connections first
 	connectedClientIDs := s.wsClient.GetClientIDs()
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
-	// Filter all agents to only those with active WebSocket connections
-	connectedAgents := lo.Filter(allAgents, func(agent *models.ActiveAgent, _ int) bool {
-		return lo.Contains(connectedClientIDs, agent.WSConnectionID)
-	})
+	// Get only agents with active connections using centralized service method
+	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
+	if err != nil {
+		log.Printf("❌ Failed to get connected active agents: %v", err)
+		return "", fmt.Errorf("failed to get connected active agents: %w", err)
+	}
 
 	if len(connectedAgents) == 0 {
 		log.Printf("⚠️ No agents have active WebSocket connections")
@@ -778,42 +769,34 @@ func (s *CoreUseCase) CleanupStaleActiveAgents() error {
 	connectedClientIDs := s.wsClient.GetClientIDs()
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
-	// Create a map for faster lookup
-	connectedClientsMap := make(map[string]bool)
-	for _, clientID := range connectedClientIDs {
-		connectedClientsMap[clientID] = true
-	}
-
 	for _, integration := range integrations {
 		slackIntegrationID := integration.ID.String()
 		
-		// Get all active agents for this integration
-		agents, err := s.agentsService.GetAllActiveAgents(slackIntegrationID)
+		// Get stale agents using centralized service method
+		staleAgents, err := s.agentsService.GetStaleAgents(slackIntegrationID, connectedClientIDs)
 		if err != nil {
-			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to get active agents for integration %s: %v", slackIntegrationID, err))
+			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to get stale agents for integration %s: %v", slackIntegrationID, err))
 			continue
 		}
 
-		if len(agents) == 0 {
+		if len(staleAgents) == 0 {
 			continue
 		}
 
-		log.Printf("🔍 Checking %d active agents for integration %s", len(agents), slackIntegrationID)
+		log.Printf("🔍 Found %d stale agents for integration %s", len(staleAgents), slackIntegrationID)
 
-		// Check each agent to see if their WebSocket connection still exists
-		for _, agent := range agents {
-			if !connectedClientsMap[agent.WSConnectionID] {
-				log.Printf("🧹 Found stale agent %s (WebSocket ID: %s) - no corresponding connection", agent.ID, agent.WSConnectionID)
-				
-				// Delete the stale agent - CASCADE DELETE will automatically clean up job assignments
-				if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
-					cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete stale agent %s: %v", agent.ID, err))
-					continue
-				}
-				
-				log.Printf("✅ Deleted stale agent %s (CASCADE DELETE cleaned up job assignments)", agent.ID)
-				totalStaleAgents++
+		// Delete each stale agent
+		for _, agent := range staleAgents {
+			log.Printf("🧹 Found stale agent %s (WebSocket ID: %s) - no corresponding connection", agent.ID, agent.WSConnectionID)
+			
+			// Delete the stale agent - CASCADE DELETE will automatically clean up job assignments
+			if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
+				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete stale agent %s: %v", agent.ID, err))
+				continue
 			}
+			
+			log.Printf("✅ Deleted stale agent %s (CASCADE DELETE cleaned up job assignments)", agent.ID)
+			totalStaleAgents++
 		}
 	}
 
