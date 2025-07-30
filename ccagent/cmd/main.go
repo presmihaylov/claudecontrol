@@ -360,6 +360,12 @@ func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket
 		return fmt.Errorf("failed to unmarshal start conversation payload: %w", err)
 	}
 
+	// Send processing slack message notification that agent is starting to process
+	if err := cr.sendProcessingSlackMessage(conn, payload.SlackMessageID); err != nil {
+		log.Info("❌ Failed to send processing slack message notification: %v", err)
+		return fmt.Errorf("failed to send processing slack message notification: %w", err)
+	}
+
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
 
 	// Prepare Git environment for new conversation - FAIL if this doesn't work
@@ -461,6 +467,12 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal user message payload: %v", err)
 		return fmt.Errorf("failed to unmarshal user message payload: %w", err)
+	}
+
+	// Send processing slack message notification that agent is starting to process
+	if err := cr.sendProcessingSlackMessage(conn, payload.SlackMessageID); err != nil {
+		log.Info("❌ Failed to send processing slack message notification: %v", err)
+		return fmt.Errorf("failed to send processing slack message notification: %w", err)
 	}
 
 	log.Info("💬 Continuing conversation with message: %s", payload.Message)
@@ -574,6 +586,23 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 	}
 
 	log.Info("⚙️ Sent system message: %s", message)
+	return nil
+}
+
+func (cr *CmdRunner) sendProcessingSlackMessage(conn *websocket.Conn, slackMessageID string) error {
+	processingSlackMessageMsg := UnknownMessage{
+		Type: MessageTypeProcessingSlackMessage,
+		Payload: ProcessingSlackMessagePayload{
+			SlackMessageID: slackMessageID,
+		},
+	}
+
+	if err := conn.WriteJSON(processingSlackMessageMsg); err != nil {
+		log.Info("❌ Failed to send processing slack message notification: %v", err)
+		return err
+	}
+
+	log.Info("🔔 Sent processing slack message notification for message: %s", slackMessageID)
 	return nil
 }
 

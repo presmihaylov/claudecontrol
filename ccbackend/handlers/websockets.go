@@ -65,6 +65,19 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) {
 			return
 		}
 
+	case models.MessageTypeProcessingSlackMessage:
+		var payload models.ProcessingSlackMessagePayload
+		if err := unmarshalPayload(parsedMsg.Payload, &payload); err != nil {
+			log.Printf("❌ Failed to unmarshal processing slack message payload from client %s: %v", client.ID, err)
+			return
+		}
+
+		log.Printf("🔔 Received processing slack message notification from client %s for message: %s", client.ID, payload.SlackMessageID)
+		if err := h.coreUseCase.ProcessProcessingSlackMessage(client.ID, payload, client.SlackIntegrationID); err != nil {
+			log.Printf("❌ Failed to process processing slack message notification from client %s: %v", client.ID, err)
+			return
+		}
+
 	default:
 		log.Printf("⚠️ Unknown message type '%s' from client %s", parsedMsg.Type, client.ID)
 		return
