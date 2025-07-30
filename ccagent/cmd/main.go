@@ -660,11 +660,11 @@ func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn
 
 	switch prStatus {
 	case "merged":
-		reason = "Pull request was merged"
+		reason = "Job complete - Pull request was merged"
 		shouldComplete = true
 		log.Info("✅ Job %s PR was merged - marking as complete", jobID)
 	case "closed":
-		reason = "Pull request was closed"
+		reason = "Job complete - Pull request was closed"
 		shouldComplete = true
 		log.Info("✅ Job %s PR was closed - marking as complete", jobID)
 	case "open":
@@ -683,7 +683,7 @@ func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn
 			shouldComplete = false
 		} else {
 			log.Info("⏰ Job %s has no PR and is idle - marking as complete", jobID)
-			reason = "Job is now complete"
+			reason = "Job complete - thread is inactive"
 			shouldComplete = true
 		}
 	default:
