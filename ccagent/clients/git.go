@@ -494,3 +494,20 @@ func (g *GitClient) UpdatePRDescription(branchName, newDescription string) error
 	log.Info("📋 Completed successfully - updated PR description")
 	return nil
 }
+
+func (g *GitClient) GetPRState(branchName string) (string, error) {
+	log.Info("📋 Starting to get PR state for branch: %s", branchName)
+	
+	cmd := exec.Command("gh", "pr", "view", branchName, "--json", "state", "--jq", ".state")
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		log.Error("❌ Failed to get PR state for branch %s: %v\nOutput: %s", branchName, err, string(output))
+		return "", fmt.Errorf("failed to get PR state: %w\nOutput: %s", err, string(output))
+	}
+	
+	state := strings.TrimSpace(string(output))
+	log.Info("✅ Retrieved PR state: %s", state)
+	log.Info("📋 Completed successfully - got PR state")
+	return strings.ToLower(state), nil
+}

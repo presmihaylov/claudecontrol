@@ -347,6 +347,11 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 			// JobUnassigned doesn't have SlackMessageID, so use empty string
 			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
 		}
+	case MessageTypeCheckIdleJobs:
+		if err := cr.handleCheckIdleJobs(msg, conn); err != nil {
+			// CheckIdleJobs doesn't have SlackMessageID, so use empty string
+			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error checking idle jobs: %v", err), "")
+		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
 	}
@@ -426,6 +431,7 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		JobID:           payload.JobID,
 		BranchName:      finalBranchName,
 		ClaudeSessionID: claudeResult.SessionID,
+		UpdatedAt:       time.Now(),
 	})
 
 	// Send assistant response back first
@@ -523,6 +529,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 		JobID:           payload.JobID,
 		BranchName:      finalBranchName,
 		ClaudeSessionID: claudeResult.SessionID,
+		UpdatedAt:       time.Now(),
 	})
 
 	// Send assistant response back first
@@ -571,6 +578,127 @@ func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, _ *websocket.Conn) 
 	return nil
 }
 
+func (cr *CmdRunner) handleCheckIdleJobs(msg UnknownMessage, conn *websocket.Conn) error {
+	log.Info("📋 Starting to handle check idle jobs message")
+	var payload CheckIdleJobsPayload
+	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
+		log.Info("❌ Failed to unmarshal check idle jobs payload: %v", err)
+		return fmt.Errorf("failed to unmarshal check idle jobs payload: %w", err)
+	}
+
+	log.Info("🔍 Checking all assigned jobs for idleness")
+
+	// Get all job data from app state
+	allJobData := cr.appState.GetAllJobs()
+	if len(allJobData) == 0 {
+		log.Info("📋 No jobs assigned to this agent")
+		return nil
+	}
+
+	log.Info("🔍 Found %d jobs assigned to this agent", len(allJobData))
+
+	// Check each job for idleness
+	for jobID, jobData := range allJobData {
+		log.Info("🔍 Checking job %s on branch %s", jobID, jobData.BranchName)
+
+		if err := cr.checkJobIdleness(jobID, jobData, conn); err != nil {
+			log.Info("❌ Failed to check idleness for job %s: %v", jobID, err)
+			// Continue checking other jobs even if one fails
+			continue
+		}
+	}
+
+	log.Info("📋 Completed successfully - checked all jobs for idleness")
+	return nil
+}
+
+func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn *websocket.Conn) error {
+	log.Info("📋 Starting to check idleness for job %s", jobID)
+
+	// Switch to the job's branch to check PR status
+	if err := cr.gitUseCase.SwitchToJobBranch(jobData.BranchName); err != nil {
+		log.Error("❌ Failed to switch to job branch %s: %v", jobData.BranchName, err)
+		return fmt.Errorf("failed to switch to job branch %s: %w", jobData.BranchName, err)
+	}
+
+	// Check if there's an open PR for this branch
+	prStatus, err := cr.gitUseCase.CheckPRStatus(jobData.BranchName)
+	if err != nil {
+		log.Error("❌ Failed to check PR status for branch %s: %v", jobData.BranchName, err)
+		return fmt.Errorf("failed to check PR status for branch %s: %w", jobData.BranchName, err)
+	}
+
+	var reason string
+	var shouldComplete bool
+
+	switch prStatus {
+	case "merged":
+		reason = "Pull request was merged"
+		shouldComplete = true
+		log.Info("✅ Job %s PR was merged - marking as complete", jobID)
+	case "closed":
+		reason = "Pull request was closed"
+		shouldComplete = true
+		log.Info("✅ Job %s PR was closed - marking as complete", jobID)
+	case "open":
+		log.Info("ℹ️ Job %s has open PR - not marking as complete", jobID)
+		shouldComplete = false
+	case "no_pr":
+		log.Info("ℹ️ Job %s has no PR - checking timeout", jobID)
+		jobData, exists := cr.appState.GetJobData(jobID)
+		if !exists {
+			log.Info("❌ Job %s not found in app state - cannot check idleness", jobID)
+			return fmt.Errorf("job %s not found in app state", jobID)
+		}
+
+		if jobData.UpdatedAt.Add(5 * time.Minute).After(time.Now()) {
+			log.Info("⏰ Job %s has no PR and is idle - marking as complete", jobID)
+			reason = "Job is now complete"
+			shouldComplete = true
+		} else {
+			log.Info("ℹ️ Job %s has no PR but is still active - not marking as complete", jobID)
+			shouldComplete = false
+		}
+	default:
+		log.Info("ℹ️ Job %s PR status unclear (%s) - keeping active", jobID, prStatus)
+		shouldComplete = false
+	}
+
+	if shouldComplete {
+		if err := cr.sendJobCompleteMessage(conn, jobID, reason); err != nil {
+			log.Error("❌ Failed to send job complete message for job %s: %v", jobID, err)
+			return fmt.Errorf("failed to send job complete message: %w", err)
+		}
+
+		// Remove job from app state since it's complete
+		cr.appState.RemoveJob(jobID)
+		log.Info("🗑️ Removed completed job %s from app state", jobID)
+	}
+
+	log.Info("📋 Completed successfully - checked idleness for job %s", jobID)
+	return nil
+}
+
+func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason string) error {
+	log.Info("📋 Sending job complete message for job %s with reason: %s", jobID, reason)
+
+	jobCompleteMsg := UnknownMessage{
+		Type: MessageTypeJobComplete,
+		Payload: JobCompletePayload{
+			JobID:  jobID,
+			Reason: reason,
+		},
+	}
+
+	if err := conn.WriteJSON(jobCompleteMsg); err != nil {
+		log.Error("❌ Failed to send job complete message: %v", err)
+		return fmt.Errorf("failed to send job complete message: %w", err)
+	}
+
+	log.Info("📤 Sent job complete message for job: %s", jobID)
+	return nil
+}
+
 func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessageID string) error {
 	systemMsg := UnknownMessage{
 		Type: MessageTypeSystemMessage,
@@ -610,13 +738,13 @@ func extractPRNumber(prURL string) string {
 	if prURL == "" {
 		return ""
 	}
-	
+
 	// Extract PR number from URL like https://github.com/user/repo/pull/1234
 	parts := strings.Split(prURL, "/")
 	if len(parts) > 0 && parts[len(parts)-1] != "" {
 		return "#" + parts[len(parts)-1]
 	}
-	
+
 	return ""
 }
 
@@ -640,7 +768,7 @@ func (cr *CmdRunner) sendGitActivitySystemMessage(conn *websocket.Conn, commitRe
 		}
 		commitURL := fmt.Sprintf("%s/commit/%s", commitResult.RepositoryURL, commitResult.CommitHash)
 		message := fmt.Sprintf("New commit added: <%s|%s>", commitURL, shortHash)
-		
+
 		// Add PR link if available
 		if commitResult.PullRequestLink != "" {
 			prNumber := extractPRNumber(commitResult.PullRequestLink)
@@ -648,7 +776,7 @@ func (cr *CmdRunner) sendGitActivitySystemMessage(conn *websocket.Conn, commitRe
 				message += fmt.Sprintf(" in <%s|%s>", commitResult.PullRequestLink, prNumber)
 			}
 		}
-		
+
 		if err := cr.sendSystemMessage(conn, message, slackMessageID); err != nil {
 			log.Info("❌ Failed to send commit system message: %v", err)
 			return fmt.Errorf("failed to send commit system message: %w", err)

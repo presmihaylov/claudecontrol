@@ -665,88 +665,131 @@ func (s *CoreUseCase) DeregisterAgent(clientID string) error {
 	return nil
 }
 
-func (s *CoreUseCase) CleanupIdleJobs() error {
-	log.Printf("📋 Starting to cleanup idle jobs older than 5 minutes")
+func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
+	log.Printf("📋 Starting to broadcast CheckIdleJobs to all connected agents")
 
-	// Get jobs that haven't been updated in the last 5 minutes across all integrations
-	idleJobs, err := s.jobsService.GetIdleJobs(5)
+	// Get all slack integrations to broadcast to agents in each integration
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
 	if err != nil {
-		return fmt.Errorf("failed to get idle jobs: %w", err)
+		return fmt.Errorf("failed to get slack integrations: %w", err)
 	}
 
-	if len(idleJobs) == 0 {
-		log.Printf("📋 No idle jobs found")
+	if len(integrations) == 0 {
+		log.Printf("📋 No slack integrations found")
 		return nil
 	}
 
-	log.Printf("🧹 Found %d idle jobs to cleanup across all integrations", len(idleJobs))
+	totalAgentCount := 0
+	var broadcastErrors []string
+	connectedClientIDs := s.wsClient.GetClientIDs()
+	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
-	var cleanupErrors []string
-	for _, job := range idleJobs {
-		slackIntegrationID := job.SlackIntegrationID.String()
-
-		// Check if this job has an assigned agent
-		assignedAgent, err := s.agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
+	for _, integration := range integrations {
+		slackIntegrationID := integration.ID.String()
+		
+		// Get connected agents for this integration using centralized service method
+		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
 		if err != nil {
-			if !strings.Contains(fmt.Sprintf("%v", err), "not found") {
-				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to check agent assignment for job %s: %v", job.ID, err))
-				continue
-			}
-		} else {
-			if err := s.agentsService.UnassignAgentFromJob(assignedAgent.ID, job.ID, slackIntegrationID); err != nil {
-				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to unassign agent %s from idle job %s: %v", assignedAgent.ID, job.ID, err))
-				continue
-			}
-			log.Printf("✅ Unassigned agent %s from idle job %s", assignedAgent.ID, job.ID)
-
-			// Send JobUnassigned message to the agent after successful unassignment
-			jobUnassignedMessage := models.UnknownMessage{
-				Type:    models.MessageTypeJobUnassigned,
-				Payload: models.JobUnassignedPayload{},
-			}
-
-			if err := s.wsClient.SendMessage(assignedAgent.WSConnectionID, jobUnassignedMessage); err != nil {
-				log.Printf("⚠️ Failed to send JobUnassigned message to agent %s: %v", assignedAgent.ID, err)
-			} else {
-				log.Printf("📤 Sent JobUnassigned message to agent %s", assignedAgent.ID)
-			}
-		}
-
-		// Delete the idle job
-		if err := s.jobsService.DeleteJob(job.ID, slackIntegrationID); err != nil {
-			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete idle job %s: %v", job.ID, err))
+			broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to get connected agents for integration %s: %v", slackIntegrationID, err))
 			continue
 		}
 
-		log.Printf("🗑️ Deleted idle job %s (thread: %s)", job.ID, job.SlackThreadTS)
-
-		// Send completion message to Slack thread
-		slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
-		if err != nil {
-			log.Printf("⚠️ Failed to get Slack client for integration: %v", err)
+		if len(connectedAgents) == 0 {
 			continue
 		}
 
-		completionMessage := "This job is now complete"
-		_, _, err = slackClient.PostMessage(job.SlackChannelID,
-			slack.MsgOptionText(utils.ConvertMarkdownToSlack(completionMessage), false),
-			slack.MsgOptionTS(job.SlackThreadTS),
-		)
-		if err != nil {
-			log.Printf("⚠️ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
-		} else {
-			log.Printf("📤 Sent completion message to Slack thread %s", job.SlackThreadTS)
+		log.Printf("📡 Broadcasting CheckIdleJobs to %d connected agents for integration %s", len(connectedAgents), slackIntegrationID)
+
+		// Send CheckIdleJobs message to each connected agent
+		checkIdleJobsMessage := models.UnknownMessage{
+			Type:    models.MessageTypeCheckIdleJobs,
+			Payload: models.CheckIdleJobsPayload{},
+		}
+
+		for _, agent := range connectedAgents {
+			if err := s.wsClient.SendMessage(agent.WSConnectionID, checkIdleJobsMessage); err != nil {
+				broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to send CheckIdleJobs message to agent %s: %v", agent.ID, err))
+				continue
+			}
+			log.Printf("📤 Sent CheckIdleJobs message to agent %s", agent.ID)
+			totalAgentCount++
 		}
 	}
 
-	log.Printf("📋 Completed cleanup - processed %d idle jobs", len(idleJobs))
+	log.Printf("📋 Completed broadcast - sent CheckIdleJobs to %d agents", totalAgentCount)
 
-	// Return error if there were any cleanup failures
-	if len(cleanupErrors) > 0 {
-		return fmt.Errorf("idle job cleanup encountered %d errors: %s", len(cleanupErrors), strings.Join(cleanupErrors, "; "))
+	// Return error if there were any broadcast failures
+	if len(broadcastErrors) > 0 {
+		return fmt.Errorf("CheckIdleJobs broadcast encountered %d errors: %s", len(broadcastErrors), strings.Join(broadcastErrors, "; "))
 	}
 
-	log.Printf("📋 Completed successfully - cleaned up %d idle jobs", len(idleJobs))
+	log.Printf("📋 Completed successfully - broadcasted CheckIdleJobs to %d agents", totalAgentCount)
+	return nil
+}
+
+func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobCompletePayload, slackIntegrationID string) error {
+	log.Printf("📋 Starting to process job complete from client %s: JobID: %s, Reason: %s", clientID, payload.JobID, payload.Reason)
+
+	// Validate JobID format
+	jobID, err := uuid.Parse(payload.JobID)
+	if err != nil {
+		log.Printf("❌ Invalid JobID format from client %s: %v", clientID, err)
+		return fmt.Errorf("invalid JobID format: %w", err)
+	}
+
+	// Get the job to find the Slack thread information
+	job, err := s.jobsService.GetJobByID(jobID, slackIntegrationID)
+	if err != nil {
+		log.Printf("❌ Failed to get job %s: %v", jobID, err)
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	// Get the agent by WebSocket connection ID to verify ownership
+	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID, slackIntegrationID)
+	if err != nil {
+		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
+		return fmt.Errorf("failed to find agent for client: %w", err)
+	}
+
+	// Validate that this agent is actually assigned to this job
+	if err := s.validateJobBelongsToAgent(agent.ID, jobID, slackIntegrationID); err != nil {
+		log.Printf("❌ Agent %s not assigned to job %s: %v", agent.ID, jobID, err)
+		return fmt.Errorf("agent not assigned to job: %w", err)
+	}
+
+	// Unassign the agent from the job
+	if err := s.agentsService.UnassignAgentFromJob(agent.ID, jobID, slackIntegrationID); err != nil {
+		log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
+		return fmt.Errorf("failed to unassign agent from job: %w", err)
+	}
+	log.Printf("✅ Unassigned agent %s from completed job %s", agent.ID, jobID)
+
+	// Delete the job and its associated processed messages
+	if err := s.jobsService.DeleteJob(jobID, slackIntegrationID); err != nil {
+		log.Printf("❌ Failed to delete completed job %s: %v", jobID, err)
+		return fmt.Errorf("failed to delete completed job: %w", err)
+	}
+	log.Printf("🗑️ Deleted completed job %s", jobID)
+
+	// Send completion message to Slack thread with reason
+	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
+	if err != nil {
+		log.Printf("❌ Failed to get Slack client for integration: %v", err)
+		return fmt.Errorf("failed to get Slack client for integration: %w", err)
+	}
+
+	completionMessage := fmt.Sprintf(":gear: %s", payload.Reason)
+	_, _, err = slackClient.PostMessage(job.SlackChannelID,
+		slack.MsgOptionText(utils.ConvertMarkdownToSlack(completionMessage), false),
+		slack.MsgOptionTS(job.SlackThreadTS),
+	)
+	if err != nil {
+		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
+		return fmt.Errorf("failed to send completion message to Slack: %w", err)
+	}
+
+	log.Printf("📤 Sent completion message to Slack thread %s: %s", job.SlackThreadTS, completionMessage)
+	log.Printf("📋 Completed successfully - processed job complete for job %s", jobID)
 	return nil
 }
 
