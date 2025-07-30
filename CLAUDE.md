@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### ccbackend (Go Backend Server)
 ```bash
 cd ccbackend
-make run                    # Run backend server on localhost:3000
+make run                    # Run backend server on localhost:8080
 make build                  # Build binary to bin/ccbackend
 make clean                  # Remove build artifacts
 make test                   # Run all tests
@@ -53,7 +53,7 @@ go run main.go             # Start example server on :8080
 
 cd examples/websockets/client  
 go run main.go             # Connect client to server
-go run main.go ws://localhost:3000/ws  # Connect to ccbackend
+go run main.go ws://localhost:8080/ws  # Connect to ccbackend
 ```
 
 ## Architecture Overview
@@ -65,7 +65,7 @@ go run main.go ws://localhost:3000/ws  # Connect to ccbackend
 - **examples/websockets**: Reference WebSocket implementations
 
 ### Backend Component Organization
-- `main.go`: Server setup, environment loading, port 3000
+- `main.go`: Server setup, environment loading, port 8080
 - `handlers/slack.go`: Slack event processing (app mentions, URL verification)  
 - `clients/websockets.go`: WebSocket server with pluggable message handlers
 
