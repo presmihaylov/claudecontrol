@@ -92,7 +92,7 @@ func main() {
 	}
 
 	// Determine permission mode based on flag
-	permissionMode := "acceptEdits"
+	permissionMode := "acceptEdit"
 	if opts.BypassPermissions {
 		permissionMode = "bypassPermission"
 		fmt.Fprintf(os.Stderr, "Warning: --bypassPermission flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
