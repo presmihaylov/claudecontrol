@@ -37,7 +37,9 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) ([]ClaudeMessag
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "CLAUDE_CONFIG_DIR=.ccagent/claude")
-	cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.anthroApiKey))
+	if c.anthroApiKey != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.anthroApiKey))
+	}
 
 	log.Info("Running Claude command with env CLAUDE_CONFIG_DIR=.ccagent/claude")
 	output, err := cmd.CombinedOutput()
@@ -88,7 +90,9 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt, con
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("CLAUDE_CONFIG_DIR=%s", configDir))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.anthroApiKey))
+	if c.anthroApiKey != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.anthroApiKey))
+	}
 
 	log.Info("Running Claude command with env CLAUDE_CONFIG_DIR=%s", configDir)
 	output, err := cmd.CombinedOutput()

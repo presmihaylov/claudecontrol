@@ -77,12 +77,8 @@ func main() {
 		log.SetLevel(slog.LevelInfo)
 	}
 
-	// Validate ANTHROPIC_API_KEY environment variable
+	// Get ANTHROPIC_API_KEY environment variable (optional)
 	anthroApiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if anthroApiKey == "" {
-		fmt.Fprintf(os.Stderr, "Error: ANTHROPIC_API_KEY environment variable is required but not set\n")
-		os.Exit(1)
-	}
 
 	// Validate CCAGENT_API_KEY environment variable
 	ccagentApiKey := os.Getenv("CCAGENT_API_KEY")

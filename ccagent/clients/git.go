@@ -200,16 +200,16 @@ func (g *GitClient) GetDefaultBranch() (string, error) {
 		}
 	}
 	
-	// Fallback: check if main exists
-	cmd = exec.Command("git", "show-ref", "--verify", "--quiet", "refs/heads/main")
+	// Fallback: check if main exists on remote
+	cmd = exec.Command("git", "show-ref", "--verify", "--quiet", "refs/remotes/origin/main")
 	if cmd.Run() == nil {
 		log.Info("✅ Default branch: main")
 		log.Info("📋 Completed successfully - got default branch (main)")
 		return "main", nil
 	}
 	
-	// Fallback: check if master exists
-	cmd = exec.Command("git", "show-ref", "--verify", "--quiet", "refs/heads/master")
+	// Fallback: check if master exists on remote
+	cmd = exec.Command("git", "show-ref", "--verify", "--quiet", "refs/remotes/origin/master")
 	if cmd.Run() == nil {
 		log.Info("✅ Default branch: master")
 		log.Info("📋 Completed successfully - got default branch (master)")
