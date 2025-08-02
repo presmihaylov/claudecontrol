@@ -20,11 +20,11 @@ go fmt ./...                # Format Go source files
 ### ccagent (Go CLI Agent)
 ```bash
 cd ccagent
-make run                    # Run agent with verbose logging
+make run                    # Run agent
 make build                  # Build binary to bin/ccagent
 make clean                  # Remove build artifacts
 make build-prod             # Build production binaries for multiple platforms
-go run cmd/*.go --verbose   # Run agent directly with verbose logging
+go run cmd/*.go             # Run agent directly
 go run cmd/*.go --bypassPermissions  # Run with bypass permissions (sandbox only)
 ```
 

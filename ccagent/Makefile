@@ -1,7 +1,7 @@
 .PHONY: build clean build-prod
 
 run:
-	go run cmd/*.go --verbose
+	go run cmd/*.go
 
 build:
 	mkdir -p bin

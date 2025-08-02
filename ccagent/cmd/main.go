@@ -30,11 +30,10 @@ type CmdRunner struct {
 	claudeService  *services.ClaudeService
 	gitUseCase     *usecases.GitUseCase
 	appState       *models.AppState
-	verbose        bool
 	logFilePath    string
 }
 
-func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *CmdRunner {
+func NewCmdRunner(anthroApiKey string, permissionMode string) *CmdRunner {
 	log.Info("📋 Starting to initialize CmdRunner")
 	sessionService := services.NewSessionService()
 	claudeClient := clients.NewClaudeClient(anthroApiKey, permissionMode)
@@ -49,12 +48,10 @@ func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *Cmd
 		claudeService:  claudeService,
 		gitUseCase:     gitUseCase,
 		appState:       appState,
-		verbose:        verbose,
 	}
 }
 
 type Options struct {
-	Verbose           bool `short:"v" long:"verbose" description:"Enable verbose logging"`
 	BypassPermissions bool `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 }
 
@@ -71,9 +68,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if opts.Verbose {
-		log.SetLevel(slog.LevelInfo)
-	}
+	// Always enable info level logging
+	log.SetLevel(slog.LevelInfo)
 
 	// Get ANTHROPIC_API_KEY environment variable (optional)
 	anthroApiKey := os.Getenv("ANTHROPIC_API_KEY")
@@ -92,7 +88,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
 	}
 
-	cmdRunner := NewCmdRunner(anthroApiKey, permissionMode, opts.Verbose)
+	cmdRunner := NewCmdRunner(anthroApiKey, permissionMode)
 
 	// Setup program-wide logging from start
 	logFilePath, err := cmdRunner.setupProgramLogging()
@@ -308,15 +304,9 @@ func (cr *CmdRunner) setupProgramLogging() (string, error) {
 		return "", fmt.Errorf("failed to create log file: %w", err)
 	}
 
-	// Setup dual writer based on verbose flag
-	if cr.verbose {
-		// Write to both stdout and file
-		writer := io.MultiWriter(os.Stdout, logFile)
-		log.SetWriter(writer)
-	} else {
-		// Write only to file
-		log.SetWriter(logFile)
-	}
+	// Always write to both stdout and file
+	writer := io.MultiWriter(os.Stdout, logFile)
+	log.SetWriter(writer)
 
 	return logFilePath, nil
 }
