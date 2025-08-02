@@ -19,7 +19,7 @@ func NewClaudeClient(permissionMode string) *ClaudeClient {
 	}
 }
 
-func (c *ClaudeClient) ContinueSession(sessionID, prompt string) ([]ClaudeMessage, error) {
+func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error) {
 	log.Info("📋 Starting to continue Claude session: %s", sessionID)
 	args := []string{
 		"--permission-mode", c.permissionMode,
@@ -39,24 +39,21 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) ([]ClaudeMessag
 
 	if err != nil {
 		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
-		return nil, fmt.Errorf("claude command failed: %w\nOutput: %s", err, string(output))
+		return "", &ErrClaudeCommandErr{
+			Err:    err,
+			Output: string(output),
+		}
 	}
 
 	result := strings.TrimSpace(string(output))
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("Claude output: %s", result)
 
-	messages, err := mapClaudeOutputToMessages(result)
-	if err != nil {
-		log.Error("Failed to parse Claude output: %v", err)
-		return nil, fmt.Errorf("failed to parse Claude output: %w", err)
-	}
-
 	log.Info("📋 Completed successfully - continued Claude session")
-	return messages, nil
+	return result, nil
 }
 
-func (c *ClaudeClient) StartNewSession(prompt string) ([]ClaudeMessage, error) {
+func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 	log.Info("📋 Starting to create new Claude session")
 	args := []string{
 		"--permission-mode", c.permissionMode,
@@ -75,25 +72,23 @@ func (c *ClaudeClient) StartNewSession(prompt string) ([]ClaudeMessage, error) {
 
 	if err != nil {
 		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
-		return nil, fmt.Errorf("claude command failed: %w\nOutput: %s", err, string(output))
+		return "", &ErrClaudeCommandErr{
+			Err:    err,
+			Output: string(output),
+		}
 	}
 
 	result := strings.TrimSpace(string(output))
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("Claude output: %s", result)
 
-	messages, err := mapClaudeOutputToMessages(result)
-	if err != nil {
-		log.Error("Failed to parse Claude output: %v", err)
-		return nil, fmt.Errorf("failed to parse Claude output: %w", err)
-	}
 
 	log.Info("📋 Completed successfully - started new Claude session")
-	return messages, nil
+	return result, nil
 }
 
 
-func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt string) ([]ClaudeMessage, error) {
+func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt string) (string, error) {
 	log.Info("📋 Starting to create new Claude session with system prompt")
 	args := []string{
 		"--permission-mode", c.permissionMode,
@@ -116,19 +111,17 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 
 	if err != nil {
 		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
-		return nil, fmt.Errorf("claude command failed: %w\nOutput: %s", err, string(output))
+		return "", &ErrClaudeCommandErr{
+			Err:    err,
+			Output: string(output),
+		}
 	}
 
 	result := strings.TrimSpace(string(output))
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("Claude output: %s", result)
 
-	messages, err := mapClaudeOutputToMessages(result)
-	if err != nil {
-		log.Error("Failed to parse Claude output: %v", err)
-		return nil, fmt.Errorf("failed to parse Claude output: %w", err)
-	}
 
 	log.Info("📋 Completed successfully - started new Claude session")
-	return messages, nil
+	return result, nil
 }

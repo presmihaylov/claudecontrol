@@ -1,4 +1,4 @@
-.PHONY: build clean build-prod
+.PHONY: build clean build-prod test test-verbose
 
 run:
 	go run cmd/*.go
@@ -12,3 +12,9 @@ clean:
 
 build-prod:
 	./scripts/build_binaries.sh
+
+test:
+	go test ./...
+
+test-verbose:
+	go test -v ./...
