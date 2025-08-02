@@ -26,7 +26,6 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) ([]ClaudeMessag
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--output-format", "stream-json",
-		"--verbose",
 		"--resume", sessionID,
 		"-p", prompt,
 	}
@@ -67,7 +66,6 @@ func (c *ClaudeClient) StartNewSession(prompt string) ([]ClaudeMessage, error) {
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--output-format", "stream-json",
-		"--verbose",
 		"-p", prompt,
 	}
 
@@ -108,7 +106,6 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--output-format", "stream-json",
-		"--verbose",
 		"-p", prompt,
 	}
 
