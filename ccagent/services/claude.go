@@ -29,7 +29,7 @@ func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, erro
 	messages, err := c.claudeClient.StartNewSession(prompt)
 	if err != nil {
 		log.Error("Failed to start new Claude session: %v", err)
-		return nil, fmt.Errorf("failed to start new Claude session: %w", err)
+		return nil, c.handleClaudeClientError(err, "failed to start new Claude session")
 	}
 
 	sessionID := c.extractSessionID(messages)
@@ -57,7 +57,7 @@ func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPromp
 	messages, err := c.claudeClient.StartNewSessionWithSystemPrompt(prompt, systemPrompt)
 	if err != nil {
 		log.Error("Failed to start new Claude session with system prompt: %v", err)
-		return nil, fmt.Errorf("failed to start new Claude session with system prompt: %w", err)
+		return nil, c.handleClaudeClientError(err, "failed to start new Claude session with system prompt")
 	}
 
 	sessionID := c.extractSessionID(messages)
@@ -84,7 +84,7 @@ func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeR
 	messages, err := c.claudeClient.ContinueSession(sessionID, prompt)
 	if err != nil {
 		log.Error("Failed to continue Claude session: %v", err)
-		return nil, fmt.Errorf("failed to continue Claude session: %w", err)
+		return nil, c.handleClaudeClientError(err, "failed to continue Claude session")
 	}
 
 	actualSessionID := c.extractSessionID(messages)
@@ -125,26 +125,27 @@ func (c *ClaudeService) extractClaudeResult(messages []clients.ClaudeMessage) (s
 	return "", fmt.Errorf("no assistant message with text content found")
 }
 
-// ExtractMessageFromError attempts to extract a Claude assistant message from a Claude command error.
-// If the error is not a Claude command error or message extraction fails, it returns the original error message.
-func (c *ClaudeService) ExtractMessageFromError(err error) string {
+// handleClaudeClientError processes errors from Claude client calls.
+// If the error is a Claude command error, it attempts to extract the assistant message
+// and returns a new error with the clean message. Otherwise, returns the original error.
+func (c *ClaudeService) handleClaudeClientError(err error, operation string) error {
 	if err == nil {
-		return ""
+		return nil
 	}
 
-	// Check if this is a Claude command error
+	// Check if this is a Claude command error  
 	claudeErr, isClaudeErr := clients.IsClaudeCommandErr(err)
 	if !isClaudeErr {
-		// Not a Claude command error, return original error message
-		return err.Error()
+		// Not a Claude command error, return original error wrapped
+		return fmt.Errorf("%s: %w", operation, err)
 	}
 
 	// Try to parse the output as Claude messages
 	messages, parseErr := clients.MapClaudeOutputToMessages(claudeErr.Output)
 	if parseErr != nil {
-		// If parsing fails, return original error message
+		// If parsing fails, return original error wrapped
 		log.Error("Failed to parse Claude output from error: %v", parseErr)
-		return err.Error()
+		return fmt.Errorf("%s: %w", operation, err)
 	}
 
 	// Try to extract the assistant message using existing logic
@@ -153,13 +154,13 @@ func (c *ClaudeService) ExtractMessageFromError(err error) string {
 			for _, content := range assistantMsg.Message.Content {
 				if content.Type == "text" {
 					log.Info("✅ Successfully extracted Claude message from error: %s", content.Text)
-					return content.Text
+					return fmt.Errorf("%s: %s", operation, content.Text)
 				}
 			}
 		}
 	}
 
-	// No assistant message found, return original error message
+	// No assistant message found, return original error wrapped
 	log.Info("⚠️ No assistant message found in Claude command output, returning original error")
-	return err.Error()
+	return fmt.Errorf("%s: %w", operation, err)
 }
