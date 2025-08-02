@@ -9,7 +9,6 @@ import (
 	"ccagent/core/log"
 	"ccagent/services"
 
-	"github.com/google/uuid"
 	"github.com/lucasepe/codename"
 )
 
@@ -211,14 +210,9 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 
 	log.Info("✅ Uncommitted changes detected - proceeding with auto-commit")
 
-	// Ensure .ccagent/ is in .gitignore
-	if err := g.gitClient.EnsureCCAgentInGitignore(); err != nil {
-		log.Error("❌ Failed to ensure .ccagent/ is in .gitignore: %v", err)
-		return nil, fmt.Errorf("failed to ensure .ccagent/ is in .gitignore: %w", err)
-	}
 
-	// Generate commit message using Claude with isolated config directory
-	commitMessage, err := g.generateCommitMessageWithClaudeIsolated(currentBranch)
+	// Generate commit message using Claude
+	commitMessage, err := g.generateCommitMessageWithClaude(currentBranch)
 	if err != nil {
 		log.Error("❌ Failed to generate commit message with Claude: %v", err)
 		return nil, fmt.Errorf("failed to generate commit message with Claude: %w", err)
@@ -295,11 +289,8 @@ func (g *GitUseCase) generateRandomBranchName() (string, error) {
 	return finalBranchName, nil
 }
 
-func (g *GitUseCase) generateCommitMessageWithClaudeIsolated(branchName string) (string, error) {
-	log.Info("🤖 Asking Claude to generate commit message with isolated config")
-
-	// Generate unique config directory using UUID
-	configDir := fmt.Sprintf(".ccagent/git-%s", uuid.New().String())
+func (g *GitUseCase) generateCommitMessageWithClaude(branchName string) (string, error) {
+	log.Info("🤖 Asking Claude to generate commit message")
 
 	prompt := fmt.Sprintf(`I'm completing work on Git branch: "%s"
 
@@ -316,12 +307,12 @@ Fix user authentication validation
 
 YOUR RESPONSE MUST BE THE COMMIT MESSAGE ONLY.`, branchName)
 
-	commitMessage, err := g.claudeService.StartNewConversationWithConfigDir(prompt, configDir)
+	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate commit message: %w", err)
 	}
 
-	return strings.TrimSpace(commitMessage), nil
+	return strings.TrimSpace(result.Output), nil
 }
 
 func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string) (*AutoCommitResult, error) {
@@ -358,14 +349,14 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 
 	log.Info("🆕 No existing PR found - creating new PR")
 
-	// Generate PR title and body using Claude with isolated config directories
-	prTitle, err := g.generatePRTitleWithClaudeIsolated(branchName)
+	// Generate PR title and body using Claude
+	prTitle, err := g.generatePRTitleWithClaude(branchName)
 	if err != nil {
 		log.Error("❌ Failed to generate PR title with Claude: %v", err)
 		return nil, fmt.Errorf("failed to generate PR title with Claude: %w", err)
 	}
 
-	prBody, err := g.generatePRBodyWithClaudeIsolated(branchName, slackThreadLink)
+	prBody, err := g.generatePRBodyWithClaude(branchName, slackThreadLink)
 	if err != nil {
 		log.Error("❌ Failed to generate PR body with Claude: %v", err)
 		return nil, fmt.Errorf("failed to generate PR body with Claude: %w", err)
@@ -399,11 +390,8 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 	}, nil
 }
 
-func (g *GitUseCase) generatePRTitleWithClaudeIsolated(branchName string) (string, error) {
-	log.Info("🤖 Asking Claude to generate PR title with isolated config")
-
-	// Generate unique config directory using UUID
-	configDir := fmt.Sprintf(".ccagent/git-%s", uuid.New().String())
+func (g *GitUseCase) generatePRTitleWithClaude(branchName string) (string, error) {
+	log.Info("🤖 Asking Claude to generate PR title")
 
 	prompt := fmt.Sprintf(`I'm creating a pull request for Git branch: "%s"
 
@@ -421,19 +409,16 @@ Examples:
 
 Respond with ONLY the short title, nothing else.`, branchName)
 
-	prTitle, err := g.claudeService.StartNewConversationWithConfigDir(prompt, configDir)
+	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate PR title: %w", err)
 	}
 
-	return strings.TrimSpace(prTitle), nil
+	return strings.TrimSpace(result.Output), nil
 }
 
-func (g *GitUseCase) generatePRBodyWithClaudeIsolated(branchName, slackThreadLink string) (string, error) {
-	log.Info("🤖 Asking Claude to generate PR body with isolated config")
-
-	// Generate unique config directory using UUID
-	configDir := fmt.Sprintf(".ccagent/git-%s", uuid.New().String())
+func (g *GitUseCase) generatePRBodyWithClaude(branchName, slackThreadLink string) (string, error) {
+	log.Info("🤖 Asking Claude to generate PR body")
 
 	prompt := fmt.Sprintf(`I'm creating a pull request for Git branch: "%s"
 
@@ -448,13 +433,13 @@ IMPORTANT: Do NOT include any "Generated with Claude Control" or similar footer 
 
 Respond with ONLY the PR body, nothing else.`, branchName)
 
-	prBody, err := g.claudeService.StartNewConversationWithConfigDir(prompt, configDir)
+	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate PR body: %w", err)
 	}
 
 	// Append footer with Slack thread link
-	cleanBody := strings.TrimSpace(prBody)
+	cleanBody := strings.TrimSpace(result.Output)
 	finalBody := cleanBody + fmt.Sprintf("\n\n---\nGenerated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
 
 	return finalBody, nil

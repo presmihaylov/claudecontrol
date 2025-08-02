@@ -26,7 +26,6 @@ import (
 )
 
 type CmdRunner struct {
-	configService  *services.ConfigService
 	sessionService *services.SessionService
 	claudeService  *services.ClaudeService
 	gitUseCase     *usecases.GitUseCase
@@ -36,7 +35,6 @@ type CmdRunner struct {
 
 func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *CmdRunner {
 	log.Info("📋 Starting to initialize CmdRunner")
-	configService := services.NewConfigService()
 	sessionService := services.NewSessionService()
 	claudeClient := clients.NewClaudeClient(anthroApiKey, permissionMode)
 	claudeService := services.NewClaudeService(claudeClient)
@@ -46,7 +44,6 @@ func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *Cmd
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		configService:  configService,
 		sessionService: sessionService,
 		claudeService:  claudeService,
 		gitUseCase:     gitUseCase,
@@ -103,11 +100,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = cmdRunner.configService.InitCCAgentConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing CCAgent config: %v\n", err)
-		os.Exit(1)
-	}
 
 	// Validate Git environment before starting
 	err = cmdRunner.gitUseCase.ValidateGitEnvironment()
@@ -404,7 +396,7 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 IMPORTANT: If you are editing a pull request description, never include or override the "Generated with [Claude Control](https://claudecontrol.com) from this [slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
 `
 
-	claudeResult, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions, ".ccagent/claude")
+	claudeResult, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions)
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
 		return fmt.Errorf("error starting Claude session: %w", err)
