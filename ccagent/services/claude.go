@@ -50,32 +50,11 @@ func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, erro
 	return result, nil
 }
 
-func (c *ClaudeService) StartNewConversationWithConfigDir(prompt, configDir string) (string, error) {
-	log.Info("📋 Starting to start new Claude conversation with config dir: %s", configDir)
 
-	messages, err := c.claudeClient.StartNewSessionWithConfigDir(prompt, configDir)
-	if err != nil {
-		log.Error("Failed to start new Claude session with config dir: %v", err)
-		return "", fmt.Errorf("failed to start new Claude session with config dir: %w", err)
-	}
-
-	sessionID := c.extractSessionID(messages)
-	log.Info("📋 Claude session ID: %s", sessionID)
-
-	result, err := c.extractClaudeResult(messages)
-	if err != nil {
-		log.Error("Failed to extract Claude result: %v", err)
-		return "", fmt.Errorf("failed to extract Claude result: %w", err)
-	}
-
-	log.Info("📋 Completed successfully - started new Claude conversation with session: %s", sessionID)
-	return result, nil
-}
-
-func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPrompt, configDir string) (*ClaudeResult, error) {
+func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPrompt string) (*ClaudeResult, error) {
 	log.Info("📋 Starting to start new Claude conversation with system prompt")
 
-	messages, err := c.claudeClient.StartNewSessionWithSystemPrompt(prompt, systemPrompt, configDir)
+	messages, err := c.claudeClient.StartNewSessionWithSystemPrompt(prompt, systemPrompt)
 	if err != nil {
 		log.Error("Failed to start new Claude session with system prompt: %v", err)
 		return nil, fmt.Errorf("failed to start new Claude session with system prompt: %w", err)

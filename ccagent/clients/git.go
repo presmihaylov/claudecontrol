@@ -351,70 +351,7 @@ func (g *GitClient) HasUncommittedChanges() (bool, error) {
 	return hasChanges, nil
 }
 
-func (g *GitClient) EnsureCCAgentInGitignore() error {
-	log.Info("📋 Starting to ensure .ccagent/ is in .gitignore")
 
-	gitignorePath := ".gitignore"
-	ccagentEntry := ".ccagent/"
-
-	// Read existing .gitignore file (if it exists)
-	var existingContent string
-	if content, err := g.readFileContent(gitignorePath); err == nil {
-		existingContent = content
-	} else {
-		log.Info("📄 .gitignore file doesn't exist or couldn't be read, will create it")
-		existingContent = ""
-	}
-
-	// Check if .ccagent/ is already in .gitignore
-	lines := strings.Split(existingContent, "\n")
-	for _, line := range lines {
-		trimmedLine := strings.TrimSpace(line)
-		if trimmedLine == ccagentEntry || trimmedLine == ".ccagent" {
-			log.Info("✅ .ccagent/ already exists in .gitignore")
-			log.Info("📋 Completed successfully - .ccagent/ already in .gitignore")
-			return nil
-		}
-	}
-
-	// Add .ccagent/ to .gitignore
-	var newContent string
-	if existingContent == "" {
-		newContent = ccagentEntry + "\n"
-	} else {
-		// Ensure file ends with newline before adding our entry
-		if !strings.HasSuffix(existingContent, "\n") {
-			existingContent += "\n"
-		}
-		newContent = existingContent + ccagentEntry + "\n"
-	}
-
-	// Write updated .gitignore
-	if err := g.writeFileContent(gitignorePath, newContent); err != nil {
-		log.Error("❌ Failed to write .gitignore: %v", err)
-		return fmt.Errorf("failed to write .gitignore: %w", err)
-	}
-
-	log.Info("✅ Added .ccagent/ to .gitignore")
-	log.Info("📋 Completed successfully - ensured .ccagent/ is in .gitignore")
-	return nil
-}
-
-func (g *GitClient) readFileContent(filePath string) (string, error) {
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file %s: %w", filePath, err)
-	}
-	return string(content), nil
-}
-
-func (g *GitClient) writeFileContent(filePath, content string) error {
-	err := os.WriteFile(filePath, []byte(content), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write file %s: %w", filePath, err)
-	}
-	return nil
-}
 
 func (g *GitClient) HasExistingPR(branchName string) (bool, error) {
 	log.Info("📋 Starting to check for existing PR for branch: %s", branchName)
