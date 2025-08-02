@@ -39,8 +39,8 @@ jobs:
         cd ccagent
         make build
 
-  build-ccfrontend:
-    name: Build and lint ccfrontend
+  lint-ccfrontend:
+    name: Lint ccfrontend
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -60,6 +60,23 @@ jobs:
       run: |
         cd ccfrontend
         bun run lint
+
+  build-ccfrontend:
+    name: Build ccfrontend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install dependencies
+      run: |
+        cd ccfrontend
+        bun install
 
     - name: ccfrontend-build
       run: |
