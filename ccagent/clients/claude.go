@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -23,6 +22,7 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 	log.Info("📋 Starting to continue Claude session: %s", sessionID)
 	args := []string{
 		"--permission-mode", c.permissionMode,
+		"--verbose",
 		"--output-format", "stream-json",
 		"--resume", sessionID,
 		"-p", prompt,
@@ -57,6 +57,7 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 	log.Info("📋 Starting to create new Claude session")
 	args := []string{
 		"--permission-mode", c.permissionMode,
+		"--verbose",
 		"--output-format", "stream-json",
 		"-p", prompt,
 	}
@@ -81,17 +82,14 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 	result := strings.TrimSpace(string(output))
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("Claude output: %s", result)
-
-
-	log.Info("📋 Completed successfully - started new Claude session")
 	return result, nil
 }
-
 
 func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt string) (string, error) {
 	log.Info("📋 Starting to create new Claude session with system prompt")
 	args := []string{
 		"--permission-mode", c.permissionMode,
+		"--verbose",
 		"--output-format", "stream-json",
 		"-p", prompt,
 	}
@@ -121,7 +119,6 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("Claude output: %s", result)
 
-
-	log.Info("📋 Completed successfully - started new Claude session")
+	log.Info("📋 Completed successfully -	return result, nil")
 	return result, nil
 }
