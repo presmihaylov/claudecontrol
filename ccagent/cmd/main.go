@@ -33,10 +33,10 @@ type CmdRunner struct {
 	logFilePath    string
 }
 
-func NewCmdRunner(anthroApiKey string, permissionMode string) *CmdRunner {
+func NewCmdRunner(permissionMode string) *CmdRunner {
 	log.Info("📋 Starting to initialize CmdRunner")
 	sessionService := services.NewSessionService()
-	claudeClient := clients.NewClaudeClient(anthroApiKey, permissionMode)
+	claudeClient := clients.NewClaudeClient(permissionMode)
 	claudeService := services.NewClaudeService(claudeClient)
 	gitClient := clients.NewGitClient()
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService)
@@ -71,8 +71,6 @@ func main() {
 	// Always enable info level logging
 	log.SetLevel(slog.LevelInfo)
 
-	// Get ANTHROPIC_API_KEY environment variable (optional)
-	anthroApiKey := os.Getenv("ANTHROPIC_API_KEY")
 
 	// Validate CCAGENT_API_KEY environment variable
 	ccagentApiKey := os.Getenv("CCAGENT_API_KEY")
@@ -88,7 +86,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
 	}
 
-	cmdRunner := NewCmdRunner(anthroApiKey, permissionMode)
+	cmdRunner := NewCmdRunner(permissionMode)
 
 	// Setup program-wide logging from start
 	logFilePath, err := cmdRunner.setupProgramLogging()
