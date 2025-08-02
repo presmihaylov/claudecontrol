@@ -10,13 +10,11 @@ import (
 )
 
 type ClaudeClient struct {
-	anthroApiKey   string
 	permissionMode string
 }
 
-func NewClaudeClient(anthroApiKey string, permissionMode string) *ClaudeClient {
+func NewClaudeClient(permissionMode string) *ClaudeClient {
 	return &ClaudeClient{
-		anthroApiKey:   anthroApiKey,
 		permissionMode: permissionMode,
 	}
 }
@@ -35,9 +33,6 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) ([]ClaudeMessag
 
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
-	if c.anthroApiKey != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.anthroApiKey))
-	}
 
 	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
@@ -74,9 +69,6 @@ func (c *ClaudeClient) StartNewSession(prompt string) ([]ClaudeMessage, error) {
 
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
-	if c.anthroApiKey != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.anthroApiKey))
-	}
 
 	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
@@ -118,9 +110,6 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
-	if c.anthroApiKey != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("ANTHROPIC_API_KEY=%s", c.anthroApiKey))
-	}
 
 	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
