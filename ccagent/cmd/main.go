@@ -669,7 +669,7 @@ func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn
 			return fmt.Errorf("job %s not found in app state", jobID)
 		}
 
-		if jobData.UpdatedAt.Add(5 * time.Minute).After(time.Now()) {
+		if jobData.UpdatedAt.Add(1 * time.Hour).After(time.Now()) {
 			log.Info("ℹ️ Job %s has no PR but is still active - not marking as complete", jobID)
 			shouldComplete = false
 		} else {
