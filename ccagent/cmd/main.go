@@ -745,66 +745,16 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 	return nil
 }
 
-// extractClaudeMessageFromError attempts to extract a Claude assistant message from an error
-// that may contain Claude command output. It uses the same logic as normal command exit.
-func (cr *CmdRunner) extractClaudeMessageFromError(err error) string {
-	if err == nil {
-		return ""
-	}
 
-	errorStr := err.Error()
-	
-	// Look for "Output: " in the error message which indicates Claude command output
-	outputPrefix := "Output: "
-	outputIndex := strings.Index(errorStr, outputPrefix)
-	if outputIndex == -1 {
-		return ""
-	}
-	
-	// Extract everything after "Output: "
-	output := errorStr[outputIndex+len(outputPrefix):]
-	output = strings.TrimSpace(output)
-	
-	if output == "" {
-		return ""
-	}
-	
-	// Try to parse the output as Claude messages using existing logic
-	messages, err := clients.MapClaudeOutputToMessages(output)
-	if err != nil {
-		// If parsing fails, return empty string to fall back to original error
-		return ""
-	}
-	
-	// Use the same extraction logic from ClaudeService.extractClaudeResult
-	for i := len(messages) - 1; i >= 0; i-- {
-		if assistantMsg, ok := messages[i].(clients.AssistantMessage); ok {
-			for _, content := range assistantMsg.Message.Content {
-				if content.Type == "text" {
-					return content.Text
-				}
-			}
-		}
-	}
-	
-	return ""
-}
-
-// sendErrorMessage attempts to extract a Claude message from the error and send it as a system message.
-// If extraction fails, it sends the original error message.
+// sendErrorMessage attempts to extract a Claude message from the error using the Claude service
+// and sends it as a system message. The Claude service handles all the extraction logic.
 func (cr *CmdRunner) sendErrorMessage(conn *websocket.Conn, err error, slackMessageID string) error {
-	// First try to extract a Claude message from the error
-	claudeMessage := cr.extractClaudeMessageFromError(err)
+	// Use Claude service to extract the message (handles both Claude command errors and regular errors)
+	messageToSend := cr.claudeService.ExtractMessageFromError(err)
 	
-	var messageToSend string
-	if claudeMessage != "" {
-		// Successfully extracted Claude message, use that
-		messageToSend = claudeMessage
-		log.Info("✅ Extracted Claude message from error, sending: %s", claudeMessage)
-	} else {
-		// Fall back to original error message
+	// If we get back the same error message, it means extraction failed or wasn't applicable
+	if messageToSend == err.Error() {
 		messageToSend = fmt.Sprintf("ccagent encountered error: %v", err)
-		log.Info("⚠️ Could not extract Claude message from error, sending raw error: %v", err)
 	}
 	
 	return cr.sendSystemMessage(conn, messageToSend, slackMessageID)
