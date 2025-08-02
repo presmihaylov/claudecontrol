@@ -118,9 +118,7 @@ func main() {
 
 	// Set up deferred exit message
 	defer func() {
-		if cmdRunner.logFilePath != "" {
-			fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
-		}
+		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
 	}()
 
 	// Start WebSocket client
