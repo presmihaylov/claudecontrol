@@ -45,7 +45,7 @@ func (u UnknownClaudeMessage) GetSessionID() string {
 	return u.SessionID
 }
 
-func mapClaudeOutputToMessages(output string) ([]ClaudeMessage, error) {
+func MapClaudeOutputToMessages(output string) ([]ClaudeMessage, error) {
 	var messages []ClaudeMessage
 	
 	scanner := bufio.NewScanner(strings.NewReader(output))

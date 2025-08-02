@@ -52,7 +52,7 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) ([]ClaudeMessag
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("Claude output: %s", result)
 
-	messages, err := mapClaudeOutputToMessages(result)
+	messages, err := MapClaudeOutputToMessages(result)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
 		return nil, fmt.Errorf("failed to parse Claude output: %w", err)
@@ -92,7 +92,7 @@ func (c *ClaudeClient) StartNewSession(prompt string) ([]ClaudeMessage, error) {
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("Claude output: %s", result)
 
-	messages, err := mapClaudeOutputToMessages(result)
+	messages, err := MapClaudeOutputToMessages(result)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
 		return nil, fmt.Errorf("failed to parse Claude output: %w", err)
@@ -137,7 +137,7 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("Claude output: %s", result)
 
-	messages, err := mapClaudeOutputToMessages(result)
+	messages, err := MapClaudeOutputToMessages(result)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
 		return nil, fmt.Errorf("failed to parse Claude output: %w", err)

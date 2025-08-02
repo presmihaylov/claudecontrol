@@ -193,7 +193,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				if err != nil {
 					log.Info("❌ Read error: %v", err)
 					// WebSocket read errors don't have SlackMessageID context
-					cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
+					cr.sendErrorMessage(conn, err, "")
 					close(reconnect)
 					return
 				}
@@ -331,7 +331,7 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), slackMessageID)
+			cr.sendErrorMessage(conn, err, slackMessageID)
 		}
 	case MessageTypeUserMessage:
 		if err := cr.handleUserMessage(msg, conn); err != nil {
@@ -341,17 +341,17 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), slackMessageID)
+			cr.sendErrorMessage(conn, err, slackMessageID)
 		}
 	case MessageTypeJobUnassigned:
 		if err := cr.handleJobUnassigned(msg, conn); err != nil {
 			// JobUnassigned doesn't have SlackMessageID, so use empty string
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
+			cr.sendErrorMessage(conn, err, "")
 		}
 	case MessageTypeCheckIdleJobs:
 		if err := cr.handleCheckIdleJobs(msg, conn); err != nil {
 			// CheckIdleJobs doesn't have SlackMessageID, so use empty string
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error checking idle jobs: %v", err), "")
+			cr.sendErrorMessage(conn, err, "")
 		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
@@ -743,6 +743,71 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 
 	log.Info("⚙️ Sent system message: %s", message)
 	return nil
+}
+
+// extractClaudeMessageFromError attempts to extract a Claude assistant message from an error
+// that may contain Claude command output. It uses the same logic as normal command exit.
+func (cr *CmdRunner) extractClaudeMessageFromError(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	errorStr := err.Error()
+	
+	// Look for "Output: " in the error message which indicates Claude command output
+	outputPrefix := "Output: "
+	outputIndex := strings.Index(errorStr, outputPrefix)
+	if outputIndex == -1 {
+		return ""
+	}
+	
+	// Extract everything after "Output: "
+	output := errorStr[outputIndex+len(outputPrefix):]
+	output = strings.TrimSpace(output)
+	
+	if output == "" {
+		return ""
+	}
+	
+	// Try to parse the output as Claude messages using existing logic
+	messages, err := clients.MapClaudeOutputToMessages(output)
+	if err != nil {
+		// If parsing fails, return empty string to fall back to original error
+		return ""
+	}
+	
+	// Use the same extraction logic from ClaudeService.extractClaudeResult
+	for i := len(messages) - 1; i >= 0; i-- {
+		if assistantMsg, ok := messages[i].(clients.AssistantMessage); ok {
+			for _, content := range assistantMsg.Message.Content {
+				if content.Type == "text" {
+					return content.Text
+				}
+			}
+		}
+	}
+	
+	return ""
+}
+
+// sendErrorMessage attempts to extract a Claude message from the error and send it as a system message.
+// If extraction fails, it sends the original error message.
+func (cr *CmdRunner) sendErrorMessage(conn *websocket.Conn, err error, slackMessageID string) error {
+	// First try to extract a Claude message from the error
+	claudeMessage := cr.extractClaudeMessageFromError(err)
+	
+	var messageToSend string
+	if claudeMessage != "" {
+		// Successfully extracted Claude message, use that
+		messageToSend = claudeMessage
+		log.Info("✅ Extracted Claude message from error, sending: %s", claudeMessage)
+	} else {
+		// Fall back to original error message
+		messageToSend = fmt.Sprintf("ccagent encountered error: %v", err)
+		log.Info("⚠️ Could not extract Claude message from error, sending raw error: %v", err)
+	}
+	
+	return cr.sendSystemMessage(conn, messageToSend, slackMessageID)
 }
 
 func (cr *CmdRunner) sendProcessingSlackMessage(conn *websocket.Conn, slackMessageID string) error {
