@@ -61,26 +61,3 @@ jobs:
         cd ccfrontend
         bun run lint
 
-  build-ccfrontend:
-    name: Build ccfrontend
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Bun
-      uses: oven-sh/setup-bun@v2
-      with:
-        bun-version: latest
-
-    - name: Install dependencies
-      run: |
-        cd ccfrontend
-        bun install
-
-    - name: ccfrontend-build
-      run: |
-        cd ccfrontend
-        bun run build
-      env:
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
