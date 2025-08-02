@@ -56,12 +56,12 @@ jobs:
         cd ccfrontend
         bun install
 
-    - name: Run linter
+    - name: ccfrontend-lint
       run: |
         cd ccfrontend
         bun run lint
 
-    - name: Build ccfrontend
+    - name: ccfrontend-build
       run: |
         cd ccfrontend
         bun run build
