@@ -1,9 +1,16 @@
 package handlers
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 
 	"ccbackend/models"
 	"ccbackend/services"
@@ -26,11 +33,66 @@ func NewSlackWebhooksHandler(signingSecret string, coreUseCase *usecases.CoreUse
 	}
 }
 
+// verifySlackSignature verifies the authenticity of a Slack webhook request
+func (h *SlackWebhooksHandler) verifySlackSignature(r *http.Request, body []byte) error {
+	// Extract headers
+	timestamp := r.Header.Get("X-Slack-Request-Timestamp")
+	signature := r.Header.Get("X-Slack-Signature")
+	
+	if timestamp == "" || signature == "" {
+		return fmt.Errorf("missing required headers")
+	}
+	
+	// Verify timestamp freshness (within 5 minutes)
+	ts, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid timestamp format: %v", err)
+	}
+	
+	if time.Now().Unix()-ts > 300 { // 5 minutes
+		return fmt.Errorf("request timestamp too old")
+	}
+	
+	// Create signature base string: v0:timestamp:body
+	baseString := fmt.Sprintf("v0:%s:%s", timestamp, string(body))
+	
+	// Compute HMAC-SHA256
+	mac := hmac.New(sha256.New, []byte(h.signingSecret))
+	mac.Write([]byte(baseString))
+	expectedSignature := "v0=" + hex.EncodeToString(mac.Sum(nil))
+	
+	// Secure comparison
+	if !hmac.Equal([]byte(expectedSignature), []byte(signature)) {
+		return fmt.Errorf("signature verification failed")
+	}
+	
+	return nil
+}
 
 func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Request) {
 	log.Printf("📨 Slack event received from %s", r.RemoteAddr)
+	
+	// Read raw body for signature verification
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("❌ Failed to read request body: %v", err)
+		http.Error(w, "failed to read body", http.StatusBadRequest)
+		return
+	}
+	
+	// Verify Slack signature
+	if err := h.verifySlackSignature(r, bodyBytes); err != nil {
+		log.Printf("❌ Slack signature verification failed: %v", err)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	log.Printf("✅ Slack signature verified successfully")
+	
+	// Parse JSON from body bytes
 	var body map[string]any
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		log.Printf("❌ Failed to parse JSON body: %v", err)
 		http.Error(w, "failed to parse body", http.StatusBadRequest)
 		return
 	}
