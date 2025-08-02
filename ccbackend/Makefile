@@ -11,7 +11,7 @@ clean:
 	rm -rf bin/
 
 test:
-	go test ./...
+	go test -count=1 ./...
 
 test-verbose:
-	go test ./... -v
+	go test -count=1 ./... -v
