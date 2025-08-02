@@ -124,3 +124,42 @@ func (c *ClaudeService) extractClaudeResult(messages []clients.ClaudeMessage) (s
 	}
 	return "", fmt.Errorf("no assistant message with text content found")
 }
+
+// ExtractMessageFromError attempts to extract a Claude assistant message from a Claude command error.
+// If the error is not a Claude command error or message extraction fails, it returns the original error message.
+func (c *ClaudeService) ExtractMessageFromError(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	// Check if this is a Claude command error
+	claudeErr, isClaudeErr := clients.IsClaudeCommandErr(err)
+	if !isClaudeErr {
+		// Not a Claude command error, return original error message
+		return err.Error()
+	}
+
+	// Try to parse the output as Claude messages
+	messages, parseErr := clients.MapClaudeOutputToMessages(claudeErr.Output)
+	if parseErr != nil {
+		// If parsing fails, return original error message
+		log.Error("Failed to parse Claude output from error: %v", parseErr)
+		return err.Error()
+	}
+
+	// Try to extract the assistant message using existing logic
+	for i := len(messages) - 1; i >= 0; i-- {
+		if assistantMsg, ok := messages[i].(clients.AssistantMessage); ok {
+			for _, content := range assistantMsg.Message.Content {
+				if content.Type == "text" {
+					log.Info("✅ Successfully extracted Claude message from error: %s", content.Text)
+					return content.Text
+				}
+			}
+		}
+	}
+
+	// No assistant message found, return original error message
+	log.Info("⚠️ No assistant message found in Claude command output, returning original error")
+	return err.Error()
+}
