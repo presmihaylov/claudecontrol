@@ -31,6 +31,7 @@ type CmdRunner struct {
 	gitUseCase     *usecases.GitUseCase
 	appState       *models.AppState
 	verbose        bool
+	logFilePath    string
 }
 
 func NewCmdRunner(anthroApiKey string, permissionMode string, verbose bool) *CmdRunner {
@@ -94,11 +95,12 @@ func main() {
 	cmdRunner := NewCmdRunner(anthroApiKey, permissionMode, opts.Verbose)
 
 	// Setup program-wide logging from start
-	_, err = cmdRunner.setupProgramLogging()
+	logFilePath, err := cmdRunner.setupProgramLogging()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error setting up program logging: %v\n", err)
 		os.Exit(1)
 	}
+	cmdRunner.logFilePath = logFilePath
 
 
 	// Validate Git environment before starting
@@ -113,6 +115,11 @@ func main() {
 	if wsURL == "" {
 		wsURL = "wss://claudecontrol.onrender.com/ws"
 	}
+
+	// Set up deferred exit message
+	defer func() {
+		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
+	}()
 
 	// Start WebSocket client
 	err = cmdRunner.startWebSocketClient(wsURL, ccagentApiKey)
@@ -278,11 +285,17 @@ func (cr *CmdRunner) connectWithRetry(serverURL, apiKey string, retryIntervals [
 	return nil, false
 }
 
-func (cr *CmdRunner) setupProgramLogging() (*os.File, error) {
-	// Create .ccagent/logs directory if it doesn't exist
-	logsDir := ".ccagent/logs"
+func (cr *CmdRunner) setupProgramLogging() (string, error) {
+	// Get user's home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	// Create ~/.config/ccagent/logs directory if it doesn't exist
+	logsDir := filepath.Join(homeDir, ".config", "ccagent", "logs")
 	if err := os.MkdirAll(logsDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create logs directory: %w", err)
+		return "", fmt.Errorf("failed to create logs directory: %w", err)
 	}
 
 	// Create log file with timestamp only
@@ -292,7 +305,7 @@ func (cr *CmdRunner) setupProgramLogging() (*os.File, error) {
 
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create log file: %w", err)
+		return "", fmt.Errorf("failed to create log file: %w", err)
 	}
 
 	// Setup dual writer based on verbose flag
@@ -305,7 +318,7 @@ func (cr *CmdRunner) setupProgramLogging() (*os.File, error) {
 		log.SetWriter(logFile)
 	}
 
-	return logFile, nil
+	return logFilePath, nil
 }
 
 func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
