@@ -45,7 +45,7 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 
 	if err != nil {
 		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
-		return nil, &ErrClaudeCommandErr{
+		return "", &ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
@@ -82,7 +82,7 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 
 	if err != nil {
 		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
-		return nil, &ErrClaudeCommandErr{
+		return "", &ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
@@ -125,7 +125,7 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 
 	if err != nil {
 		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
-		return nil, &ErrClaudeCommandErr{
+		return "", &ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
