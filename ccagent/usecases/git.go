@@ -19,9 +19,9 @@ type GitUseCase struct {
 }
 
 type AutoCommitResult struct {
-	JustCreatedPR    bool
+	JustCreatedPR   bool
 	PullRequestLink string
-	PullRequestID   string  // GitHub PR number (e.g., "123")
+	PullRequestID   string // GitHub PR number (e.g., "123")
 	CommitHash      string
 	RepositoryURL   string
 	BranchName      string
@@ -33,7 +33,6 @@ func NewGitUseCase(gitClient *clients.GitClient, claudeService *services.ClaudeS
 		claudeService: claudeService,
 	}
 }
-
 
 func (g *GitUseCase) ValidateGitEnvironment() error {
 	log.Info("📋 Starting to validate Git environment")
@@ -125,7 +124,7 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) (string,
 	log.Info("🌿 Generated branch name: %s", branchName)
 
 	// Use the common branch switching logic to get to main and pull latest
-	if err := g.resetAndPullMain(); err != nil {
+	if err := g.resetAndPullDefaultBranch(); err != nil {
 		log.Error("❌ Failed to reset and pull main: %v", err)
 		return "", fmt.Errorf("failed to reset and pull main: %w", err)
 	}
@@ -141,9 +140,9 @@ func (g *GitUseCase) PrepareForNewConversation(conversationHint string) (string,
 	return branchName, nil
 }
 
-// resetAndPullMain is a helper that resets current branch, goes to main, and pulls latest
-func (g *GitUseCase) resetAndPullMain() error {
-	log.Info("📋 Starting to reset and pull main")
+// resetAndPullDefaultBranch is a helper that resets current branch, goes to main, and pulls latest
+func (g *GitUseCase) resetAndPullDefaultBranch() error {
+	log.Info("📋 Starting to reset and pull default branch")
 
 	// Step 1: Reset hard current branch to discard uncommitted changes
 	if err := g.gitClient.ResetHard(); err != nil {
@@ -201,7 +200,7 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 		log.Info("ℹ️ No uncommitted changes found - skipping auto-commit")
 		log.Info("📋 Completed successfully - no changes to commit")
 		return &AutoCommitResult{
-			JustCreatedPR:    false,
+			JustCreatedPR:   false,
 			PullRequestLink: "",
 			PullRequestID:   "",
 			CommitHash:      "",
@@ -217,7 +216,6 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 		log.Error("❌ Failed to ensure .ccagent/ is in .gitignore: %v", err)
 		return nil, fmt.Errorf("failed to ensure .ccagent/ is in .gitignore: %w", err)
 	}
-
 
 	// Generate commit message using Claude with isolated config directory
 	commitMessage, err := g.generateCommitMessageWithClaudeIsolated(currentBranch)
@@ -270,7 +268,7 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 	// Update the result with commit information
 	prResult.CommitHash = commitHash
 	prResult.RepositoryURL = repositoryURL
-	
+
 	// Extract and store PR ID from the PR URL if available
 	if prResult.PullRequestLink != "" {
 		prResult.PullRequestID = g.gitClient.ExtractPRIDFromURL(prResult.PullRequestLink)
@@ -296,7 +294,6 @@ func (g *GitUseCase) generateRandomBranchName() (string, error) {
 	log.Info("🎲 Generated random name: %s", finalBranchName)
 	return finalBranchName, nil
 }
-
 
 func (g *GitUseCase) generateCommitMessageWithClaudeIsolated(branchName string) (string, error) {
 	log.Info("🤖 Asking Claude to generate commit message with isolated config")
@@ -350,7 +347,7 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 
 		log.Info("📋 Completed successfully - updated existing PR")
 		return &AutoCommitResult{
-			JustCreatedPR:    false,
+			JustCreatedPR:   false,
 			PullRequestLink: prURL,
 			PullRequestID:   g.gitClient.ExtractPRIDFromURL(prURL),
 			CommitHash:      "", // Will be filled in by caller
@@ -393,7 +390,7 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 	log.Info("✅ Successfully created PR: %s", prTitle)
 	log.Info("📋 Completed successfully - created new PR")
 	return &AutoCommitResult{
-		JustCreatedPR:    true,
+		JustCreatedPR:   true,
 		PullRequestLink: prURL,
 		PullRequestID:   g.gitClient.ExtractPRIDFromURL(prURL),
 		CommitHash:      "", // Will be filled in by caller
@@ -495,7 +492,7 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 
 	// Check if the expected footer is present
 	expectedFooter := fmt.Sprintf("Generated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
-	
+
 	if strings.Contains(currentDescription, expectedFooter) {
 		log.Info("✅ PR description already has correct Claude Control footer")
 		log.Info("📋 Completed successfully - footer validation passed")
@@ -508,17 +505,17 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	lines := strings.Split(currentDescription, "\n")
 	var cleanedLines []string
 	inFooterSection := false
-	
+
 	for _, line := range lines {
 		trimmedLine := strings.TrimSpace(line)
-		
+
 		// Check if we've hit a footer section
 		if strings.Contains(trimmedLine, "Generated with Claude Control") ||
-		   strings.Contains(trimmedLine, "Generated with Claude Code") {
+			strings.Contains(trimmedLine, "Generated with Claude Code") {
 			inFooterSection = true
 			continue
 		}
-		
+
 		// Skip separator lines that are part of footer
 		if trimmedLine == "---" {
 			// Look ahead to see if this separator is followed by footer content
@@ -533,17 +530,17 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 				}
 				break
 			}
-			
+
 			if isFooterSeparator || inFooterSection {
 				continue
 			}
 		}
-		
+
 		// Skip empty lines in footer section
 		if inFooterSection && trimmedLine == "" {
 			continue
 		}
-		
+
 		cleanedLines = append(cleanedLines, line)
 	}
 
