@@ -187,7 +187,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				if err != nil {
 					log.Info("❌ Read error: %v", err)
 					// WebSocket read errors don't have SlackMessageID context
-					cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
+					cr.sendErrorMessage(conn, err, "")
 					close(reconnect)
 					return
 				}
@@ -319,7 +319,7 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), slackMessageID)
+			cr.sendErrorMessage(conn, err, slackMessageID)
 		}
 	case MessageTypeUserMessage:
 		if err := cr.handleUserMessage(msg, conn); err != nil {
@@ -329,17 +329,17 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), slackMessageID)
+			cr.sendErrorMessage(conn, err, slackMessageID)
 		}
 	case MessageTypeJobUnassigned:
 		if err := cr.handleJobUnassigned(msg, conn); err != nil {
 			// JobUnassigned doesn't have SlackMessageID, so use empty string
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), "")
+			cr.sendErrorMessage(conn, err, "")
 		}
 	case MessageTypeCheckIdleJobs:
 		if err := cr.handleCheckIdleJobs(msg, conn); err != nil {
 			// CheckIdleJobs doesn't have SlackMessageID, so use empty string
-			cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error checking idle jobs: %v", err), "")
+			cr.sendErrorMessage(conn, err, "")
 		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
@@ -731,6 +731,14 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 
 	log.Info("⚙️ Sent system message: %s", message)
 	return nil
+}
+
+
+// sendErrorMessage sends an error as a system message. The Claude service handles 
+// all error processing internally, so we just need to format and send the error.
+func (cr *CmdRunner) sendErrorMessage(conn *websocket.Conn, err error, slackMessageID string) error {
+	messageToSend := fmt.Sprintf("ccagent encountered error: %v", err)
+	return cr.sendSystemMessage(conn, messageToSend, slackMessageID)
 }
 
 func (cr *CmdRunner) sendProcessingSlackMessage(conn *websocket.Conn, slackMessageID string) error {
