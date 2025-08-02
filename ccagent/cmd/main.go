@@ -746,17 +746,10 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 }
 
 
-// sendErrorMessage attempts to extract a Claude message from the error using the Claude service
-// and sends it as a system message. The Claude service handles all the extraction logic.
+// sendErrorMessage sends an error as a system message. The Claude service handles 
+// all error processing internally, so we just need to format and send the error.
 func (cr *CmdRunner) sendErrorMessage(conn *websocket.Conn, err error, slackMessageID string) error {
-	// Use Claude service to extract the message (handles both Claude command errors and regular errors)
-	messageToSend := cr.claudeService.ExtractMessageFromError(err)
-	
-	// If we get back the same error message, it means extraction failed or wasn't applicable
-	if messageToSend == err.Error() {
-		messageToSend = fmt.Sprintf("ccagent encountered error: %v", err)
-	}
-	
+	messageToSend := fmt.Sprintf("ccagent encountered error: %v", err)
 	return cr.sendSystemMessage(conn, messageToSend, slackMessageID)
 }
 
