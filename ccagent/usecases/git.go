@@ -8,7 +8,6 @@ import (
 	"ccagent/clients"
 	"ccagent/core/log"
 	"ccagent/services"
-	"ccagent/utils"
 
 	"github.com/lucasepe/codename"
 )
@@ -439,10 +438,9 @@ Respond with ONLY the PR body, nothing else.`, branchName)
 		return "", fmt.Errorf("claude failed to generate PR body: %w", err)
 	}
 
-	// Append footer with Slack thread link (converted to deep link)
+	// Append footer with Slack thread link (backend sends proper deep links)
 	cleanBody := strings.TrimSpace(result.Output)
-	slackDeepLink := utils.ConvertSlackPermalinkToDeepLink(slackThreadLink)
-	finalBody := cleanBody + fmt.Sprintf("\n\n---\nGenerated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackDeepLink)
+	finalBody := cleanBody + fmt.Sprintf("\n\n---\nGenerated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
 
 	return finalBody, nil
 }
@@ -477,9 +475,8 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 		return fmt.Errorf("failed to get PR description: %w", err)
 	}
 
-	// Check if the expected footer is present (convert to deep link)
-	slackDeepLink := utils.ConvertSlackPermalinkToDeepLink(slackThreadLink)
-	expectedFooter := fmt.Sprintf("Generated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackDeepLink)
+	// Check if the expected footer is present (backend sends proper deep links)
+	expectedFooter := fmt.Sprintf("Generated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
 
 	if strings.Contains(currentDescription, expectedFooter) {
 		log.Info("✅ PR description already has correct Claude Control footer")
