@@ -517,22 +517,18 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 	})
 
 	// Send assistant response back first
-	response := UnknownMessage{
-		ID:   uuid.New().String(),
-		Type: MessageTypeAssistantMessage,
-		Payload: AssistantMessagePayload{
-			JobID:          payload.JobID,
-			Message:        claudeResult.Output,
-			SlackMessageID: payload.SlackMessageID,
-		},
+	assistantPayload := AssistantMessagePayload{
+		JobID:          payload.JobID,
+		Message:        claudeResult.Output,
+		SlackMessageID: payload.SlackMessageID,
 	}
 
-	if err := conn.WriteJSON(response); err != nil {
-		log.Info("❌ Failed to send assistant response: %v", err)
-		return fmt.Errorf("failed to send assistant response: %w", err)
+	messageID, err := cr.messageProcessor.SendReliableMessage(MessageTypeAssistantMessage, assistantPayload)
+	if err != nil {
+		log.Info("❌ Failed to send reliable assistant response: %v", err)
+		return fmt.Errorf("failed to send reliable assistant response: %w", err)
 	}
-
-	log.Info("🤖 Sent assistant response")
+	log.Info("🤖 Sent reliable assistant response (message ID: %s)", messageID)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
@@ -627,22 +623,18 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	})
 
 	// Send assistant response back first
-	response := UnknownMessage{
-		ID:   uuid.New().String(),
-		Type: MessageTypeAssistantMessage,
-		Payload: AssistantMessagePayload{
-			JobID:          payload.JobID,
-			Message:        claudeResult.Output,
-			SlackMessageID: payload.SlackMessageID,
-		},
+	assistantPayload := AssistantMessagePayload{
+		JobID:          payload.JobID,
+		Message:        claudeResult.Output,
+		SlackMessageID: payload.SlackMessageID,
 	}
 
-	if err := conn.WriteJSON(response); err != nil {
-		log.Info("❌ Failed to send assistant response: %v", err)
-		return fmt.Errorf("failed to send assistant response: %w", err)
+	messageID, err := cr.messageProcessor.SendReliableMessage(MessageTypeAssistantMessage, assistantPayload)
+	if err != nil {
+		log.Info("❌ Failed to send reliable assistant response: %v", err)
+		return fmt.Errorf("failed to send reliable assistant response: %w", err)
 	}
-
-	log.Info("🤖 Sent assistant response")
+	log.Info("🤖 Sent reliable assistant response (message ID: %s)", messageID)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
