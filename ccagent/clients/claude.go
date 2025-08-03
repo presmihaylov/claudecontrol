@@ -44,9 +44,10 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 		}
 	}
 
-	log.Info("Claude command completed successfully, outputLength: %d", len(strings.TrimSpace(string(output))))
+	result := strings.TrimSpace(string(output))
+	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("📋 Completed successfully - continued Claude session")
-	return strings.TrimSpace(string(output)), nil
+	return result, nil
 }
 
 func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
@@ -74,8 +75,9 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 		}
 	}
 
-	log.Info("Claude command completed successfully, outputLength: %d", len(strings.TrimSpace(string(output))))
-	return strings.TrimSpace(string(output)), nil
+	result := strings.TrimSpace(string(output))
+	log.Info("Claude command completed successfully, outputLength: %d", len(result))
+	return result, nil
 }
 
 func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt string) (string, error) {
@@ -107,7 +109,8 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 		}
 	}
 
-	log.Info("Claude command completed successfully, outputLength: %d", len(strings.TrimSpace(string(output))))
+	result := strings.TrimSpace(string(output))
+	log.Info("Claude command completed successfully, outputLength: %d", len(result))
 	log.Info("📋 Completed successfully - created new Claude session with system prompt")
-	return strings.TrimSpace(string(output)), nil
+	return result, nil
 }
