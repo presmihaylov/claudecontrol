@@ -18,7 +18,7 @@ func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
 	return &AgentsService{agentsRepo: repo}
 }
 
-func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID, agentID string) (*models.ActiveAgent, error) {
+func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID string, agentID uuid.UUID) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to create active agent for wsConnectionID: %s, agentID: %s", wsConnectionID, agentID)
 
 	if wsConnectionID == "" {
@@ -35,28 +35,18 @@ func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID, ag
 		return nil, fmt.Errorf("invalid slack_integration_id format: %w", err)
 	}
 
-	// Parse agent ID if provided
-	var agentUUID *uuid.UUID
-	if agentID != "" {
-		parsedAgentID, err := uuid.Parse(agentID)
-		if err != nil {
-			return nil, fmt.Errorf("invalid agent_id format (must be UUID): %w", err)
-		}
-		agentUUID = &parsedAgentID
-	}
-
 	agent := &models.ActiveAgent{
 		ID:                 id,
 		WSConnectionID:     wsConnectionID,
 		SlackIntegrationID: integrationUUID,
-		AgentID:            agentUUID,
+		AgentID:            agentID,
 	}
 
 	if err := s.agentsRepo.CreateActiveAgent(agent); err != nil {
 		return nil, fmt.Errorf("failed to create active agent: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - created active agent with ID: %s, agent_id: %v", agent.ID, agentUUID)
+	log.Printf("📋 Completed successfully - created active agent with ID: %s, agent_id: %v", agent.ID, agentID)
 	return agent, nil
 }
 
@@ -402,4 +392,3 @@ func (s *AgentsService) GetActiveAgentJobAssignments(agentID uuid.UUID, slackInt
 	log.Printf("📋 Completed successfully - retrieved %d job assignments for agent %s", len(jobIDs), agentID)
 	return jobIDs, nil
 }
-

@@ -50,13 +50,13 @@ func (s *CoreUseCase) validateJobBelongsToAgent(agentID, jobID uuid.UUID, slackI
 	if err != nil {
 		return fmt.Errorf("failed to get jobs for agent: %w", err)
 	}
-	
+
 	for _, assignedJobID := range agentJobs {
 		if assignedJobID == jobID {
 			return nil
 		}
 	}
-	
+
 	log.Printf("❌ Agent %s is not assigned to job %s", agentID, jobID)
 	return fmt.Errorf("agent %s is not assigned to job %s", agentID, jobID)
 }
@@ -74,7 +74,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	// Get the specific job from the payload to find the Slack thread information
 	utils.AssertInvariant(payload.JobID != "", "JobID is empty in AssistantMessage payload")
 	utils.AssertInvariant(uuid.Validate(payload.JobID) == nil, "JobID is not in UUID format")
-	
+
 	jobID := uuid.MustParse(payload.JobID)
 	job, err := s.jobsService.GetJobByID(jobID, slackIntegrationID)
 	if err != nil {
@@ -544,7 +544,7 @@ type agentWithLoad struct {
 
 func (s *CoreUseCase) sortAgentsByLoad(agents []*models.ActiveAgent, slackIntegrationID string) ([]agentWithLoad, error) {
 	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
-	
+
 	for _, agent := range agents {
 		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, slackIntegrationID)
 		if err != nil {
@@ -686,7 +686,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 
 	for _, integration := range integrations {
 		slackIntegrationID := integration.ID.String()
-		
+
 		// Get connected agents for this integration using centralized service method
 		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
 		if err != nil {
@@ -814,7 +814,7 @@ func (s *CoreUseCase) CleanupStaleActiveAgents() error {
 
 	for _, integration := range integrations {
 		slackIntegrationID := integration.ID.String()
-		
+
 		// Get stale agents using centralized service method
 		staleAgents, err := s.agentsService.GetStaleAgents(slackIntegrationID, connectedClientIDs)
 		if err != nil {
@@ -831,13 +831,13 @@ func (s *CoreUseCase) CleanupStaleActiveAgents() error {
 		// Delete each stale agent
 		for _, agent := range staleAgents {
 			log.Printf("🧹 Found stale agent %s (WebSocket ID: %s) - no corresponding connection", agent.ID, agent.WSConnectionID)
-			
+
 			// Delete the stale agent - CASCADE DELETE will automatically clean up job assignments
 			if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
 				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete stale agent %s: %v", agent.ID, err))
 				continue
 			}
-			
+
 			log.Printf("✅ Deleted stale agent %s (CASCADE DELETE cleaned up job assignments)", agent.ID)
 			totalStaleAgents++
 		}
