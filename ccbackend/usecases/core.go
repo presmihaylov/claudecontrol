@@ -484,6 +484,21 @@ func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slack
 // - wasAssigned: true if job was successfully assigned to an agent, false if no agents available
 // - error: any error that occurred during the assignment process
 func (s *CoreUseCase) tryAssignJobToAgent(jobID uuid.UUID, slackIntegrationID string) (string, bool, error) {
+	// First check if this job is already assigned to an agent
+	existingAgent, err := s.agentsService.GetAgentByJobID(jobID, slackIntegrationID)
+	if err == nil {
+		// Job is already assigned - check if agent still has active connection
+		connectedClientIDs := s.wsClient.GetClientIDs()
+		if s.agentsService.CheckAgentHasActiveConnection(existingAgent, connectedClientIDs) {
+			log.Printf("🔄 Job %s already assigned to agent %s with active connection", jobID, existingAgent.ID)
+			return existingAgent.WSConnectionID, true, nil
+		}
+		// Agent no longer has active connection - job remains assigned but can't process
+		log.Printf("⚠️ Job %s assigned to agent %s but no active connection", jobID, existingAgent.ID)
+		return "", false, nil
+	}
+	
+	// Job not assigned - proceed with assignment
 	// Get active WebSocket connections first
 	connectedClientIDs := s.wsClient.GetClientIDs()
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
