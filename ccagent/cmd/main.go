@@ -32,10 +32,10 @@ type CmdRunner struct {
 	gitUseCase     *usecases.GitUseCase
 	appState       *models.AppState
 	logFilePath    string
-	agentID        string
+	agentID        uuid.UUID
 }
 
-func NewCmdRunner(permissionMode string) *CmdRunner {
+func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	log.Info("📋 Starting to initialize CmdRunner")
 	sessionService := services.NewSessionService()
 	claudeClient := clients.NewClaudeClient(permissionMode)
@@ -44,8 +44,8 @@ func NewCmdRunner(permissionMode string) *CmdRunner {
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService)
 	appState := models.NewAppState()
 
-	agentID := uuid.New().String()
-	log.Info("🆔 Generated agent ID: %s", agentID)
+	agentID := uuid.New()
+	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
@@ -54,7 +54,7 @@ func NewCmdRunner(permissionMode string) *CmdRunner {
 		gitUseCase:     gitUseCase,
 		appState:       appState,
 		agentID:        agentID,
-	}
+	}, nil
 }
 
 type Options struct {
@@ -77,7 +77,6 @@ func main() {
 	// Always enable info level logging
 	log.SetLevel(slog.LevelInfo)
 
-
 	// Validate CCAGENT_API_KEY environment variable
 	ccagentApiKey := os.Getenv("CCAGENT_API_KEY")
 	if ccagentApiKey == "" {
@@ -92,7 +91,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
 	}
 
-	cmdRunner := NewCmdRunner(permissionMode)
+	cmdRunner, err := NewCmdRunner(permissionMode)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing CmdRunner: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Setup program-wide logging from start
 	logFilePath, err := cmdRunner.setupProgramLogging()
@@ -101,7 +104,6 @@ func main() {
 		os.Exit(1)
 	}
 	cmdRunner.logFilePath = logFilePath
-
 
 	// Validate Git environment before starting
 	err = cmdRunner.gitUseCase.ValidateGitEnvironment()
@@ -248,7 +250,7 @@ func (cr *CmdRunner) connectWithRetry(serverURL, apiKey string, retryIntervals [
 
 	headers := http.Header{
 		"X-CCAGENT-API-KEY": []string{apiKey},
-		"X-CCAGENT-ID":      []string{cr.agentID},
+		"X-CCAGENT-ID":      []string{cr.agentID.String()},
 	}
 	conn, _, err := websocket.DefaultDialer.Dial(serverURL, headers)
 	if err == nil {
@@ -740,8 +742,7 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 	return nil
 }
 
-
-// sendErrorMessage sends an error as a system message. The Claude service handles 
+// sendErrorMessage sends an error as a system message. The Claude service handles
 // all error processing internally, so we just need to format and send the error.
 func (cr *CmdRunner) sendErrorMessage(conn *websocket.Conn, err error, slackMessageID string) error {
 	messageToSend := fmt.Sprintf("ccagent encountered error: %v", err)
