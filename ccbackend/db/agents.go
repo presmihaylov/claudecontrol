@@ -22,15 +22,20 @@ func NewPostgresAgentsRepository(db *sqlx.DB, schema string) *PostgresAgentsRepo
 	return &PostgresAgentsRepository{db: db, schema: schema}
 }
 
-func (r *PostgresAgentsRepository) CreateActiveAgent(agent *models.ActiveAgent) error {
+func (r *PostgresAgentsRepository) UpsertActiveAgent(agent *models.ActiveAgent) error {
 	query := fmt.Sprintf(`
 		INSERT INTO %s.active_agents (id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at) 
 		VALUES ($1, $2, $3, $4, NOW(), NOW(), NOW()) 
+		ON CONFLICT (slack_integration_id, agent_id) 
+		DO UPDATE SET 
+			ws_connection_id = EXCLUDED.ws_connection_id,
+			updated_at = NOW(),
+			last_active_at = NOW()
 		RETURNING id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at`, r.schema)
 
 	err := r.db.QueryRowx(query, agent.ID, agent.WSConnectionID, agent.SlackIntegrationID, agent.AgentID).StructScan(agent)
 	if err != nil {
-		return fmt.Errorf("failed to create active agent: %w", err)
+		return fmt.Errorf("failed to upsert active agent: %w", err)
 	}
 
 	return nil

@@ -554,8 +554,8 @@ func (s *CoreUseCase) sortAgentsByLoad(agents []*models.ActiveAgent, slackIntegr
 func (s *CoreUseCase) RegisterAgent(client *clients.Client) error {
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
 
-	// Pass the agent ID to CreateActiveAgent
-	_, err := s.agentsService.CreateActiveAgent(client.ID, client.SlackIntegrationID, client.AgentID)
+	// Pass the agent ID to UpsertActiveAgent
+	_, err := s.agentsService.UpsertActiveAgent(client.ID, client.SlackIntegrationID, client.AgentID)
 	if err != nil {
 		return fmt.Errorf("failed to register agent for client %s: %w", client.ID, err)
 	}

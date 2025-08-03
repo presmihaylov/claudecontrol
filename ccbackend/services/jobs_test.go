@@ -283,7 +283,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	t.Run("JobAssignmentWorkflow", func(t *testing.T) {
 		// Create an agent first
-		agent, err := agentsService.CreateActiveAgent("test-ws-integration", slackIntegrationID, uuid.New())
+		agent, err := agentsService.UpsertActiveAgent("test-ws-integration", slackIntegrationID, uuid.New())
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
 
@@ -339,11 +339,11 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	t.Run("MultipleAgentsJobAssignment", func(t *testing.T) {
 		// Create multiple agents
-		agent1, err := agentsService.CreateActiveAgent("test-ws-multi-1", slackIntegrationID, uuid.New())
+		agent1, err := agentsService.UpsertActiveAgent("test-ws-multi-1", slackIntegrationID, uuid.New())
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent1.ID, slackIntegrationID) }()
 
-		agent2, err := agentsService.CreateActiveAgent("test-ws-multi-2", slackIntegrationID, uuid.New())
+		agent2, err := agentsService.UpsertActiveAgent("test-ws-multi-2", slackIntegrationID, uuid.New())
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent2.ID, slackIntegrationID) }()
 
@@ -396,7 +396,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	t.Run("GetAgentByJobID", func(t *testing.T) {
 		// Create an agent and job
-		agent, err := agentsService.CreateActiveAgent("test-ws-job-lookup", slackIntegrationID, uuid.New())
+		agent, err := agentsService.UpsertActiveAgent("test-ws-job-lookup", slackIntegrationID, uuid.New())
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
 
@@ -428,7 +428,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	t.Run("GetAgentByWSConnectionID", func(t *testing.T) {
 		// Create an agent
 		wsConnectionID := "test-ws-connection-lookup"
-		agent, err := agentsService.CreateActiveAgent(wsConnectionID, slackIntegrationID, uuid.New())
+		agent, err := agentsService.UpsertActiveAgent(wsConnectionID, slackIntegrationID, uuid.New())
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
 
@@ -701,7 +701,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	t.Run("DeleteJobWithAgentAssignment", func(t *testing.T) {
 		// Create an agent and job
-		agent, err := agentsService.CreateActiveAgent("test-ws-delete-job", slackIntegrationID, uuid.New())
+		agent, err := agentsService.UpsertActiveAgent("test-ws-delete-job", slackIntegrationID, uuid.New())
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
 
