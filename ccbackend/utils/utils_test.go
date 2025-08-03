@@ -53,6 +53,41 @@ func TestConvertMarkdownToSlack(t *testing.T) {
 				input:    "First line with **bold**\nSecond line with **more bold**",
 				expected: "First line with *bold*\nSecond line with *more bold*",
 			},
+			{
+				name:     "Single heading level 1",
+				input:    "# Heading 1",
+				expected: "*Heading 1*",
+			},
+			{
+				name:     "Single heading level 2",
+				input:    "## Heading 2",
+				expected: "*Heading 2*",
+			},
+			{
+				name:     "Multiple heading levels",
+				input:    "# Main Title\n## Subtitle\n### Small heading",
+				expected: "*Main Title*\n*Subtitle*\n*Small heading*",
+			},
+			{
+				name:     "Heading with bold text",
+				input:    "## This is a **bold** heading",
+				expected: "*This is a *bold* heading*",
+			},
+			{
+				name:     "Mixed content with headings and regular text",
+				input:    "# Title\nSome regular text\n## Subtitle\nMore text",
+				expected: "*Title*\nSome regular text\n*Subtitle*\nMore text",
+			},
+			{
+				name:     "Heading without space after hashtag",
+				input:    "#NoSpace",
+				expected: "#NoSpace",
+			},
+			{
+				name:     "Hashtag in middle of line",
+				input:    "This is not # a heading",
+				expected: "This is not # a heading",
+			},
 		}
 
 		for _, tt := range tests {
