@@ -2,6 +2,9 @@ package services
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
 
 	"ccagent/clients"
 	"ccagent/core/log"
@@ -13,7 +16,6 @@ type ClaudeResult struct {
 	SessionID string
 }
 
-
 type ClaudeService struct {
 	claudeClient *clients.ClaudeClient
 }
@@ -22,6 +24,29 @@ func NewClaudeService(claudeClient *clients.ClaudeClient) *ClaudeService {
 	return &ClaudeService{
 		claudeClient: claudeClient,
 	}
+}
+
+// writeClaudeErrorLog writes Claude output to a timestamped log file and returns the filepath
+func (c *ClaudeService) writeClaudeErrorLog(rawOutput string) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user home directory: %w", err)
+	}
+
+	logDir := filepath.Join(homeDir, ".config", "ccagent", "logs")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create log directory: %w", err)
+	}
+
+	timestamp := time.Now().Format("20060102-150405")
+	filename := fmt.Sprintf("claude-error-%s.log", timestamp)
+	filepath := filepath.Join(logDir, filename)
+
+	if err := os.WriteFile(filepath, []byte(rawOutput), 0644); err != nil {
+		return "", fmt.Errorf("failed to write log file: %w", err)
+	}
+
+	return filepath, nil
 }
 
 func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, error) {
@@ -36,17 +61,30 @@ func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, erro
 	messages, err := MapClaudeOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
-		return nil, fmt.Errorf("failed to parse Claude output: %w", err)
+		
+		// Write raw output to error log file
+		logPath, writeErr := c.writeClaudeErrorLog(rawOutput)
+		if writeErr != nil {
+			log.Error("Failed to write Claude error log: %v", writeErr)
+			return nil, fmt.Errorf("failed to parse Claude output: %w", err)
+		}
+		
+		return nil, &ClaudeParseError{
+			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
+			LogFilePath: logPath,
+			OriginalErr: err,
+		}
 	}
 
 	sessionID := c.extractSessionID(messages)
-	log.Info("📋 Claude session ID: %s", sessionID)
-
+	
 	output, err := c.extractClaudeResult(messages)
 	if err != nil {
 		log.Error("Failed to extract Claude result: %v", err)
 		return nil, fmt.Errorf("failed to extract Claude result: %w", err)
 	}
+
+	log.Info("📋 Claude response extracted successfully, session: %s, output length: %d", sessionID, len(output))
 
 	result := &ClaudeResult{
 		Output:    output,
@@ -70,17 +108,30 @@ func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPromp
 	messages, err := MapClaudeOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
-		return nil, fmt.Errorf("failed to parse Claude output: %w", err)
+		
+		// Write raw output to error log file
+		logPath, writeErr := c.writeClaudeErrorLog(rawOutput)
+		if writeErr != nil {
+			log.Error("Failed to write Claude error log: %v", writeErr)
+			return nil, fmt.Errorf("failed to parse Claude output: %w", err)
+		}
+		
+		return nil, &ClaudeParseError{
+			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
+			LogFilePath: logPath,
+			OriginalErr: err,
+		}
 	}
 
 	sessionID := c.extractSessionID(messages)
-	log.Info("📋 Claude session ID: %s", sessionID)
-
+	
 	output, err := c.extractClaudeResult(messages)
 	if err != nil {
 		log.Error("Failed to extract Claude result: %v", err)
 		return nil, fmt.Errorf("failed to extract Claude result: %w", err)
 	}
+
+	log.Info("📋 Claude response extracted successfully, session: %s, output length: %d", sessionID, len(output))
 
 	result := &ClaudeResult{
 		Output:    output,
@@ -103,17 +154,30 @@ func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeR
 	messages, err := MapClaudeOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
-		return nil, fmt.Errorf("failed to parse Claude output: %w", err)
+		
+		// Write raw output to error log file
+		logPath, writeErr := c.writeClaudeErrorLog(rawOutput)
+		if writeErr != nil {
+			log.Error("Failed to write Claude error log: %v", writeErr)
+			return nil, fmt.Errorf("failed to parse Claude output: %w", err)
+		}
+		
+		return nil, &ClaudeParseError{
+			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
+			LogFilePath: logPath,
+			OriginalErr: err,
+		}
 	}
 
 	actualSessionID := c.extractSessionID(messages)
-	log.Info("📋 Claude session ID: %s", actualSessionID)
-
+	
 	output, err := c.extractClaudeResult(messages)
 	if err != nil {
 		log.Error("Failed to extract Claude result: %v", err)
 		return nil, fmt.Errorf("failed to extract Claude result: %w", err)
 	}
+
+	log.Info("📋 Claude response extracted successfully, session: %s, output length: %d", actualSessionID, len(output))
 
 	result := &ClaudeResult{
 		Output:    output,

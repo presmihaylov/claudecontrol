@@ -468,6 +468,10 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 	claudeResult, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions)
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
+		systemErr := cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), payload.SlackMessageID)
+		if systemErr != nil {
+			log.Error("❌ Failed to send system message for Claude error: %v", systemErr)
+		}
 		return fmt.Errorf("error starting Claude session: %w", err)
 	}
 
@@ -573,6 +577,10 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	claudeResult, err := cr.claudeService.ContinueConversation(sessionID, payload.Message)
 	if err != nil {
 		log.Info("❌ Error continuing Claude session: %v", err)
+		systemErr := cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), payload.SlackMessageID)
+		if systemErr != nil {
+			log.Error("❌ Failed to send system message for Claude error: %v", systemErr)
+		}
 		return fmt.Errorf("error continuing Claude session: %w", err)
 	}
 
