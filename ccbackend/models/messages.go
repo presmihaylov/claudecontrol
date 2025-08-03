@@ -16,7 +16,7 @@ const (
 )
 
 type UnknownMessage struct {
-	ID      string `json:"id,omitempty"`
+	ID      string `json:"id"`
 	Type    string `json:"type"`
 	Payload any    `json:"payload,omitempty"`
 }

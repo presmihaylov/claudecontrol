@@ -8,6 +8,7 @@ import (
 
 	"ccbackend/clients"
 	"ccbackend/models"
+	"github.com/google/uuid"
 )
 
 type ProcessedMessage struct {
@@ -98,6 +99,7 @@ func (rmh *ReliableMessageHandler) sendAcknowledgement(clientID, messageID strin
 	log.Printf("📤 Sending acknowledgement for message %s to client %s", messageID, clientID)
 	
 	ackMsg := models.UnknownMessage{
+		ID:   uuid.New().String(),
 		Type: models.MessageTypeAcknowledgement,
 		Payload: models.AcknowledgementPayload{
 			MessageID: messageID,

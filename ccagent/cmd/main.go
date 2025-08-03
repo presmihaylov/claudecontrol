@@ -518,6 +518,7 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 
 	// Send assistant response back first
 	response := UnknownMessage{
+		ID:   uuid.New().String(),
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
 			JobID:          payload.JobID,
@@ -627,6 +628,7 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 
 	// Send assistant response back first
 	response := UnknownMessage{
+		ID:   uuid.New().String(),
 		Type: MessageTypeAssistantMessage,
 		Payload: AssistantMessagePayload{
 			JobID:          payload.JobID,
@@ -720,6 +722,7 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.
 
 	// Send healthcheck acknowledgment back to backend
 	healthcheckAckMsg := UnknownMessage{
+		ID:      uuid.New().String(),
 		Type:    MessageTypeHealthcheckAck,
 		Payload: HealthcheckAckPayload{},
 	}
@@ -753,6 +756,7 @@ func (cr *CmdRunner) sendHealthcheck(conn *websocket.Conn) {
 	
 	// Send healthcheck check message
 	healthcheckMsg := UnknownMessage{
+		ID:      uuid.New().String(),
 		Type:    MessageTypeHealthcheckCheck,
 		Payload: HealthcheckCheckPayload{},
 	}
@@ -921,6 +925,7 @@ func (cr *CmdRunner) sendErrorMessage(conn *websocket.Conn, err error, slackMess
 
 func (cr *CmdRunner) sendProcessingSlackMessage(conn *websocket.Conn, slackMessageID string) error {
 	processingSlackMessageMsg := UnknownMessage{
+		ID:   uuid.New().String(),
 		Type: MessageTypeProcessingSlackMessage,
 		Payload: ProcessingSlackMessagePayload{
 			SlackMessageID: slackMessageID,
