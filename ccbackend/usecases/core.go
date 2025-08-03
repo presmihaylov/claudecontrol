@@ -93,11 +93,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	}
 
 	// Get integration-specific Slack client
-	integrationUUID, err := uuid.Parse(slackIntegrationID)
-	if err != nil {
-		return fmt.Errorf("invalid slack integration ID format: %w", err)
-	}
-	slackClient, err := s.getSlackClientForIntegration(integrationUUID)
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -170,11 +166,7 @@ func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.Syste
 	log.Printf("📤 Sending system message to Slack thread %s in channel %s", job.SlackThreadTS, processedMessage.SlackChannelID)
 
 	// Get integration-specific Slack client
-	integrationUUID, err := uuid.Parse(slackIntegrationID)
-	if err != nil {
-		return fmt.Errorf("invalid slack integration ID format: %w", err)
-	}
-	slackClient, err := s.getSlackClientForIntegration(integrationUUID)
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -404,11 +396,7 @@ func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) 
 
 func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji, slackIntegrationID string) error {
 	// Get integration-specific Slack client
-	integrationUUID, err := uuid.Parse(slackIntegrationID)
-	if err != nil {
-		return fmt.Errorf("invalid slack integration ID format: %w", err)
-	}
-	slackClient, err := s.getSlackClientForIntegration(integrationUUID)
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -607,12 +595,7 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 	if err != nil {
 		log.Printf("❌ Failed to get job %s for cleanup: %v", jobs[0], err)
 	} else {
-		integrationUUID, err := uuid.Parse(client.SlackIntegrationID)
-		if err != nil {
-			log.Printf("❌ Invalid slack integration ID format %s: %v", client.SlackIntegrationID, err)
-			return fmt.Errorf("invalid slack integration ID format: %w", err)
-		}
-		slackClient, err := s.getSlackClientForIntegration(integrationUUID)
+		slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(client.SlackIntegrationID))
 		if err != nil {
 			log.Printf("❌ Failed to get Slack client for integration %s: %v", client.SlackIntegrationID, err)
 			return fmt.Errorf("failed to get Slack client for integration: %w", err)
@@ -771,12 +754,7 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	log.Printf("🗑️ Deleted completed job %s", jobID)
 
 	// Send completion message to Slack thread with reason
-	integrationUUID, err := uuid.Parse(slackIntegrationID)
-	if err != nil {
-		log.Printf("❌ Invalid slack integration ID format: %v", err)
-		return fmt.Errorf("invalid slack integration ID format: %w", err)
-	}
-	slackClient, err := s.getSlackClientForIntegration(integrationUUID)
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
 	if err != nil {
 		log.Printf("❌ Failed to get Slack client for integration: %v", err)
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
