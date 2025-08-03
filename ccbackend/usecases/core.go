@@ -437,14 +437,14 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 	// Check if this job is already assigned to an agent
 	existingAgent, err := s.agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
 	if err != nil {
-		// Job not assigned to any agent yet - need to assign to an available agent
-		if strings.Contains(fmt.Sprintf("%v", err), "not found") {
-			return s.assignJobToAvailableAgent(job, threadTS, slackIntegrationID)
-		}
-
-		// Some other error occurred
+		// Some error occurred
 		log.Printf("❌ Failed to check for existing agent assignment: %v", err)
 		return "", fmt.Errorf("failed to check for existing agent assignment: %w", err)
+	}
+	
+	if existingAgent == nil {
+		// Job not assigned to any agent yet - need to assign to an available agent
+		return s.assignJobToAvailableAgent(job, threadTS, slackIntegrationID)
 	}
 
 	// Job is already assigned to an agent - verify it still has an active connection
@@ -486,7 +486,11 @@ func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slack
 func (s *CoreUseCase) tryAssignJobToAgent(jobID uuid.UUID, slackIntegrationID string) (string, bool, error) {
 	// First check if this job is already assigned to an agent
 	existingAgent, err := s.agentsService.GetAgentByJobID(jobID, slackIntegrationID)
-	if err == nil {
+	if err != nil {
+		return "", false, fmt.Errorf("failed to check for existing agent assignment: %w", err)
+	}
+	
+	if existingAgent != nil {
 		// Job is already assigned - check if agent still has active connection
 		connectedClientIDs := s.wsClient.GetClientIDs()
 		if s.agentsService.CheckAgentHasActiveConnection(existingAgent, connectedClientIDs) {
