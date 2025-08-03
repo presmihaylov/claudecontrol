@@ -132,9 +132,6 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 		return fmt.Errorf("failed to update slack message reaction: %w", err)
 	}
 
-	// No longer need to check for queued messages since we process all messages immediately
-	// ccagent's worker pool handles sequential processing
-
 	log.Printf("📋 Completed successfully - sent assistant message to Slack thread %s", job.SlackThreadTS)
 	return nil
 }
