@@ -404,16 +404,16 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Initially no agent should be assigned to this job
-		_, err = agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		foundAgent, err := agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
+		require.NoError(t, err)
+		assert.Nil(t, foundAgent)
 
 		// Assign job to agent
 		err = agentsService.AssignAgentToJob(agent.ID, job.ID, slackIntegrationID)
 		require.NoError(t, err)
 
 		// Now we should be able to find the agent by job ID
-		foundAgent, err := agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
+		foundAgent, err = agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
 		require.NoError(t, err)
 		assert.Equal(t, agent.ID, foundAgent.ID)
 		assert.Equal(t, agent.WSConnectionID, foundAgent.WSConnectionID)

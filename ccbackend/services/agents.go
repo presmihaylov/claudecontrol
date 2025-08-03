@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"ccbackend/db"
 	"ccbackend/models"
@@ -248,7 +249,7 @@ func (s *AgentsService) AssignAgentToJob(agentID, jobID uuid.UUID, slackIntegrat
 		return fmt.Errorf("failed to assign agent to job: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - assigned agent %s to job %s", agentID, jobID)
+	log.Printf("📋 Completed successfully - assigned agent %s to job %s (or assignment already existed)", agentID, jobID)
 	return nil
 }
 
@@ -288,6 +289,11 @@ func (s *AgentsService) GetAgentByJobID(jobID uuid.UUID, slackIntegrationID stri
 
 	agent, err := s.agentsRepo.GetAgentByJobID(jobID, slackIntegrationID)
 	if err != nil {
+		// Check if it's a not found error
+		if strings.Contains(err.Error(), "not found") {
+			log.Printf("📋 No agent found for job %s", jobID)
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to get agent by job ID: %w", err)
 	}
 
