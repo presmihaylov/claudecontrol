@@ -2,6 +2,7 @@ package services
 
 import (
 	"testing"
+	"time"
 
 	"ccbackend/db"
 	"ccbackend/models"
@@ -396,6 +397,138 @@ func TestAgentsService(t *testing.T) {
 			// Delete all again (should not error on empty table)
 			err = agentsService.DeleteAllActiveAgents()
 			require.NoError(t, err)
+		})
+	})
+
+	t.Run("UpdateAgentLastActiveAt", func(t *testing.T) {
+		t.Run("Success", func(t *testing.T) {
+			// Create an agent
+			wsConnectionID := "test-ws-update-active"
+			agentID := uuid.New()
+			agent, err := agentsService.CreateActiveAgent(wsConnectionID, slackIntegrationID, agentID)
+			require.NoError(t, err)
+			defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
+
+			// Get initial last_active_at timestamp
+			initialAgent, err := agentsService.GetAgentByID(agent.ID, slackIntegrationID)
+			require.NoError(t, err)
+			initialLastActive := initialAgent.LastActiveAt
+
+			// Wait a bit to ensure timestamp difference
+			time.Sleep(10 * time.Millisecond)
+
+			// Update last_active_at
+			err = agentsService.UpdateAgentLastActiveAt(wsConnectionID, slackIntegrationID)
+			require.NoError(t, err)
+
+			// Verify the timestamp was updated
+			updatedAgent, err := agentsService.GetAgentByID(agent.ID, slackIntegrationID)
+			require.NoError(t, err)
+			assert.True(t, updatedAgent.LastActiveAt.After(initialLastActive), 
+				"last_active_at should be updated to a more recent time")
+		})
+
+		t.Run("EmptyWSConnectionID", func(t *testing.T) {
+			err := agentsService.UpdateAgentLastActiveAt("", slackIntegrationID)
+			require.Error(t, err)
+			assert.Equal(t, "ws_connection_id cannot be empty", err.Error())
+		})
+
+		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
+			err := agentsService.UpdateAgentLastActiveAt("test-ws-id", "")
+			require.Error(t, err)
+			assert.Equal(t, "slack_integration_id cannot be empty", err.Error())
+		})
+
+		t.Run("NotFound", func(t *testing.T) {
+			err := agentsService.UpdateAgentLastActiveAt("non-existent-ws-id", slackIntegrationID)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "not found")
+		})
+	})
+
+	t.Run("GetInactiveAgents", func(t *testing.T) {
+		t.Run("Success", func(t *testing.T) {
+			// Create agents with different last_active_at timestamps
+			// Agent 1 - recently active
+			wsConnectionID1 := "test-ws-recent"
+			agentID1 := uuid.New()
+			agent1, err := agentsService.CreateActiveAgent(wsConnectionID1, slackIntegrationID, agentID1)
+			require.NoError(t, err)
+			defer func() { _ = agentsService.DeleteActiveAgent(agent1.ID, slackIntegrationID) }()
+
+			// Agent 2 - inactive (we'll manually set an old timestamp)
+			wsConnectionID2 := "test-ws-inactive"
+			agentID2 := uuid.New()
+			agent2, err := agentsService.CreateActiveAgent(wsConnectionID2, slackIntegrationID, agentID2)
+			require.NoError(t, err)
+			defer func() { _ = agentsService.DeleteActiveAgent(agent2.ID, slackIntegrationID) }()
+
+			// Manually update agent2's last_active_at to be old (>15 minutes ago)
+			// We need to access the repository directly for this test
+			cfg, err := testutils.LoadTestConfig()
+			require.NoError(t, err)
+			dbConn, err := db.NewConnection(cfg.DatabaseURL)
+			require.NoError(t, err)
+			
+			// Update agent2 to have an old last_active_at timestamp
+			oldTimestamp := time.Now().Add(-20 * time.Minute)
+			_, err = dbConn.Exec("UPDATE "+cfg.DatabaseSchema+".active_agents SET last_active_at = $1 WHERE id = $2", 
+				oldTimestamp, agent2.ID)
+			require.NoError(t, err)
+
+			// Get inactive agents with 15 minute threshold
+			inactiveAgents, err := agentsService.GetInactiveAgents(slackIntegrationID, 15)
+			require.NoError(t, err)
+
+			// Should find agent2 but not agent1
+			foundAgent1 := false
+			foundAgent2 := false
+			for _, agent := range inactiveAgents {
+				if agent.ID == agent1.ID {
+					foundAgent1 = true
+				}
+				if agent.ID == agent2.ID {
+					foundAgent2 = true
+				}
+			}
+
+			assert.False(t, foundAgent1, "Recently active agent should not be in inactive list")
+			assert.True(t, foundAgent2, "Old agent should be in inactive list")
+		})
+
+		t.Run("EmptyResult", func(t *testing.T) {
+			// Clear all agents first
+			err := agentsService.DeleteAllActiveAgents()
+			require.NoError(t, err)
+
+			// Create only recently active agents
+			wsConnectionID := "test-ws-recent-only"
+			agentID := uuid.New()
+			agent, err := agentsService.CreateActiveAgent(wsConnectionID, slackIntegrationID, agentID)
+			require.NoError(t, err)
+			defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
+
+			// Get inactive agents with 10 minute threshold
+			inactiveAgents, err := agentsService.GetInactiveAgents(slackIntegrationID, 10)
+			require.NoError(t, err)
+			assert.Empty(t, inactiveAgents)
+		})
+
+		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
+			_, err := agentsService.GetInactiveAgents("", 10)
+			require.Error(t, err)
+			assert.Equal(t, "slack_integration_id cannot be empty", err.Error())
+		})
+
+		t.Run("InvalidThreshold", func(t *testing.T) {
+			_, err := agentsService.GetInactiveAgents(slackIntegrationID, 0)
+			require.Error(t, err)
+			assert.Equal(t, "inactive threshold must be positive", err.Error())
+
+			_, err = agentsService.GetInactiveAgents(slackIntegrationID, -5)
+			require.Error(t, err)
+			assert.Equal(t, "inactive threshold must be positive", err.Error())
 		})
 	})
 }

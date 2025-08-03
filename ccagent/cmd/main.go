@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"ccagent/clients"
@@ -27,12 +28,76 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService *services.SessionService
-	claudeService  *services.ClaudeService
-	gitUseCase     *usecases.GitUseCase
-	appState       *models.AppState
-	logFilePath    string
-	agentID        uuid.UUID
+	sessionService        *services.SessionService
+	claudeService         *services.ClaudeService
+	gitUseCase            *usecases.GitUseCase
+	appState              *models.AppState
+	logFilePath           string
+	agentID               uuid.UUID
+	healthcheckManager    *HealthcheckManager
+}
+
+type HealthcheckManager struct {
+	pendingPing        bool
+	lastPingTime       time.Time
+	healthcheckTimeout time.Duration
+	mutex              sync.RWMutex
+	reconnectChan      chan struct{}
+}
+
+func NewHealthcheckManager(reconnectChan chan struct{}) *HealthcheckManager {
+	return &HealthcheckManager{
+		healthcheckTimeout: 30 * time.Second, // 30 second timeout
+		reconnectChan:      reconnectChan,
+	}
+}
+
+func (hm *HealthcheckManager) SendPing(conn *websocket.Conn) error {
+	hm.mutex.Lock()
+	defer hm.mutex.Unlock()
+
+	// Don't send if we already have a pending ping
+	if hm.pendingPing {
+		// Check if the pending ping has timed out
+		if time.Since(hm.lastPingTime) > hm.healthcheckTimeout {
+			log.Info("💀 Healthcheck ping timed out - triggering reconnection")
+			// Trigger reconnection by closing the reconnect channel
+			select {
+			case hm.reconnectChan <- struct{}{}:
+			default:
+				// Channel already has a value or is closed
+			}
+			return fmt.Errorf("healthcheck ping timed out")
+		}
+		return nil // Skip sending another ping
+	}
+
+	pingMessage := UnknownMessage{
+		Type:    MessageTypeAgentHealthcheckPing,
+		Payload: AgentHealthcheckPingPayload{},
+	}
+
+	if err := conn.WriteJSON(pingMessage); err != nil {
+		return fmt.Errorf("failed to send healthcheck ping: %w", err)
+	}
+
+	hm.pendingPing = true
+	hm.lastPingTime = time.Now()
+	log.Info("💓 Sent healthcheck ping to backend")
+	return nil
+}
+
+func (hm *HealthcheckManager) ReceivePong() {
+	hm.mutex.Lock()
+	defer hm.mutex.Unlock()
+	hm.pendingPing = false
+	log.Info("💓 Healthcheck pong received - connection healthy")
+}
+
+func (hm *HealthcheckManager) Reset() {
+	hm.mutex.Lock()
+	defer hm.mutex.Unlock()
+	hm.pendingPing = false
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -54,6 +119,7 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 		gitUseCase:     gitUseCase,
 		appState:       appState,
 		agentID:        agentID,
+		// healthcheckManager will be initialized in startWebSocketClient
 	}, nil
 }
 
@@ -180,6 +246,9 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
 
+		// Initialize healthcheck manager for this connection
+		cr.healthcheckManager = NewHealthcheckManager(reconnect)
+
 		// Initialize worker pool with 1 worker for sequential processing
 		wp := workerpool.New(1)
 		defer wp.StopWait()
@@ -194,8 +263,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				err := conn.ReadJSON(&msg)
 				if err != nil {
 					log.Info("❌ Read error: %v", err)
-					// WebSocket read errors don't have SlackMessageID context
-					cr.sendErrorMessage(conn, err, "")
 					close(reconnect)
 					return
 				}
@@ -209,6 +276,25 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			}
 		}()
 
+		// Start periodic healthcheck sender
+		healthcheckTicker := time.NewTicker(60 * time.Second) // Send ping every 60 seconds
+		defer healthcheckTicker.Stop()
+		go func() {
+			for {
+				select {
+				case <-healthcheckTicker.C:
+					if err := cr.healthcheckManager.SendPing(conn); err != nil {
+						log.Info("⚠️ Failed to send healthcheck ping: %v", err)
+						// If SendPing returns an error due to timeout, it will trigger reconnection
+					}
+				case <-done:
+					return
+				case <-reconnect:
+					return
+				}
+			}
+		}()
+
 		// Main loop for this connection
 		shouldExit := false
 		for {
@@ -216,10 +302,16 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			case <-done:
 				// Connection closed, trigger reconnection
 				conn.Close()
+				if cr.healthcheckManager != nil {
+					cr.healthcheckManager.Reset()
+				}
 				log.Info("🔄 Connection lost, attempting to reconnect...")
 			case <-reconnect:
 				// Connection lost from read goroutine, trigger reconnection
 				conn.Close()
+				if cr.healthcheckManager != nil {
+					cr.healthcheckManager.Reset()
+				}
 				log.Info("🔄 Connection lost, attempting to reconnect...")
 			case <-interrupt:
 				log.Info("🔌 Interrupt received, closing connection...")
@@ -342,18 +434,19 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 		}
 	case MessageTypeJobUnassigned:
 		if err := cr.handleJobUnassigned(msg, conn); err != nil {
-			// JobUnassigned doesn't have SlackMessageID, so use empty string
-			cr.sendErrorMessage(conn, err, "")
+			log.Info("❌ Error handling JobUnassigned message: %v", err)
 		}
 	case MessageTypeCheckIdleJobs:
 		if err := cr.handleCheckIdleJobs(msg, conn); err != nil {
-			// CheckIdleJobs doesn't have SlackMessageID, so use empty string
-			cr.sendErrorMessage(conn, err, "")
+			log.Info("❌ Error handling CheckIdleJobs message: %v", err)
 		}
 	case MessageTypeHealthcheckCheck:
 		if err := cr.handleHealthcheckCheck(msg, conn); err != nil {
-			// HealthcheckCheck doesn't have SlackMessageID, so use empty string
-			cr.sendErrorMessage(conn, err, "")
+			log.Info("❌ Error handling HealthcheckCheck message: %v", err)
+		}
+	case MessageTypeAgentHealthcheckPong:
+		if err := cr.handleAgentHealthcheckPong(msg, conn); err != nil {
+			log.Info("❌ Error handling AgentHealthcheckPong message: %v", err)
 		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
@@ -652,6 +745,23 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.
 
 	log.Info("💓 Sent healthcheck ack to backend")
 	log.Info("📋 Completed successfully - handled healthcheck check message")
+	return nil
+}
+
+func (cr *CmdRunner) handleAgentHealthcheckPong(msg UnknownMessage, conn *websocket.Conn) error {
+	log.Info("📋 Starting to handle agent healthcheck pong message")
+	var payload AgentHealthcheckPongPayload
+	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
+		log.Info("❌ Failed to unmarshal agent healthcheck pong payload: %v", err)
+		return fmt.Errorf("failed to unmarshal agent healthcheck pong payload: %w", err)
+	}
+
+	log.Info("💓 Received healthcheck pong from backend")
+	// Mark the pending ping as received to prevent timeout
+	if cr.healthcheckManager != nil {
+		cr.healthcheckManager.ReceivePong()
+	}
+	log.Info("📋 Completed successfully - handled agent healthcheck pong message")
 	return nil
 }
 

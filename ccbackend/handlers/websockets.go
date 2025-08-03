@@ -104,6 +104,19 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) {
 			return
 		}
 
+	case models.MessageTypeAgentHealthcheckPing:
+		var payload models.AgentHealthcheckPingPayload
+		if err := unmarshalPayload(parsedMsg.Payload, &payload); err != nil {
+			log.Printf("❌ Failed to unmarshal agent healthcheck ping payload from client %s: %v", client.ID, err)
+			return
+		}
+
+		log.Printf("💓 Received agent healthcheck ping from client %s", client.ID)
+		if err := h.coreUseCase.ProcessAgentHealthcheckPing(client.ID, payload, client.SlackIntegrationID); err != nil {
+			log.Printf("❌ Failed to process agent healthcheck ping from client %s: %v", client.ID, err)
+			return
+		}
+
 	default:
 		log.Printf("⚠️ Unknown message type '%s' from client %s", parsedMsg.Type, client.ID)
 		return
