@@ -1,0 +1,54 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck      # Check for unchecked errors
+    - gofmt         # Check whether code was gofmt-ed
+    - goimports     # Check import ordering and formatting
+    - gosimple      # Simplify code
+    - govet         # Examine Go source code and reports suspicious constructs
+    - ineffassign   # Detect ineffectual assignments
+    - misspell      # Find commonly misspelled English words
+    - staticcheck   # Go static analysis
+    - typecheck     # Parse and type-check Go code
+    - unused        # Check for unused constants, variables, functions and types
+    - revive        # Fast, configurable, extensible, flexible, and beautiful linter for Go
+    - gosec         # Security-focused linter
+    - unconvert     # Remove unnecessary type conversions
+    - unparam       # Report unused function parameters
+    - exportloopref # Check for pointers to enclosing loop variables
+    - nolintlint    # Reports ill-formed or insufficient nolint directives
+
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        arguments: [checkPrivateReceivers, sayRepetitiveInsteadOfStutters]
+      - name: package-comments
+        disabled: true
+      - name: var-naming
+        arguments: [["ID"], ["VM"]]
+
+  gosec:
+    excludes:
+      - G104 # Audit errors not checked - we handle this with errcheck
+
+  goimports:
+    local-prefixes: github.com/your-org/cc2
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gosec
+        - unparam
+    # Exclude linting of auto-generated files
+    - path: ".*\\.pb\\.go"
+      linters:
+        - all
+  max-issues-per-linter: 0
+  max-same-issues: 0

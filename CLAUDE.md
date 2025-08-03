@@ -12,6 +12,8 @@ make build                  # Build binary to bin/ccbackend
 make clean                  # Remove build artifacts
 make test                   # Run all tests
 make test-verbose           # Run all tests with verbose output
+make lint                   # Run golangci-lint
+make lint-fix               # Run golangci-lint with --fix
 go run cmd/main.go          # Run server directly
 go mod tidy                 # Update dependencies
 go fmt ./...                # Format Go source files
@@ -24,6 +26,8 @@ make run                    # Run agent
 make build                  # Build binary to bin/ccagent
 make clean                  # Remove build artifacts
 make build-prod             # Build production binaries for multiple platforms
+make lint                   # Run golangci-lint
+make lint-fix               # Run golangci-lint with --fix
 go run cmd/*.go             # Run agent directly
 go run cmd/*.go --bypassPermissions  # Run with bypass permissions (sandbox only)
 ```
@@ -212,12 +216,11 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 ## Development Workflow
 
 ### After Completing Tasks
-**Always build and test to ensure nothing is broken:**
+**Always build, lint, and test to ensure nothing is broken:**
 ```bash
-cd ccbackend && make build  # Build first to catch compilation issues
-cd ccbackend && make test   # Then run tests
-cd ccagent && make build    # Build ccagent to catch compilation issues
-cd ccfrontend && bun run build && bun run lint  # Build and lint frontend with Biome
+cd ccbackend && make lint-fix && make build && make test  # Lint fix, build, and test ccbackend
+cd ccagent && make lint-fix && make build                 # Lint fix and build ccagent
+cd ccfrontend && bun run build && bun run lint            # Build and lint frontend with Biome
 ```
 
 ### Database Migrations
