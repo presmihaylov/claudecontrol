@@ -20,6 +20,7 @@ type Client struct {
 	ID                 string
 	ClientConn         *websocket.Conn
 	SlackIntegrationID string
+	AgentID            string
 }
 
 type MessageHandlerFunc func(client *Client, msg any)
@@ -68,6 +69,18 @@ func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *h
 		return
 	}
 
+	// Extract agent ID and validate it's a UUID
+	agentID := r.Header.Get("X-CCAGENT-ID")
+	if agentID != "" {
+		// Validate that it's a proper UUID
+		if _, err := uuid.Parse(agentID); err != nil {
+			log.Printf("❌ Rejecting WebSocket connection from %s: invalid agent ID format (must be UUID): %s", r.RemoteAddr, agentID)
+			http.Error(w, "Invalid X-CCAGENT-ID format (must be UUID)", http.StatusBadRequest)
+			return
+		}
+		log.Printf("🆔 Valid agent ID provided: %s", agentID)
+	}
+
 	// Validate API key
 	slackIntegrationID, err := ws.apiKeyValidator(apiKey)
 	if err != nil {
@@ -90,6 +103,7 @@ func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *h
 		ID:                 uuid.New().String(),
 		ClientConn:         conn,
 		SlackIntegrationID: slackIntegrationID,
+		AgentID:            agentID,
 	}
 	ws.addClient(client)
 	log.Printf("✅ WebSocket client connected with ID: %s from %s", client.ID, r.RemoteAddr)
@@ -160,6 +174,10 @@ func (ws *WebSocketClient) getClientByID(clientID string) *Client {
 	}
 	log.Printf("❌ Client %s not found in active connections", clientID)
 	return nil
+}
+
+func (ws *WebSocketClient) GetClientByID(clientID string) *Client {
+	return ws.getClientByID(clientID)
 }
 
 func (ws *WebSocketClient) GetSlackIntegrationIDByClientID(clientID string) string {

@@ -564,14 +564,14 @@ func (s *CoreUseCase) sortAgentsByLoad(agents []*models.ActiveAgent, slackIntegr
 func (s *CoreUseCase) RegisterAgent(clientID string) error {
 	log.Printf("📋 Starting to register agent for client %s", clientID)
 
-	// Get the slack integration ID from the WebSocket client
-	slackIntegrationID := s.wsClient.GetSlackIntegrationIDByClientID(clientID)
-	if slackIntegrationID == "" {
-		log.Printf("❌ Failed to get slack integration ID for client %s", clientID)
-		return fmt.Errorf("no slack integration ID found for client %s", clientID)
+	// Get the client to access its agent ID
+	client := s.wsClient.GetClientByID(clientID)
+	if client == nil {
+		return fmt.Errorf("client %s not found", clientID)
 	}
 
-	_, err := s.agentsService.CreateActiveAgent(clientID, slackIntegrationID)
+	// Pass the agent ID to CreateActiveAgent
+	_, err := s.agentsService.CreateActiveAgent(clientID, client.SlackIntegrationID, client.AgentID)
 	if err != nil {
 		return fmt.Errorf("failed to register agent for client %s: %w", clientID, err)
 	}

@@ -21,6 +21,7 @@ import (
 	"ccagent/utils"
 
 	"github.com/gammazero/workerpool"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/jessevdk/go-flags"
 )
@@ -31,6 +32,7 @@ type CmdRunner struct {
 	gitUseCase     *usecases.GitUseCase
 	appState       *models.AppState
 	logFilePath    string
+	agentID        string
 }
 
 func NewCmdRunner(permissionMode string) *CmdRunner {
@@ -42,12 +44,16 @@ func NewCmdRunner(permissionMode string) *CmdRunner {
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService)
 	appState := models.NewAppState()
 
+	agentID := uuid.New().String()
+	log.Info("🆔 Generated agent ID: %s", agentID)
+
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
 		sessionService: sessionService,
 		claudeService:  claudeService,
 		gitUseCase:     gitUseCase,
 		appState:       appState,
+		agentID:        agentID,
 	}
 }
 
@@ -242,6 +248,7 @@ func (cr *CmdRunner) connectWithRetry(serverURL, apiKey string, retryIntervals [
 
 	headers := http.Header{
 		"X-CCAGENT-API-KEY": []string{apiKey},
+		"X-CCAGENT-ID":      []string{cr.agentID},
 	}
 	conn, _, err := websocket.DefaultDialer.Dial(serverURL, headers)
 	if err == nil {
