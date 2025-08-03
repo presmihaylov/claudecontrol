@@ -86,7 +86,7 @@ func (mp *MessageProcessor) SendMessage(msg any) (string, error) {
 	return messageID, nil
 }
 
-func (mp *MessageProcessor) SendReliableMessage(msg models.UnknownMessage) (string, error) {
+func (mp *MessageProcessor) SendMessageReliably(msg models.UnknownMessage) (string, error) {
 	log.Info("📋 Starting to send reliable message of type: %s", msg.Type)
 	
 	if msg.ID == "" {
