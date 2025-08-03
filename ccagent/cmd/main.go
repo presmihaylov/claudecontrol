@@ -38,7 +38,7 @@ type CmdRunner struct {
 	reconnectChan            chan struct{}
 	healthcheckTimer         *time.Timer
 	healthcheckTimerMutex    sync.Mutex
-	reliableMessageProcessor *services.ReliableMessageProcessor
+	messageProcessor *services.MessageProcessor
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -189,9 +189,9 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 
 		log.Info("✅ Connected to WebSocket server")
 
-		// Initialize reliable message processor
-		cr.reliableMessageProcessor = services.NewReliableMessageProcessor(conn)
-		defer cr.reliableMessageProcessor.Stop()
+		// Initialize message processor
+		cr.messageProcessor = services.NewMessageProcessor(conn)
+		defer cr.messageProcessor.Stop()
 
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
@@ -738,10 +738,10 @@ func (cr *CmdRunner) handleAcknowledgement(msg UnknownMessage) error {
 		return fmt.Errorf("failed to unmarshal acknowledgement payload: %w", err)
 	}
 
-	if cr.reliableMessageProcessor != nil {
-		cr.reliableMessageProcessor.HandleAcknowledgement(payload.MessageID)
+	if cr.messageProcessor != nil {
+		cr.messageProcessor.HandleAcknowledgement(payload.MessageID)
 	} else {
-		log.Info("⚠️ Reliable message processor not initialized, ignoring acknowledgement")
+		log.Info("⚠️ Message processor not initialized, ignoring acknowledgement")
 	}
 
 	log.Info("📋 Completed successfully - handled acknowledgement message")
@@ -886,15 +886,15 @@ func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason 
 		Reason: reason,
 	}
 
-	if cr.reliableMessageProcessor != nil {
-		messageID, err := cr.reliableMessageProcessor.SendReliableMessage(MessageTypeJobComplete, payload)
+	if cr.messageProcessor != nil {
+		messageID, err := cr.messageProcessor.SendReliableMessage(MessageTypeJobComplete, payload)
 		if err != nil {
 			log.Error("❌ Failed to send reliable job complete message: %v", err)
 			return fmt.Errorf("failed to send reliable job complete message: %w", err)
 		}
 		log.Info("📤 Sent reliable job complete message for job: %s (message ID: %s)", jobID, messageID)
 	} else {
-		// Fallback to direct sending if reliable processor not available
+		// Fallback to direct sending if processor not available
 		jobCompleteMsg := UnknownMessage{
 			Type:    MessageTypeJobComplete,
 			Payload: payload,
@@ -916,15 +916,15 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 		SlackMessageID: slackMessageID,
 	}
 
-	if cr.reliableMessageProcessor != nil {
-		messageID, err := cr.reliableMessageProcessor.SendReliableMessage(MessageTypeSystemMessage, payload)
+	if cr.messageProcessor != nil {
+		messageID, err := cr.messageProcessor.SendReliableMessage(MessageTypeSystemMessage, payload)
 		if err != nil {
 			log.Info("❌ Failed to send reliable system message: %v", err)
 			return err
 		}
 		log.Info("⚙️ Sent reliable system message: %s (message ID: %s)", message, messageID)
 	} else {
-		// Fallback to direct sending if reliable processor not available
+		// Fallback to direct sending if processor not available
 		systemMsg := UnknownMessage{
 			Type:    MessageTypeSystemMessage,
 			Payload: payload,
