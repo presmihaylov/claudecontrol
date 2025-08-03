@@ -393,7 +393,37 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 func (g *GitUseCase) generatePRTitleWithClaude(branchName string) (string, error) {
 	log.Info("🤖 Asking Claude to generate PR title")
 
+	// Get default branch to compare against
+	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	if err != nil {
+		return "", fmt.Errorf("failed to get default branch: %w", err)
+	}
+
+	// Get commit messages specific to this branch
+	commitMessages, err := g.gitClient.GetBranchCommitMessages(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch commit messages: %w", err)
+	}
+
+	// Get diff summary
+	diffSummary, err := g.gitClient.GetBranchDiffSummary(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch diff summary: %w", err)
+	}
+
+	// Build commit info for context
+	commitInfo := "No commits found"
+	if len(commitMessages) > 0 {
+		commitInfo = fmt.Sprintf("Recent commits:\n%s", strings.Join(commitMessages, "\n"))
+	}
+
 	prompt := fmt.Sprintf(`I'm creating a pull request for Git branch: "%s"
+
+Here are the commits made on this branch (not including main branch commits):
+%s
+
+Files changed:
+%s
 
 Generate a SHORT pull request title. Follow these strict rules:
 - Maximum 40 characters (STRICT LIMIT)
@@ -401,13 +431,14 @@ Generate a SHORT pull request title. Follow these strict rules:
 - Be concise and specific
 - No unnecessary words or phrases
 - Don't mention "Claude", "agent", or implementation details
+- Base the title on the actual changes shown above
 
 Examples:
 - "Fix error handling in message processor"
 - "Add user authentication middleware"
 - "Update API response format"
 
-Respond with ONLY the short title, nothing else.`, branchName)
+Respond with ONLY the short title, nothing else.`, branchName, commitInfo, diffSummary)
 
 	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
@@ -420,18 +451,52 @@ Respond with ONLY the short title, nothing else.`, branchName)
 func (g *GitUseCase) generatePRBodyWithClaude(branchName, slackThreadLink string) (string, error) {
 	log.Info("🤖 Asking Claude to generate PR body")
 
+	// Get default branch to compare against
+	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	if err != nil {
+		return "", fmt.Errorf("failed to get default branch: %w", err)
+	}
+
+	// Get commit messages specific to this branch
+	commitMessages, err := g.gitClient.GetBranchCommitMessages(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch commit messages: %w", err)
+	}
+
+	// Get diff summary
+	diffSummary, err := g.gitClient.GetBranchDiffSummary(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch diff summary: %w", err)
+	}
+
+	// Build commit info for context
+	commitInfo := "No commits found"
+	if len(commitMessages) > 0 {
+		commitInfo = strings.Join(commitMessages, "\n- ")
+		commitInfo = "- " + commitInfo // Add bullet to first item
+	}
+
 	prompt := fmt.Sprintf(`I'm creating a pull request for Git branch: "%s"
 
-Please generate a professional pull request description. Include:
+Here are the commits made on this branch (not including main branch commits):
+%s
+
+Files changed:
+%s
+
+Please generate a professional pull request description based on the actual changes shown above. Include:
 - ## Summary section with what was accomplished
 - ## Changes section with key modifications
 - Keep it concise but informative
 
 Use proper markdown formatting.
 
-IMPORTANT: Do NOT include any "Generated with Claude Control" or similar footer text. I will add that separately.
+IMPORTANT: 
+- Do NOT include any "Generated with Claude Control" or similar footer text. I will add that separately.
+- Base your description on the actual commits and file changes shown above
+- Do NOT include any introductory text like "Here is your description"
 
-Respond with ONLY the PR body, nothing else.`, branchName)
+Respond with ONLY the PR body in markdown format, nothing else.`, branchName, commitInfo, diffSummary)
 
 	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
