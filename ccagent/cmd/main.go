@@ -38,7 +38,7 @@ type CmdRunner struct {
 	reconnectChan            chan struct{}
 	healthcheckTimer         *time.Timer
 	healthcheckTimerMutex    sync.Mutex
-	messageProcessor *services.MessageProcessor
+	messageProcessor         *services.MessageProcessor
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -53,14 +53,19 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	agentID := uuid.New()
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
+	// Initialize message processor with nil connection
+	messageProcessor := services.NewMessageProcessor(nil)
+	log.Info("📤 Initialized message processor")
+
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		sessionService: sessionService,
-		claudeService:  claudeService,
-		gitUseCase:     gitUseCase,
-		appState:       appState,
-		agentID:        agentID,
-		reconnectChan:  make(chan struct{}, 1),
+		sessionService:   sessionService,
+		claudeService:    claudeService,
+		gitUseCase:       gitUseCase,
+		appState:         appState,
+		agentID:          agentID,
+		reconnectChan:    make(chan struct{}, 1),
+		messageProcessor: messageProcessor,
 	}, nil
 }
 
@@ -125,8 +130,9 @@ func main() {
 		wsURL = "wss://claudecontrol.onrender.com/ws"
 	}
 
-	// Set up deferred exit message
+	// Set up deferred cleanup
 	defer func() {
+		cmdRunner.messageProcessor.Stop()
 		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
 	}()
 
@@ -138,9 +144,9 @@ func main() {
 	}
 }
 
-func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
-	log.Info("📋 Starting to connect to WebSocket server at %s", serverURL)
-	u, err := url.Parse(serverURL)
+func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
+	log.Info("📋 Starting to connect to WebSocket server at %s", serverURLStr)
+	serverURL, err := url.Parse(serverURLStr)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
@@ -165,7 +171,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 	}
 
 	for {
-		conn, connected := cr.connectWithRetry(u.String(), apiKey, retryIntervals, interrupt)
+		conn, connected := cr.connectWithRetry(serverURL.String(), apiKey, retryIntervals, interrupt)
 		if conn == nil {
 			select {
 			case <-interrupt:
@@ -189,9 +195,9 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 
 		log.Info("✅ Connected to WebSocket server")
 
-		// Initialize message processor
-		cr.messageProcessor = services.NewMessageProcessor(conn)
-		defer cr.messageProcessor.Stop()
+		// Reset the connection in the message processor
+		cr.messageProcessor.ResetConnection(conn)
+		log.Info("📤 Updated message processor with WebSocket connection")
 
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
@@ -270,19 +276,16 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			// Connection closed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.Stop() // Stop the message processor
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-reconnect:
 			// Connection lost from read goroutine, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.Stop() // Stop the message processor
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-cr.reconnectChan:
 			// Healthcheck failed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.Stop() // Stop the message processor
 			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
 			log.Info("🔌 Interrupt received, closing connection...")
@@ -298,7 +301,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			}
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.Stop() // Stop the message processor
 			shouldExit = true
 		}
 
