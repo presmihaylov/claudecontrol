@@ -53,10 +53,6 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	agentID := uuid.New()
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
-	// Initialize message processor with nil connection (will be set on first connect)
-	messageProcessor := services.NewMessageProcessor(nil)
-	log.Info("📤 Initialized persistent message processor")
-
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
 		sessionService:   sessionService,
@@ -65,7 +61,7 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 		appState:         appState,
 		agentID:          agentID,
 		reconnectChan:    make(chan struct{}, 1),
-		messageProcessor: messageProcessor,
+		// messageProcessor will be initialized on first connection
 	}, nil
 }
 
@@ -132,8 +128,10 @@ func main() {
 
 	// Set up deferred exit message
 	defer func() {
-		// Stop the message processor when exiting
-		cmdRunner.messageProcessor.Stop()
+		// Stop the message processor when exiting (if initialized)
+		if cmdRunner.messageProcessor != nil {
+			cmdRunner.messageProcessor.Stop()
+		}
 		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
 	}()
 
@@ -196,11 +194,18 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 
 		log.Info("✅ Connected to WebSocket server")
 
-		// Reset the connection in the persistent message processor
-		cr.messageProcessor.ResetConnection(conn)
-		pendingCount := cr.messageProcessor.GetPendingMessageCount()
-		if pendingCount > 0 {
-			log.Info("📤 Found %d pending messages that will be retried", pendingCount)
+		// Initialize or reset the message processor
+		if cr.messageProcessor == nil {
+			// First connection - create the message processor
+			cr.messageProcessor = services.NewMessageProcessor(conn)
+			log.Info("📤 Initialized message processor with WebSocket connection")
+		} else {
+			// Subsequent connections - reset the connection
+			cr.messageProcessor.ResetConnection(conn)
+			pendingCount := cr.messageProcessor.GetPendingMessageCount()
+			if pendingCount > 0 {
+				log.Info("📤 Found %d pending messages that will be retried", pendingCount)
+			}
 		}
 
 		done := make(chan struct{})
