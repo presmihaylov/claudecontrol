@@ -4,8 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"ccagent/core/log"
 )
 
 type ClaudeClient struct {
@@ -19,7 +17,6 @@ func NewClaudeClient(permissionMode string) *ClaudeClient {
 }
 
 func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error) {
-	log.Info("📋 Starting to continue Claude session: %s", sessionID)
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--verbose",
@@ -28,33 +25,22 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 		"-p", prompt,
 	}
 
-	log.Info("Executing Claude command with sessionID: %s, prompt: %s", sessionID, prompt)
-	log.Info("Command arguments: %v", args)
-
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
 
-	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
 		return "", &ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
 	}
 
-	result := strings.TrimSpace(string(output))
-	log.Info("Claude command completed successfully, outputLength: %d", len(result))
-	log.Info("Claude output: %s", result)
-
-	log.Info("📋 Completed successfully - continued Claude session")
-	return result, nil
+	return strings.TrimSpace(string(output)), nil
 }
 
 func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
-	log.Info("📋 Starting to create new Claude session")
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--verbose",
@@ -62,31 +48,22 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 		"-p", prompt,
 	}
 
-	log.Info("Starting new Claude session with prompt: %s", prompt)
-	log.Info("Command arguments: %v", args)
-
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
 
-	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
 		return "", &ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
 	}
 
-	result := strings.TrimSpace(string(output))
-	log.Info("Claude command completed successfully, outputLength: %d", len(result))
-	log.Info("Claude output: %s", result)
-	return result, nil
+	return strings.TrimSpace(string(output)), nil
 }
 
 func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt string) (string, error) {
-	log.Info("📋 Starting to create new Claude session with system prompt")
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--verbose",
@@ -98,27 +75,17 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 		args = append(args, "--append-system-prompt", systemPrompt)
 	}
 
-	log.Info("Starting new Claude session with prompt: %s", prompt)
-	log.Info("Command arguments: %v", args)
-
 	cmd := exec.Command("claude", args...)
 	cmd.Env = os.Environ()
 
-	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
 		return "", &ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
 	}
 
-	result := strings.TrimSpace(string(output))
-	log.Info("Claude command completed successfully, outputLength: %d", len(result))
-	log.Info("Claude output: %s", result)
-
-	log.Info("📋 Completed successfully -	return result, nil")
-	return result, nil
+	return strings.TrimSpace(string(output)), nil
 }
