@@ -453,6 +453,16 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 
 	claudeResult, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions)
 	if err != nil {
+		// Check if this is a Claude parse error
+		if parseErr, isParseError := services.IsClaudeParseError(err); isParseError {
+			log.Info("❌ Claude parse error, sending system message: %v", err)
+			systemErr := cr.sendSystemMessage(conn, parseErr.Message, payload.SlackMessageID)
+			if systemErr != nil {
+				log.Error("❌ Failed to send system message for parse error: %v", systemErr)
+			}
+			return fmt.Errorf("error starting Claude session: %w", err)
+		}
+		
 		log.Info("❌ Error starting Claude session: %v", err)
 		return fmt.Errorf("error starting Claude session: %w", err)
 	}
@@ -558,6 +568,16 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 
 	claudeResult, err := cr.claudeService.ContinueConversation(sessionID, payload.Message)
 	if err != nil {
+		// Check if this is a Claude parse error
+		if parseErr, isParseError := services.IsClaudeParseError(err); isParseError {
+			log.Info("❌ Claude parse error, sending system message: %v", err)
+			systemErr := cr.sendSystemMessage(conn, parseErr.Message, payload.SlackMessageID)
+			if systemErr != nil {
+				log.Error("❌ Failed to send system message for parse error: %v", systemErr)
+			}
+			return fmt.Errorf("error continuing Claude session: %w", err)
+		}
+		
 		log.Info("❌ Error continuing Claude session: %v", err)
 		return fmt.Errorf("error continuing Claude session: %w", err)
 	}
