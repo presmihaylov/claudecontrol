@@ -13,8 +13,6 @@ const (
 	MessageTypeJobComplete               = "job_complete_v1"
 	MessageTypeHealthcheckCheck          = "healthcheck_check_v1"
 	MessageTypeHealthcheckAck            = "healthcheck_ack_v1"
-	MessageTypeAgentHealthcheckPing      = "agent_healthcheck_ping_v1"
-	MessageTypeAgentHealthcheckPong      = "agent_healthcheck_pong_v1"
 )
 
 type UnknownMessage struct {
@@ -73,12 +71,4 @@ type HealthcheckCheckPayload struct {
 
 type HealthcheckAckPayload struct {
 	// Empty payload - simple pong response to backend
-}
-
-type AgentHealthcheckPingPayload struct {
-	// Empty payload - simple ping from agent to backend
-}
-
-type AgentHealthcheckPongPayload struct {
-	// Empty payload - simple pong response from backend to agent
 }
