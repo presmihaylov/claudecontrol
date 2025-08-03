@@ -338,3 +338,20 @@ func (s *JobsService) TESTS_UpdateProcessedSlackMessageUpdatedAt(id uuid.UUID, u
 	log.Printf("📋 Completed successfully - updated processed slack message updated_at for ID: %s", id)
 	return nil
 }
+
+// GetJobsWithQueuedMessages returns jobs that have at least one message in QUEUED status
+func (s *JobsService) GetJobsWithQueuedMessages(slackIntegrationID string) ([]*models.Job, error) {
+	log.Printf("📋 Starting to get jobs with queued messages")
+
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	jobs, err := s.jobsRepo.GetJobsWithQueuedMessages(slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs with queued messages: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found %d jobs with queued messages", len(jobs))
+	return jobs, nil
+}
