@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sort"
@@ -31,13 +32,8 @@ func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.A
 	}
 }
 
-func (s *CoreUseCase) getSlackClientForIntegration(slackIntegrationID string) (*slack.Client, error) {
-	integrationUUID, err := uuid.Parse(slackIntegrationID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid slack integration ID format: %w", err)
-	}
-
-	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(integrationUUID)
+func (s *CoreUseCase) getSlackClientForIntegration(slackIntegrationID uuid.UUID) (*slack.Client, error) {
+	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integration: %w", err)
 	}
@@ -97,7 +93,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	}
 
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -170,7 +166,7 @@ func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.Syste
 	log.Printf("📤 Sending system message to Slack thread %s in channel %s", job.SlackThreadTS, processedMessage.SlackChannelID)
 
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -315,7 +311,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 
 func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *models.ProcessedSlackMessage) error {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(message.SlackIntegrationID.String())
+	slackClient, err := s.getSlackClientForIntegration(message.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -329,11 +325,14 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
 	}
 
+	// Resolve user mentions in the message text before sending to agent
+	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
+
 	startConversationMessage := models.UnknownMessage{
 		Type: models.MessageTypeStartConversation,
 		Payload: models.StartConversationPayload{
 			JobID:            message.JobID.String(),
-			Message:          message.TextContent,
+			Message:          resolvedText,
 			SlackMessageID:   message.ID.String(),
 			SlackMessageLink: permalink,
 		},
@@ -348,7 +347,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 
 func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.ProcessedSlackMessage) error {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(message.SlackIntegrationID.String())
+	slackClient, err := s.getSlackClientForIntegration(message.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -361,11 +360,14 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
 	}
 
+	// Resolve user mentions in the message text before sending to agent
+	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
+
 	userMessage := models.UnknownMessage{
 		Type: models.MessageTypeUserMessage,
 		Payload: models.UserMessagePayload{
 			JobID:            message.JobID.String(),
-			Message:          message.TextContent,
+			Message:          resolvedText,
 			SlackMessageID:   message.ID.String(),
 			SlackMessageLink: permalink,
 		},
@@ -394,7 +396,7 @@ func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) 
 
 func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji, slackIntegrationID string) error {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -593,7 +595,7 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 	if err != nil {
 		log.Printf("❌ Failed to get job %s for cleanup: %v", jobs[0], err)
 	} else {
-		slackClient, err := s.getSlackClientForIntegration(client.SlackIntegrationID)
+		slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(client.SlackIntegrationID))
 		if err != nil {
 			log.Printf("❌ Failed to get Slack client for integration %s: %v", client.SlackIntegrationID, err)
 			return fmt.Errorf("failed to get Slack client for integration: %w", err)
@@ -752,7 +754,7 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	log.Printf("🗑️ Deleted completed job %s", jobID)
 
 	// Send completion message to Slack thread with reason
-	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
 	if err != nil {
 		log.Printf("❌ Failed to get Slack client for integration: %v", err)
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
