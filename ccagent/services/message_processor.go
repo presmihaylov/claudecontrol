@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ccagent/core/log"
+	"ccagent/models"
 
 	"github.com/gammazero/workerpool"
 	"github.com/google/uuid"
@@ -86,15 +87,32 @@ func (mp *MessageProcessor) SendMessage(msg any) (string, error) {
 	return messageID, nil
 }
 
-func (mp *MessageProcessor) SendReliableMessage(messageType string, payload any) (string, error) {
-	log.Info("📋 Starting to send reliable message of type: %s", messageType)
+func (mp *MessageProcessor) SendReliableMessage(msg models.UnknownMessage) (string, error) {
+	log.Info("📋 Starting to send reliable message of type: %s", msg.Type)
 	
-	msg := map[string]any{
-		"type":    messageType,
-		"payload": payload,
+	if msg.ID == "" {
+		msg.ID = uuid.New().String()
 	}
 	
-	return mp.SendMessage(msg)
+	pendingMsg := &PendingMessage{
+		ID:        msg.ID,
+		Message:   msg,
+		Timestamp: time.Now(),
+		Retries:   0,
+	}
+	
+	mp.pendingMutex.Lock()
+	mp.pendingMessages[msg.ID] = pendingMsg
+	mp.pendingMutex.Unlock()
+	
+	mp.workerPool.Submit(func() {
+		if err := mp.sendMessage(pendingMsg); err != nil {
+			log.Info("❌ Failed to send reliable message %s: %v", msg.ID, err)
+		}
+	})
+	
+	log.Info("📋 Completed successfully - queued reliable message %s for sending", msg.ID)
+	return msg.ID, nil
 }
 
 func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
