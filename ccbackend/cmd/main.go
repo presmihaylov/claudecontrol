@@ -67,6 +67,9 @@ func run() error {
 	
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)
 	
+	// Initialize reliable message handler
+	reliableMessageHandler := services.NewReliableMessageHandler(wsClient)
+	
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
 	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
@@ -91,7 +94,18 @@ func run() error {
 	// Register WebSocket hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
 	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
-	wsClient.RegisterMessageHandler(wsHandler.HandleMessage)
+	
+	// Register reliable message handler first (for deduplication and acknowledgements)
+	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
+		handled, err := reliableMessageHandler.ProcessReliableMessage(client, msg)
+		if err != nil {
+			log.Printf("❌ Error processing reliable message from client %s: %v", client.ID, err)
+		}
+		if !handled {
+			// If message wasn't handled by reliable processor, pass to regular handler
+			wsHandler.HandleMessage(client, msg)
+		}
+	})
 
 
 	// Start periodic broadcast of CheckIdleJobs, healthcheck, cleanup of inactive agents, and processing of queued jobs
