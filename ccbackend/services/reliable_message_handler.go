@@ -29,7 +29,7 @@ func NewReliableMessageHandler(wsClient *clients.WebSocketClient) *ReliableMessa
 	handler := &ReliableMessageHandler{
 		processedMessages: make(map[string]*ProcessedMessage),
 		cleanupInterval:   5 * time.Minute,
-		messageRetention:  1 * time.Hour,
+		messageRetention:  30 * time.Minute,
 		wsClient:          wsClient,
 	}
 	
