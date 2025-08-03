@@ -27,12 +27,12 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService        *services.SessionService
-	claudeService         *services.ClaudeService
-	gitUseCase            *usecases.GitUseCase
-	appState              *models.AppState
-	logFilePath           string
-	agentID               uuid.UUID
+	sessionService *services.SessionService
+	claudeService  *services.ClaudeService
+	gitUseCase     *usecases.GitUseCase
+	appState       *models.AppState
+	logFilePath    string
+	agentID        uuid.UUID
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -178,6 +178,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		log.Info("✅ Connected to WebSocket server")
 
 		done := make(chan struct{})
+		reconnect := make(chan struct{})
 
 		// Initialize worker pool with 1 worker for sequential processing
 		wp := workerpool.New(1)
@@ -210,6 +211,10 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		select {
 		case <-done:
 			// Connection closed, trigger reconnection
+			conn.Close()
+			log.Info("🔄 Connection lost, attempting to reconnect...")
+		case <-reconnect:
+			// Connection lost from read goroutine, trigger reconnection
 			conn.Close()
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-interrupt:
@@ -640,7 +645,6 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.
 	log.Info("📋 Completed successfully - handled healthcheck check message")
 	return nil
 }
-
 
 func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn *websocket.Conn) error {
 	log.Info("📋 Starting to check idleness for job %s", jobID)
