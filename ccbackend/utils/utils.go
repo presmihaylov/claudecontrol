@@ -36,3 +36,12 @@ func CreateSlackDeepLink(teamID, channelID, messageTS string) string {
 	
 	return fmt.Sprintf("slack://channel?team=%s&id=%s&message=%s", teamID, channelID, messageTimestamp)
 }
+
+// ResolveMentionsInSlackMessage resolves user mentions in Slack messages
+// This is a placeholder implementation - in main branch this function
+// would resolve @mentions to readable names using the Slack API
+func ResolveMentionsInSlackMessage(ctx interface{}, message string, slackClient interface{}) string {
+	// For now, just return the message as-is
+	// The full implementation would use slackClient to resolve user mentions
+	return message
+}
