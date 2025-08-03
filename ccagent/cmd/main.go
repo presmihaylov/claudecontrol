@@ -29,15 +29,16 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService         *services.SessionService
-	claudeService          *services.ClaudeService
-	gitUseCase             *usecases.GitUseCase
-	appState               *models.AppState
-	logFilePath            string
-	agentID                uuid.UUID
-	reconnectChan          chan struct{}
-	healthcheckTimer       *time.Timer
-	healthcheckTimerMutex  sync.Mutex
+	sessionService           *services.SessionService
+	claudeService            *services.ClaudeService
+	gitUseCase               *usecases.GitUseCase
+	appState                 *models.AppState
+	logFilePath              string
+	agentID                  uuid.UUID
+	reconnectChan            chan struct{}
+	healthcheckTimer         *time.Timer
+	healthcheckTimerMutex    sync.Mutex
+	messageProcessor *services.MessageProcessor
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -188,6 +189,10 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 
 		log.Info("✅ Connected to WebSocket server")
 
+		// Initialize message processor
+		cr.messageProcessor = services.NewMessageProcessor(conn)
+		defer cr.messageProcessor.Stop()
+
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
 
@@ -201,8 +206,9 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 
 		// Define message types that should be processed instantly
 		instantMessageTypes := map[string]bool{
-			MessageTypeHealthcheckCheck: true,
-			MessageTypeHealthcheckAck:   true,
+			models.MessageTypeHealthcheckCheck: true,
+			models.MessageTypeHealthcheckAck:   true,
+			models.MessageTypeAcknowledgement:  true,
 		}
 
 		// Start periodic WebSocket healthcheck
@@ -231,7 +237,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			defer instantWP.StopWait() // Ensure all instant messages complete
 
 			for {
-				var msg UnknownMessage
+				var msg models.UnknownMessage
 				err := conn.ReadJSON(&msg)
 				if err != nil {
 					log.Info("❌ Read error: %v", err)
@@ -264,16 +270,19 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			// Connection closed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
+			cr.messageProcessor.Stop() // Stop the message processor
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-reconnect:
 			// Connection lost from read goroutine, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
+			cr.messageProcessor.Stop() // Stop the message processor
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-cr.reconnectChan:
 			// Healthcheck failed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
+			cr.messageProcessor.Stop() // Stop the message processor
 			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
 			log.Info("🔌 Interrupt received, closing connection...")
@@ -289,6 +298,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			}
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
+			cr.messageProcessor.Stop() // Stop the message processor
 			shouldExit = true
 		}
 
@@ -371,52 +381,56 @@ func (cr *CmdRunner) setupProgramLogging() (string, error) {
 	return logFilePath, nil
 }
 
-func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
+func (cr *CmdRunner) handleMessage(msg models.UnknownMessage, conn *websocket.Conn) {
 	switch msg.Type {
-	case MessageTypeStartConversation:
+	case models.MessageTypeStartConversation:
 		if err := cr.handleStartConversation(msg, conn); err != nil {
 			// Extract SlackMessageID from payload for error reporting
-			var payload StartConversationPayload
+			var payload models.StartConversationPayload
 			slackMessageID := ""
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
 			cr.sendErrorMessage(conn, err, slackMessageID)
 		}
-	case MessageTypeUserMessage:
+	case models.MessageTypeUserMessage:
 		if err := cr.handleUserMessage(msg, conn); err != nil {
 			// Extract SlackMessageID from payload for error reporting
-			var payload UserMessagePayload
+			var payload models.UserMessagePayload
 			slackMessageID := ""
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
 			cr.sendErrorMessage(conn, err, slackMessageID)
 		}
-	case MessageTypeJobUnassigned:
+	case models.MessageTypeJobUnassigned:
 		if err := cr.handleJobUnassigned(msg, conn); err != nil {
 			log.Info("❌ Error handling JobUnassigned message: %v", err)
 		}
-	case MessageTypeCheckIdleJobs:
+	case models.MessageTypeCheckIdleJobs:
 		if err := cr.handleCheckIdleJobs(msg, conn); err != nil {
 			log.Info("❌ Error handling CheckIdleJobs message: %v", err)
 		}
-	case MessageTypeHealthcheckCheck:
+	case models.MessageTypeHealthcheckCheck:
 		if err := cr.handleHealthcheckCheck(msg, conn); err != nil {
 			log.Info("❌ Error handling HealthcheckCheck message: %v", err)
 		}
-	case MessageTypeHealthcheckAck:
+	case models.MessageTypeHealthcheckAck:
 		// Cancel the healthcheck timer since we got a response
 		cr.cancelHealthcheckTimer()
 		log.Info("💓 Received healthcheck ack from backend")
+	case models.MessageTypeAcknowledgement:
+		if err := cr.handleAcknowledgement(msg); err != nil {
+			log.Info("❌ Error handling acknowledgement message: %v", err)
+		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
 	}
 }
 
-func (cr *CmdRunner) handleStartConversation(msg UnknownMessage, conn *websocket.Conn) error {
+func (cr *CmdRunner) handleStartConversation(msg models.UnknownMessage, conn *websocket.Conn) error {
 	log.Info("📋 Starting to handle start conversation message")
-	var payload StartConversationPayload
+	var payload models.StartConversationPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal start conversation payload: %v", err)
 		return fmt.Errorf("failed to unmarshal start conversation payload: %w", err)
@@ -503,21 +517,23 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 	})
 
 	// Send assistant response back first
-	response := UnknownMessage{
-		Type: MessageTypeAssistantMessage,
-		Payload: AssistantMessagePayload{
-			JobID:          payload.JobID,
-			Message:        claudeResult.Output,
-			SlackMessageID: payload.SlackMessageID,
-		},
+	assistantPayload := models.AssistantMessagePayload{
+		JobID:          payload.JobID,
+		Message:        claudeResult.Output,
+		SlackMessageID: payload.SlackMessageID,
 	}
 
-	if err := conn.WriteJSON(response); err != nil {
-		log.Info("❌ Failed to send assistant response: %v", err)
-		return fmt.Errorf("failed to send assistant response: %w", err)
+	assistantMsg := models.UnknownMessage{
+		ID:      uuid.New().String(),
+		Type:    models.MessageTypeAssistantMessage,
+		Payload: assistantPayload,
 	}
-
-	log.Info("🤖 Sent assistant response")
+	messageID, msgErr := cr.messageProcessor.SendMessageReliably(assistantMsg)
+	if msgErr != nil {
+		log.Info("❌ Failed to send reliable assistant response: %v", msgErr)
+		return fmt.Errorf("failed to send reliable assistant response: %w", msgErr)
+	}
+	log.Info("🤖 Sent reliable assistant response (message ID: %s)", messageID)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
@@ -535,9 +551,9 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 	return nil
 }
 
-func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn) error {
+func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, conn *websocket.Conn) error {
 	log.Info("📋 Starting to handle user message")
-	var payload UserMessagePayload
+	var payload models.UserMessagePayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal user message payload: %v", err)
 		return fmt.Errorf("failed to unmarshal user message payload: %w", err)
@@ -612,21 +628,23 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	})
 
 	// Send assistant response back first
-	response := UnknownMessage{
-		Type: MessageTypeAssistantMessage,
-		Payload: AssistantMessagePayload{
-			JobID:          payload.JobID,
-			Message:        claudeResult.Output,
-			SlackMessageID: payload.SlackMessageID,
-		},
+	assistantPayload := models.AssistantMessagePayload{
+		JobID:          payload.JobID,
+		Message:        claudeResult.Output,
+		SlackMessageID: payload.SlackMessageID,
 	}
 
-	if err := conn.WriteJSON(response); err != nil {
-		log.Info("❌ Failed to send assistant response: %v", err)
-		return fmt.Errorf("failed to send assistant response: %w", err)
+	assistantMsg := models.UnknownMessage{
+		ID:      uuid.New().String(),
+		Type:    models.MessageTypeAssistantMessage,
+		Payload: assistantPayload,
 	}
-
-	log.Info("🤖 Sent assistant response")
+	messageID, msgErr := cr.messageProcessor.SendMessageReliably(assistantMsg)
+	if msgErr != nil {
+		log.Info("❌ Failed to send reliable assistant response: %v", msgErr)
+		return fmt.Errorf("failed to send reliable assistant response: %w", msgErr)
+	}
+	log.Info("🤖 Sent reliable assistant response (message ID: %s)", messageID)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
@@ -644,9 +662,9 @@ func (cr *CmdRunner) handleUserMessage(msg UnknownMessage, conn *websocket.Conn)
 	return nil
 }
 
-func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, _ *websocket.Conn) error {
+func (cr *CmdRunner) handleJobUnassigned(msg models.UnknownMessage, _ *websocket.Conn) error {
 	log.Info("📋 Starting to handle job unassigned message")
-	var payload JobUnassignedPayload
+	var payload models.JobUnassignedPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal job unassigned payload: %v", err)
 		return fmt.Errorf("failed to unmarshal job unassigned payload: %w", err)
@@ -657,9 +675,9 @@ func (cr *CmdRunner) handleJobUnassigned(msg UnknownMessage, _ *websocket.Conn) 
 	return nil
 }
 
-func (cr *CmdRunner) handleCheckIdleJobs(msg UnknownMessage, conn *websocket.Conn) error {
+func (cr *CmdRunner) handleCheckIdleJobs(msg models.UnknownMessage, conn *websocket.Conn) error {
 	log.Info("📋 Starting to handle check idle jobs message")
-	var payload CheckIdleJobsPayload
+	var payload models.CheckIdleJobsPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal check idle jobs payload: %v", err)
 		return fmt.Errorf("failed to unmarshal check idle jobs payload: %w", err)
@@ -691,9 +709,9 @@ func (cr *CmdRunner) handleCheckIdleJobs(msg UnknownMessage, conn *websocket.Con
 	return nil
 }
 
-func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.Conn) error {
+func (cr *CmdRunner) handleHealthcheckCheck(msg models.UnknownMessage, conn *websocket.Conn) error {
 	log.Info("📋 Starting to handle healthcheck check message")
-	var payload HealthcheckCheckPayload
+	var payload models.HealthcheckCheckPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
 		log.Info("❌ Failed to unmarshal healthcheck check payload: %v", err)
 		return fmt.Errorf("failed to unmarshal healthcheck check payload: %w", err)
@@ -705,9 +723,10 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.
 	cr.cancelHealthcheckTimer()
 
 	// Send healthcheck acknowledgment back to backend
-	healthcheckAckMsg := UnknownMessage{
-		Type:    MessageTypeHealthcheckAck,
-		Payload: HealthcheckAckPayload{},
+	healthcheckAckMsg := models.UnknownMessage{
+		ID:      uuid.New().String(),
+		Type:    models.MessageTypeHealthcheckAck,
+		Payload: models.HealthcheckAckPayload{},
 	}
 
 	if err := conn.WriteJSON(healthcheckAckMsg); err != nil {
@@ -720,13 +739,28 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.
 	return nil
 }
 
+func (cr *CmdRunner) handleAcknowledgement(msg models.UnknownMessage) error {
+	log.Info("📋 Starting to handle acknowledgement message")
+	var payload models.AcknowledgementPayload
+	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
+		log.Info("❌ Failed to unmarshal acknowledgement payload: %v", err)
+		return fmt.Errorf("failed to unmarshal acknowledgement payload: %w", err)
+	}
+
+	cr.messageProcessor.HandleAcknowledgement(payload.MessageID)
+
+	log.Info("📋 Completed successfully - handled acknowledgement message")
+	return nil
+}
+
 func (cr *CmdRunner) sendHealthcheck(conn *websocket.Conn) {
 	log.Info("💓 Sending healthcheck check to backend")
 	
 	// Send healthcheck check message
-	healthcheckMsg := UnknownMessage{
-		Type:    MessageTypeHealthcheckCheck,
-		Payload: HealthcheckCheckPayload{},
+	healthcheckMsg := models.UnknownMessage{
+		ID:      uuid.New().String(),
+		Type:    models.MessageTypeHealthcheckCheck,
+		Payload: models.HealthcheckCheckPayload{},
 	}
 	
 	if err := conn.WriteJSON(healthcheckMsg); err != nil {
@@ -853,38 +887,44 @@ func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn
 func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason string) error {
 	log.Info("📋 Sending job complete message for job %s with reason: %s", jobID, reason)
 
-	jobCompleteMsg := UnknownMessage{
-		Type: MessageTypeJobComplete,
-		Payload: JobCompletePayload{
-			JobID:  jobID,
-			Reason: reason,
-		},
+	payload := models.JobCompletePayload{
+		JobID:  jobID,
+		Reason: reason,
 	}
 
-	if err := conn.WriteJSON(jobCompleteMsg); err != nil {
-		log.Error("❌ Failed to send job complete message: %v", err)
-		return fmt.Errorf("failed to send job complete message: %w", err)
+	jobMsg := models.UnknownMessage{
+		ID:      uuid.New().String(),
+		Type:    models.MessageTypeJobComplete,
+		Payload: payload,
 	}
+	messageID, err := cr.messageProcessor.SendMessageReliably(jobMsg)
+	if err != nil {
+		log.Error("❌ Failed to send reliable job complete message: %v", err)
+		return fmt.Errorf("failed to send reliable job complete message: %w", err)
+	}
+	log.Info("📤 Sent reliable job complete message for job: %s (message ID: %s)", jobID, messageID)
 
-	log.Info("📤 Sent job complete message for job: %s", jobID)
 	return nil
 }
 
 func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessageID string) error {
-	systemMsg := UnknownMessage{
-		Type: MessageTypeSystemMessage,
-		Payload: SystemMessagePayload{
-			Message:        message,
-			SlackMessageID: slackMessageID,
-		},
+	payload := models.SystemMessagePayload{
+		Message:        message,
+		SlackMessageID: slackMessageID,
 	}
 
-	if err := conn.WriteJSON(systemMsg); err != nil {
-		log.Info("❌ Failed to send system message: %v", err)
+	sysMsg := models.UnknownMessage{
+		ID:      uuid.New().String(),
+		Type:    models.MessageTypeSystemMessage,
+		Payload: payload,
+	}
+	messageID, err := cr.messageProcessor.SendMessageReliably(sysMsg)
+	if err != nil {
+		log.Info("❌ Failed to send reliable system message: %v", err)
 		return err
 	}
+	log.Info("⚙️ Sent reliable system message: %s (message ID: %s)", message, messageID)
 
-	log.Info("⚙️ Sent system message: %s", message)
 	return nil
 }
 
@@ -896,9 +936,10 @@ func (cr *CmdRunner) sendErrorMessage(conn *websocket.Conn, err error, slackMess
 }
 
 func (cr *CmdRunner) sendProcessingSlackMessage(conn *websocket.Conn, slackMessageID string) error {
-	processingSlackMessageMsg := UnknownMessage{
-		Type: MessageTypeProcessingSlackMessage,
-		Payload: ProcessingSlackMessagePayload{
+	processingSlackMessageMsg := models.UnknownMessage{
+		ID:   uuid.New().String(),
+		Type: models.MessageTypeProcessingSlackMessage,
+		Payload: models.ProcessingSlackMessagePayload{
 			SlackMessageID: slackMessageID,
 		},
 	}
