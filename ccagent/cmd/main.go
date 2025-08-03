@@ -194,8 +194,8 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				err := conn.ReadJSON(&msg)
 				if err != nil {
 					log.Info("❌ Read error: %v", err)
-					// WebSocket read errors don't have SlackMessageID context
-					cr.sendErrorMessage(conn, err, "")
+
+					// trigger ws reconnect
 					close(reconnect)
 					return
 				}
@@ -209,34 +209,31 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			}
 		}()
 
-		// Main loop for this connection
+		// Wait for connection to close or interruption
 		shouldExit := false
-		for {
+		select {
+		case <-done:
+			// Connection closed, trigger reconnection
+			conn.Close()
+			log.Info("🔄 Connection lost, attempting to reconnect...")
+		case <-reconnect:
+			// Connection lost from read goroutine, trigger reconnection
+			conn.Close()
+			log.Info("🔄 Connection lost, attempting to reconnect...")
+		case <-interrupt:
+			log.Info("🔌 Interrupt received, closing connection...")
+
+			err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err != nil {
+				log.Info("❌ Failed to send close message: %v", err)
+			}
+
 			select {
 			case <-done:
-				// Connection closed, trigger reconnection
-				conn.Close()
-				log.Info("🔄 Connection lost, attempting to reconnect...")
-			case <-reconnect:
-				// Connection lost from read goroutine, trigger reconnection
-				conn.Close()
-				log.Info("🔄 Connection lost, attempting to reconnect...")
-			case <-interrupt:
-				log.Info("🔌 Interrupt received, closing connection...")
-
-				err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-				if err != nil {
-					log.Info("❌ Failed to send close message: %v", err)
-				}
-
-				select {
-				case <-done:
-				case <-time.After(time.Second):
-				}
-				conn.Close()
-				shouldExit = true
+			case <-time.After(time.Second):
 			}
-			break
+			conn.Close()
+			shouldExit = true
 		}
 
 		if shouldExit {
@@ -342,13 +339,15 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 		}
 	case MessageTypeJobUnassigned:
 		if err := cr.handleJobUnassigned(msg, conn); err != nil {
-			// JobUnassigned doesn't have SlackMessageID, so use empty string
-			cr.sendErrorMessage(conn, err, "")
+			log.Info("❌ Error handling JobUnassigned message: %v", err)
 		}
 	case MessageTypeCheckIdleJobs:
 		if err := cr.handleCheckIdleJobs(msg, conn); err != nil {
-			// CheckIdleJobs doesn't have SlackMessageID, so use empty string
-			cr.sendErrorMessage(conn, err, "")
+			log.Info("❌ Error handling CheckIdleJobs message: %v", err)
+		}
+	case MessageTypeHealthcheckCheck:
+		if err := cr.handleHealthcheckCheck(msg, conn); err != nil {
+			log.Info("❌ Error handling HealthcheckCheck message: %v", err)
 		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
@@ -621,6 +620,32 @@ func (cr *CmdRunner) handleCheckIdleJobs(msg UnknownMessage, conn *websocket.Con
 	}
 
 	log.Info("📋 Completed successfully - checked all jobs for idleness")
+	return nil
+}
+
+func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.Conn) error {
+	log.Info("📋 Starting to handle healthcheck check message")
+	var payload HealthcheckCheckPayload
+	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
+		log.Info("❌ Failed to unmarshal healthcheck check payload: %v", err)
+		return fmt.Errorf("failed to unmarshal healthcheck check payload: %w", err)
+	}
+
+	log.Info("💓 Received healthcheck ping from backend - sending ack")
+
+	// Send healthcheck acknowledgment back to backend
+	healthcheckAckMsg := UnknownMessage{
+		Type:    MessageTypeHealthcheckAck,
+		Payload: HealthcheckAckPayload{},
+	}
+
+	if err := conn.WriteJSON(healthcheckAckMsg); err != nil {
+		log.Info("❌ Failed to send healthcheck ack: %v", err)
+		return fmt.Errorf("failed to send healthcheck ack: %w", err)
+	}
+
+	log.Info("💓 Sent healthcheck ack to backend")
+	log.Info("📋 Completed successfully - handled healthcheck check message")
 	return nil
 }
 

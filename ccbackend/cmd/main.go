@@ -100,15 +100,21 @@ func run() error {
 	wsClient.RegisterMessageHandler(wsHandler.HandleMessage)
 
 
-	// Start periodic broadcast of CheckIdleJobs and cleanup of stale agents
+	// Start periodic broadcast of CheckIdleJobs, healthcheck, and cleanup of stale/inactive agents
 	cleanupTicker := time.NewTicker(2 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
 			if err := coreUseCase.BroadcastCheckIdleJobs(); err != nil {
 				log.Printf("⚠️ Periodic CheckIdleJobs broadcast encountered errors: %v", err)
 			}
+			if err := coreUseCase.BroadcastHealthcheck(); err != nil {
+				log.Printf("⚠️ Periodic healthcheck broadcast encountered errors: %v", err)
+			}
 			if err := coreUseCase.CleanupStaleActiveAgents(); err != nil {
 				log.Printf("⚠️ Periodic stale agent cleanup encountered errors: %v", err)
+			}
+			if err := coreUseCase.CleanupInactiveAgents(); err != nil {
+				log.Printf("⚠️ Periodic inactive agent cleanup encountered errors: %v", err)
 			}
 		}
 	}()

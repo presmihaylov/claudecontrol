@@ -13,6 +13,7 @@ type ActiveAgent struct {
 	AgentID            uuid.UUID `json:"agent_id" db:"agent_id"`
 	CreatedAt          time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at" db:"updated_at"`
+	LastActiveAt       time.Time `json:"last_active_at" db:"last_active_at"`
 }
 
 type AgentJobAssignment struct {
