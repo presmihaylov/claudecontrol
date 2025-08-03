@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"ccagent/clients"
@@ -28,14 +28,15 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService     *services.SessionService
-	claudeService      *services.ClaudeService
-	gitUseCase         *usecases.GitUseCase
-	healthcheckUseCase *usecases.HealthcheckUseCase
-	appState           *models.AppState
-	logFilePath        string
-	agentID            uuid.UUID
-	reconnectChan      chan struct{}
+	sessionService         *services.SessionService
+	claudeService          *services.ClaudeService
+	gitUseCase             *usecases.GitUseCase
+	appState               *models.AppState
+	logFilePath            string
+	agentID                uuid.UUID
+	reconnectChan          chan struct{}
+	healthcheckTimer       *time.Timer
+	healthcheckTimerMutex  sync.Mutex
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -142,17 +143,10 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
 
-	// Extract base URL for healthcheck
-	baseURL := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
-	if u.Scheme == "wss" {
-		baseURL = strings.Replace(baseURL, "wss://", "https://", 1)
-	} else if u.Scheme == "ws" {
-		baseURL = strings.Replace(baseURL, "ws://", "http://", 1)
+	// Initialize reconnect channel if not already initialized
+	if cr.reconnectChan == nil {
+		cr.reconnectChan = make(chan struct{}, 1)
 	}
-
-	// Initialize healthcheck use case
-	cr.healthcheckUseCase = usecases.NewHealthcheckUseCase(baseURL)
-	cr.reconnectChan = make(chan struct{}, 1)
 
 	// Set up global interrupt handling
 	interrupt := make(chan os.Signal, 1)
@@ -200,18 +194,15 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		wp := workerpool.New(1)
 		defer wp.StopWait()
 
-		// Start periodic healthcheck
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		// Start periodic WebSocket healthcheck
+		healthcheckTicker := time.NewTicker(30 * time.Second)
+		defer healthcheckTicker.Stop()
 
-		go cr.healthcheckUseCase.StartPeriodicHealthcheck(ctx, 30*time.Second, func() {
-			log.Info("⚠️ Healthcheck failed, triggering reconnection")
-			select {
-			case cr.reconnectChan <- struct{}{}:
-			default:
-				// Channel already has a signal, don't block
+		go func() {
+			for range healthcheckTicker.C {
+				cr.sendHealthcheck(conn)
 			}
-		})
+		}()
 
 		// Start message reading goroutine
 		go func() {
@@ -251,7 +242,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-cr.reconnectChan:
 			// Healthcheck failed, trigger reconnection
-			cancel() // Cancel the healthcheck context
 			conn.Close()
 			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
@@ -383,6 +373,10 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 		if err := cr.handleHealthcheckCheck(msg, conn); err != nil {
 			log.Info("❌ Error handling HealthcheckCheck message: %v", err)
 		}
+	case MessageTypeHealthcheckAck:
+		// Cancel the healthcheck timer since we got a response
+		cr.cancelHealthcheckTimer()
+		log.Info("💓 Received healthcheck ack from backend")
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
 	}
@@ -666,6 +660,9 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.
 	}
 
 	log.Info("💓 Received healthcheck ping from backend - sending ack")
+	
+	// Cancel any existing healthcheck timer since we got a response
+	cr.cancelHealthcheckTimer()
 
 	// Send healthcheck acknowledgment back to backend
 	healthcheckAckMsg := UnknownMessage{
@@ -681,6 +678,56 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.
 	log.Info("💓 Sent healthcheck ack to backend")
 	log.Info("📋 Completed successfully - handled healthcheck check message")
 	return nil
+}
+
+func (cr *CmdRunner) sendHealthcheck(conn *websocket.Conn) {
+	log.Info("💓 Sending healthcheck check to backend")
+	
+	// Send healthcheck check message
+	healthcheckMsg := UnknownMessage{
+		Type:    MessageTypeHealthcheckCheck,
+		Payload: HealthcheckCheckPayload{},
+	}
+	
+	if err := conn.WriteJSON(healthcheckMsg); err != nil {
+		log.Info("❌ Failed to send healthcheck check: %v", err)
+		return
+	}
+	
+	// Start a timer to trigger reconnection if we don't get a response
+	cr.startHealthcheckTimer()
+	
+	log.Info("💓 Sent healthcheck check, waiting for ack")
+}
+
+func (cr *CmdRunner) startHealthcheckTimer() {
+	cr.healthcheckTimerMutex.Lock()
+	defer cr.healthcheckTimerMutex.Unlock()
+	
+	// Cancel any existing timer
+	if cr.healthcheckTimer != nil {
+		cr.healthcheckTimer.Stop()
+	}
+	
+	// Start a new timer that triggers reconnection after 10 seconds
+	cr.healthcheckTimer = time.AfterFunc(10*time.Second, func() {
+		log.Info("⚠️ Healthcheck timeout - no response received within 10 seconds")
+		select {
+		case cr.reconnectChan <- struct{}{}:
+		default:
+			// Channel already has a signal, don't block
+		}
+	})
+}
+
+func (cr *CmdRunner) cancelHealthcheckTimer() {
+	cr.healthcheckTimerMutex.Lock()
+	defer cr.healthcheckTimerMutex.Unlock()
+	
+	if cr.healthcheckTimer != nil {
+		cr.healthcheckTimer.Stop()
+		cr.healthcheckTimer = nil
+	}
 }
 
 func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn *websocket.Conn) error {
