@@ -97,14 +97,15 @@ func run() error {
 	
 	// Register reliable message handler first (for deduplication and acknowledgements)
 	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
-		handled, err := reliableMessageHandler.ProcessReliableMessage(client, msg)
+		isAlreadyProcessed, err := reliableMessageHandler.ProcessReliableMessage(client, msg)
 		if err != nil {
 			log.Printf("❌ Error processing reliable message from client %s: %v", client.ID, err)
 		}
-		if !handled {
-			// If message wasn't handled by reliable processor, pass to regular handler
-			wsHandler.HandleMessage(client, msg)
+		if isAlreadyProcessed {
+			return
 		}
+		// Handle message normally
+		wsHandler.HandleMessage(client, msg)
 	})
 
 
