@@ -24,10 +24,16 @@ func TestConvertSlackPermalinkToDeepLink(t *testing.T) {
 			description: "Should convert threaded Slack permalink to deep link",
 		},
 		{
-			name:        "Already a deep link",
+			name:        "Already a proper deep link with team and message",
+			permalink:   "slack://channel?team=T1234567890&id=C1234567890&message=1640995200123456",
+			expected:    "slack://channel?team=T1234567890&id=C1234567890&message=1640995200123456",
+			description: "Should return proper deep links unchanged",
+		},
+		{
+			name:        "Already a basic deep link",
 			permalink:   "slack://channel?team=T1234567890&id=C1234567890",
 			expected:    "slack://channel?team=T1234567890&id=C1234567890",
-			description: "Should return deep links unchanged",
+			description: "Should return basic deep links unchanged",
 		},
 		{
 			name:        "Invalid URL",

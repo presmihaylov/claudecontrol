@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"fmt"
 	"regexp"
+	"strings"
 )
 
 func AssertInvariant(condition bool, message string) {
@@ -25,6 +27,12 @@ func ConvertMarkdownToSlack(message string) string {
 	return result
 }
 
-
-
-
+// CreateSlackDeepLink creates a Slack deep link for opening a specific message in the native Slack app
+// Format: slack://channel?team={slackTeamId}&id={slackChannelId}&message={slackMessageTimestamp}
+func CreateSlackDeepLink(teamID, channelID, messageTS string) string {
+	// Convert message timestamp from format like "1640995200.123456" to "1640995200123456"
+	// by removing the decimal point
+	messageTimestamp := strings.ReplaceAll(messageTS, ".", "")
+	
+	return fmt.Sprintf("slack://channel?team=%s&id=%s&message=%s", teamID, channelID, messageTimestamp)
+}

@@ -314,20 +314,14 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 }
 
 func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *models.ProcessedSlackMessage) error {
-	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(message.SlackIntegrationID.String())
+	// Get integration to access team ID for deep link creation
+	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(message.SlackIntegrationID)
 	if err != nil {
-		return fmt.Errorf("failed to get Slack client for integration: %w", err)
+		return fmt.Errorf("failed to get slack integration: %w", err)
 	}
 
-	// Generate permalink for the Slack message
-	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
-		Channel: message.SlackChannelID,
-		Ts:      message.SlackTS,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get permalink for slack message: %w", err)
-	}
+	// Create Slack deep link for the message
+	slackDeepLink := utils.CreateSlackDeepLink(integration.SlackTeamID, message.SlackChannelID, message.SlackTS)
 
 	startConversationMessage := models.UnknownMessage{
 		Type: models.MessageTypeStartConversation,
@@ -335,7 +329,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 			JobID:            message.JobID.String(),
 			Message:          message.TextContent,
 			SlackMessageID:   message.ID.String(),
-			SlackMessageLink: permalink,
+			SlackMessageLink: slackDeepLink,
 		},
 	}
 
@@ -347,19 +341,14 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 }
 
 func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.ProcessedSlackMessage) error {
-	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(message.SlackIntegrationID.String())
+	// Get integration to access team ID for deep link creation
+	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(message.SlackIntegrationID)
 	if err != nil {
-		return fmt.Errorf("failed to get Slack client for integration: %w", err)
+		return fmt.Errorf("failed to get slack integration: %w", err)
 	}
 
-	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
-		Channel: message.SlackChannelID,
-		Ts:      message.SlackTS,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get permalink for slack message: %w", err)
-	}
+	// Create Slack deep link for the message
+	slackDeepLink := utils.CreateSlackDeepLink(integration.SlackTeamID, message.SlackChannelID, message.SlackTS)
 
 	userMessage := models.UnknownMessage{
 		Type: models.MessageTypeUserMessage,
@@ -367,7 +356,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 			JobID:            message.JobID.String(),
 			Message:          message.TextContent,
 			SlackMessageID:   message.ID.String(),
-			SlackMessageLink: permalink,
+			SlackMessageLink: slackDeepLink,
 		},
 	}
 

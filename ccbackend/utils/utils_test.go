@@ -134,3 +134,54 @@ func TestAssertInvariant(t *testing.T) {
 		})
 	})
 }
+
+func TestCreateSlackDeepLink(t *testing.T) {
+	tests := []struct {
+		name        string
+		teamID      string
+		channelID   string
+		messageTS   string
+		expected    string
+		description string
+	}{
+		{
+			name:        "Standard message timestamp",
+			teamID:      "T1234567890",
+			channelID:   "C1234567890",
+			messageTS:   "1640995200.123456",
+			expected:    "slack://channel?team=T1234567890&id=C1234567890&message=1640995200123456",
+			description: "Should create deep link with decimal point removed from timestamp",
+		},
+		{
+			name:        "Message timestamp without decimal",
+			teamID:      "T9876543210",
+			channelID:   "C9876543210",
+			messageTS:   "1640995200123456",
+			expected:    "slack://channel?team=T9876543210&id=C9876543210&message=1640995200123456",
+			description: "Should handle timestamp that already has no decimal point",
+		},
+		{
+			name:        "Empty team ID",
+			teamID:      "",
+			channelID:   "C1234567890",
+			messageTS:   "1640995200.123456",
+			expected:    "slack://channel?team=&id=C1234567890&message=1640995200123456",
+			description: "Should handle empty team ID gracefully",
+		},
+		{
+			name:        "Enterprise team format",
+			teamID:      "TE1234567890",
+			channelID:   "C1234567890",
+			messageTS:   "1640995200.123456",
+			expected:    "slack://channel?team=TE1234567890&id=C1234567890&message=1640995200123456",
+			description: "Should handle enterprise team ID format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CreateSlackDeepLink(tt.teamID, tt.channelID, tt.messageTS)
+			assert.Equal(t, tt.expected, result, tt.description)
+		})
+	}
+}

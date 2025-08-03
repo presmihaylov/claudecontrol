@@ -12,8 +12,8 @@ func AssertInvariant(condition bool, message string) {
 }
 
 // ConvertSlackPermalinkToDeepLink converts a Slack permalink URL to a deep link
-// Example: https://workspace.slack.com/archives/C1234567890/p1234567890123456?thread_ts=1234567890.123456
-// Returns: slack://channel?team=T1234567890&id=C1234567890&message=1234567890123456
+// The backend now sends proper deep links, so this function mainly ensures compatibility
+// and handles edge cases where old permalinks might still be present
 func ConvertSlackPermalinkToDeepLink(permalink string) string {
 	// If it's already a deep link, return as-is
 	if strings.HasPrefix(permalink, "slack://") {
@@ -44,21 +44,8 @@ func ConvertSlackPermalinkToDeepLink(permalink string) string {
 		messageTS = messageTS[1:]
 	}
 
-	// Extract team ID from subdomain
-	hostParts := strings.Split(parsedURL.Host, ".")
-	if len(hostParts) < 2 || !strings.Contains(parsedURL.Host, "slack.com") {
-		// Not a valid Slack domain, return original
-		return permalink
-	}
-
-	// For Slack URLs, we need to make a best effort to get team ID
-	// Since permalinks don't directly contain team ID, we'll construct a deep link
-	// that uses the channel format which should work for opening the message
-	
-	// Construct deep link to open the channel
-	// Format: slack://channel?team=[TEAM_ID]&id=[CHANNEL_ID]
-	// Note: Without team ID from the URL, we can't create a perfect deep link
-	// The best we can do is create a channel deep link
+	// Since we can't extract team ID from permalink, create a basic deep link
+	// The backend should now be sending proper deep links with team ID, so this is a fallback
 	deepLink := "slack://channel?id=" + channelID
 
 	return deepLink
