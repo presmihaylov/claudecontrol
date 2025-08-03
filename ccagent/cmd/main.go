@@ -38,7 +38,7 @@ type CmdRunner struct {
 	reconnectChan            chan struct{}
 	healthcheckTimer         *time.Timer
 	healthcheckTimerMutex    sync.Mutex
-	messageProcessor         *services.MessageProcessor // Temporarily set during message handling
+	messageProcessor         *services.MessageProcessor
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -53,6 +53,10 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	agentID := uuid.New()
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
+	// Initialize message processor with nil connection
+	messageProcessor := services.NewMessageProcessor(nil)
+	log.Info("📤 Initialized message processor")
+
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
 		sessionService:   sessionService,
@@ -61,6 +65,7 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 		appState:         appState,
 		agentID:          agentID,
 		reconnectChan:    make(chan struct{}, 1),
+		messageProcessor: messageProcessor,
 	}, nil
 }
 
@@ -125,25 +130,25 @@ func main() {
 		wsURL = "wss://claudecontrol.onrender.com/ws"
 	}
 
+	// Set up deferred cleanup
+	defer func() {
+		cmdRunner.messageProcessor.Stop()
+		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
+	}()
+
 	// Start WebSocket client
-	teardown, err := cmdRunner.startWebSocketClient(wsURL, ccagentApiKey)
+	err = cmdRunner.startWebSocketClient(wsURL, ccagentApiKey)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting WebSocket client: %v\n", err)
 		os.Exit(1)
 	}
-	
-	// Set up deferred cleanup
-	defer func() {
-		teardown()
-		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
-	}()
 }
 
-func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), error) {
+func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 	log.Info("📋 Starting to connect to WebSocket server at %s", serverURLStr)
 	serverURL, err := url.Parse(serverURLStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid URL: %w", err)
+		return fmt.Errorf("invalid URL: %w", err)
 	}
 
 	// Initialize reconnect channel if not already initialized
@@ -151,14 +156,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 		cr.reconnectChan = make(chan struct{}, 1)
 	}
 
-	// Create message processor with nil connection - it will handle pending messages
-	messageProcessor := services.NewMessageProcessor(nil)
-	
-	// Create teardown function
-	teardown := func() {
-		messageProcessor.Stop()
-	}
-	
 	// Set up global interrupt handling
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -179,10 +176,10 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 			select {
 			case <-interrupt:
 				log.Info("🔌 Interrupt received during connection attempts, shutting down")
-				return teardown, nil
+				return nil
 			default:
 				log.Info("❌ All retry attempts exhausted, shutting down")
-				return teardown, fmt.Errorf("failed to connect after all retry attempts")
+				return fmt.Errorf("failed to connect after all retry attempts")
 			}
 		}
 
@@ -190,7 +187,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 			select {
 			case <-interrupt:
 				log.Info("🔌 Interrupt received, shutting down")
-				return teardown, nil
+				return nil
 			default:
 				continue // Retry loop will handle reconnection
 			}
@@ -199,7 +196,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 		log.Info("✅ Connected to WebSocket server")
 
 		// Reset the connection in the message processor
-		messageProcessor.ResetConnection(conn)
+		cr.messageProcessor.ResetConnection(conn)
 		log.Info("📤 Updated message processor with WebSocket connection")
 
 		done := make(chan struct{})
@@ -239,14 +236,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 			}
 		}()
 
-		// Create a wrapped handler that captures messageProcessor
-		handleMessageWithProcessor := func(msg models.UnknownMessage, conn *websocket.Conn) {
-			// Temporarily set messageProcessor in CmdRunner for the handler methods
-			cr.messageProcessor = messageProcessor
-			defer func() { cr.messageProcessor = nil }()
-			cr.handleMessage(msg, conn)
-		}
-
 		// Start message reading goroutine
 		go func() {
 			defer close(done)
@@ -269,12 +258,12 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 				// Route messages to appropriate worker pool
 				if instantMessageTypes[msg.Type] {
 					instantWP.Submit(func() {
-						handleMessageWithProcessor(msg, conn)
+						cr.handleMessage(msg, conn)
 					})
 				} else {
 					// NON-BLOCKING: Submit to regular worker pool
 					wp.Submit(func() {
-						handleMessageWithProcessor(msg, conn)
+						cr.handleMessage(msg, conn)
 					})
 				}
 			}
@@ -316,7 +305,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 		}
 
 		if shouldExit {
-			return teardown, nil
+			return nil
 		}
 	}
 }
