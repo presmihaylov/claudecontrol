@@ -42,8 +42,8 @@ func NewMessageProcessor(conn *websocket.Conn) *MessageProcessor {
 		workerPool:      workerpool.New(1), // Sequential processing
 		ctx:             ctx,
 		cancel:          cancel,
-		retryInterval:   5 * time.Second,
-		maxRetries:      3,
+		retryInterval:   30 * time.Second,
+		maxRetries:      5,
 		ackTimeout:      30 * time.Second,
 	}
 	
