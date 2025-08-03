@@ -124,13 +124,6 @@ func (mp *MessageProcessor) ResetConnection(conn *websocket.Conn) {
 	log.Info("📋 Completed successfully - reset WebSocket connection")
 }
 
-
-func (mp *MessageProcessor) GetPendingMessageCount() int {
-	mp.pendingMutex.RLock()
-	defer mp.pendingMutex.RUnlock()
-	return len(mp.pendingMessages)
-}
-
 func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
 	log.Info("📤 Sending message %s (attempt %d)", pendingMsg.ID, pendingMsg.Retries+1)
 	

@@ -199,10 +199,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 		} else {
 			// Subsequent connections - reset the connection
 			cr.messageProcessor.ResetConnection(conn)
-			pendingCount := cr.messageProcessor.GetPendingMessageCount()
-			if pendingCount > 0 {
-				log.Info("📤 Found %d pending messages that will be retried", pendingCount)
-			}
 		}
 
 		done := make(chan struct{})
