@@ -11,6 +11,8 @@ const (
 	MessageTypeProcessingSlackMessage    = "processing_slack_message_v1"
 	MessageTypeCheckIdleJobs             = "check_idle_jobs_v1"
 	MessageTypeJobComplete               = "job_complete_v1"
+	MessageTypeHealthcheckCheck          = "healthcheck_check_v1"
+	MessageTypeHealthcheckAck            = "healthcheck_ack_v1"
 )
 
 type UnknownMessage struct {
@@ -61,4 +63,12 @@ type CheckIdleJobsPayload struct {
 type JobCompletePayload struct {
 	JobID  string `json:"job_id"`
 	Reason string `json:"reason"`
+}
+
+type HealthcheckCheckPayload struct {
+	// Empty payload - simple ping from backend
+}
+
+type HealthcheckAckPayload struct {
+	// Empty payload - simple pong response to backend
 }

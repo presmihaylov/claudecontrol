@@ -24,9 +24,9 @@ func NewPostgresAgentsRepository(db *sqlx.DB, schema string) *PostgresAgentsRepo
 
 func (r *PostgresAgentsRepository) CreateActiveAgent(agent *models.ActiveAgent) error {
 	query := fmt.Sprintf(`
-		INSERT INTO %s.active_agents (id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at) 
-		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
-		RETURNING id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at`, r.schema)
+		INSERT INTO %s.active_agents (id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at) 
+		VALUES ($1, $2, $3, $4, NOW(), NOW(), NOW()) 
+		RETURNING id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at`, r.schema)
 
 	err := r.db.QueryRowx(query, agent.ID, agent.WSConnectionID, agent.SlackIntegrationID, agent.AgentID).StructScan(agent)
 	if err != nil {
@@ -58,7 +58,7 @@ func (r *PostgresAgentsRepository) DeleteActiveAgent(id uuid.UUID, slackIntegrat
 
 func (r *PostgresAgentsRepository) GetAgentByID(id uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at 
+		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
 		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
 
@@ -76,7 +76,7 @@ func (r *PostgresAgentsRepository) GetAgentByID(id uuid.UUID, slackIntegrationID
 
 func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(wsConnectionID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at 
+		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
 		WHERE ws_connection_id = $1 AND slack_integration_id = $2`, r.schema)
 
@@ -94,7 +94,7 @@ func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(wsConnectionID, slac
 
 func (r *PostgresAgentsRepository) GetAvailableAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.agent_id, a.created_at, a.updated_at 
+		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.agent_id, a.created_at, a.updated_at, a.last_active_at 
 		FROM %s.active_agents a
 		LEFT JOIN %s.agent_job_assignments aja ON a.id = aja.agent_id
 		WHERE aja.agent_id IS NULL AND a.slack_integration_id = $1
@@ -111,7 +111,7 @@ func (r *PostgresAgentsRepository) GetAvailableAgents(slackIntegrationID string)
 
 func (r *PostgresAgentsRepository) GetAllActiveAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at 
+		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
 		WHERE slack_integration_id = $1
 		ORDER BY created_at ASC`, r.schema)
@@ -138,7 +138,7 @@ func (r *PostgresAgentsRepository) DeleteAllActiveAgents() error {
 
 func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.agent_id, a.created_at, a.updated_at 
+		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.agent_id, a.created_at, a.updated_at, a.last_active_at 
 		FROM %s.active_agents a
 		JOIN %s.agent_job_assignments aja ON a.id = aja.agent_id
 		WHERE aja.job_id = $1 AND aja.slack_integration_id = $2
@@ -208,4 +208,42 @@ func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(agentID uuid.UUI
 	return jobIDs, nil
 }
 
+func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(wsConnectionID, slackIntegrationID string) error {
+	query := fmt.Sprintf(`
+		UPDATE %s.active_agents 
+		SET last_active_at = NOW() 
+		WHERE ws_connection_id = $1 AND slack_integration_id = $2`, r.schema)
+
+	result, err := r.db.Exec(query, wsConnectionID, slackIntegrationID)
+	if err != nil {
+		return fmt.Errorf("failed to update agent last_active_at: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("active agent with ws_connection_id %s not found", wsConnectionID)
+	}
+
+	return nil
+}
+
+func (r *PostgresAgentsRepository) GetInactiveAgents(slackIntegrationID string, inactiveThresholdMinutes int) ([]*models.ActiveAgent, error) {
+	query := fmt.Sprintf(`
+		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at 
+		FROM %s.active_agents 
+		WHERE slack_integration_id = $1 AND last_active_at < NOW() - INTERVAL '%d minutes'
+		ORDER BY last_active_at ASC`, r.schema, inactiveThresholdMinutes)
+
+	var agents []*models.ActiveAgent
+	err := r.db.Select(&agents, query, slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get inactive agents: %w", err)
+	}
+
+	return agents, nil
+}
 

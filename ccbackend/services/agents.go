@@ -392,3 +392,42 @@ func (s *AgentsService) GetActiveAgentJobAssignments(agentID uuid.UUID, slackInt
 	log.Printf("📋 Completed successfully - retrieved %d job assignments for agent %s", len(jobIDs), agentID)
 	return jobIDs, nil
 }
+
+func (s *AgentsService) UpdateAgentLastActiveAt(wsConnectionID, slackIntegrationID string) error {
+	log.Printf("📋 Starting to update last_active_at for agent with WS connection ID: %s", wsConnectionID)
+
+	if wsConnectionID == "" {
+		return fmt.Errorf("ws_connection_id cannot be empty")
+	}
+
+	if slackIntegrationID == "" {
+		return fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	if err := s.agentsRepo.UpdateAgentLastActiveAt(wsConnectionID, slackIntegrationID); err != nil {
+		return fmt.Errorf("failed to update agent last_active_at: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated last_active_at for agent with WS connection %s", wsConnectionID)
+	return nil
+}
+
+func (s *AgentsService) GetInactiveAgents(slackIntegrationID string, inactiveThresholdMinutes int) ([]*models.ActiveAgent, error) {
+	log.Printf("📋 Starting to get inactive agents for integration %s (threshold: %d minutes)", slackIntegrationID, inactiveThresholdMinutes)
+
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	if inactiveThresholdMinutes <= 0 {
+		return nil, fmt.Errorf("inactive threshold must be positive")
+	}
+
+	agents, err := s.agentsRepo.GetInactiveAgents(slackIntegrationID, inactiveThresholdMinutes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get inactive agents: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found %d inactive agents", len(agents))
+	return agents, nil
+}
