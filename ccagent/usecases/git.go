@@ -411,6 +411,12 @@ func (g *GitUseCase) generatePRTitleWithClaude(branchName string) (string, error
 		return "", fmt.Errorf("failed to get branch diff summary: %w", err)
 	}
 
+	// Get actual diff content for better context
+	diffContent, err := g.gitClient.GetBranchDiffContent(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch diff content: %w", err)
+	}
+
 	// Build commit info for context
 	commitInfo := "No commits found"
 	if len(commitMessages) > 0 {
@@ -423,6 +429,9 @@ Here are the commits made on this branch (not including main branch commits):
 %s
 
 Files changed:
+%s
+
+Actual code changes:
 %s
 
 Generate a SHORT pull request title. Follow these strict rules:
@@ -438,7 +447,7 @@ Examples:
 - "Add user authentication middleware"
 - "Update API response format"
 
-Respond with ONLY the short title, nothing else.`, branchName, commitInfo, diffSummary)
+Respond with ONLY the short title, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
 
 	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
@@ -469,6 +478,12 @@ func (g *GitUseCase) generatePRBodyWithClaude(branchName, slackThreadLink string
 		return "", fmt.Errorf("failed to get branch diff summary: %w", err)
 	}
 
+	// Get actual diff content for better context
+	diffContent, err := g.gitClient.GetBranchDiffContent(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch diff content: %w", err)
+	}
+
 	// Build commit info for context
 	commitInfo := "No commits found"
 	if len(commitMessages) > 0 {
@@ -484,6 +499,9 @@ Here are the commits made on this branch (not including main branch commits):
 Files changed:
 %s
 
+Actual code changes:
+%s
+
 Please generate a professional pull request description based on the actual changes shown above. Include:
 - ## Summary section with what was accomplished
 - ## Changes section with key modifications
@@ -496,7 +514,7 @@ IMPORTANT:
 - Base your description on the actual commits and file changes shown above
 - Do NOT include any introductory text like "Here is your description"
 
-Respond with ONLY the PR body in markdown format, nothing else.`, branchName, commitInfo, diffSummary)
+Respond with ONLY the PR body in markdown format, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
 
 	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
