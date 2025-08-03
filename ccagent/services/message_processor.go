@@ -23,6 +23,7 @@ type PendingMessage struct {
 
 type MessageProcessor struct {
 	conn                *websocket.Conn
+	connMutex           sync.RWMutex
 	pendingMessages     map[string]*PendingMessage
 	pendingMutex        sync.RWMutex
 	workerPool          *workerpool.WorkerPool
@@ -119,7 +120,9 @@ func (mp *MessageProcessor) SendMessageReliably(msg models.UnknownMessage) (stri
 func (mp *MessageProcessor) ResetConnection(conn *websocket.Conn) {
 	log.Info("📋 Starting to reset WebSocket connection")
 	
+	mp.connMutex.Lock()
 	mp.conn = conn
+	mp.connMutex.Unlock()
 	
 	log.Info("📋 Completed successfully - reset WebSocket connection")
 }
@@ -127,7 +130,11 @@ func (mp *MessageProcessor) ResetConnection(conn *websocket.Conn) {
 func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
 	log.Info("📤 Sending message %s (attempt %d)", pendingMsg.ID, pendingMsg.Retries+1)
 	
-	if err := mp.conn.WriteJSON(pendingMsg.Message); err != nil {
+	mp.connMutex.RLock()
+	err := mp.conn.WriteJSON(pendingMsg.Message)
+	mp.connMutex.RUnlock()
+	
+	if err != nil {
 		log.Info("❌ Failed to write message %s to WebSocket: %v", pendingMsg.ID, err)
 		return err
 	}
