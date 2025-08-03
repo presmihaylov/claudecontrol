@@ -806,5 +806,179 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		assert.Equal(t, models.ProcessedSlackMessageStatusCompleted, finalMessage.Status)
 		assert.True(t, finalMessage.UpdatedAt.After(updatedMessage.UpdatedAt))
 	})
+
+	t.Run("GetJobsWithQueuedMessages", func(t *testing.T) {
+		t.Run("NoJobsWithQueuedMessages", func(t *testing.T) {
+			// No jobs exist yet, so should return empty list
+			queuedJobs, err := jobsService.GetJobsWithQueuedMessages(slackIntegrationID)
+			require.NoError(t, err)
+			assert.Empty(t, queuedJobs)
+		})
+
+		t.Run("JobsWithQueuedMessages", func(t *testing.T) {
+			// Create multiple jobs
+			job1, err := jobsService.CreateJob("queued.test.thread.1", "C1111111111", slackIntegrationID)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job1.ID, slackIntegrationID) }()
+
+			job2, err := jobsService.CreateJob("queued.test.thread.2", "C2222222222", slackIntegrationID)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job2.ID, slackIntegrationID) }()
+
+			job3, err := jobsService.CreateJob("queued.test.thread.3", "C3333333333", slackIntegrationID)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job3.ID, slackIntegrationID) }()
+
+			// Add messages with different statuses
+			// Job1: QUEUED message (should be returned)
+			_, err = jobsService.CreateProcessedSlackMessage(job1.ID, "C1111111111", "1234567890.111111", "Queued message 1", slackIntegrationID, models.ProcessedSlackMessageStatusQueued)
+			require.NoError(t, err)
+
+			// Job2: IN_PROGRESS message (should NOT be returned)
+			_, err = jobsService.CreateProcessedSlackMessage(job2.ID, "C2222222222", "1234567890.222222", "In progress message", slackIntegrationID, models.ProcessedSlackMessageStatusInProgress)
+			require.NoError(t, err)
+
+			// Job3: COMPLETED message (should NOT be returned)
+			_, err = jobsService.CreateProcessedSlackMessage(job3.ID, "C3333333333", "1234567890.333333", "Completed message", slackIntegrationID, models.ProcessedSlackMessageStatusCompleted)
+			require.NoError(t, err)
+
+			// Get jobs with queued messages
+			queuedJobs, err := jobsService.GetJobsWithQueuedMessages(slackIntegrationID)
+			require.NoError(t, err)
+
+			// Should only return job1
+			require.Len(t, queuedJobs, 1)
+			assert.Equal(t, job1.ID, queuedJobs[0].ID)
+			assert.Equal(t, job1.SlackThreadTS, queuedJobs[0].SlackThreadTS)
+			assert.Equal(t, job1.SlackChannelID, queuedJobs[0].SlackChannelID)
+		})
+
+		t.Run("MultipleJobsWithQueuedMessages", func(t *testing.T) {
+			// Create multiple jobs with queued messages
+			job1, err := jobsService.CreateJob("multi.queued.thread.1", "C4444444444", slackIntegrationID)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job1.ID, slackIntegrationID) }()
+
+			job2, err := jobsService.CreateJob("multi.queued.thread.2", "C5555555555", slackIntegrationID)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job2.ID, slackIntegrationID) }()
+
+			// Add queued messages to both jobs
+			_, err = jobsService.CreateProcessedSlackMessage(job1.ID, "C4444444444", "1234567890.444444", "Queued message job1", slackIntegrationID, models.ProcessedSlackMessageStatusQueued)
+			require.NoError(t, err)
+
+			_, err = jobsService.CreateProcessedSlackMessage(job2.ID, "C5555555555", "1234567890.555555", "Queued message job2", slackIntegrationID, models.ProcessedSlackMessageStatusQueued)
+			require.NoError(t, err)
+
+			// Get jobs with queued messages
+			queuedJobs, err := jobsService.GetJobsWithQueuedMessages(slackIntegrationID)
+			require.NoError(t, err)
+
+			// Should return both jobs, ordered by created_at ASC
+			require.Len(t, queuedJobs, 2)
+			
+			// Find our test jobs in the results
+			var foundJob1, foundJob2 bool
+			for _, job := range queuedJobs {
+				if job.ID == job1.ID {
+					foundJob1 = true
+					assert.Equal(t, job1.SlackThreadTS, job.SlackThreadTS)
+				}
+				if job.ID == job2.ID {
+					foundJob2 = true
+					assert.Equal(t, job2.SlackThreadTS, job.SlackThreadTS)
+				}
+			}
+			assert.True(t, foundJob1, "Job1 should be in queued jobs list")
+			assert.True(t, foundJob2, "Job2 should be in queued jobs list")
+		})
+
+		t.Run("JobWithMixedMessageStatuses", func(t *testing.T) {
+			// Create a job with both queued and non-queued messages
+			job, err := jobsService.CreateJob("mixed.status.thread", "C6666666666", slackIntegrationID)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job.ID, slackIntegrationID) }()
+
+			// Add messages with different statuses
+			_, err = jobsService.CreateProcessedSlackMessage(job.ID, "C6666666666", "1234567890.666666", "Queued message", slackIntegrationID, models.ProcessedSlackMessageStatusQueued)
+			require.NoError(t, err)
+
+			_, err = jobsService.CreateProcessedSlackMessage(job.ID, "C6666666666", "1234567890.777777", "In progress message", slackIntegrationID, models.ProcessedSlackMessageStatusInProgress)
+			require.NoError(t, err)
+
+			_, err = jobsService.CreateProcessedSlackMessage(job.ID, "C6666666666", "1234567890.888888", "Completed message", slackIntegrationID, models.ProcessedSlackMessageStatusCompleted)
+			require.NoError(t, err)
+
+			// Get jobs with queued messages
+			queuedJobs, err := jobsService.GetJobsWithQueuedMessages(slackIntegrationID)
+			require.NoError(t, err)
+
+			// Should return the job because it has at least one queued message
+			foundJob := false
+			for _, queuedJob := range queuedJobs {
+				if queuedJob.ID == job.ID {
+					foundJob = true
+					assert.Equal(t, job.SlackThreadTS, queuedJob.SlackThreadTS)
+					break
+				}
+			}
+			assert.True(t, foundJob, "Job with mixed statuses (including queued) should be returned")
+		})
+
+		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
+			_, err := jobsService.GetJobsWithQueuedMessages("")
+			require.Error(t, err)
+			assert.Equal(t, "slack_integration_id cannot be empty", err.Error())
+		})
+
+		t.Run("JobFromDifferentIntegration", func(t *testing.T) {
+			// Create another test integration
+			cfg, err := testutils.LoadTestConfig()
+			require.NoError(t, err)
+
+			dbConn2, err := db.NewConnection(cfg.DatabaseURL)
+			require.NoError(t, err)
+			defer dbConn2.Close()
+
+			usersRepo2 := db.NewPostgresUsersRepository(dbConn2, cfg.DatabaseSchema)
+			slackIntegrationsRepo2 := db.NewPostgresSlackIntegrationsRepository(dbConn2, cfg.DatabaseSchema)
+
+			testUser2 := testutils.CreateTestUser(t, usersRepo2)
+			testIntegration2 := testutils.CreateTestSlackIntegration(t, slackIntegrationsRepo2, testUser2.ID)
+			defer func() { _ = slackIntegrationsRepo2.DeleteSlackIntegrationByID(testIntegration2.ID, testUser2.ID) }()
+
+			slackIntegrationID2 := testIntegration2.ID.String()
+
+			// Create a job with queued message in the second integration
+			job, err := jobsService.CreateJob("other.integration.thread", "C7777777777", slackIntegrationID2)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(job.ID, slackIntegrationID2) }()
+
+			_, err = jobsService.CreateProcessedSlackMessage(job.ID, "C7777777777", "1234567890.999999", "Queued message other integration", slackIntegrationID2, models.ProcessedSlackMessageStatusQueued)
+			require.NoError(t, err)
+
+			// Query with original integration ID - should not return the job from other integration
+			queuedJobs, err := jobsService.GetJobsWithQueuedMessages(slackIntegrationID)
+			require.NoError(t, err)
+
+			// Should not find the job from the other integration
+			for _, queuedJob := range queuedJobs {
+				assert.NotEqual(t, job.ID, queuedJob.ID, "Job from different integration should not be returned")
+			}
+
+			// Query with second integration ID - should return the job
+			queuedJobs2, err := jobsService.GetJobsWithQueuedMessages(slackIntegrationID2)
+			require.NoError(t, err)
+
+			foundJob := false
+			for _, queuedJob := range queuedJobs2 {
+				if queuedJob.ID == job.ID {
+					foundJob = true
+					break
+				}
+			}
+			assert.True(t, foundJob, "Job should be found when querying with correct integration ID")
+		})
+	})
 }
 

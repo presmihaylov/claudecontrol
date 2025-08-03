@@ -242,39 +242,32 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 	job := jobResult.Job
 	isNewConversation := jobResult.Status == models.JobCreationStatusCreated
 
-	// Check if this job is already assigned to an agent or assign to new agent
-	clientID, err := s.getOrAssignAgentForJob(job, threadTS, slackIntegrationID)
+	// Check if agents are available first
+	connectedClientIDs := s.wsClient.GetClientIDs()
+	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
 	if err != nil {
-		return fmt.Errorf("failed to get or assign agent for job: %w", err)
+		log.Printf("❌ Failed to check for connected agents: %v", err)
+		return fmt.Errorf("failed to check for connected agents: %w", err)
 	}
 
-	if clientID == "" {
-		log.Printf("⚠️ No available agents to handle Slack mention")
+	var clientID string
+	var messageStatus models.ProcessedSlackMessageStatus
 
-		// Get integration-specific Slack client
-		slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
+	if len(connectedAgents) == 0 {
+		// No agents available - queue the message
+		log.Printf("⚠️ No available agents to handle Slack mention - queuing message")
+		messageStatus = models.ProcessedSlackMessageStatusQueued
+		clientID = "" // No agent assigned
+	} else {
+		// Agents available - assign job to agent
+		clientID, err = s.getOrAssignAgentForJob(job, threadTS, slackIntegrationID)
 		if err != nil {
-			return fmt.Errorf("failed to get Slack client for integration: %w", err)
+			return fmt.Errorf("failed to get or assign agent for job: %w", err)
 		}
-
-		// Send message to Slack informing that no agents are available
-		_, _, err = slackClient.PostMessage(event.Channel,
-			slack.MsgOptionText(utils.ConvertMarkdownToSlack("There are no available agents to handle this job"), false),
-			slack.MsgOptionTS(threadTS),
-		)
-		if err != nil {
-			log.Printf("❌ Failed to send 'no agents available' message to Slack: %v", err)
-			return fmt.Errorf("failed to send 'no agents available' message to Slack: %w", err)
-		}
-
-		log.Printf("📤 Sent 'no agents available' message to Slack thread %s in channel %s", threadTS, event.Channel)
-		return nil
+		messageStatus = models.ProcessedSlackMessageStatusInProgress
 	}
 
-	// Always process messages immediately - ccagent's worker pool handles queuing
-	messageStatus := models.ProcessedSlackMessageStatusInProgress
-
-	// Store the Slack message as ProcessedSlackMessage
+	// Store the Slack message as ProcessedSlackMessage with appropriate status
 	processedMessage, err := s.jobsService.CreateProcessedSlackMessage(
 		job.ID,
 		event.Channel,
@@ -293,8 +286,14 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 		return fmt.Errorf("failed to update slack message reaction: %w", err)
 	}
 
-	// Always send to agent - ccagent's worker pool will handle sequential processing
-	// Send appropriate message to the assigned agent based on whether this is a new conversation
+	// If message was queued, don't send to agent yet - background processor will handle it
+	if messageStatus == models.ProcessedSlackMessageStatusQueued {
+		log.Printf("📋 Message queued for background processing - job %s", job.ID)
+		log.Printf("📋 Completed successfully - processed Slack message event (queued)")
+		return nil
+	}
+
+	// Send work to assigned agent
 	if isNewConversation {
 		if err := s.sendStartConversationToAgent(clientID, processedMessage); err != nil {
 			return fmt.Errorf("failed to send start conversation message: %w", err)
@@ -451,9 +450,31 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 	return "", fmt.Errorf("no active agents available for job assignment")
 }
 
+// assignJobToAvailableAgent attempts to assign a job to the least loaded available agent
+// Returns the WebSocket client ID if successful, empty string if no agents available, or error on failure
 func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slackIntegrationID string) (string, error) {
 	log.Printf("📝 Job %s not yet assigned, looking for any active agent", job.ID)
 
+	clientID, assigned, err := s.tryAssignJobToAgent(job.ID, slackIntegrationID)
+	if err != nil {
+		return "", err
+	}
+	
+	if !assigned {
+		log.Printf("⚠️ No agents have active WebSocket connections")
+		return "", fmt.Errorf("no agents with active WebSocket connections available for job assignment")
+	}
+
+	log.Printf("✅ Assigned job %s to agent for slack thread %s (agent can handle multiple jobs)", job.ID, threadTS)
+	return clientID, nil
+}
+
+// tryAssignJobToAgent is a reusable function that attempts to assign a job to the least loaded available agent
+// Returns (clientID, wasAssigned, error) where:
+// - clientID: WebSocket connection ID of assigned agent (empty if not assigned)
+// - wasAssigned: true if job was successfully assigned to an agent, false if no agents available
+// - error: any error that occurred during the assignment process
+func (s *CoreUseCase) tryAssignJobToAgent(jobID uuid.UUID, slackIntegrationID string) (string, bool, error) {
 	// Get active WebSocket connections first
 	connectedClientIDs := s.wsClient.GetClientIDs()
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
@@ -462,32 +483,32 @@ func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slack
 	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
 	if err != nil {
 		log.Printf("❌ Failed to get connected active agents: %v", err)
-		return "", fmt.Errorf("failed to get connected active agents: %w", err)
+		return "", false, fmt.Errorf("failed to get connected active agents: %w", err)
 	}
 
 	if len(connectedAgents) == 0 {
 		log.Printf("⚠️ No agents have active WebSocket connections")
-		return "", fmt.Errorf("no agents with active WebSocket connections available for job assignment")
+		return "", false, nil
 	}
 
 	// Sort agents by load (number of assigned jobs) to select the least loaded agent
 	sortedAgents, err := s.sortAgentsByLoad(connectedAgents, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to sort agents by load: %v", err)
-		return "", fmt.Errorf("failed to sort agents by load: %w", err)
+		return "", false, fmt.Errorf("failed to sort agents by load: %w", err)
 	}
 
 	selectedAgent := sortedAgents[0].agent
 	log.Printf("🎯 Selected agent %s with %d active messages (least loaded)", selectedAgent.ID, sortedAgents[0].load)
 
 	// Assign the job to the selected agent (agents can now handle multiple jobs simultaneously)
-	if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, job.ID, slackIntegrationID); err != nil {
-		log.Printf("❌ Failed to assign job %s to agent %s: %v", job.ID, selectedAgent.ID, err)
-		return "", fmt.Errorf("failed to assign job to agent: %w", err)
+	if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, jobID, slackIntegrationID); err != nil {
+		log.Printf("❌ Failed to assign job %s to agent %s: %v", jobID, selectedAgent.ID, err)
+		return "", false, fmt.Errorf("failed to assign job to agent: %w", err)
 	}
 
-	log.Printf("✅ Assigned job %s to agent %s for slack thread %s (agent can handle multiple jobs)", job.ID, selectedAgent.ID, threadTS)
-	return selectedAgent.WSConnectionID, nil
+	log.Printf("✅ Assigned job %s to agent %s", jobID, selectedAgent.ID)
+	return selectedAgent.WSConnectionID, true, nil
 }
 
 type agentWithLoad struct {
@@ -834,6 +855,117 @@ func (s *CoreUseCase) BroadcastHealthcheck() error {
 	}
 
 	log.Printf("📋 Completed successfully - broadcasted healthcheck to %d agents", totalAgentCount)
+	return nil
+}
+
+func (s *CoreUseCase) ProcessQueuedJobs() error {
+	log.Printf("📋 Starting to process queued jobs")
+
+	// Get all slack integrations
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
+	if err != nil {
+		return fmt.Errorf("failed to get slack integrations: %w", err)
+	}
+
+	if len(integrations) == 0 {
+		log.Printf("📋 No slack integrations found")
+		return nil
+	}
+
+	totalProcessedJobs := 0
+	var processingErrors []string
+
+	for _, integration := range integrations {
+		slackIntegrationID := integration.ID.String()
+
+		// Get jobs with queued messages for this integration
+		queuedJobs, err := s.jobsService.GetJobsWithQueuedMessages(slackIntegrationID)
+		if err != nil {
+			processingErrors = append(processingErrors, fmt.Sprintf("failed to get queued jobs for integration %s: %v", slackIntegrationID, err))
+			continue
+		}
+
+		if len(queuedJobs) == 0 {
+			continue
+		}
+
+		log.Printf("🔍 Found %d jobs with queued messages for integration %s", len(queuedJobs), slackIntegrationID)
+
+		// Try to assign each queued job to an available agent
+		for _, job := range queuedJobs {
+			log.Printf("🔄 Processing queued job %s", job.ID)
+
+			// Try to assign job to an available agent
+			clientID, assigned, err := s.tryAssignJobToAgent(job.ID, slackIntegrationID)
+			if err != nil {
+				processingErrors = append(processingErrors, fmt.Sprintf("failed to assign queued job %s: %v", job.ID, err))
+				continue
+			}
+
+			if !assigned {
+				log.Printf("⚠️ Still no agents available for queued job %s", job.ID)
+				continue
+			}
+
+			// Job was successfully assigned - get queued messages and send them to agent
+			queuedMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(job.ID, models.ProcessedSlackMessageStatusQueued, slackIntegrationID)
+			if err != nil {
+				processingErrors = append(processingErrors, fmt.Sprintf("failed to get queued messages for job %s: %v", job.ID, err))
+				continue
+			}
+
+			log.Printf("📨 Found %d queued messages for job %s", len(queuedMessages), job.ID)
+
+			// Process each queued message
+			for _, message := range queuedMessages {
+				// Update message status to IN_PROGRESS
+				updatedMessage, err := s.jobsService.UpdateProcessedSlackMessage(message.ID, models.ProcessedSlackMessageStatusInProgress, slackIntegrationID)
+				if err != nil {
+					processingErrors = append(processingErrors, fmt.Sprintf("failed to update message %s status: %v", message.ID, err))
+					continue
+				}
+
+				// Update Slack reaction to show processing (eyes emoji)
+				if err := s.updateSlackMessageReaction(updatedMessage.SlackChannelID, updatedMessage.SlackTS, "eyes", slackIntegrationID); err != nil {
+					log.Printf("⚠️ Failed to update slack reaction for message %s: %v", message.ID, err)
+				}
+
+				// Determine if this is the first message in the job (new conversation)
+				allMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(job.ID, models.ProcessedSlackMessageStatusCompleted, slackIntegrationID)
+				if err != nil {
+					log.Printf("⚠️ Failed to check for existing messages in job %s: %v", job.ID, err)
+				}
+				isNewConversation := len(allMessages) == 0
+
+				// Send work to assigned agent
+				if isNewConversation {
+					if err := s.sendStartConversationToAgent(clientID, updatedMessage); err != nil {
+						processingErrors = append(processingErrors, fmt.Sprintf("failed to send start conversation for message %s: %v", message.ID, err))
+						continue
+					}
+				} else {
+					if err := s.sendUserMessageToAgent(clientID, updatedMessage); err != nil {
+						processingErrors = append(processingErrors, fmt.Sprintf("failed to send user message %s: %v", message.ID, err))
+						continue
+					}
+				}
+
+				log.Printf("✅ Successfully assigned and sent queued message %s to agent", message.ID)
+			}
+
+			totalProcessedJobs++
+			log.Printf("✅ Successfully processed queued job %s with %d messages", job.ID, len(queuedMessages))
+		}
+	}
+
+	log.Printf("📋 Completed queue processing - processed %d jobs", totalProcessedJobs)
+
+	// Return error if there were any processing failures
+	if len(processingErrors) > 0 {
+		return fmt.Errorf("queued job processing encountered %d errors: %s", len(processingErrors), strings.Join(processingErrors, "; "))
+	}
+
+	log.Printf("📋 Completed successfully - processed %d queued jobs", totalProcessedJobs)
 	return nil
 }
 
