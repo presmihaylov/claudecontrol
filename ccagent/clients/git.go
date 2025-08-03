@@ -504,3 +504,73 @@ func (g *GitClient) GetPRStateByID(prID string) (string, error) {
 	log.Info("📋 Completed successfully - got PR state by ID")
 	return strings.ToLower(state), nil
 }
+
+func (g *GitClient) GetBranchCommitMessages(branchName, baseBranch string) ([]string, error) {
+	log.Info("📋 Starting to get commit messages for branch %s vs base %s", branchName, baseBranch)
+
+	// Get commits that are in branchName but not in baseBranch
+	cmd := exec.Command("git", "log", "--pretty=format:%s", fmt.Sprintf("%s..%s", baseBranch, branchName))
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to get branch commit messages: %v\nOutput: %s", err, string(output))
+		return nil, fmt.Errorf("failed to get branch commit messages: %w\nOutput: %s", err, string(output))
+	}
+
+	commitMessages := []string{}
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			commitMessages = append(commitMessages, line)
+		}
+	}
+
+	log.Info("✅ Found %d commit messages for branch", len(commitMessages))
+	log.Info("📋 Completed successfully - got branch commit messages")
+	return commitMessages, nil
+}
+
+func (g *GitClient) GetBranchDiffSummary(branchName, baseBranch string) (string, error) {
+	log.Info("📋 Starting to get diff summary for branch %s vs base %s", branchName, baseBranch)
+
+	// Get a concise diff summary showing files changed
+	cmd := exec.Command("git", "diff", "--name-status", fmt.Sprintf("%s..%s", baseBranch, branchName))
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to get branch diff summary: %v\nOutput: %s", err, string(output))
+		return "", fmt.Errorf("failed to get branch diff summary: %w\nOutput: %s", err, string(output))
+	}
+
+	diffSummary := strings.TrimSpace(string(output))
+	log.Info("✅ Got diff summary with %d lines", len(strings.Split(diffSummary, "\n")))
+	log.Info("📋 Completed successfully - got branch diff summary")
+	return diffSummary, nil
+}
+
+func (g *GitClient) GetBranchDiffContent(branchName, baseBranch string) (string, error) {
+	log.Info("📋 Starting to get diff content for branch %s vs base %s", branchName, baseBranch)
+
+	// Get the actual diff content with context
+	cmd := exec.Command("git", "diff", fmt.Sprintf("%s..%s", baseBranch, branchName))
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to get branch diff content: %v\nOutput: %s", err, string(output))
+		return "", fmt.Errorf("failed to get branch diff content: %w\nOutput: %s", err, string(output))
+	}
+
+	diffContent := strings.TrimSpace(string(output))
+	
+	// If diff is very large, truncate it to avoid overwhelming Claude
+	const maxDiffLength = 8000 // Reasonable limit to avoid token limits
+	if len(diffContent) > maxDiffLength {
+		diffContent = diffContent[:maxDiffLength] + "\n\n... (diff truncated due to size) ..."
+		log.Info("⚠️ Diff content truncated due to size")
+	}
+
+	log.Info("✅ Got diff content with %d characters", len(diffContent))
+	log.Info("📋 Completed successfully - got branch diff content")
+	return diffContent, nil
+}
