@@ -19,7 +19,7 @@ type PendingMessage struct {
 	Retries   int
 }
 
-type ReliableMessageProcessor struct {
+type MessageProcessor struct {
 	conn                *websocket.Conn
 	pendingMessages     map[string]*PendingMessage
 	pendingMutex        sync.RWMutex
@@ -32,10 +32,10 @@ type ReliableMessageProcessor struct {
 	onAckReceived       func(messageID string)
 }
 
-func NewReliableMessageProcessor(conn *websocket.Conn) *ReliableMessageProcessor {
+func NewMessageProcessor(conn *websocket.Conn) *MessageProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 	
-	processor := &ReliableMessageProcessor{
+	processor := &MessageProcessor{
 		conn:            conn,
 		pendingMessages: make(map[string]*PendingMessage),
 		workerPool:      workerpool.New(1), // Sequential processing
@@ -52,7 +52,7 @@ func NewReliableMessageProcessor(conn *websocket.Conn) *ReliableMessageProcessor
 	return processor
 }
 
-func (rmp *ReliableMessageProcessor) SendReliableMessage(messageType string, payload any) (string, error) {
+func (mp *MessageProcessor) SendReliableMessage(messageType string, payload any) (string, error) {
 	log.Info("📋 Starting to send reliable message of type: %s", messageType)
 	
 	messageID := uuid.New().String()
@@ -71,13 +71,13 @@ func (rmp *ReliableMessageProcessor) SendReliableMessage(messageType string, pay
 	}
 	
 	// Store in pending messages
-	rmp.pendingMutex.Lock()
-	rmp.pendingMessages[messageID] = pendingMsg
-	rmp.pendingMutex.Unlock()
+	mp.pendingMutex.Lock()
+	mp.pendingMessages[messageID] = pendingMsg
+	mp.pendingMutex.Unlock()
 	
 	// Submit to worker pool for processing
-	rmp.workerPool.Submit(func() {
-		if err := rmp.sendMessage(pendingMsg); err != nil {
+	mp.workerPool.Submit(func() {
+		if err := mp.sendMessage(pendingMsg); err != nil {
 			log.Info("❌ Failed to send reliable message %s: %v", messageID, err)
 		}
 	})
@@ -86,39 +86,39 @@ func (rmp *ReliableMessageProcessor) SendReliableMessage(messageType string, pay
 	return messageID, nil
 }
 
-func (rmp *ReliableMessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
+func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
 	log.Info("📤 Sending message %s (attempt %d)", pendingMsg.ID, pendingMsg.Retries+1)
 	
-	if err := rmp.conn.WriteJSON(pendingMsg.Message); err != nil {
+	if err := mp.conn.WriteJSON(pendingMsg.Message); err != nil {
 		log.Info("❌ Failed to write message %s to WebSocket: %v", pendingMsg.ID, err)
 		return err
 	}
 	
 	// Update retry count
-	rmp.pendingMutex.Lock()
-	if msg, exists := rmp.pendingMessages[pendingMsg.ID]; exists {
+	mp.pendingMutex.Lock()
+	if msg, exists := mp.pendingMessages[pendingMsg.ID]; exists {
 		msg.Retries++
 		msg.Timestamp = time.Now()
 	}
-	rmp.pendingMutex.Unlock()
+	mp.pendingMutex.Unlock()
 	
 	log.Info("✅ Message %s sent successfully", pendingMsg.ID)
 	return nil
 }
 
-func (rmp *ReliableMessageProcessor) HandleAcknowledgement(messageID string) {
+func (mp *MessageProcessor) HandleAcknowledgement(messageID string) {
 	log.Info("📋 Starting to handle acknowledgement for message: %s", messageID)
 	
-	rmp.pendingMutex.Lock()
-	defer rmp.pendingMutex.Unlock()
+	mp.pendingMutex.Lock()
+	defer mp.pendingMutex.Unlock()
 	
-	if _, exists := rmp.pendingMessages[messageID]; exists {
-		delete(rmp.pendingMessages, messageID)
+	if _, exists := mp.pendingMessages[messageID]; exists {
+		delete(mp.pendingMessages, messageID)
 		log.Info("✅ Message %s acknowledged and removed from pending", messageID)
 		
 		// Call the acknowledgement callback if set
-		if rmp.onAckReceived != nil {
-			rmp.onAckReceived(messageID)
+		if mp.onAckReceived != nil {
+			mp.onAckReceived(messageID)
 		}
 	} else {
 		log.Info("⚠️ Received acknowledgement for unknown message: %s", messageID)
@@ -127,36 +127,36 @@ func (rmp *ReliableMessageProcessor) HandleAcknowledgement(messageID string) {
 	log.Info("📋 Completed successfully - handled acknowledgement for message %s", messageID)
 }
 
-func (rmp *ReliableMessageProcessor) retryLoop() {
-	log.Info("🔄 Starting retry loop for reliable message processor")
+func (mp *MessageProcessor) retryLoop() {
+	log.Info("🔄 Starting retry loop for message processor")
 	
-	ticker := time.NewTicker(rmp.retryInterval)
+	ticker := time.NewTicker(mp.retryInterval)
 	defer ticker.Stop()
 	
 	for {
 		select {
 		case <-ticker.C:
-			rmp.processRetries()
-		case <-rmp.ctx.Done():
+			mp.processRetries()
+		case <-mp.ctx.Done():
 			log.Info("🛑 Retry loop stopping due to context cancellation")
 			return
 		}
 	}
 }
 
-func (rmp *ReliableMessageProcessor) processRetries() {
+func (mp *MessageProcessor) processRetries() {
 	log.Info("🔍 Processing message retries")
 	
-	rmp.pendingMutex.RLock()
+	mp.pendingMutex.RLock()
 	messagesToRetry := make([]*PendingMessage, 0)
 	messagesToRemove := make([]string, 0)
 	
 	now := time.Now()
-	for messageID, pendingMsg := range rmp.pendingMessages {
+	for messageID, pendingMsg := range mp.pendingMessages {
 		// Check if message has timed out
-		if now.Sub(pendingMsg.Timestamp) > rmp.ackTimeout {
-			if pendingMsg.Retries >= rmp.maxRetries {
-				log.Info("❌ Message %s exceeded max retries (%d), removing", messageID, rmp.maxRetries)
+		if now.Sub(pendingMsg.Timestamp) > mp.ackTimeout {
+			if pendingMsg.Retries >= mp.maxRetries {
+				log.Info("❌ Message %s exceeded max retries (%d), removing", messageID, mp.maxRetries)
 				messagesToRemove = append(messagesToRemove, messageID)
 			} else {
 				log.Info("⏰ Message %s timed out, queueing for retry", messageID)
@@ -164,21 +164,21 @@ func (rmp *ReliableMessageProcessor) processRetries() {
 			}
 		}
 	}
-	rmp.pendingMutex.RUnlock()
+	mp.pendingMutex.RUnlock()
 	
 	// Remove messages that exceeded max retries
 	if len(messagesToRemove) > 0 {
-		rmp.pendingMutex.Lock()
+		mp.pendingMutex.Lock()
 		for _, messageID := range messagesToRemove {
-			delete(rmp.pendingMessages, messageID)
+			delete(mp.pendingMessages, messageID)
 		}
-		rmp.pendingMutex.Unlock()
+		mp.pendingMutex.Unlock()
 	}
 	
 	// Retry messages that timed out
 	for _, pendingMsg := range messagesToRetry {
-		rmp.workerPool.Submit(func() {
-			if err := rmp.sendMessage(pendingMsg); err != nil {
+		mp.workerPool.Submit(func() {
+			if err := mp.sendMessage(pendingMsg); err != nil {
 				log.Info("❌ Failed to retry message %s: %v", pendingMsg.ID, err)
 			}
 		})
@@ -189,24 +189,24 @@ func (rmp *ReliableMessageProcessor) processRetries() {
 	}
 }
 
-func (rmp *ReliableMessageProcessor) GetPendingMessageCount() int {
-	rmp.pendingMutex.RLock()
-	defer rmp.pendingMutex.RUnlock()
-	return len(rmp.pendingMessages)
+func (mp *MessageProcessor) GetPendingMessageCount() int {
+	mp.pendingMutex.RLock()
+	defer mp.pendingMutex.RUnlock()
+	return len(mp.pendingMessages)
 }
 
-func (rmp *ReliableMessageProcessor) SetAcknowledgementCallback(callback func(messageID string)) {
-	rmp.onAckReceived = callback
+func (mp *MessageProcessor) SetAcknowledgementCallback(callback func(messageID string)) {
+	mp.onAckReceived = callback
 }
 
-func (rmp *ReliableMessageProcessor) Stop() {
-	log.Info("📋 Starting to stop reliable message processor")
+func (mp *MessageProcessor) Stop() {
+	log.Info("📋 Starting to stop message processor")
 	
 	// Cancel the context to stop the retry loop
-	rmp.cancel()
+	mp.cancel()
 	
 	// Stop the worker pool and wait for completion
-	rmp.workerPool.StopWait()
+	mp.workerPool.StopWait()
 	
-	log.Info("📋 Completed successfully - stopped reliable message processor")
+	log.Info("📋 Completed successfully - stopped message processor")
 }
