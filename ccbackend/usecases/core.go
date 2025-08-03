@@ -127,9 +127,14 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	}
 
 	// Add completed emoji reaction
-	reactionEmoji := DeriveMessageReactionFromStatus(models.ProcessedSlackMessageStatusCompleted)
-	if err := s.updateSlackMessageReaction(updatedMessage.SlackChannelID, updatedMessage.SlackTS, reactionEmoji, slackIntegrationID); err != nil {
-		return fmt.Errorf("failed to update slack message reaction: %w", err)
+	// For top-level messages (where SlackTS equals SlackThreadTS), only set white_check_mark on job completion
+	// For other messages, set white_check_mark immediately when processed
+	isTopLevelMessage := updatedMessage.SlackTS == job.SlackThreadTS
+	if !isTopLevelMessage {
+		reactionEmoji := DeriveMessageReactionFromStatus(models.ProcessedSlackMessageStatusCompleted)
+		if err := s.updateSlackMessageReaction(updatedMessage.SlackChannelID, updatedMessage.SlackTS, reactionEmoji, slackIntegrationID); err != nil {
+			return fmt.Errorf("failed to update slack message reaction: %w", err)
+		}
 	}
 
 	log.Printf("📋 Completed successfully - sent assistant message to Slack thread %s", job.SlackThreadTS)
@@ -724,6 +729,12 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	if err := s.validateJobBelongsToAgent(agent.ID, jobID, slackIntegrationID); err != nil {
 		log.Printf("❌ Agent %s not assigned to job %s: %v", agent.ID, jobID, err)
 		return fmt.Errorf("agent not assigned to job: %w", err)
+	}
+
+	// Set white_check_mark emoji on the top-level message to indicate job completion
+	if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "white_check_mark", slackIntegrationID); err != nil {
+		log.Printf("⚠️ Failed to update top-level message reaction for completed job %s: %v", jobID, err)
+		// Don't return error - this is not critical to job completion
 	}
 
 	// Unassign the agent from the job
