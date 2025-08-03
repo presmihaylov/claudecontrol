@@ -194,6 +194,9 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 				err := conn.ReadJSON(&msg)
 				if err != nil {
 					log.Info("❌ Read error: %v", err)
+
+					// trigger ws reconnect
+					close(reconnect)
 					return
 				}
 
