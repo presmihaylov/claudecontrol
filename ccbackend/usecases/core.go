@@ -132,35 +132,6 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 		return fmt.Errorf("failed to update slack message reaction: %w", err)
 	}
 
-	// Check for any queued messages and process the next one
-	queuedMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(job.ID, models.ProcessedSlackMessageStatusQueued, slackIntegrationID)
-	if err != nil {
-		return fmt.Errorf("failed to check for queued messages: %w", err)
-	}
-
-	if len(queuedMessages) > 0 {
-		// Get the oldest queued message (first in the sorted list)
-		nextMessage := queuedMessages[0]
-		log.Printf("📨 Processing next queued message for job %s (SlackTS: %s)", job.ID, nextMessage.SlackTS)
-
-		// Update the queued message to IN_PROGRESS
-		updatedNextMessage, err := s.jobsService.UpdateProcessedSlackMessage(nextMessage.ID, models.ProcessedSlackMessageStatusInProgress, slackIntegrationID)
-		if err != nil {
-			return fmt.Errorf("failed to update queued message status to IN_PROGRESS: %w", err)
-		}
-
-		// Update emoji reaction to show processing
-		reactionEmoji := DeriveMessageReactionFromStatus(models.ProcessedSlackMessageStatusInProgress)
-		if err := s.updateSlackMessageReaction(updatedNextMessage.SlackChannelID, updatedNextMessage.SlackTS, reactionEmoji, slackIntegrationID); err != nil {
-			return fmt.Errorf("failed to update slack message reaction for queued message: %w", err)
-		}
-
-		// Send the queued message to agent (always user message since start conversation only happens for new threads)
-		if err := s.sendUserMessageToAgent(clientID, nextMessage); err != nil {
-			return fmt.Errorf("failed to send queued user message to agent: %w", err)
-		}
-	}
-
 	log.Printf("📋 Completed successfully - sent assistant message to Slack thread %s", job.SlackThreadTS)
 	return nil
 }
@@ -300,22 +271,8 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 		return nil
 	}
 
-	// Check if there are any IN_PROGRESS messages for this job
-	inProgressMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(job.ID, models.ProcessedSlackMessageStatusInProgress, slackIntegrationID)
-	if err != nil {
-		return fmt.Errorf("failed to check for in progress messages: %w", err)
-	}
-
-	// Determine the status for the new message
-	var messageStatus models.ProcessedSlackMessageStatus
-	if len(inProgressMessages) > 0 {
-		// There's already an IN_PROGRESS message, so queue this one
-		messageStatus = models.ProcessedSlackMessageStatusQueued
-		log.Printf("⏳ Message will be queued - found %d in progress message(s) for job %s", len(inProgressMessages), job.ID)
-	} else {
-		// No IN_PROGRESS messages, process immediately
-		messageStatus = models.ProcessedSlackMessageStatusInProgress
-	}
+	// Always process messages immediately - ccagent's worker pool handles queuing
+	messageStatus := models.ProcessedSlackMessageStatusInProgress
 
 	// Store the Slack message as ProcessedSlackMessage
 	processedMessage, err := s.jobsService.CreateProcessedSlackMessage(
@@ -336,20 +293,16 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 		return fmt.Errorf("failed to update slack message reaction: %w", err)
 	}
 
-	// Only send to agent if status is IN_PROGRESS (not queued)
-	if messageStatus == models.ProcessedSlackMessageStatusInProgress {
-		// Send appropriate message to the assigned agent based on whether this is a new conversation
-		if isNewConversation {
-			if err := s.sendStartConversationToAgent(clientID, processedMessage); err != nil {
-				return fmt.Errorf("failed to send start conversation message: %w", err)
-			}
-		} else {
-			if err := s.sendUserMessageToAgent(clientID, processedMessage); err != nil {
-				return fmt.Errorf("failed to send user message: %w", err)
-			}
+	// Always send to agent - ccagent's worker pool will handle sequential processing
+	// Send appropriate message to the assigned agent based on whether this is a new conversation
+	if isNewConversation {
+		if err := s.sendStartConversationToAgent(clientID, processedMessage); err != nil {
+			return fmt.Errorf("failed to send start conversation message: %w", err)
 		}
 	} else {
-		log.Printf("📥 Message queued for job %s (SlackTS: %s)", job.ID, event.Ts)
+		if err := s.sendUserMessageToAgent(clientID, processedMessage); err != nil {
+			return fmt.Errorf("failed to send user message: %w", err)
+		}
 	}
 
 	log.Printf("📋 Completed successfully - processed Slack message event")
