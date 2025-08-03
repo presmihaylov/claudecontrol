@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -52,20 +53,23 @@ func NewMessageProcessor(conn *websocket.Conn) *MessageProcessor {
 	return processor
 }
 
-func (mp *MessageProcessor) SendReliableMessage(messageType string, payload any) (string, error) {
-	log.Info("📋 Starting to send reliable message of type: %s", messageType)
+func (mp *MessageProcessor) SendMessage(msg any) (string, error) {
+	log.Info("📋 Starting to send message")
 	
 	messageID := uuid.New().String()
 	
-	reliableMsg := map[string]any{
-		"id":      messageID,
-		"type":    messageType,
-		"payload": payload,
+	// Add ID to the message
+	msgMap, ok := msg.(map[string]any)
+	if !ok {
+		log.Info("❌ Message is not a map, cannot add ID")
+		return "", fmt.Errorf("message must be a map to add ID")
 	}
+	
+	msgMap["id"] = messageID
 	
 	pendingMsg := &PendingMessage{
 		ID:        messageID,
-		Message:   reliableMsg,
+		Message:   msgMap,
 		Timestamp: time.Now(),
 		Retries:   0,
 	}
@@ -78,12 +82,23 @@ func (mp *MessageProcessor) SendReliableMessage(messageType string, payload any)
 	// Submit to worker pool for processing
 	mp.workerPool.Submit(func() {
 		if err := mp.sendMessage(pendingMsg); err != nil {
-			log.Info("❌ Failed to send reliable message %s: %v", messageID, err)
+			log.Info("❌ Failed to send message %s: %v", messageID, err)
 		}
 	})
 	
-	log.Info("📋 Completed successfully - queued reliable message %s for sending", messageID)
+	log.Info("📋 Completed successfully - queued message %s for sending", messageID)
 	return messageID, nil
+}
+
+func (mp *MessageProcessor) SendReliableMessage(messageType string, payload any) (string, error) {
+	log.Info("📋 Starting to send reliable message of type: %s", messageType)
+	
+	msg := map[string]any{
+		"type":    messageType,
+		"payload": payload,
+	}
+	
+	return mp.SendMessage(msg)
 }
 
 func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
