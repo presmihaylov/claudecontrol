@@ -55,12 +55,6 @@ func run() error {
 	slackOAuthClient := clients.NewConcreteSlackClient()
 	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
 
-	// Clear all active agents on startup
-	log.Printf("🧹 Cleaning up stale active agents from previous server runs")
-	if err := agentsService.DeleteAllActiveAgents(); err != nil {
-		log.Printf("⚠️ Failed to clear stale active agents: %v", err)
-	}
-
 	
 	// Create API key validator for WebSocket connections
 	apiKeyValidator := func(apiKey string) (string, error) {
@@ -100,7 +94,7 @@ func run() error {
 	wsClient.RegisterMessageHandler(wsHandler.HandleMessage)
 
 
-	// Start periodic broadcast of CheckIdleJobs, healthcheck, and cleanup of stale/inactive agents
+	// Start periodic broadcast of CheckIdleJobs, healthcheck, and cleanup of inactive agents
 	cleanupTicker := time.NewTicker(2 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
@@ -109,9 +103,6 @@ func run() error {
 			}
 			if err := coreUseCase.BroadcastHealthcheck(); err != nil {
 				log.Printf("⚠️ Periodic healthcheck broadcast encountered errors: %v", err)
-			}
-			if err := coreUseCase.CleanupStaleActiveAgents(); err != nil {
-				log.Printf("⚠️ Periodic stale agent cleanup encountered errors: %v", err)
 			}
 			if err := coreUseCase.CleanupInactiveAgents(); err != nil {
 				log.Printf("⚠️ Periodic inactive agent cleanup encountered errors: %v", err)
@@ -139,10 +130,10 @@ func run() error {
 		Handler: c.Handler(router),
 	}
 
-	return handleGracefulShutdown(server, agentsService)
+	return handleGracefulShutdown(server)
 }
 
-func handleGracefulShutdown(server *http.Server, agentsService *services.AgentsService) error {
+func handleGracefulShutdown(server *http.Server) error {
 	// Channel to listen for interrupt signal
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -158,11 +149,6 @@ func handleGracefulShutdown(server *http.Server, agentsService *services.AgentsS
 	// Wait for interrupt signal
 	<-stop
 	log.Printf("🛑 Shutdown signal received, cleaning up...")
-
-	// Clear all active agents on shutdown
-	if err := agentsService.DeleteAllActiveAgents(); err != nil {
-		log.Printf("⚠️ Failed to clear active agents on shutdown: %v", err)
-	}
 
 	// Create a deadline for shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
