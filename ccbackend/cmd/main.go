@@ -100,6 +100,7 @@ func run() error {
 		isAlreadyProcessed, err := reliableMessageHandler.ProcessReliableMessage(client, msg)
 		if err != nil {
 			log.Printf("❌ Error processing reliable message from client %s: %v", client.ID, err)
+			return
 		}
 		if isAlreadyProcessed {
 			return
