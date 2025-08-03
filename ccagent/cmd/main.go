@@ -184,8 +184,8 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		wp := workerpool.New(1)
 		defer wp.StopWait()
 
-		// Initialize instant worker pool for healthcheck messages
-		instantWP := workerpool.New(1)
+		// Initialize instant worker pool for healthcheck messages with 10 concurrent workers
+		instantWP := workerpool.New(10)
 		defer instantWP.StopWait()
 
 		// Start message reading goroutine
