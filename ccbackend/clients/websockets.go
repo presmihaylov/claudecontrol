@@ -24,7 +24,7 @@ type Client struct {
 }
 
 type MessageHandlerFunc func(client *Client, msg any)
-type ConnectionHookFunc func(clientID string) error
+type ConnectionHookFunc func(client *Client) error
 type APIKeyValidatorFunc func(apiKey string) (string, error)
 
 type WebSocketClient struct {
@@ -110,9 +110,9 @@ func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *h
 	}
 	ws.addClient(client)
 	log.Printf("✅ WebSocket client connected with ID: %s from %s", client.ID, r.RemoteAddr)
-	ws.invokeConnectionHooks(client.ID)
+	ws.invokeConnectionHooks(client)
 	defer func() {
-		ws.invokeDisconnectionHooks(client.ID)
+		ws.invokeDisconnectionHooks(client)
 		ws.removeClient(client.ID)
 	}()
 
@@ -240,29 +240,29 @@ func (ws *WebSocketClient) invokeMessageHandlers(client *Client, msg any) {
 	log.Printf("✅ All message handlers completed for client %s", client.ID)
 }
 
-func (ws *WebSocketClient) invokeConnectionHooks(clientID string) {
+func (ws *WebSocketClient) invokeConnectionHooks(client *Client) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
-	log.Printf("🔗 Invoking %d connection hooks for client %s", len(ws.connectionHooks), clientID)
+	log.Printf("🔗 Invoking %d connection hooks for client %s", len(ws.connectionHooks), client.ID)
 	for i, hook := range ws.connectionHooks {
-		log.Printf("🎯 Executing connection hook %d for client %s", i+1, clientID)
-		if err := hook(clientID); err != nil {
-			log.Printf("❌ Connection hook %d failed for client %s: %v", i+1, clientID, err)
+		log.Printf("🎯 Executing connection hook %d for client %s", i+1, client.ID)
+		if err := hook(client); err != nil {
+			log.Printf("❌ Connection hook %d failed for client %s: %v", i+1, client.ID, err)
 		}
 	}
-	log.Printf("✅ All connection hooks completed for client %s", clientID)
+	log.Printf("✅ All connection hooks completed for client %s", client.ID)
 }
 
-func (ws *WebSocketClient) invokeDisconnectionHooks(clientID string) {
+func (ws *WebSocketClient) invokeDisconnectionHooks(client *Client) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
-	log.Printf("🔌 Invoking %d disconnection hooks for client %s", len(ws.disconnectionHooks), clientID)
+	log.Printf("🔌 Invoking %d disconnection hooks for client %s", len(ws.disconnectionHooks), client.ID)
 	for i, hook := range ws.disconnectionHooks {
-		log.Printf("🎯 Executing disconnection hook %d for client %s", i+1, clientID)
-		if err := hook(clientID); err != nil {
-			log.Printf("❌ Disconnection hook %d failed for client %s: %v", i+1, clientID, err)
+		log.Printf("🎯 Executing disconnection hook %d for client %s", i+1, client.ID)
+		if err := hook(client); err != nil {
+			log.Printf("❌ Disconnection hook %d failed for client %s: %v", i+1, client.ID, err)
 		}
 	}
-	log.Printf("✅ All disconnection hooks completed for client %s", clientID)
+	log.Printf("✅ All disconnection hooks completed for client %s", client.ID)
 }
 
