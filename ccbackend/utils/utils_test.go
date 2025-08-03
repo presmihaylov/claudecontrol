@@ -314,3 +314,34 @@ func TestGetUserDisplayName(t *testing.T) {
 		assert.Equal(t, "U123", result)
 	})
 }
+
+func TestGenerateSlackDeepLink(t *testing.T) {
+	t.Run("ValidParameters", func(t *testing.T) {
+		slackTeamID := "T1234567890"
+		slackChannelID := "C9876543210"
+		slackMessageTimestamp := "1672531200.123456"
+		
+		result := GenerateSlackDeepLink(slackTeamID, slackChannelID, slackMessageTimestamp)
+		expected := "slack://channel?team=T1234567890&id=C9876543210&message=1672531200.123456"
+		
+		assert.Equal(t, expected, result)
+	})
+	
+	t.Run("EmptyParameters", func(t *testing.T) {
+		result := GenerateSlackDeepLink("", "", "")
+		expected := "slack://channel?team=&id=&message="
+		
+		assert.Equal(t, expected, result)
+	})
+	
+	t.Run("SpecialCharacters", func(t *testing.T) {
+		slackTeamID := "T1234567890"
+		slackChannelID := "C9876543210"
+		slackMessageTimestamp := "1672531200.123456"
+		
+		result := GenerateSlackDeepLink(slackTeamID, slackChannelID, slackMessageTimestamp)
+		expected := "slack://channel?team=T1234567890&id=C9876543210&message=1672531200.123456"
+		
+		assert.Equal(t, expected, result)
+	})
+}

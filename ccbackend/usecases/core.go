@@ -316,14 +316,14 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
 
-	// Generate permalink for the Slack message
-	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
-		Channel: message.SlackChannelID,
-		Ts:      message.SlackTS,
-	})
+	// Get the Slack integration to access team ID for deep link
+	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(message.SlackIntegrationID)
 	if err != nil {
-		return fmt.Errorf("failed to get permalink for slack message: %w", err)
+		return fmt.Errorf("failed to get slack integration: %w", err)
 	}
+
+	// Generate deep link for the Slack message
+	deepLink := utils.GenerateSlackDeepLink(integration.SlackTeamID, message.SlackChannelID, message.SlackTS)
 
 	// Resolve user mentions in the message text before sending to agent
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
@@ -334,7 +334,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 			JobID:            message.JobID.String(),
 			Message:          resolvedText,
 			SlackMessageID:   message.ID.String(),
-			SlackMessageLink: permalink,
+			SlackMessageLink: deepLink,
 		},
 	}
 
@@ -352,13 +352,14 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
 
-	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
-		Channel: message.SlackChannelID,
-		Ts:      message.SlackTS,
-	})
+	// Get the Slack integration to access team ID for deep link
+	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(message.SlackIntegrationID)
 	if err != nil {
-		return fmt.Errorf("failed to get permalink for slack message: %w", err)
+		return fmt.Errorf("failed to get slack integration: %w", err)
 	}
+
+	// Generate deep link for the Slack message
+	deepLink := utils.GenerateSlackDeepLink(integration.SlackTeamID, message.SlackChannelID, message.SlackTS)
 
 	// Resolve user mentions in the message text before sending to agent
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
@@ -369,7 +370,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 			JobID:            message.JobID.String(),
 			Message:          resolvedText,
 			SlackMessageID:   message.ID.String(),
-			SlackMessageLink: permalink,
+			SlackMessageLink: deepLink,
 		},
 	}
 
