@@ -38,7 +38,7 @@ type CmdRunner struct {
 	reconnectChan            chan struct{}
 	healthcheckTimer         *time.Timer
 	healthcheckTimerMutex    sync.Mutex
-	messageProcessor *services.MessageProcessor
+	messageProcessor         *services.MessageProcessor
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -125,26 +125,25 @@ func main() {
 		wsURL = "wss://claudecontrol.onrender.com/ws"
 	}
 
-	// Set up deferred exit message
-	defer func() {
-		// Stop the message processor when exiting
-		cmdRunner.messageProcessor.Stop()
-		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
-	}()
-
 	// Start WebSocket client
-	err = cmdRunner.startWebSocketClient(wsURL, ccagentApiKey)
+	teardown, err := cmdRunner.startWebSocketClient(wsURL, ccagentApiKey)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting WebSocket client: %v\n", err)
 		os.Exit(1)
 	}
+	
+	// Set up deferred cleanup
+	defer func() {
+		teardown()
+		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
+	}()
 }
 
-func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
+func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), error) {
 	log.Info("📋 Starting to connect to WebSocket server at %s", serverURLStr)
 	serverURL, err := url.Parse(serverURLStr)
 	if err != nil {
-		return fmt.Errorf("invalid URL: %w", err)
+		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
 
 	// Initialize reconnect channel if not already initialized
@@ -152,6 +151,16 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 		cr.reconnectChan = make(chan struct{}, 1)
 	}
 
+	// Create message processor variable that will persist across reconnections
+	var messageProcessor *services.MessageProcessor
+	
+	// Create teardown function
+	teardown := func() {
+		if messageProcessor != nil {
+			messageProcessor.Stop()
+		}
+	}
+	
 	// Set up global interrupt handling
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -172,10 +181,10 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 			select {
 			case <-interrupt:
 				log.Info("🔌 Interrupt received during connection attempts, shutting down")
-				return nil
+				return teardown, nil
 			default:
 				log.Info("❌ All retry attempts exhausted, shutting down")
-				return fmt.Errorf("failed to connect after all retry attempts")
+				return teardown, fmt.Errorf("failed to connect after all retry attempts")
 			}
 		}
 
@@ -183,7 +192,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 			select {
 			case <-interrupt:
 				log.Info("🔌 Interrupt received, shutting down")
-				return nil
+				return teardown, nil
 			default:
 				continue // Retry loop will handle reconnection
 			}
@@ -192,13 +201,14 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 		log.Info("✅ Connected to WebSocket server")
 
 		// Initialize or reset the message processor
-		if cr.messageProcessor == nil {
+		if messageProcessor == nil {
 			// First connection - create the message processor
-			cr.messageProcessor = services.NewMessageProcessor(conn)
+			messageProcessor = services.NewMessageProcessor(conn)
+			cr.messageProcessor = messageProcessor
 			log.Info("📤 Initialized message processor with WebSocket connection")
 		} else {
 			// Subsequent connections - reset the connection
-			cr.messageProcessor.ResetConnection(conn)
+			messageProcessor.ResetConnection(conn)
 		}
 
 		done := make(chan struct{})
@@ -307,7 +317,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 		}
 
 		if shouldExit {
-			return nil
+			return teardown, nil
 		}
 	}
 }
