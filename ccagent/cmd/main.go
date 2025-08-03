@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,12 +28,14 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService *services.SessionService
-	claudeService  *services.ClaudeService
-	gitUseCase     *usecases.GitUseCase
-	appState       *models.AppState
-	logFilePath    string
-	agentID        uuid.UUID
+	sessionService     *services.SessionService
+	claudeService      *services.ClaudeService
+	gitUseCase         *usecases.GitUseCase
+	healthcheckUseCase *usecases.HealthcheckUseCase
+	appState           *models.AppState
+	logFilePath        string
+	agentID            uuid.UUID
+	reconnectChan      chan struct{}
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -54,6 +57,7 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 		gitUseCase:     gitUseCase,
 		appState:       appState,
 		agentID:        agentID,
+		reconnectChan:  make(chan struct{}, 1),
 	}, nil
 }
 
@@ -138,6 +142,18 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
 
+	// Extract base URL for healthcheck
+	baseURL := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	if u.Scheme == "wss" {
+		baseURL = strings.Replace(baseURL, "wss://", "https://", 1)
+	} else if u.Scheme == "ws" {
+		baseURL = strings.Replace(baseURL, "ws://", "http://", 1)
+	}
+
+	// Initialize healthcheck use case
+	cr.healthcheckUseCase = usecases.NewHealthcheckUseCase(baseURL)
+	cr.reconnectChan = make(chan struct{}, 1)
+
 	// Set up global interrupt handling
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -184,6 +200,19 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		wp := workerpool.New(1)
 		defer wp.StopWait()
 
+		// Start periodic healthcheck
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go cr.healthcheckUseCase.StartPeriodicHealthcheck(ctx, 30*time.Second, func() {
+			log.Info("⚠️ Healthcheck failed, triggering reconnection")
+			select {
+			case cr.reconnectChan <- struct{}{}:
+			default:
+				// Channel already has a signal, don't block
+			}
+		})
+
 		// Start message reading goroutine
 		go func() {
 			defer close(done)
@@ -220,6 +249,11 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			// Connection lost from read goroutine, trigger reconnection
 			conn.Close()
 			log.Info("🔄 Connection lost, attempting to reconnect...")
+		case <-cr.reconnectChan:
+			// Healthcheck failed, trigger reconnection
+			cancel() // Cancel the healthcheck context
+			conn.Close()
+			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
 			log.Info("🔌 Interrupt received, closing connection...")
 
