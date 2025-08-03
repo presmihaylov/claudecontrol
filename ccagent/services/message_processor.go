@@ -208,12 +208,6 @@ func (mp *MessageProcessor) processRetries() {
 	}
 }
 
-func (mp *MessageProcessor) GetPendingMessageCount() int {
-	mp.pendingMutex.RLock()
-	defer mp.pendingMutex.RUnlock()
-	return len(mp.pendingMessages)
-}
-
 func (mp *MessageProcessor) Stop() {
 	log.Info("📋 Starting to stop message processor")
 	
