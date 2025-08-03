@@ -184,10 +184,15 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		wp := workerpool.New(1)
 		defer wp.StopWait()
 
+		// Initialize instant worker pool for healthcheck messages
+		instantWP := workerpool.New(1)
+		defer instantWP.StopWait()
+
 		// Start message reading goroutine
 		go func() {
 			defer close(done)
-			defer wp.StopWait() // Ensure all queued messages complete
+			defer wp.StopWait()      // Ensure all queued messages complete
+			defer instantWP.StopWait() // Ensure all instant messages complete
 
 			for {
 				var msg UnknownMessage
@@ -202,10 +207,17 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 
 				log.Info("📨 Received message type: %s", msg.Type)
 
-				// NON-BLOCKING: Submit to worker pool
-				wp.Submit(func() {
-					cr.handleMessage(msg, conn)
-				})
+				// Route healthcheck messages to instant worker pool
+				if msg.Type == MessageTypeHealthcheckCheck {
+					instantWP.Submit(func() {
+						cr.handleMessage(msg, conn)
+					})
+				} else {
+					// NON-BLOCKING: Submit to regular worker pool
+					wp.Submit(func() {
+						cr.handleMessage(msg, conn)
+					})
+				}
 			}
 		}()
 
