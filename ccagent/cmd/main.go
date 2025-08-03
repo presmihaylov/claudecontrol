@@ -198,6 +198,12 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		instantWP := workerpool.New(10)
 		defer instantWP.StopWait()
 
+		// Define message types that should be processed instantly
+		instantMessageTypes := map[string]bool{
+			MessageTypeHealthcheckCheck: true,
+			MessageTypeHealthcheckAck:   true,
+		}
+
 		// Start periodic WebSocket healthcheck
 		healthcheckTicker := time.NewTicker(30 * time.Second)
 		defer healthcheckTicker.Stop()
@@ -227,8 +233,8 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 
 				log.Info("📨 Received message type: %s", msg.Type)
 
-				// Route healthcheck messages to instant worker pool
-				if msg.Type == MessageTypeHealthcheckCheck {
+				// Route messages to appropriate worker pool
+				if instantMessageTypes[msg.Type] {
 					instantWP.Submit(func() {
 						cr.handleMessage(msg, conn)
 					})
