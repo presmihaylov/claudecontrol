@@ -210,7 +210,6 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 
 	log.Info("✅ Uncommitted changes detected - proceeding with auto-commit")
 
-
 	// Generate commit message using Claude
 	commitMessage, err := g.generateCommitMessageWithClaude(currentBranch)
 	if err != nil {

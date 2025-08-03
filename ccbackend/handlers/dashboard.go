@@ -12,8 +12,8 @@ import (
 	"ccbackend/models/api"
 	"ccbackend/services"
 
-	"github.com/gorilla/mux"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 )
 
 type DashboardAPIHandler struct {
@@ -109,7 +109,7 @@ func (h *DashboardAPIHandler) HandleGenerateCCAgentSecretKey(w http.ResponseWrit
 	h.handleGenerateCCAgentSecretKey(w, r)
 }
 
-func (h *DashboardAPIHandler) handleListSlackIntegrations(w http.ResponseWriter, r *http.Request, user *models.User) {
+func (h *DashboardAPIHandler) handleListSlackIntegrations(w http.ResponseWriter, r *http.Request, user *models.User) { //nolint:unparam
 	log.Printf("📋 Listing Slack integrations for user: %s", user.ID)
 
 	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByUserID(user.ID)
@@ -259,7 +259,7 @@ func (h *DashboardAPIHandler) handleGenerateCCAgentSecretKey(w http.ResponseWrit
 
 func (h *DashboardAPIHandler) SetupEndpoints(router *mux.Router, authMiddleware *middleware.ClerkAuthMiddleware) {
 	log.Printf("🚀 Registering dashboard API endpoints")
-	
+
 	// User authentication endpoint
 	router.HandleFunc("/users/authenticate", authMiddleware.WithAuth(h.HandleUserAuthenticate)).Methods("POST")
 	log.Printf("✅ POST /users/authenticate endpoint registered")
@@ -267,15 +267,15 @@ func (h *DashboardAPIHandler) SetupEndpoints(router *mux.Router, authMiddleware 
 	// Slack integrations endpoints
 	router.HandleFunc("/slack/integrations", authMiddleware.WithAuth(h.HandleListSlackIntegrations)).Methods("GET")
 	log.Printf("✅ GET /slack/integrations endpoint registered")
-	
+
 	router.HandleFunc("/slack/integrations", authMiddleware.WithAuth(h.HandleCreateSlackIntegration)).Methods("POST")
 	log.Printf("✅ POST /slack/integrations endpoint registered")
-	
+
 	router.HandleFunc("/slack/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteSlackIntegration)).Methods("DELETE")
 	log.Printf("✅ DELETE /slack/integrations/{id} endpoint registered")
-	
+
 	router.HandleFunc("/slack/integrations/{id}/ccagent_secret_key", authMiddleware.WithAuth(h.HandleGenerateCCAgentSecretKey)).Methods("POST")
 	log.Printf("✅ POST /slack/integrations/{id}/ccagent_secret_key endpoint registered")
-	
+
 	log.Printf("✅ All dashboard API endpoints registered successfully")
 }

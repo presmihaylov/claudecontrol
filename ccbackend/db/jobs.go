@@ -195,4 +195,3 @@ func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(slackIntegrationID st
 
 	return jobs, nil
 }
-

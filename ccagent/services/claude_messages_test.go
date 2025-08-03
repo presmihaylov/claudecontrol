@@ -6,15 +6,15 @@ import (
 
 func TestMapClaudeOutputToMessages(t *testing.T) {
 	tests := []struct {
-		name           string
-		input          string
-		expectedCount  int
-		expectedTypes  []string
-		expectedError  bool
+		name          string
+		input         string
+		expectedCount int
+		expectedTypes []string
+		expectedError bool
 	}{
 		{
-			name: "single assistant message",
-			input: `{"type":"assistant","message":{"id":"msg_01PW48ecPbBMYDbdvy8eeX6y","type":"message","content":[{"type":"text","text":"Hello! I'm Claude Code"}]},"session_id":"c069b138-4f6c-406b-b79a-1e940179378d"}`,
+			name:          "single assistant message",
+			input:         `{"type":"assistant","message":{"id":"msg_01PW48ecPbBMYDbdvy8eeX6y","type":"message","content":[{"type":"text","text":"Hello! I'm Claude Code"}]},"session_id":"c069b138-4f6c-406b-b79a-1e940179378d"}`,
 			expectedCount: 1,
 			expectedTypes: []string{"assistant"},
 			expectedError: false,
@@ -65,15 +65,15 @@ func TestMapClaudeOutputToMessages(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name: "empty input",
-			input: "",
+			name:          "empty input",
+			input:         "",
 			expectedCount: 0,
 			expectedTypes: []string{},
 			expectedError: false,
 		},
 		{
-			name: "only whitespace",
-			input: "   \n  \n  ",
+			name:          "only whitespace",
+			input:         "   \n  \n  ",
 			expectedCount: 0,
 			expectedTypes: []string{},
 			expectedError: false,
@@ -103,7 +103,7 @@ func TestMapClaudeOutputToMessages(t *testing.T) {
 					t.Errorf("Expected message %d with type %s, but only got %d messages", i, expectedType, len(messages))
 					continue
 				}
-				
+
 				actualType := messages[i].GetType()
 				if actualType != expectedType {
 					t.Errorf("Message %d: expected type %s, got %s", i, expectedType, actualType)
@@ -115,7 +115,7 @@ func TestMapClaudeOutputToMessages(t *testing.T) {
 
 func TestAssistantMessageParsing(t *testing.T) {
 	input := `{"type":"assistant","message":{"id":"msg_01PW48ecPbBMYDbdvy8eeX6y","type":"message","content":[{"type":"text","text":"Hello! I'm Claude Code, ready to help you."}]},"session_id":"c069b138-4f6c-406b-b79a-1e940179378d"}`
-	
+
 	messages, err := MapClaudeOutputToMessages(input)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -169,7 +169,7 @@ func TestAssistantMessageParsing(t *testing.T) {
 
 func TestUnknownClaudeMessageParsing(t *testing.T) {
 	input := `{"type":"system","subtype":"init","cwd":"/path","session_id":"79fac4e0-79bd-4489-afb5-6023fa22cc47","tools":["Task","Bash"]}`
-	
+
 	messages, err := MapClaudeOutputToMessages(input)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)

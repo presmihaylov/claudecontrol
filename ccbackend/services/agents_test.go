@@ -166,7 +166,7 @@ func TestAgentsService(t *testing.T) {
 			// Verify only one agent exists for this agent_id
 			allAgents, err := agentsService.agentsRepo.GetAllActiveAgents(slackIntegrationID)
 			require.NoError(t, err)
-			
+
 			agentCount := 0
 			for _, agent := range allAgents {
 				if agent.AgentID == agentID {
@@ -391,7 +391,6 @@ func TestAgentsService(t *testing.T) {
 		})
 	})
 
-
 	t.Run("UpdateAgentLastActiveAt", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			// Create an agent
@@ -416,7 +415,7 @@ func TestAgentsService(t *testing.T) {
 			// Verify the timestamp was updated
 			updatedAgent, err := agentsService.GetAgentByID(agent.ID, slackIntegrationID)
 			require.NoError(t, err)
-			assert.True(t, updatedAgent.LastActiveAt.After(initialLastActive), 
+			assert.True(t, updatedAgent.LastActiveAt.After(initialLastActive),
 				"last_active_at should be updated to a more recent time")
 		})
 
@@ -462,10 +461,10 @@ func TestAgentsService(t *testing.T) {
 			require.NoError(t, err)
 			dbConn, err := db.NewConnection(cfg.DatabaseURL)
 			require.NoError(t, err)
-			
+
 			// Update agent2 to have an old last_active_at timestamp
 			oldTimestamp := time.Now().Add(-20 * time.Minute)
-			_, err = dbConn.Exec("UPDATE "+cfg.DatabaseSchema+".active_agents SET last_active_at = $1 WHERE id = $2", 
+			_, err = dbConn.Exec("UPDATE "+cfg.DatabaseSchema+".active_agents SET last_active_at = $1 WHERE id = $2",
 				oldTimestamp, agent2.ID)
 			require.NoError(t, err)
 

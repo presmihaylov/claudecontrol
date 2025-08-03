@@ -10,7 +10,7 @@ type JobData struct {
 	JobID           string
 	BranchName      string
 	ClaudeSessionID string
-	PullRequestID   string    // GitHub PR number (e.g., "123") - empty if no PR created yet
+	PullRequestID   string // GitHub PR number (e.g., "123") - empty if no PR created yet
 	UpdatedAt       time.Time
 }
 
@@ -74,4 +74,3 @@ func (a *AppState) GetAllJobs() map[string]JobData {
 	}
 	return result
 }
-

@@ -36,4 +36,3 @@ func (r *PostgresUsersRepository) GetOrCreateUser(authProvider, authProviderID s
 
 	return user, nil
 }
-

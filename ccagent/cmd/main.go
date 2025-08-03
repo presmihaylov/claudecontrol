@@ -29,18 +29,18 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService         *services.SessionService
-	claudeService          *services.ClaudeService
-	gitUseCase             *usecases.GitUseCase
-	appState               *models.AppState
-	logFilePath            string
-	agentID                uuid.UUID
-	reconnectChan          chan struct{}
-	healthcheckTimer       *time.Timer
-	healthcheckTimerMutex  sync.Mutex
+	sessionService        *services.SessionService
+	claudeService         *services.ClaudeService
+	gitUseCase            *usecases.GitUseCase
+	appState              *models.AppState
+	logFilePath           string
+	agentID               uuid.UUID
+	reconnectChan         chan struct{}
+	healthcheckTimer      *time.Timer
+	healthcheckTimerMutex sync.Mutex
 }
 
-func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
+func NewCmdRunner(permissionMode string) *CmdRunner {
 	log.Info("📋 Starting to initialize CmdRunner")
 	sessionService := services.NewSessionService()
 	claudeClient := clients.NewClaudeClient(permissionMode)
@@ -60,7 +60,7 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 		appState:       appState,
 		agentID:        agentID,
 		reconnectChan:  make(chan struct{}, 1),
-	}, nil
+	}
 }
 
 type Options struct {
@@ -84,8 +84,8 @@ func main() {
 	log.SetLevel(slog.LevelInfo)
 
 	// Validate CCAGENT_API_KEY environment variable
-	ccagentApiKey := os.Getenv("CCAGENT_API_KEY")
-	if ccagentApiKey == "" {
+	ccagentAPIKey := os.Getenv("CCAGENT_API_KEY")
+	if ccagentAPIKey == "" {
 		fmt.Fprintf(os.Stderr, "Error: CCAGENT_API_KEY environment variable is required but not set\n")
 		os.Exit(1)
 	}
@@ -97,11 +97,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
 	}
 
-	cmdRunner, err := NewCmdRunner(permissionMode)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing CmdRunner: %v\n", err)
-		os.Exit(1)
-	}
+	cmdRunner := NewCmdRunner(permissionMode)
 
 	// Setup program-wide logging from start
 	logFilePath, err := cmdRunner.setupProgramLogging()
@@ -130,7 +126,7 @@ func main() {
 	}()
 
 	// Start WebSocket client
-	err = cmdRunner.startWebSocketClient(wsURL, ccagentApiKey)
+	err = cmdRunner.startWebSocketClient(wsURL, ccagentAPIKey)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting WebSocket client: %v\n", err)
 		os.Exit(1)
@@ -227,7 +223,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		// Start message reading goroutine
 		go func() {
 			defer close(done)
-			defer wp.StopWait()      // Ensure all queued messages complete
+			defer wp.StopWait()        // Ensure all queued messages complete
 			defer instantWP.StopWait() // Ensure all instant messages complete
 
 			for {
@@ -262,17 +258,23 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		select {
 		case <-done:
 			// Connection closed, trigger reconnection
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				log.Error("❌ Error closing connection: %v", err)
+			}
 			cancelHealthcheck() // Stop the healthcheck goroutine
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-reconnect:
 			// Connection lost from read goroutine, trigger reconnection
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				log.Error("❌ Error closing connection: %v", err)
+			}
 			cancelHealthcheck() // Stop the healthcheck goroutine
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-cr.reconnectChan:
 			// Healthcheck failed, trigger reconnection
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				log.Error("❌ Error closing connection: %v", err)
+			}
 			cancelHealthcheck() // Stop the healthcheck goroutine
 			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
@@ -287,7 +289,9 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			case <-done:
 			case <-time.After(time.Second):
 			}
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				log.Error("❌ Error closing connection: %v", err)
+			}
 			cancelHealthcheck() // Stop the healthcheck goroutine
 			shouldExit = true
 		}
@@ -381,7 +385,9 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			cr.sendErrorMessage(conn, err, slackMessageID)
+			if sendErr := cr.sendErrorMessage(conn, err, slackMessageID); sendErr != nil {
+				log.Error("❌ Error sending error message: %v", sendErr)
+			}
 		}
 	case MessageTypeUserMessage:
 		if err := cr.handleUserMessage(msg, conn); err != nil {
@@ -391,7 +397,9 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			cr.sendErrorMessage(conn, err, slackMessageID)
+			if sendErr := cr.sendErrorMessage(conn, err, slackMessageID); sendErr != nil {
+				log.Error("❌ Error sending error message: %v", sendErr)
+			}
 		}
 	case MessageTypeJobUnassigned:
 		if err := cr.handleJobUnassigned(msg, conn); err != nil {
@@ -700,7 +708,7 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.
 	}
 
 	log.Info("💓 Received healthcheck ping from backend - sending ack")
-	
+
 	// Cancel any existing healthcheck timer since we got a response
 	cr.cancelHealthcheckTimer()
 
@@ -722,33 +730,33 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.
 
 func (cr *CmdRunner) sendHealthcheck(conn *websocket.Conn) {
 	log.Info("💓 Sending healthcheck check to backend")
-	
+
 	// Send healthcheck check message
 	healthcheckMsg := UnknownMessage{
 		Type:    MessageTypeHealthcheckCheck,
 		Payload: HealthcheckCheckPayload{},
 	}
-	
+
 	if err := conn.WriteJSON(healthcheckMsg); err != nil {
 		log.Info("❌ Failed to send healthcheck check: %v", err)
 		return
 	}
-	
+
 	// Start a timer to trigger reconnection if we don't get a response
 	cr.startHealthcheckTimer()
-	
+
 	log.Info("💓 Sent healthcheck check, waiting for ack")
 }
 
 func (cr *CmdRunner) startHealthcheckTimer() {
 	cr.healthcheckTimerMutex.Lock()
 	defer cr.healthcheckTimerMutex.Unlock()
-	
+
 	// Cancel any existing timer
 	if cr.healthcheckTimer != nil {
 		cr.healthcheckTimer.Stop()
 	}
-	
+
 	// Start a new timer that triggers reconnection after 10 seconds
 	cr.healthcheckTimer = time.AfterFunc(10*time.Second, func() {
 		log.Info("⚠️ Healthcheck timeout - no response received within 10 seconds")
@@ -763,7 +771,7 @@ func (cr *CmdRunner) startHealthcheckTimer() {
 func (cr *CmdRunner) cancelHealthcheckTimer() {
 	cr.healthcheckTimerMutex.Lock()
 	defer cr.healthcheckTimerMutex.Unlock()
-	
+
 	if cr.healthcheckTimer != nil {
 		cr.healthcheckTimer.Stop()
 		cr.healthcheckTimer = nil

@@ -22,7 +22,7 @@ type PostgresSlackIntegrationsRepository struct {
 // Column names for slack_integrations table
 var slackIntegrationsColumns = []string{
 	"id",
-	"slack_team_id", 
+	"slack_team_id",
 	"slack_auth_token",
 	"slack_team_name",
 	"user_id",
@@ -40,7 +40,7 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(integration
 	insertColumns := []string{"id", "slack_team_id", "slack_auth_token", "slack_team_name", "user_id", "created_at", "updated_at"}
 	columnsStr := strings.Join(insertColumns, ", ")
 	returningStr := strings.Join(slackIntegrationsColumns, ", ")
-	
+
 	query := fmt.Sprintf(`
 		INSERT INTO %s.slack_integrations (%s) 
 		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
@@ -101,7 +101,7 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integra
 	}
 
 	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND user_id = $2`, r.schema)
-	
+
 	result, err := r.db.Exec(query, integrationID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to delete slack integration: %w", err)
@@ -136,7 +136,7 @@ func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx conte
 		UPDATE %s.slack_integrations 
 		SET ccagent_secret_key = $1, ccagent_secret_key_generated_at = NOW(), updated_at = NOW()
 		WHERE id = $2 AND user_id = $3`, r.schema)
-	
+
 	result, err := r.db.ExecContext(ctx, query, secretKey, integrationID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to update slack integration with secret key: %w", err)

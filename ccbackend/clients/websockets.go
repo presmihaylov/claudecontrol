@@ -99,7 +99,9 @@ func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *h
 	}
 	defer func() {
 		log.Printf("🔌 Closing WebSocket connection")
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			log.Printf("❌ Error closing WebSocket connection: %v", err)
+		}
 	}()
 
 	client := &Client{
@@ -265,4 +267,3 @@ func (ws *WebSocketClient) invokeDisconnectionHooks(client *Client) {
 	}
 	log.Printf("✅ All disconnection hooks completed for client %s", client.ID)
 }
-

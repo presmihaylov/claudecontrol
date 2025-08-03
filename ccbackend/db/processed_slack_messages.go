@@ -153,9 +153,9 @@ func (r *PostgresProcessedSlackMessagesRepository) GetActiveMessageCountForJobs(
 		AND slack_integration_id = $4`, r.schema)
 
 	var count int
-	err := r.db.Get(&count, query, 
-		pq.Array(jobIDs), 
-		models.ProcessedSlackMessageStatusInProgress, 
+	err := r.db.Get(&count, query,
+		pq.Array(jobIDs),
+		models.ProcessedSlackMessageStatusInProgress,
 		models.ProcessedSlackMessageStatusQueued,
 		slackIntegrationID)
 	if err != nil {

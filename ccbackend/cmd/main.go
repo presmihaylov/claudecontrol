@@ -40,7 +40,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer dbConn.Close()
+	defer func() {
+		if err := dbConn.Close(); err != nil {
+			log.Printf("❌ Error closing database connection: %v", err)
+		}
+	}()
 
 	// Initialize repositories with shared connection
 	agentsRepo := db.NewPostgresAgentsRepository(dbConn, cfg.DatabaseSchema)
@@ -55,7 +59,6 @@ func run() error {
 	slackOAuthClient := clients.NewConcreteSlackClient()
 	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
 
-	
 	// Create API key validator for WebSocket connections
 	apiKeyValidator := func(apiKey string) (string, error) {
 		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(apiKey)
@@ -64,35 +67,36 @@ func run() error {
 		}
 		return integration.ID.String(), nil
 	}
-	
+
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)
-	
+
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
 	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, cfg.ClerkSecretKey)
-	
+
 	// Create a new router
 	router := mux.NewRouter()
-	
+
 	// Setup endpoints with the new router
 	wsClient.RegisterWithRouter(router)
 	slackHandler.SetupEndpoints(router)
 	dashboardHandler.SetupEndpoints(router, authMiddleware)
-	
+
 	// Health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+			log.Printf("❌ Error writing health check response: %v", err)
+		}
 	}).Methods("GET")
 
 	// Register WebSocket hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
 	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
 	wsClient.RegisterMessageHandler(wsHandler.HandleMessage)
-
 
 	// Start periodic broadcast of CheckIdleJobs, healthcheck, cleanup of inactive agents, and processing of queued jobs
 	cleanupTicker := time.NewTicker(2 * time.Minute)
@@ -129,8 +133,9 @@ func run() error {
 
 	// Setup and handle graceful shutdown
 	server := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: c.Handler(router),
+		Addr:              ":" + cfg.Port,
+		Handler:           c.Handler(router),
+		ReadHeaderTimeout: 30 * time.Second,
 	}
 
 	return handleGracefulShutdown(server)
@@ -166,4 +171,3 @@ func handleGracefulShutdown(server *http.Server) error {
 	log.Printf("✅ Server stopped gracefully")
 	return nil
 }
-
