@@ -329,6 +329,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
 
 	startConversationMessage := models.UnknownMessage{
+		ID:   uuid.New().String(),
 		Type: models.MessageTypeStartConversation,
 		Payload: models.StartConversationPayload{
 			JobID:            message.JobID.String(),
@@ -365,6 +366,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
 
 	userMessage := models.UnknownMessage{
+		ID:   uuid.New().String(),
 		Type: models.MessageTypeUserMessage,
 		Payload: models.UserMessagePayload{
 			JobID:            message.JobID.String(),
@@ -679,6 +681,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 
 		// Send CheckIdleJobs message to each connected agent
 		checkIdleJobsMessage := models.UnknownMessage{
+			ID:      uuid.New().String(),
 			Type:    models.MessageTypeCheckIdleJobs,
 			Payload: models.CheckIdleJobsPayload{},
 		}
@@ -795,6 +798,7 @@ func (s *CoreUseCase) SendHealthcheckAck(clientID string, slackIntegrationID str
 	
 	// Create healthcheck ack message
 	healthcheckAckMsg := models.UnknownMessage{
+		ID:      uuid.New().String(),
 		Type:    models.MessageTypeHealthcheckAck,
 		Payload: models.HealthcheckAckPayload{},
 	}
@@ -847,6 +851,7 @@ func (s *CoreUseCase) BroadcastHealthcheck() error {
 
 		// Send healthcheck message to each connected agent
 		healthcheckMessage := models.UnknownMessage{
+			ID:      uuid.New().String(),
 			Type:    models.MessageTypeHealthcheckCheck,
 			Payload: models.HealthcheckCheckPayload{},
 		}
