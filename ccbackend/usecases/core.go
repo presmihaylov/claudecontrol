@@ -478,7 +478,7 @@ func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slack
 	}
 
 	selectedAgent := sortedAgents[0].agent
-	log.Printf("🎯 Selected agent %s with %d current job assignments (least loaded)", selectedAgent.ID, sortedAgents[0].load)
+	log.Printf("🎯 Selected agent %s with %d active messages (least loaded)", selectedAgent.ID, sortedAgents[0].load)
 
 	// Assign the job to the selected agent (agents can now handle multiple jobs simultaneously)
 	if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, job.ID, slackIntegrationID); err != nil {
@@ -499,11 +499,19 @@ func (s *CoreUseCase) sortAgentsByLoad(agents []*models.ActiveAgent, slackIntegr
 	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
 
 	for _, agent := range agents {
+		// Get job IDs assigned to this agent
 		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, slackIntegrationID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
 		}
-		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: len(jobIDs)})
+		
+		// Get count of active messages (IN_PROGRESS or QUEUED) for these jobs
+		activeMessageCount, err := s.jobsService.GetActiveMessageCountForJobs(jobIDs, slackIntegrationID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get active message count for agent %s: %w", agent.ID, err)
+		}
+		
+		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: activeMessageCount})
 	}
 
 	// Sort by load (ascending - least loaded first)
