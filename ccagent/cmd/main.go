@@ -53,14 +53,19 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	agentID := uuid.New()
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
+	// Initialize message processor with nil connection (will be set on first connect)
+	messageProcessor := services.NewMessageProcessor(nil)
+	log.Info("📤 Initialized persistent message processor")
+
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		sessionService: sessionService,
-		claudeService:  claudeService,
-		gitUseCase:     gitUseCase,
-		appState:       appState,
-		agentID:        agentID,
-		reconnectChan:  make(chan struct{}, 1),
+		sessionService:   sessionService,
+		claudeService:    claudeService,
+		gitUseCase:       gitUseCase,
+		appState:         appState,
+		agentID:          agentID,
+		reconnectChan:    make(chan struct{}, 1),
+		messageProcessor: messageProcessor,
 	}, nil
 }
 
@@ -127,6 +132,8 @@ func main() {
 
 	// Set up deferred exit message
 	defer func() {
+		// Stop the message processor when exiting
+		cmdRunner.messageProcessor.Stop()
 		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
 	}()
 
@@ -189,9 +196,12 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 
 		log.Info("✅ Connected to WebSocket server")
 
-		// Initialize message processor
-		cr.messageProcessor = services.NewMessageProcessor(conn)
-		defer cr.messageProcessor.Stop()
+		// Update the connection in the persistent message processor
+		cr.messageProcessor.UpdateConnection(conn)
+		pendingCount := cr.messageProcessor.GetPendingMessageCount()
+		if pendingCount > 0 {
+			log.Info("📤 Found %d pending messages that will be retried", pendingCount)
+		}
 
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
@@ -270,19 +280,19 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			// Connection closed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.Stop() // Stop the message processor
+			cr.messageProcessor.UpdateConnection(nil) // Clear connection but keep pending messages
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-reconnect:
 			// Connection lost from read goroutine, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.Stop() // Stop the message processor
+			cr.messageProcessor.UpdateConnection(nil) // Clear connection but keep pending messages
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-cr.reconnectChan:
 			// Healthcheck failed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.Stop() // Stop the message processor
+			cr.messageProcessor.UpdateConnection(nil) // Clear connection but keep pending messages
 			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
 			log.Info("🔌 Interrupt received, closing connection...")
@@ -298,7 +308,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			}
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.Stop() // Stop the message processor
+			cr.messageProcessor.UpdateConnection(nil) // Clear connection but keep pending messages
 			shouldExit = true
 		}
 
