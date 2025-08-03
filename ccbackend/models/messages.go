@@ -12,6 +12,7 @@ const (
 	MessageTypeJobComplete           = "job_complete_v1"
 	MessageTypeHealthcheckCheck      = "healthcheck_check_v1"
 	MessageTypeHealthcheckAck        = "healthcheck_ack_v1"
+	MessageTypeAcknowledgement       = "acknowledgement_v1"
 )
 
 type UnknownMessage struct {
@@ -65,4 +66,14 @@ type HealthcheckCheckPayload struct {
 
 type HealthcheckAckPayload struct {
 	// Empty payload - simple pong response from agent
+}
+
+type ReliableMessage struct {
+	ID      string `json:"id"`
+	Type    string `json:"type"`
+	Payload any    `json:"payload,omitempty"`
+}
+
+type AcknowledgementPayload struct {
+	MessageID string `json:"message_id"`
 }
