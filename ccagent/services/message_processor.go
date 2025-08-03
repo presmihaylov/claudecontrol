@@ -23,6 +23,7 @@ type PendingMessage struct {
 
 type MessageProcessor struct {
 	conn                *websocket.Conn
+	connMutex           sync.RWMutex
 	pendingMessages     map[string]*PendingMessage
 	pendingMutex        sync.RWMutex
 	workerPool          *workerpool.WorkerPool
@@ -76,6 +77,7 @@ func (mp *MessageProcessor) SendMessage(msg any) (string, error) {
 	mp.pendingMessages[messageID] = pendingMsg
 	mp.pendingMutex.Unlock()
 	
+	// Always submit to worker pool - let sendMessage handle connection failures
 	mp.workerPool.Submit(func() {
 		if err := mp.sendMessage(pendingMsg); err != nil {
 			log.Info("❌ Failed to send message %s: %v", messageID, err)
@@ -104,6 +106,7 @@ func (mp *MessageProcessor) SendMessageReliably(msg models.UnknownMessage) (stri
 	mp.pendingMessages[msg.ID] = pendingMsg
 	mp.pendingMutex.Unlock()
 	
+	// Always submit to worker pool - let sendMessage handle connection failures
 	mp.workerPool.Submit(func() {
 		if err := mp.sendMessage(pendingMsg); err != nil {
 			log.Info("❌ Failed to send reliable message %s: %v", msg.ID, err)
@@ -114,10 +117,29 @@ func (mp *MessageProcessor) SendMessageReliably(msg models.UnknownMessage) (stri
 	return msg.ID, nil
 }
 
+func (mp *MessageProcessor) ResetConnection(conn *websocket.Conn) {
+	log.Info("📋 Starting to reset WebSocket connection")
+	
+	mp.connMutex.Lock()
+	mp.conn = conn
+	mp.connMutex.Unlock()
+	
+	log.Info("📋 Completed successfully - reset WebSocket connection")
+}
+
 func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
 	log.Info("📤 Sending message %s (attempt %d)", pendingMsg.ID, pendingMsg.Retries+1)
 	
-	if err := mp.conn.WriteJSON(pendingMsg.Message); err != nil {
+	mp.connMutex.RLock()
+	conn := mp.conn
+	mp.connMutex.RUnlock()
+	
+	if conn == nil {
+		log.Info("⚠️ No WebSocket connection available for message %s, will retry later", pendingMsg.ID)
+		return fmt.Errorf("no WebSocket connection available")
+	}
+	
+	if err := conn.WriteJSON(pendingMsg.Message); err != nil {
 		log.Info("❌ Failed to write message %s to WebSocket: %v", pendingMsg.ID, err)
 		return err
 	}
@@ -209,6 +231,10 @@ func (mp *MessageProcessor) processRetries() {
 }
 
 func (mp *MessageProcessor) Stop() {
+	if mp == nil {
+		return
+	}
+	
 	log.Info("📋 Starting to stop message processor")
 	
 	mp.cancel()
