@@ -61,7 +61,6 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 		appState:         appState,
 		agentID:          agentID,
 		reconnectChan:    make(chan struct{}, 1),
-		// messageProcessor will be initialized on first connection
 	}, nil
 }
 
@@ -128,10 +127,8 @@ func main() {
 
 	// Set up deferred exit message
 	defer func() {
-		// Stop the message processor when exiting (if initialized)
-		if cmdRunner.messageProcessor != nil {
-			cmdRunner.messageProcessor.Stop()
-		}
+		// Stop the message processor when exiting
+		cmdRunner.messageProcessor.Stop()
 		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
 	}()
 
@@ -143,9 +140,9 @@ func main() {
 	}
 }
 
-func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
-	log.Info("📋 Starting to connect to WebSocket server at %s", serverURL)
-	u, err := url.Parse(serverURL)
+func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
+	log.Info("📋 Starting to connect to WebSocket server at %s", serverURLStr)
+	serverURL, err := url.Parse(serverURLStr)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
@@ -170,7 +167,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 	}
 
 	for {
-		conn, connected := cr.connectWithRetry(u.String(), apiKey, retryIntervals, interrupt)
+		conn, connected := cr.connectWithRetry(serverURL.String(), apiKey, retryIntervals, interrupt)
 		if conn == nil {
 			select {
 			case <-interrupt:
