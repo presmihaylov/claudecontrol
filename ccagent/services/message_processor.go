@@ -31,7 +31,6 @@ type MessageProcessor struct {
 	retryInterval       time.Duration
 	maxRetries          int
 	ackTimeout          time.Duration
-	onAckReceived       func(messageID string)
 }
 
 func NewMessageProcessor(conn *websocket.Conn) *MessageProcessor {
@@ -143,10 +142,6 @@ func (mp *MessageProcessor) HandleAcknowledgement(messageID string) {
 	if _, exists := mp.pendingMessages[messageID]; exists {
 		delete(mp.pendingMessages, messageID)
 		log.Info("✅ Message %s acknowledged and removed from pending", messageID)
-		
-		if mp.onAckReceived != nil {
-			mp.onAckReceived(messageID)
-		}
 	} else {
 		log.Info("⚠️ Received acknowledgement for unknown message: %s", messageID)
 	}
@@ -217,10 +212,6 @@ func (mp *MessageProcessor) GetPendingMessageCount() int {
 	mp.pendingMutex.RLock()
 	defer mp.pendingMutex.RUnlock()
 	return len(mp.pendingMessages)
-}
-
-func (mp *MessageProcessor) SetAcknowledgementCallback(callback func(messageID string)) {
-	mp.onAckReceived = callback
 }
 
 func (mp *MessageProcessor) Stop() {
