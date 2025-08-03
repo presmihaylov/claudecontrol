@@ -738,11 +738,7 @@ func (cr *CmdRunner) handleAcknowledgement(msg UnknownMessage) error {
 		return fmt.Errorf("failed to unmarshal acknowledgement payload: %w", err)
 	}
 
-	if cr.messageProcessor != nil {
-		cr.messageProcessor.HandleAcknowledgement(payload.MessageID)
-	} else {
-		log.Info("⚠️ Message processor not initialized, ignoring acknowledgement")
-	}
+	cr.messageProcessor.HandleAcknowledgement(payload.MessageID)
 
 	log.Info("📋 Completed successfully - handled acknowledgement message")
 	return nil
@@ -886,26 +882,12 @@ func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason 
 		Reason: reason,
 	}
 
-	if cr.messageProcessor != nil {
-		messageID, err := cr.messageProcessor.SendReliableMessage(MessageTypeJobComplete, payload)
-		if err != nil {
-			log.Error("❌ Failed to send reliable job complete message: %v", err)
-			return fmt.Errorf("failed to send reliable job complete message: %w", err)
-		}
-		log.Info("📤 Sent reliable job complete message for job: %s (message ID: %s)", jobID, messageID)
-	} else {
-		// Fallback to direct sending if processor not available
-		jobCompleteMsg := UnknownMessage{
-			Type:    MessageTypeJobComplete,
-			Payload: payload,
-		}
-
-		if err := conn.WriteJSON(jobCompleteMsg); err != nil {
-			log.Error("❌ Failed to send job complete message: %v", err)
-			return fmt.Errorf("failed to send job complete message: %w", err)
-		}
-		log.Info("📤 Sent job complete message for job: %s", jobID)
+	messageID, err := cr.messageProcessor.SendReliableMessage(MessageTypeJobComplete, payload)
+	if err != nil {
+		log.Error("❌ Failed to send reliable job complete message: %v", err)
+		return fmt.Errorf("failed to send reliable job complete message: %w", err)
 	}
+	log.Info("📤 Sent reliable job complete message for job: %s (message ID: %s)", jobID, messageID)
 
 	return nil
 }
@@ -916,26 +898,12 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 		SlackMessageID: slackMessageID,
 	}
 
-	if cr.messageProcessor != nil {
-		messageID, err := cr.messageProcessor.SendReliableMessage(MessageTypeSystemMessage, payload)
-		if err != nil {
-			log.Info("❌ Failed to send reliable system message: %v", err)
-			return err
-		}
-		log.Info("⚙️ Sent reliable system message: %s (message ID: %s)", message, messageID)
-	} else {
-		// Fallback to direct sending if processor not available
-		systemMsg := UnknownMessage{
-			Type:    MessageTypeSystemMessage,
-			Payload: payload,
-		}
-
-		if err := conn.WriteJSON(systemMsg); err != nil {
-			log.Info("❌ Failed to send system message: %v", err)
-			return err
-		}
-		log.Info("⚙️ Sent system message: %s", message)
+	messageID, err := cr.messageProcessor.SendReliableMessage(MessageTypeSystemMessage, payload)
+	if err != nil {
+		log.Info("❌ Failed to send reliable system message: %v", err)
+		return err
 	}
+	log.Info("⚙️ Sent reliable system message: %s (message ID: %s)", message, messageID)
 
 	return nil
 }
