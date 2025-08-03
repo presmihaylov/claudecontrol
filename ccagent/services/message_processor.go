@@ -47,7 +47,6 @@ func NewMessageProcessor(conn *websocket.Conn) *MessageProcessor {
 		ackTimeout:      30 * time.Second,
 	}
 	
-	// Start the retry goroutine
 	go processor.retryLoop()
 	
 	return processor
@@ -58,7 +57,6 @@ func (mp *MessageProcessor) SendMessage(msg any) (string, error) {
 	
 	messageID := uuid.New().String()
 	
-	// Add ID to the message
 	msgMap, ok := msg.(map[string]any)
 	if !ok {
 		log.Info("❌ Message is not a map, cannot add ID")
@@ -74,12 +72,10 @@ func (mp *MessageProcessor) SendMessage(msg any) (string, error) {
 		Retries:   0,
 	}
 	
-	// Store in pending messages
 	mp.pendingMutex.Lock()
 	mp.pendingMessages[messageID] = pendingMsg
 	mp.pendingMutex.Unlock()
 	
-	// Submit to worker pool for processing
 	mp.workerPool.Submit(func() {
 		if err := mp.sendMessage(pendingMsg); err != nil {
 			log.Info("❌ Failed to send message %s: %v", messageID, err)
@@ -109,7 +105,6 @@ func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
 		return err
 	}
 	
-	// Update retry count
 	mp.pendingMutex.Lock()
 	if msg, exists := mp.pendingMessages[pendingMsg.ID]; exists {
 		msg.Retries++
@@ -131,7 +126,6 @@ func (mp *MessageProcessor) HandleAcknowledgement(messageID string) {
 		delete(mp.pendingMessages, messageID)
 		log.Info("✅ Message %s acknowledged and removed from pending", messageID)
 		
-		// Call the acknowledgement callback if set
 		if mp.onAckReceived != nil {
 			mp.onAckReceived(messageID)
 		}
@@ -168,7 +162,6 @@ func (mp *MessageProcessor) processRetries() {
 	
 	now := time.Now()
 	for messageID, pendingMsg := range mp.pendingMessages {
-		// Check if message has timed out
 		if now.Sub(pendingMsg.Timestamp) > mp.ackTimeout {
 			if pendingMsg.Retries >= mp.maxRetries {
 				log.Info("❌ Message %s exceeded max retries (%d), removing", messageID, mp.maxRetries)
@@ -181,7 +174,6 @@ func (mp *MessageProcessor) processRetries() {
 	}
 	mp.pendingMutex.RUnlock()
 	
-	// Remove messages that exceeded max retries
 	if len(messagesToRemove) > 0 {
 		mp.pendingMutex.Lock()
 		for _, messageID := range messagesToRemove {
@@ -190,7 +182,6 @@ func (mp *MessageProcessor) processRetries() {
 		mp.pendingMutex.Unlock()
 	}
 	
-	// Retry messages that timed out
 	for _, pendingMsg := range messagesToRetry {
 		mp.workerPool.Submit(func() {
 			if err := mp.sendMessage(pendingMsg); err != nil {
@@ -217,10 +208,7 @@ func (mp *MessageProcessor) SetAcknowledgementCallback(callback func(messageID s
 func (mp *MessageProcessor) Stop() {
 	log.Info("📋 Starting to stop message processor")
 	
-	// Cancel the context to stop the retry loop
 	mp.cancel()
-	
-	// Stop the worker pool and wait for completion
 	mp.workerPool.StopWait()
 	
 	log.Info("📋 Completed successfully - stopped message processor")
