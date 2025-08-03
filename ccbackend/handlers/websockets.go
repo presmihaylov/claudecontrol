@@ -104,6 +104,20 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) {
 			return
 		}
 
+	case models.MessageTypeHealthcheckCheck:
+		var payload models.HealthcheckCheckPayload
+		if err := unmarshalPayload(parsedMsg.Payload, &payload); err != nil {
+			log.Printf("❌ Failed to unmarshal healthcheck check payload from client %s: %v", client.ID, err)
+			return
+		}
+
+		log.Printf("💓 Received healthcheck check from client %s - sending ack", client.ID)
+		
+		// Send healthcheck ack back to the client
+		if err := h.coreUseCase.SendHealthcheckAck(client.ID, client.SlackIntegrationID); err != nil {
+			log.Printf("❌ Failed to send healthcheck ack to client %s: %v", client.ID, err)
+			return
+		}
 
 	default:
 		log.Printf("⚠️ Unknown message type '%s' from client %s", parsedMsg.Type, client.ID)

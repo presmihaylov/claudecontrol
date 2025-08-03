@@ -794,6 +794,25 @@ func (s *CoreUseCase) ProcessHealthcheckAck(clientID string, payload models.Heal
 	return nil
 }
 
+func (s *CoreUseCase) SendHealthcheckAck(clientID string, slackIntegrationID string) error {
+	log.Printf("📋 Starting to send healthcheck ack to client %s", clientID)
+	
+	// Create healthcheck ack message
+	healthcheckAckMsg := models.UnknownMessage{
+		Type:    models.MessageTypeHealthcheckAck,
+		Payload: models.HealthcheckAckPayload{},
+	}
+	
+	// Send the message to the client
+	if err := s.wsClient.SendMessage(clientID, healthcheckAckMsg); err != nil {
+		log.Printf("❌ Failed to send healthcheck ack to client %s: %v", clientID, err)
+		return fmt.Errorf("failed to send healthcheck ack: %w", err)
+	}
+	
+	log.Printf("📋 Completed successfully - sent healthcheck ack to client %s", clientID)
+	return nil
+}
+
 
 func (s *CoreUseCase) BroadcastHealthcheck() error {
 	log.Printf("📋 Starting to broadcast healthcheck to all connected agents")
