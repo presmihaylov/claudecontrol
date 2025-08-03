@@ -9,9 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-
-	// necessary import to wire up the postgres driver
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 type PostgresProcessedSlackMessagesRepository struct {
@@ -140,4 +138,29 @@ func (r *PostgresProcessedSlackMessagesRepository) TESTS_UpdateProcessedSlackMes
 	}
 
 	return nil
+}
+
+func (r *PostgresProcessedSlackMessagesRepository) GetActiveMessageCountForJobs(jobIDs []uuid.UUID, slackIntegrationID string) (int, error) {
+	if len(jobIDs) == 0 {
+		return 0, nil
+	}
+
+	query := fmt.Sprintf(`
+		SELECT COUNT(*) 
+		FROM %s.processed_slack_messages 
+		WHERE job_id = ANY($1) 
+		AND status IN ($2, $3) 
+		AND slack_integration_id = $4`, r.schema)
+
+	var count int
+	err := r.db.Get(&count, query, 
+		pq.Array(jobIDs), 
+		models.ProcessedSlackMessageStatusInProgress, 
+		models.ProcessedSlackMessageStatusQueued,
+		slackIntegrationID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get active message count for jobs: %w", err)
+	}
+
+	return count, nil
 }
