@@ -124,16 +124,20 @@ func (mp *MessageProcessor) SendMessageReliably(msg models.UnknownMessage) (stri
 	return msg.ID, nil
 }
 
-func (mp *MessageProcessor) UpdateConnection(conn *websocket.Conn) {
-	log.Info("📋 Starting to update WebSocket connection")
-	mp.conn = conn
+func (mp *MessageProcessor) ResetConnection(conn *websocket.Conn) {
+	log.Info("📋 Starting to reset WebSocket connection")
 	
-	// If connection is restored, trigger immediate retry of pending messages
-	if conn != nil {
-		mp.triggerPendingMessages()
+	if conn == nil {
+		log.Info("❌ Cannot reset to nil connection")
+		return
 	}
 	
-	log.Info("📋 Completed successfully - updated WebSocket connection")
+	mp.conn = conn
+	
+	// Trigger immediate retry of pending messages
+	mp.triggerPendingMessages()
+	
+	log.Info("📋 Completed successfully - reset WebSocket connection")
 }
 
 func (mp *MessageProcessor) triggerPendingMessages() {
