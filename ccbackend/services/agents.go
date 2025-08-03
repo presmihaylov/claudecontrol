@@ -131,21 +131,6 @@ func (s *AgentsService) GetAvailableAgents(slackIntegrationID string) ([]*models
 	return agents, nil
 }
 
-func (s *AgentsService) GetAllActiveAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
-	log.Printf("📋 Starting to get all active agents")
-
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
-	}
-
-	agents, err := s.agentsRepo.GetAllActiveAgents(slackIntegrationID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all active agents: %w", err)
-	}
-
-	log.Printf("📋 Completed successfully - retrieved %d active agents", len(agents))
-	return agents, nil
-}
 
 // GetConnectedActiveAgents returns only agents that have active WebSocket connections
 func (s *AgentsService) GetConnectedActiveAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {

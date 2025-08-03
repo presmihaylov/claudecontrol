@@ -125,16 +125,6 @@ func (r *PostgresAgentsRepository) GetAllActiveAgents(slackIntegrationID string)
 	return agents, nil
 }
 
-func (r *PostgresAgentsRepository) DeleteAllActiveAgents() error {
-	query := fmt.Sprintf("DELETE FROM %s.active_agents", r.schema)
-
-	_, err := r.db.Exec(query)
-	if err != nil {
-		return fmt.Errorf("failed to delete all active agents: %w", err)
-	}
-
-	return nil
-}
 
 func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
