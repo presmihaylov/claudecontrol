@@ -74,6 +74,26 @@ func (rmh *ReliableMessageHandler) ProcessReliableMessage(client *clients.Client
 		return true, nil // Message was handled (deduplicated)
 	}
 	
+	log.Printf("📋 Completed successfully - message %s not yet processed, will handle normally", messageID)
+	return false, nil // Message should be processed normally by other handlers
+}
+
+func (rmh *ReliableMessageHandler) MarkMessageProcessed(client *clients.Client, rawMsg any) error {
+	log.Printf("📋 Starting to mark message as processed from client %s", client.ID)
+	
+	// Try to extract message ID from the raw message
+	msgMap, ok := rawMsg.(map[string]any)
+	if !ok {
+		log.Printf("⚠️ Message from client %s is not a map, skipping processing marker", client.ID)
+		return nil // Not a reliable message, nothing to mark
+	}
+	
+	messageID, hasID := msgMap["id"].(string)
+	if !hasID || messageID == "" {
+		log.Printf("⚠️ Message from client %s has no ID, skipping processing marker", client.ID)
+		return nil // Not a reliable message, nothing to mark
+	}
+	
 	// Mark message as processed
 	rmh.mutex.Lock()
 	rmh.processedMessages[messageID] = &ProcessedMessage{
@@ -88,11 +108,11 @@ func (rmh *ReliableMessageHandler) ProcessReliableMessage(client *clients.Client
 	// Send acknowledgement
 	if err := rmh.sendAcknowledgement(client.ID, messageID); err != nil {
 		log.Printf("❌ Failed to send acknowledgement for message %s: %v", messageID, err)
-		return true, fmt.Errorf("failed to send acknowledgement: %w", err)
+		return fmt.Errorf("failed to send acknowledgement: %w", err)
 	}
 	
-	log.Printf("📋 Completed successfully - processed reliable message %s", messageID)
-	return false, nil // Message should be processed normally by other handlers
+	log.Printf("📋 Completed successfully - marked message %s as processed and sent ack", messageID)
+	return nil
 }
 
 func (rmh *ReliableMessageHandler) sendAcknowledgement(clientID, messageID string) error {
