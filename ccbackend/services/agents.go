@@ -18,8 +18,8 @@ func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
 	return &AgentsService{agentsRepo: repo}
 }
 
-func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID string, agentID uuid.UUID) (*models.ActiveAgent, error) {
-	log.Printf("📋 Starting to create active agent for wsConnectionID: %s, agentID: %s", wsConnectionID, agentID)
+func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID string, agentID uuid.UUID) (*models.ActiveAgent, error) {
+	log.Printf("📋 Starting to upsert active agent for wsConnectionID: %s, agentID: %s", wsConnectionID, agentID)
 
 	if wsConnectionID == "" {
 		return nil, fmt.Errorf("ws_connection_id cannot be empty")
@@ -42,11 +42,11 @@ func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID str
 		AgentID:            agentID,
 	}
 
-	if err := s.agentsRepo.CreateActiveAgent(agent); err != nil {
-		return nil, fmt.Errorf("failed to create active agent: %w", err)
+	if err := s.agentsRepo.UpsertActiveAgent(agent); err != nil {
+		return nil, fmt.Errorf("failed to upsert active agent: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - created active agent with ID: %s, agent_id: %v", agent.ID, agentID)
+	log.Printf("📋 Completed successfully - upserted active agent with ID: %s, agent_id: %v", agent.ID, agentID)
 	return agent, nil
 }
 
