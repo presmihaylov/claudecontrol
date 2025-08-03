@@ -152,13 +152,20 @@ func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID, slackIntegra
 }
 
 func (r *PostgresAgentsRepository) AssignAgentToJob(assignment *models.AgentJobAssignment) error {
+	// Use ON CONFLICT DO NOTHING to handle duplicate assignments gracefully
 	query := fmt.Sprintf(`
 		INSERT INTO %s.agent_job_assignments (id, agent_id, job_id, slack_integration_id, assigned_at) 
 		VALUES ($1, $2, $3, $4, NOW()) 
+		ON CONFLICT (agent_id, job_id) DO NOTHING
 		RETURNING id, agent_id, job_id, slack_integration_id, assigned_at`, r.schema)
 
 	err := r.db.QueryRowx(query, assignment.ID, assignment.AgentID, assignment.JobID, assignment.SlackIntegrationID).StructScan(assignment)
 	if err != nil {
+		// Check if it's a no rows error (conflict occurred, nothing was inserted)
+		if err == sql.ErrNoRows {
+			// Assignment already exists, not an error
+			return nil
+		}
 		return fmt.Errorf("failed to assign agent to job: %w", err)
 	}
 

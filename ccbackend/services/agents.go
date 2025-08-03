@@ -248,7 +248,7 @@ func (s *AgentsService) AssignAgentToJob(agentID, jobID uuid.UUID, slackIntegrat
 		return fmt.Errorf("failed to assign agent to job: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - assigned agent %s to job %s", agentID, jobID)
+	log.Printf("📋 Completed successfully - assigned agent %s to job %s (or assignment already existed)", agentID, jobID)
 	return nil
 }
 
