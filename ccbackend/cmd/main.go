@@ -94,10 +94,13 @@ func run() error {
 	wsClient.RegisterMessageHandler(wsHandler.HandleMessage)
 
 
-	// Start periodic broadcast of CheckIdleJobs, healthcheck, and cleanup of inactive agents
+	// Start periodic broadcast of CheckIdleJobs, healthcheck, cleanup of inactive agents, and processing of queued jobs
 	cleanupTicker := time.NewTicker(2 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
+			if err := coreUseCase.ProcessQueuedJobs(); err != nil {
+				log.Printf("⚠️ Periodic queued job processing encountered errors: %v", err)
+			}
 			if err := coreUseCase.BroadcastCheckIdleJobs(); err != nil {
 				log.Printf("⚠️ Periodic CheckIdleJobs broadcast encountered errors: %v", err)
 			}

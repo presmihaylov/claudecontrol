@@ -177,3 +177,22 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedA
 	return nil
 }
 
+// GetJobsWithQueuedMessages returns jobs that have at least one message in QUEUED status
+func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(slackIntegrationID string) ([]*models.Job, error) {
+	query := fmt.Sprintf(`
+		SELECT DISTINCT j.id, j.slack_thread_ts, j.slack_channel_id, j.slack_integration_id, j.created_at, j.updated_at 
+		FROM %s.jobs j
+		INNER JOIN %s.processed_slack_messages psm ON j.id = psm.job_id
+		WHERE j.slack_integration_id = $1 
+		AND psm.status = 'QUEUED'
+		ORDER BY j.created_at ASC`, r.schema, r.schema)
+
+	var jobs []*models.Job
+	err := r.db.Select(&jobs, query, slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs with queued messages: %w", err)
+	}
+
+	return jobs, nil
+}
+
