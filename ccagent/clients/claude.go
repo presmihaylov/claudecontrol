@@ -38,7 +38,6 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
 		return "", &ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
@@ -47,8 +46,6 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 
 	result := strings.TrimSpace(string(output))
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
-	log.Info("Claude output: %s", result)
-
 	log.Info("📋 Completed successfully - continued Claude session")
 	return result, nil
 }
@@ -72,7 +69,6 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
 		return "", &ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
@@ -81,7 +77,6 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 
 	result := strings.TrimSpace(string(output))
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
-	log.Info("Claude output: %s", result)
 	return result, nil
 }
 
@@ -108,7 +103,6 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Error("Claude command failed: %v\nOutput: %s", err, string(output))
 		return "", &ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
@@ -117,8 +111,6 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 
 	result := strings.TrimSpace(string(output))
 	log.Info("Claude command completed successfully, outputLength: %d", len(result))
-	log.Info("Claude output: %s", result)
-
-	log.Info("📋 Completed successfully -	return result, nil")
+	log.Info("📋 Completed successfully - created new Claude session with system prompt")
 	return result, nil
 }
