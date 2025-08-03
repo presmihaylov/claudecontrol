@@ -38,7 +38,7 @@ type CmdRunner struct {
 	reconnectChan            chan struct{}
 	healthcheckTimer         *time.Timer
 	healthcheckTimerMutex    sync.Mutex
-	messageProcessor         *services.MessageProcessor
+	messageProcessor         *services.MessageProcessor // Temporarily set during message handling
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -151,14 +151,12 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 		cr.reconnectChan = make(chan struct{}, 1)
 	}
 
-	// Create message processor variable that will persist across reconnections
-	var messageProcessor *services.MessageProcessor
+	// Create message processor with nil connection - it will handle pending messages
+	messageProcessor := services.NewMessageProcessor(nil)
 	
 	// Create teardown function
 	teardown := func() {
-		if messageProcessor != nil {
-			messageProcessor.Stop()
-		}
+		messageProcessor.Stop()
 	}
 	
 	// Set up global interrupt handling
@@ -200,16 +198,9 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 
 		log.Info("✅ Connected to WebSocket server")
 
-		// Initialize or reset the message processor
-		if messageProcessor == nil {
-			// First connection - create the message processor
-			messageProcessor = services.NewMessageProcessor(conn)
-			cr.messageProcessor = messageProcessor
-			log.Info("📤 Initialized message processor with WebSocket connection")
-		} else {
-			// Subsequent connections - reset the connection
-			messageProcessor.ResetConnection(conn)
-		}
+		// Reset the connection in the message processor
+		messageProcessor.ResetConnection(conn)
+		log.Info("📤 Updated message processor with WebSocket connection")
 
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
@@ -248,6 +239,14 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 			}
 		}()
 
+		// Create a wrapped handler that captures messageProcessor
+		handleMessageWithProcessor := func(msg models.UnknownMessage, conn *websocket.Conn) {
+			// Temporarily set messageProcessor in CmdRunner for the handler methods
+			cr.messageProcessor = messageProcessor
+			defer func() { cr.messageProcessor = nil }()
+			cr.handleMessage(msg, conn)
+		}
+
 		// Start message reading goroutine
 		go func() {
 			defer close(done)
@@ -270,12 +269,12 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) (func(), 
 				// Route messages to appropriate worker pool
 				if instantMessageTypes[msg.Type] {
 					instantWP.Submit(func() {
-						cr.handleMessage(msg, conn)
+						handleMessageWithProcessor(msg, conn)
 					})
 				} else {
 					// NON-BLOCKING: Submit to regular worker pool
 					wp.Submit(func() {
-						cr.handleMessage(msg, conn)
+						handleMessageWithProcessor(msg, conn)
 					})
 				}
 			}

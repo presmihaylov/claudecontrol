@@ -131,10 +131,15 @@ func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
 	log.Info("📤 Sending message %s (attempt %d)", pendingMsg.ID, pendingMsg.Retries+1)
 	
 	mp.connMutex.RLock()
-	err := mp.conn.WriteJSON(pendingMsg.Message)
+	conn := mp.conn
 	mp.connMutex.RUnlock()
 	
-	if err != nil {
+	if conn == nil {
+		log.Info("⚠️ No WebSocket connection available for message %s, will retry later", pendingMsg.ID)
+		return fmt.Errorf("no WebSocket connection available")
+	}
+	
+	if err := conn.WriteJSON(pendingMsg.Message); err != nil {
 		log.Info("❌ Failed to write message %s to WebSocket: %v", pendingMsg.ID, err)
 		return err
 	}
