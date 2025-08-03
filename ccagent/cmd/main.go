@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -208,9 +209,18 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		healthcheckTicker := time.NewTicker(30 * time.Second)
 		defer healthcheckTicker.Stop()
 
+		// Create a context to stop the healthcheck goroutine when connection is lost
+		healthcheckCtx, cancelHealthcheck := context.WithCancel(context.Background())
+		defer cancelHealthcheck()
+
 		go func() {
-			for range healthcheckTicker.C {
-				cr.sendHealthcheck(conn)
+			for {
+				select {
+				case <-healthcheckTicker.C:
+					cr.sendHealthcheck(conn)
+				case <-healthcheckCtx.Done():
+					return
+				}
 			}
 		}()
 
@@ -253,14 +263,17 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 		case <-done:
 			// Connection closed, trigger reconnection
 			conn.Close()
+			cancelHealthcheck() // Stop the healthcheck goroutine
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-reconnect:
 			// Connection lost from read goroutine, trigger reconnection
 			conn.Close()
+			cancelHealthcheck() // Stop the healthcheck goroutine
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-cr.reconnectChan:
 			// Healthcheck failed, trigger reconnection
 			conn.Close()
+			cancelHealthcheck() // Stop the healthcheck goroutine
 			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
 			log.Info("🔌 Interrupt received, closing connection...")
@@ -275,6 +288,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			case <-time.After(time.Second):
 			}
 			conn.Close()
+			cancelHealthcheck() // Stop the healthcheck goroutine
 			shouldExit = true
 		}
 
