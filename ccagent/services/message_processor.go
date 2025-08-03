@@ -226,6 +226,10 @@ func (mp *MessageProcessor) processRetries() {
 }
 
 func (mp *MessageProcessor) Stop() {
+	if mp == nil {
+		return
+	}
+	
 	log.Info("📋 Starting to stop message processor")
 	
 	mp.cancel()
