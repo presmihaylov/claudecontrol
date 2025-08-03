@@ -437,14 +437,14 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 	// Check if this job is already assigned to an agent
 	existingAgent, err := s.agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
 	if err != nil {
-		// Job not assigned to any agent yet - need to assign to an available agent
-		if strings.Contains(fmt.Sprintf("%v", err), "not found") {
-			return s.assignJobToAvailableAgent(job, threadTS, slackIntegrationID)
-		}
-
-		// Some other error occurred
+		// Some error occurred
 		log.Printf("❌ Failed to check for existing agent assignment: %v", err)
 		return "", fmt.Errorf("failed to check for existing agent assignment: %w", err)
+	}
+	
+	if existingAgent == nil {
+		// Job not assigned to any agent yet - need to assign to an available agent
+		return s.assignJobToAvailableAgent(job, threadTS, slackIntegrationID)
 	}
 
 	// Job is already assigned to an agent - verify it still has an active connection
@@ -484,6 +484,25 @@ func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slack
 // - wasAssigned: true if job was successfully assigned to an agent, false if no agents available
 // - error: any error that occurred during the assignment process
 func (s *CoreUseCase) tryAssignJobToAgent(jobID uuid.UUID, slackIntegrationID string) (string, bool, error) {
+	// First check if this job is already assigned to an agent
+	existingAgent, err := s.agentsService.GetAgentByJobID(jobID, slackIntegrationID)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to check for existing agent assignment: %w", err)
+	}
+	
+	if existingAgent != nil {
+		// Job is already assigned - check if agent still has active connection
+		connectedClientIDs := s.wsClient.GetClientIDs()
+		if s.agentsService.CheckAgentHasActiveConnection(existingAgent, connectedClientIDs) {
+			log.Printf("🔄 Job %s already assigned to agent %s with active connection", jobID, existingAgent.ID)
+			return existingAgent.WSConnectionID, true, nil
+		}
+		// Agent no longer has active connection - job remains assigned but can't process
+		log.Printf("⚠️ Job %s assigned to agent %s but no active connection", jobID, existingAgent.ID)
+		return "", false, nil
+	}
+	
+	// Job not assigned - proceed with assignment
 	// Get active WebSocket connections first
 	connectedClientIDs := s.wsClient.GetClientIDs()
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
