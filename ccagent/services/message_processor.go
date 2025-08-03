@@ -76,16 +76,12 @@ func (mp *MessageProcessor) SendMessage(msg any) (string, error) {
 	mp.pendingMessages[messageID] = pendingMsg
 	mp.pendingMutex.Unlock()
 	
-	// Only submit to worker pool if we have a connection
-	if mp.conn != nil {
-		mp.workerPool.Submit(func() {
-			if err := mp.sendMessage(pendingMsg); err != nil {
-				log.Info("❌ Failed to send message %s: %v", messageID, err)
-			}
-		})
-	} else {
-		log.Info("⚠️ No WebSocket connection available, message %s queued for later", messageID)
-	}
+	// Always submit to worker pool - let sendMessage handle connection failures
+	mp.workerPool.Submit(func() {
+		if err := mp.sendMessage(pendingMsg); err != nil {
+			log.Info("❌ Failed to send message %s: %v", messageID, err)
+		}
+	})
 	
 	log.Info("📋 Completed successfully - queued message %s for sending", messageID)
 	return messageID, nil
@@ -109,16 +105,12 @@ func (mp *MessageProcessor) SendMessageReliably(msg models.UnknownMessage) (stri
 	mp.pendingMessages[msg.ID] = pendingMsg
 	mp.pendingMutex.Unlock()
 	
-	// Only submit to worker pool if we have a connection
-	if mp.conn != nil {
-		mp.workerPool.Submit(func() {
-			if err := mp.sendMessage(pendingMsg); err != nil {
-				log.Info("❌ Failed to send reliable message %s: %v", msg.ID, err)
-			}
-		})
-	} else {
-		log.Info("⚠️ No WebSocket connection available, reliable message %s queued for later", msg.ID)
-	}
+	// Always submit to worker pool - let sendMessage handle connection failures
+	mp.workerPool.Submit(func() {
+		if err := mp.sendMessage(pendingMsg); err != nil {
+			log.Info("❌ Failed to send reliable message %s: %v", msg.ID, err)
+		}
+	})
 	
 	log.Info("📋 Completed successfully - queued reliable message %s for sending", msg.ID)
 	return msg.ID, nil
@@ -127,43 +119,11 @@ func (mp *MessageProcessor) SendMessageReliably(msg models.UnknownMessage) (stri
 func (mp *MessageProcessor) ResetConnection(conn *websocket.Conn) {
 	log.Info("📋 Starting to reset WebSocket connection")
 	
-	if conn == nil {
-		log.Info("❌ Cannot reset to nil connection")
-		return
-	}
-	
 	mp.conn = conn
-	
-	// Trigger immediate retry of pending messages
-	mp.triggerPendingMessages()
 	
 	log.Info("📋 Completed successfully - reset WebSocket connection")
 }
 
-func (mp *MessageProcessor) triggerPendingMessages() {
-	log.Info("📋 Starting to trigger pending messages")
-	
-	mp.pendingMutex.RLock()
-	pendingCount := len(mp.pendingMessages)
-	messagesToRetry := make([]*PendingMessage, 0, pendingCount)
-	for _, pendingMsg := range mp.pendingMessages {
-		messagesToRetry = append(messagesToRetry, pendingMsg)
-	}
-	mp.pendingMutex.RUnlock()
-	
-	if pendingCount > 0 {
-		log.Info("🔄 Triggering retry for %d pending messages", pendingCount)
-		for _, pendingMsg := range messagesToRetry {
-			mp.workerPool.Submit(func() {
-				if err := mp.sendMessage(pendingMsg); err != nil {
-					log.Info("❌ Failed to retry message %s: %v", pendingMsg.ID, err)
-				}
-			})
-		}
-	}
-	
-	log.Info("📋 Completed successfully - triggered %d pending messages", pendingCount)
-}
 
 func (mp *MessageProcessor) GetPendingMessageCount() int {
 	mp.pendingMutex.RLock()
@@ -173,11 +133,6 @@ func (mp *MessageProcessor) GetPendingMessageCount() int {
 
 func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
 	log.Info("📤 Sending message %s (attempt %d)", pendingMsg.ID, pendingMsg.Retries+1)
-	
-	if mp.conn == nil {
-		log.Info("⚠️ No WebSocket connection available for message %s", pendingMsg.ID)
-		return fmt.Errorf("no WebSocket connection available")
-	}
 	
 	if err := mp.conn.WriteJSON(pendingMsg.Message); err != nil {
 		log.Info("❌ Failed to write message %s to WebSocket: %v", pendingMsg.ID, err)
