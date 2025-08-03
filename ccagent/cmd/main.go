@@ -196,8 +196,8 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 
 		log.Info("✅ Connected to WebSocket server")
 
-		// Update the connection in the persistent message processor
-		cr.messageProcessor.UpdateConnection(conn)
+		// Reset the connection in the persistent message processor
+		cr.messageProcessor.ResetConnection(conn)
 		pendingCount := cr.messageProcessor.GetPendingMessageCount()
 		if pendingCount > 0 {
 			log.Info("📤 Found %d pending messages that will be retried", pendingCount)
@@ -280,19 +280,16 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			// Connection closed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.UpdateConnection(nil) // Clear connection but keep pending messages
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-reconnect:
 			// Connection lost from read goroutine, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.UpdateConnection(nil) // Clear connection but keep pending messages
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-cr.reconnectChan:
 			// Healthcheck failed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.UpdateConnection(nil) // Clear connection but keep pending messages
 			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
 			log.Info("🔌 Interrupt received, closing connection...")
@@ -308,7 +305,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			}
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
-			cr.messageProcessor.UpdateConnection(nil) // Clear connection but keep pending messages
 			shouldExit = true
 		}
 
