@@ -131,21 +131,6 @@ func (s *AgentsService) GetAvailableAgents(slackIntegrationID string) ([]*models
 	return agents, nil
 }
 
-func (s *AgentsService) GetAllActiveAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
-	log.Printf("📋 Starting to get all active agents")
-
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
-	}
-
-	agents, err := s.agentsRepo.GetAllActiveAgents(slackIntegrationID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all active agents: %w", err)
-	}
-
-	log.Printf("📋 Completed successfully - retrieved %d active agents", len(agents))
-	return agents, nil
-}
 
 // GetConnectedActiveAgents returns only agents that have active WebSocket connections
 func (s *AgentsService) GetConnectedActiveAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
@@ -230,50 +215,7 @@ func (s *AgentsService) CheckAgentHasActiveConnection(agent *models.ActiveAgent,
 	return hasConnection
 }
 
-// GetStaleAgents returns agents that don't have active WebSocket connections
-func (s *AgentsService) GetStaleAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
-	log.Printf("📋 Starting to get stale agents")
 
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
-	}
-
-	// Get all active agents from database
-	allAgents, err := s.agentsRepo.GetAllActiveAgents(slackIntegrationID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all active agents: %w", err)
-	}
-
-	log.Printf("🔍 Found %d total agents in database, checking against %d connected WebSocket clients", len(allAgents), len(connectedClientIDs))
-
-	// Create a map for faster lookup of connected client IDs
-	connectedClientsMap := make(map[string]bool)
-	for _, clientID := range connectedClientIDs {
-		connectedClientsMap[clientID] = true
-	}
-
-	// Filter agents to only those WITHOUT active WebSocket connections
-	var staleAgents []*models.ActiveAgent
-	for _, agent := range allAgents {
-		if !connectedClientsMap[agent.WSConnectionID] {
-			staleAgents = append(staleAgents, agent)
-		}
-	}
-
-	log.Printf("📋 Completed successfully - found %d stale agents", len(staleAgents))
-	return staleAgents, nil
-}
-
-func (s *AgentsService) DeleteAllActiveAgents() error {
-	log.Printf("📋 Starting to delete all active agents")
-
-	if err := s.agentsRepo.DeleteAllActiveAgents(); err != nil {
-		return fmt.Errorf("failed to delete all active agents: %w", err)
-	}
-
-	log.Printf("📋 Completed successfully - deleted all active agents")
-	return nil
-}
 
 func (s *AgentsService) AssignAgentToJob(agentID, jobID uuid.UUID, slackIntegrationID string) error {
 	log.Printf("📋 Starting to assign agent %s to job %s", agentID, jobID)
