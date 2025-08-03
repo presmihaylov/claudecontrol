@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sort"
@@ -329,11 +330,14 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
 	}
 
+	// Resolve user mentions in the message text before sending to agent
+	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
+
 	startConversationMessage := models.UnknownMessage{
 		Type: models.MessageTypeStartConversation,
 		Payload: models.StartConversationPayload{
 			JobID:            message.JobID.String(),
-			Message:          message.TextContent,
+			Message:          resolvedText,
 			SlackMessageID:   message.ID.String(),
 			SlackMessageLink: permalink,
 		},
@@ -361,11 +365,14 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
 	}
 
+	// Resolve user mentions in the message text before sending to agent
+	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
+
 	userMessage := models.UnknownMessage{
 		Type: models.MessageTypeUserMessage,
 		Payload: models.UserMessagePayload{
 			JobID:            message.JobID.String(),
-			Message:          message.TextContent,
+			Message:          resolvedText,
 			SlackMessageID:   message.ID.String(),
 			SlackMessageLink: permalink,
 		},

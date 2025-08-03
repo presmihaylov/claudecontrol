@@ -1,9 +1,13 @@
 package utils
 
 import (
+	"context"
+	"errors"
 	"testing"
 
+	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestConvertMarkdownToSlack(t *testing.T) {
@@ -132,5 +136,181 @@ func TestAssertInvariant(t *testing.T) {
 		assert.PanicsWithValue(t, "invariant violated - x should be greater than y", func() {
 			AssertInvariant(x > y, "x should be greater than y")
 		})
+	})
+}
+
+// MockSlackClient is a mock implementation of the Slack client for testing
+type MockSlackClient struct {
+	mock.Mock
+}
+
+func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, user string) (*slack.User, error) {
+	args := m.Called(ctx, user)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*slack.User), args.Error(1)
+}
+
+func TestResolveMentionsInSlackMessage(t *testing.T) {
+	t.Run("NoMentions", func(t *testing.T) {
+		mockClient := &MockSlackClient{}
+		
+		message := "This is a regular message with no mentions"
+		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
+		
+		assert.Equal(t, message, result)
+		mockClient.AssertNotCalled(t, "GetUserInfoContext")
+	})
+
+	t.Run("SingleMentionResolved", func(t *testing.T) {
+		mockClient := &MockSlackClient{}
+		
+		// Setup mock user response
+		mockUser := &slack.User{
+			ID: "U123456",
+			Profile: slack.UserProfile{
+				DisplayName: "John Doe",
+				RealName:    "John Smith Doe",
+			},
+		}
+		mockClient.On("GetUserInfoContext", mock.Anything, "U123456").Return(mockUser, nil)
+		
+		message := "Hey <@U123456>, can you help with this?"
+		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
+		
+		expected := "Hey @John Doe, can you help with this?"
+		assert.Equal(t, expected, result)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("MultipleMentionsResolved", func(t *testing.T) {
+		mockClient := &MockSlackClient{}
+		
+		// Setup mock user responses
+		mockUser1 := &slack.User{
+			ID: "U123456",
+			Profile: slack.UserProfile{
+				DisplayName: "John Doe",
+			},
+		}
+		mockUser2 := &slack.User{
+			ID: "U789012",
+			Profile: slack.UserProfile{
+				RealName: "Jane Smith",
+			},
+		}
+		mockClient.On("GetUserInfoContext", mock.Anything, "U123456").Return(mockUser1, nil)
+		mockClient.On("GetUserInfoContext", mock.Anything, "U789012").Return(mockUser2, nil)
+		
+		message := "Hey <@U123456> and <@U789012>, can you help?"
+		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
+		
+		expected := "Hey @John Doe and @Jane Smith, can you help?"
+		assert.Equal(t, expected, result)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("DuplicateMentions", func(t *testing.T) {
+		mockClient := &MockSlackClient{}
+		
+		// Setup mock user response - should only be called once due to caching
+		mockUser := &slack.User{
+			ID: "U123456",
+			Profile: slack.UserProfile{
+				DisplayName: "John Doe",
+			},
+		}
+		mockClient.On("GetUserInfoContext", mock.Anything, "U123456").Return(mockUser, nil).Once()
+		
+		message := "Hey <@U123456>, please tell <@U123456> about this"
+		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
+		
+		expected := "Hey @John Doe, please tell @John Doe about this"
+		assert.Equal(t, expected, result)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("APIError", func(t *testing.T) {
+		mockClient := &MockSlackClient{}
+		
+		// Setup mock to return error
+		mockClient.On("GetUserInfoContext", mock.Anything, "U123456").Return(nil, errors.New("user not found"))
+		
+		message := "Hey <@U123456>, can you help?"
+		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
+		
+		// Should fall back to original mention format
+		expected := "Hey <@U123456>, can you help?"
+		assert.Equal(t, expected, result)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("BotMention", func(t *testing.T) {
+		mockClient := &MockSlackClient{}
+		
+		// Setup mock bot user response
+		mockUser := &slack.User{
+			ID: "W123456",
+			Profile: slack.UserProfile{
+				DisplayName: "Bot Name",
+			},
+		}
+		mockClient.On("GetUserInfoContext", mock.Anything, "W123456").Return(mockUser, nil)
+		
+		message := "Hey <@W123456>, can you help?"
+		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
+		
+		expected := "Hey @Bot Name, can you help?"
+		assert.Equal(t, expected, result)
+		mockClient.AssertExpectations(t)
+	})
+}
+
+func TestGetUserDisplayName(t *testing.T) {
+	t.Run("DisplayNameAvailable", func(t *testing.T) {
+		user := &slack.User{
+			ID:   "U123",
+			Name: "john.doe",
+			Profile: slack.UserProfile{
+				DisplayName: "John Doe",
+				RealName:    "John Smith Doe",
+			},
+		}
+		
+		result := getUserDisplayName(user)
+		assert.Equal(t, "John Doe", result)
+	})
+
+	t.Run("OnlyRealNameAvailable", func(t *testing.T) {
+		user := &slack.User{
+			ID:   "U123",
+			Name: "john.doe",
+			Profile: slack.UserProfile{
+				RealName: "John Smith Doe",
+			},
+		}
+		
+		result := getUserDisplayName(user)
+		assert.Equal(t, "John Smith Doe", result)
+	})
+
+	t.Run("OnlyUsernameAvailable", func(t *testing.T) {
+		user := &slack.User{
+			ID:   "U123",
+			Name: "john.doe",
+		}
+		
+		result := getUserDisplayName(user)
+		assert.Equal(t, "john.doe", result)
+	})
+
+	t.Run("OnlyUserIDAvailable", func(t *testing.T) {
+		user := &slack.User{
+			ID: "U123",
+		}
+		
+		result := getUserDisplayName(user)
+		assert.Equal(t, "U123", result)
 	})
 }
