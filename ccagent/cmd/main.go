@@ -270,16 +270,19 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			// Connection closed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
+			cr.messageProcessor.Stop() // Stop the message processor
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-reconnect:
 			// Connection lost from read goroutine, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
+			cr.messageProcessor.Stop() // Stop the message processor
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-cr.reconnectChan:
 			// Healthcheck failed, trigger reconnection
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
+			cr.messageProcessor.Stop() // Stop the message processor
 			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
 			log.Info("🔌 Interrupt received, closing connection...")
@@ -295,6 +298,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURL, apiKey string) error {
 			}
 			conn.Close()
 			cancelHealthcheck() // Stop the healthcheck goroutine
+			cr.messageProcessor.Stop() // Stop the message processor
 			shouldExit = true
 		}
 
