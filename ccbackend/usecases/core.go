@@ -854,24 +854,6 @@ func (s *CoreUseCase) ProcessHealthcheckAck(clientID string, payload models.Heal
 	return nil
 }
 
-func (s *CoreUseCase) ProcessAgentHealthcheckPing(clientID string, payload models.AgentHealthcheckPingPayload, slackIntegrationID string) error {
-	log.Printf("📋 Starting to process agent healthcheck ping from client %s", clientID)
-
-	// Send pong response back to agent
-	pongMessage := models.UnknownMessage{
-		Type:    models.MessageTypeAgentHealthcheckPong,
-		Payload: models.AgentHealthcheckPongPayload{},
-	}
-
-	if err := s.wsClient.SendMessage(clientID, pongMessage); err != nil {
-		log.Printf("❌ Failed to send agent healthcheck pong to client %s: %v", clientID, err)
-		return fmt.Errorf("failed to send agent healthcheck pong: %w", err)
-	}
-
-	log.Printf("💓 Sent agent healthcheck pong to client %s", clientID)
-	log.Printf("📋 Completed successfully - processed agent healthcheck ping from client %s", clientID)
-	return nil
-}
 
 func (s *CoreUseCase) BroadcastHealthcheck() error {
 	log.Printf("📋 Starting to broadcast healthcheck to all connected agents")
