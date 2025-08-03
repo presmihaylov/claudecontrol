@@ -106,6 +106,8 @@ func getUserDisplayName(user *slack.User) string {
 	return user.ID // Fallback to user ID if no name is available
 }
 
-
-
-
+// GenerateSlackDeepLink creates a Slack deep link for a message
+// Format: slack://channel?team=${slackTeamId}&id=${slackChannelId}&message=${slackMessageTimestamp}
+func GenerateSlackDeepLink(slackTeamID, slackChannelID, slackMessageTimestamp string) string {
+	return fmt.Sprintf("slack://channel?team=%s&id=%s&message=%s", slackTeamID, slackChannelID, slackMessageTimestamp)
+}
