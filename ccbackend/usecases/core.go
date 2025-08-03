@@ -840,3 +840,138 @@ func (s *CoreUseCase) CleanupStaleActiveAgents() error {
 	log.Printf("📋 Completed successfully - cleaned up %d stale active agents", totalStaleAgents)
 	return nil
 }
+
+func (s *CoreUseCase) ProcessHealthcheckAck(clientID string, payload models.HealthcheckAckPayload, slackIntegrationID string) error {
+	log.Printf("📋 Starting to process healthcheck ack from client %s", clientID)
+
+	// Update the last_active_at timestamp for this agent
+	if err := s.agentsService.UpdateAgentLastActiveAt(clientID, slackIntegrationID); err != nil {
+		log.Printf("❌ Failed to update last_active_at for client %s: %v", clientID, err)
+		return fmt.Errorf("failed to update agent last_active_at: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated last_active_at for client %s", clientID)
+	return nil
+}
+
+func (s *CoreUseCase) BroadcastHealthcheck() error {
+	log.Printf("📋 Starting to broadcast healthcheck to all connected agents")
+
+	// Get all slack integrations to broadcast to agents in each integration
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
+	if err != nil {
+		return fmt.Errorf("failed to get slack integrations: %w", err)
+	}
+
+	if len(integrations) == 0 {
+		log.Printf("📋 No slack integrations found")
+		return nil
+	}
+
+	totalAgentCount := 0
+	var broadcastErrors []string
+	connectedClientIDs := s.wsClient.GetClientIDs()
+	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
+
+	for _, integration := range integrations {
+		slackIntegrationID := integration.ID.String()
+
+		// Get connected agents for this integration using centralized service method
+		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
+		if err != nil {
+			broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to get connected agents for integration %s: %v", slackIntegrationID, err))
+			continue
+		}
+
+		if len(connectedAgents) == 0 {
+			continue
+		}
+
+		log.Printf("💓 Broadcasting healthcheck to %d connected agents for integration %s", len(connectedAgents), slackIntegrationID)
+
+		// Send healthcheck message to each connected agent
+		healthcheckMessage := models.UnknownMessage{
+			Type:    models.MessageTypeHealthcheckCheck,
+			Payload: models.HealthcheckCheckPayload{},
+		}
+
+		for _, agent := range connectedAgents {
+			if err := s.wsClient.SendMessage(agent.WSConnectionID, healthcheckMessage); err != nil {
+				broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to send healthcheck message to agent %s: %v", agent.ID, err))
+				continue
+			}
+			log.Printf("💓 Sent healthcheck message to agent %s", agent.ID)
+			totalAgentCount++
+		}
+	}
+
+	log.Printf("📋 Completed broadcast - sent healthcheck to %d agents", totalAgentCount)
+
+	// Return error if there were any broadcast failures
+	if len(broadcastErrors) > 0 {
+		return fmt.Errorf("healthcheck broadcast encountered %d errors: %s", len(broadcastErrors), strings.Join(broadcastErrors, "; "))
+	}
+
+	log.Printf("📋 Completed successfully - broadcasted healthcheck to %d agents", totalAgentCount)
+	return nil
+}
+
+func (s *CoreUseCase) CleanupInactiveAgents() error {
+	log.Printf("📋 Starting to cleanup inactive agents (>10 minutes)")
+
+	// Get all slack integrations
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
+	if err != nil {
+		return fmt.Errorf("failed to get slack integrations: %w", err)
+	}
+
+	if len(integrations) == 0 {
+		log.Printf("📋 No slack integrations found")
+		return nil
+	}
+
+	totalInactiveAgents := 0
+	var cleanupErrors []string
+	inactiveThresholdMinutes := 10 // 10 minutes
+
+	for _, integration := range integrations {
+		slackIntegrationID := integration.ID.String()
+
+		// Get inactive agents for this integration
+		inactiveAgents, err := s.agentsService.GetInactiveAgents(slackIntegrationID, inactiveThresholdMinutes)
+		if err != nil {
+			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to get inactive agents for integration %s: %v", slackIntegrationID, err))
+			continue
+		}
+
+		if len(inactiveAgents) == 0 {
+			continue
+		}
+
+		log.Printf("🔍 Found %d inactive agents for integration %s", len(inactiveAgents), slackIntegrationID)
+
+		// Delete each inactive agent
+		for _, agent := range inactiveAgents {
+			log.Printf("🧹 Found inactive agent %s (last active: %s) - cleaning up", agent.ID, agent.LastActiveAt.Format("2006-01-02 15:04:05"))
+
+			// Delete the inactive agent - CASCADE DELETE will automatically clean up job assignments
+			if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
+				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete inactive agent %s: %v", agent.ID, err))
+				continue
+			}
+
+			log.Printf("✅ Deleted inactive agent %s (CASCADE DELETE cleaned up job assignments)", agent.ID)
+			totalInactiveAgents++
+		}
+	}
+
+	log.Printf("📋 Completed cleanup - removed %d inactive agents", totalInactiveAgents)
+
+	// Return error if there were any cleanup failures
+	if len(cleanupErrors) > 0 {
+		return fmt.Errorf("inactive agent cleanup encountered %d errors: %s", len(cleanupErrors), strings.Join(cleanupErrors, "; "))
+	}
+
+	log.Printf("📋 Completed successfully - cleaned up %d inactive agents", totalInactiveAgents)
+	return nil
+}
