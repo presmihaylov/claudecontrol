@@ -148,8 +148,3 @@ func (rmh *ReliableMessageHandler) cleanupOldMessages() {
 	}
 }
 
-func (rmh *ReliableMessageHandler) GetProcessedMessageCount() int {
-	rmh.mutex.RLock()
-	defer rmh.mutex.RUnlock()
-	return len(rmh.processedMessages)
-}
