@@ -780,66 +780,6 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	return nil
 }
 
-func (s *CoreUseCase) CleanupStaleActiveAgents() error {
-	log.Printf("📋 Starting to cleanup stale active agents")
-
-	// Get all slack integrations
-	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
-	if err != nil {
-		return fmt.Errorf("failed to get slack integrations: %w", err)
-	}
-
-	if len(integrations) == 0 {
-		log.Printf("📋 No slack integrations found")
-		return nil
-	}
-
-	totalStaleAgents := 0
-	var cleanupErrors []string
-	connectedClientIDs := s.wsClient.GetClientIDs()
-	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
-
-	for _, integration := range integrations {
-		slackIntegrationID := integration.ID.String()
-
-		// Get stale agents using centralized service method
-		staleAgents, err := s.agentsService.GetStaleAgents(slackIntegrationID, connectedClientIDs)
-		if err != nil {
-			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to get stale agents for integration %s: %v", slackIntegrationID, err))
-			continue
-		}
-
-		if len(staleAgents) == 0 {
-			continue
-		}
-
-		log.Printf("🔍 Found %d stale agents for integration %s", len(staleAgents), slackIntegrationID)
-
-		// Delete each stale agent
-		for _, agent := range staleAgents {
-			log.Printf("🧹 Found stale agent %s (WebSocket ID: %s) - no corresponding connection", agent.ID, agent.WSConnectionID)
-
-			// Delete the stale agent - CASCADE DELETE will automatically clean up job assignments
-			if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
-				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete stale agent %s: %v", agent.ID, err))
-				continue
-			}
-
-			log.Printf("✅ Deleted stale agent %s (CASCADE DELETE cleaned up job assignments)", agent.ID)
-			totalStaleAgents++
-		}
-	}
-
-	log.Printf("📋 Completed cleanup - removed %d stale active agents", totalStaleAgents)
-
-	// Return error if there were any cleanup failures
-	if len(cleanupErrors) > 0 {
-		return fmt.Errorf("stale agent cleanup encountered %d errors: %s", len(cleanupErrors), strings.Join(cleanupErrors, "; "))
-	}
-
-	log.Printf("📋 Completed successfully - cleaned up %d stale active agents", totalStaleAgents)
-	return nil
-}
 
 func (s *CoreUseCase) ProcessHealthcheckAck(clientID string, payload models.HealthcheckAckPayload, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process healthcheck ack from client %s", clientID)
