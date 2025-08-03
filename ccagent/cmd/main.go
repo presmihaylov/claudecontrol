@@ -350,6 +350,11 @@ func (cr *CmdRunner) handleMessage(msg UnknownMessage, conn *websocket.Conn) {
 			// CheckIdleJobs doesn't have SlackMessageID, so use empty string
 			cr.sendErrorMessage(conn, err, "")
 		}
+	case MessageTypeHealthcheckCheck:
+		if err := cr.handleHealthcheckCheck(msg, conn); err != nil {
+			// HealthcheckCheck doesn't have SlackMessageID, so use empty string
+			cr.sendErrorMessage(conn, err, "")
+		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
 	}
@@ -621,6 +626,32 @@ func (cr *CmdRunner) handleCheckIdleJobs(msg UnknownMessage, conn *websocket.Con
 	}
 
 	log.Info("📋 Completed successfully - checked all jobs for idleness")
+	return nil
+}
+
+func (cr *CmdRunner) handleHealthcheckCheck(msg UnknownMessage, conn *websocket.Conn) error {
+	log.Info("📋 Starting to handle healthcheck check message")
+	var payload HealthcheckCheckPayload
+	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
+		log.Info("❌ Failed to unmarshal healthcheck check payload: %v", err)
+		return fmt.Errorf("failed to unmarshal healthcheck check payload: %w", err)
+	}
+
+	log.Info("💓 Received healthcheck ping from backend - sending ack")
+
+	// Send healthcheck acknowledgment back to backend
+	healthcheckAckMsg := UnknownMessage{
+		Type:    MessageTypeHealthcheckAck,
+		Payload: HealthcheckAckPayload{},
+	}
+
+	if err := conn.WriteJSON(healthcheckAckMsg); err != nil {
+		log.Info("❌ Failed to send healthcheck ack: %v", err)
+		return fmt.Errorf("failed to send healthcheck ack: %w", err)
+	}
+
+	log.Info("💓 Sent healthcheck ack to backend")
+	log.Info("📋 Completed successfully - handled healthcheck check message")
 	return nil
 }
 
