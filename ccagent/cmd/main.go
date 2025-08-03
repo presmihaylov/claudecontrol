@@ -528,7 +528,7 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
-	messageID, msgErr := cr.messageProcessor.SendReliableMessage(assistantMsg)
+	messageID, msgErr := cr.messageProcessor.SendMessageReliably(assistantMsg)
 	if msgErr != nil {
 		log.Info("❌ Failed to send reliable assistant response: %v", msgErr)
 		return fmt.Errorf("failed to send reliable assistant response: %w", msgErr)
@@ -639,7 +639,7 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, conn *websocke
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
-	messageID, msgErr := cr.messageProcessor.SendReliableMessage(assistantMsg)
+	messageID, msgErr := cr.messageProcessor.SendMessageReliably(assistantMsg)
 	if msgErr != nil {
 		log.Info("❌ Failed to send reliable assistant response: %v", msgErr)
 		return fmt.Errorf("failed to send reliable assistant response: %w", msgErr)
@@ -897,7 +897,7 @@ func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason 
 		Type:    models.MessageTypeJobComplete,
 		Payload: payload,
 	}
-	messageID, err := cr.messageProcessor.SendReliableMessage(jobMsg)
+	messageID, err := cr.messageProcessor.SendMessageReliably(jobMsg)
 	if err != nil {
 		log.Error("❌ Failed to send reliable job complete message: %v", err)
 		return fmt.Errorf("failed to send reliable job complete message: %w", err)
@@ -918,7 +918,7 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 		Type:    models.MessageTypeSystemMessage,
 		Payload: payload,
 	}
-	messageID, err := cr.messageProcessor.SendReliableMessage(sysMsg)
+	messageID, err := cr.messageProcessor.SendMessageReliably(sysMsg)
 	if err != nil {
 		log.Info("❌ Failed to send reliable system message: %v", err)
 		return err
