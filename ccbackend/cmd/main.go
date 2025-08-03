@@ -107,6 +107,10 @@ func run() error {
 		}
 		// Handle message normally
 		wsHandler.HandleMessage(client, msg)
+		// Mark message as processed after successful handling
+		if err := reliableMessageHandler.MarkMessageProcessed(client, msg); err != nil {
+			log.Printf("❌ Error marking message as processed from client %s: %v", client.ID, err)
+		}
 	})
 
 
