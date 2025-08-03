@@ -18,8 +18,8 @@ func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
 	return &AgentsService{agentsRepo: repo}
 }
 
-func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID string) (*models.ActiveAgent, error) {
-	log.Printf("📋 Starting to create active agent for wsConnectionID: %s", wsConnectionID)
+func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID string, agentID uuid.UUID) (*models.ActiveAgent, error) {
+	log.Printf("📋 Starting to create active agent for wsConnectionID: %s, agentID: %s", wsConnectionID, agentID)
 
 	if wsConnectionID == "" {
 		return nil, fmt.Errorf("ws_connection_id cannot be empty")
@@ -39,13 +39,14 @@ func (s *AgentsService) CreateActiveAgent(wsConnectionID, slackIntegrationID str
 		ID:                 id,
 		WSConnectionID:     wsConnectionID,
 		SlackIntegrationID: integrationUUID,
+		AgentID:            agentID,
 	}
 
 	if err := s.agentsRepo.CreateActiveAgent(agent); err != nil {
 		return nil, fmt.Errorf("failed to create active agent: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - created active agent with ID: %s", agent.ID)
+	log.Printf("📋 Completed successfully - created active agent with ID: %s, agent_id: %v", agent.ID, agentID)
 	return agent, nil
 }
 
@@ -391,4 +392,3 @@ func (s *AgentsService) GetActiveAgentJobAssignments(agentID uuid.UUID, slackInt
 	log.Printf("📋 Completed successfully - retrieved %d job assignments for agent %s", len(jobIDs), agentID)
 	return jobIDs, nil
 }
-

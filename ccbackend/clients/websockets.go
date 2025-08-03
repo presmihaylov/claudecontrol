@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/gorilla/mux"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
@@ -20,6 +20,7 @@ type Client struct {
 	ID                 string
 	ClientConn         *websocket.Conn
 	SlackIntegrationID string
+	AgentID            uuid.UUID
 }
 
 type MessageHandlerFunc func(client *Client, msg any)
@@ -27,13 +28,13 @@ type ConnectionHookFunc func(clientID string) error
 type APIKeyValidatorFunc func(apiKey string) (string, error)
 
 type WebSocketClient struct {
-	clients              []*Client
-	mutex                sync.RWMutex
-	upgrader             websocket.Upgrader
-	messageHandlers      []MessageHandlerFunc
-	connectionHooks      []ConnectionHookFunc
-	disconnectionHooks   []ConnectionHookFunc
-	apiKeyValidator      APIKeyValidatorFunc
+	clients            []*Client
+	mutex              sync.RWMutex
+	upgrader           websocket.Upgrader
+	messageHandlers    []MessageHandlerFunc
+	connectionHooks    []ConnectionHookFunc
+	disconnectionHooks []ConnectionHookFunc
+	apiKeyValidator    APIKeyValidatorFunc
 }
 
 func NewWebSocketClient(apiKeyValidator APIKeyValidatorFunc) *WebSocketClient {
@@ -59,12 +60,27 @@ func (ws *WebSocketClient) RegisterWithRouter(router *mux.Router) {
 
 func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🔗 New WebSocket connection attempt from %s", r.RemoteAddr)
-	
+
 	// Extract and validate API key before upgrading connection
 	apiKey := r.Header.Get("X-CCAGENT-API-KEY")
 	if apiKey == "" {
 		log.Printf("❌ Rejecting WebSocket connection from %s: missing X-CCAGENT-API-KEY header", r.RemoteAddr)
 		http.Error(w, "Missing X-CCAGENT-API-KEY header", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract agent ID and validate it's a UUID
+	agentIDStr := r.Header.Get("X-CCAGENT-ID")
+	if agentIDStr == "" {
+		log.Printf("❌ No X-CCAGENT-ID provided, rejecting connection")
+		http.Error(w, "Invalid X-CCAGENT-ID header", http.StatusBadRequest)
+		return
+	}
+
+	agentID, err := uuid.Parse(agentIDStr)
+	if err != nil {
+		log.Printf("❌ Rejecting WebSocket connection from %s: invalid agent ID format (must be UUID): %s", r.RemoteAddr, agentIDStr)
+		http.Error(w, "Invalid X-CCAGENT-ID format (must be UUID)", http.StatusBadRequest)
 		return
 	}
 
@@ -75,7 +91,7 @@ func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *h
 		http.Error(w, "Invalid API key", http.StatusUnauthorized)
 		return
 	}
-	
+
 	conn, err := ws.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("❌ WebSocket upgrade failed from %s: %v", r.RemoteAddr, err)
@@ -90,6 +106,7 @@ func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *h
 		ID:                 uuid.New().String(),
 		ClientConn:         conn,
 		SlackIntegrationID: slackIntegrationID,
+		AgentID:            agentID,
 	}
 	ws.addClient(client)
 	log.Printf("✅ WebSocket client connected with ID: %s from %s", client.ID, r.RemoteAddr)
@@ -162,6 +179,10 @@ func (ws *WebSocketClient) getClientByID(clientID string) *Client {
 	return nil
 }
 
+func (ws *WebSocketClient) GetClientByID(clientID string) *Client {
+	return ws.getClientByID(clientID)
+}
+
 func (ws *WebSocketClient) GetSlackIntegrationIDByClientID(clientID string) string {
 	client := ws.getClientByID(clientID)
 	if client == nil {
@@ -182,7 +203,7 @@ func (ws *WebSocketClient) SendMessage(clientID string, msg any) error {
 		log.Printf("❌ Failed to send message to client %s: %v", clientID, err)
 		return err
 	}
-	
+
 	log.Printf("✅ Message sent successfully to client %s", clientID)
 	return nil
 }
@@ -244,3 +265,4 @@ func (ws *WebSocketClient) invokeDisconnectionHooks(clientID string) {
 	}
 	log.Printf("✅ All disconnection hooks completed for client %s", clientID)
 }
+
