@@ -65,7 +65,7 @@ jobs:
     - name: Set up test environment variables
       run: |
         cd ccbackend
-        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres" > .env.test
+        echo "DB_URL=postgresql://postgres:postgres@localhost:54322/postgres" > .env.test
         echo "DB_SCHEMA=claudecontrol_test" >> .env.test
         echo "SLACK_SIGNING_SECRET=test_signing_secret" >> .env.test
         echo "SLACK_BOT_TOKEN=test_bot_token" >> .env.test
@@ -81,7 +81,7 @@ jobs:
         cd ccbackend
         make test
       env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:54322/postgres
+        DB_URL: postgresql://postgres:postgres@localhost:54322/postgres
         DB_SCHEMA: claudecontrol_test
 
     - name: Run tests with verbose output on failure
@@ -90,7 +90,7 @@ jobs:
         cd ccbackend
         make test-verbose
       env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:54322/postgres
+        DB_URL: postgresql://postgres:postgres@localhost:54322/postgres
         DB_SCHEMA: claudecontrol_test
 
     - name: Stop Supabase
