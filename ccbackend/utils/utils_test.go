@@ -126,7 +126,7 @@ func TestAssertInvariant(t *testing.T) {
 	t.Run("ComplexCondition", func(t *testing.T) {
 		x := 5
 		y := 10
-		
+
 		// Should not panic
 		assert.NotPanics(t, func() {
 			AssertInvariant(x < y, "x should be less than y")
@@ -155,17 +155,17 @@ func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, user string) (
 func TestResolveMentionsInSlackMessage(t *testing.T) {
 	t.Run("NoMentions", func(t *testing.T) {
 		mockClient := &MockSlackClient{}
-		
+
 		message := "This is a regular message with no mentions"
 		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
-		
+
 		assert.Equal(t, message, result)
 		mockClient.AssertNotCalled(t, "GetUserInfoContext")
 	})
 
 	t.Run("SingleMentionResolved", func(t *testing.T) {
 		mockClient := &MockSlackClient{}
-		
+
 		// Setup mock user response
 		mockUser := &slack.User{
 			ID: "U123456",
@@ -175,10 +175,10 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 			},
 		}
 		mockClient.On("GetUserInfoContext", mock.Anything, "U123456").Return(mockUser, nil)
-		
+
 		message := "Hey <@U123456>, can you help with this?"
 		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
-		
+
 		expected := "Hey @John Doe, can you help with this?"
 		assert.Equal(t, expected, result)
 		mockClient.AssertExpectations(t)
@@ -186,7 +186,7 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 
 	t.Run("MultipleMentionsResolved", func(t *testing.T) {
 		mockClient := &MockSlackClient{}
-		
+
 		// Setup mock user responses
 		mockUser1 := &slack.User{
 			ID: "U123456",
@@ -202,10 +202,10 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 		}
 		mockClient.On("GetUserInfoContext", mock.Anything, "U123456").Return(mockUser1, nil)
 		mockClient.On("GetUserInfoContext", mock.Anything, "U789012").Return(mockUser2, nil)
-		
+
 		message := "Hey <@U123456> and <@U789012>, can you help?"
 		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
-		
+
 		expected := "Hey @John Doe and @Jane Smith, can you help?"
 		assert.Equal(t, expected, result)
 		mockClient.AssertExpectations(t)
@@ -213,7 +213,7 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 
 	t.Run("DuplicateMentions", func(t *testing.T) {
 		mockClient := &MockSlackClient{}
-		
+
 		// Setup mock user response - should only be called once due to caching
 		mockUser := &slack.User{
 			ID: "U123456",
@@ -222,10 +222,10 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 			},
 		}
 		mockClient.On("GetUserInfoContext", mock.Anything, "U123456").Return(mockUser, nil).Once()
-		
+
 		message := "Hey <@U123456>, please tell <@U123456> about this"
 		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
-		
+
 		expected := "Hey @John Doe, please tell @John Doe about this"
 		assert.Equal(t, expected, result)
 		mockClient.AssertExpectations(t)
@@ -233,13 +233,13 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 
 	t.Run("APIError", func(t *testing.T) {
 		mockClient := &MockSlackClient{}
-		
+
 		// Setup mock to return error
 		mockClient.On("GetUserInfoContext", mock.Anything, "U123456").Return(nil, errors.New("user not found"))
-		
+
 		message := "Hey <@U123456>, can you help?"
 		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
-		
+
 		// Should fall back to original mention format
 		expected := "Hey <@U123456>, can you help?"
 		assert.Equal(t, expected, result)
@@ -248,7 +248,7 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 
 	t.Run("BotMention", func(t *testing.T) {
 		mockClient := &MockSlackClient{}
-		
+
 		// Setup mock bot user response
 		mockUser := &slack.User{
 			ID: "W123456",
@@ -257,10 +257,10 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 			},
 		}
 		mockClient.On("GetUserInfoContext", mock.Anything, "W123456").Return(mockUser, nil)
-		
+
 		message := "Hey <@W123456>, can you help?"
 		result := ResolveMentionsInSlackMessage(context.Background(), message, mockClient)
-		
+
 		expected := "Hey @Bot Name, can you help?"
 		assert.Equal(t, expected, result)
 		mockClient.AssertExpectations(t)
@@ -277,7 +277,7 @@ func TestGetUserDisplayName(t *testing.T) {
 				RealName:    "John Smith Doe",
 			},
 		}
-		
+
 		result := getUserDisplayName(user)
 		assert.Equal(t, "John Doe", result)
 	})
@@ -290,7 +290,7 @@ func TestGetUserDisplayName(t *testing.T) {
 				RealName: "John Smith Doe",
 			},
 		}
-		
+
 		result := getUserDisplayName(user)
 		assert.Equal(t, "John Smith Doe", result)
 	})
@@ -300,7 +300,7 @@ func TestGetUserDisplayName(t *testing.T) {
 			ID:   "U123",
 			Name: "john.doe",
 		}
-		
+
 		result := getUserDisplayName(user)
 		assert.Equal(t, "john.doe", result)
 	})
@@ -309,7 +309,7 @@ func TestGetUserDisplayName(t *testing.T) {
 		user := &slack.User{
 			ID: "U123",
 		}
-		
+
 		result := getUserDisplayName(user)
 		assert.Equal(t, "U123", result)
 	})

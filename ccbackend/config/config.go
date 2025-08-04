@@ -8,14 +8,14 @@ import (
 )
 
 type AppConfig struct {
-	SlackSigningSecret   string
-	SlackClientID        string
-	SlackClientSecret    string
-	Port                 string
-	DatabaseURL          string
-	DatabaseSchema       string
-	ClerkSecretKey       string
-	CORSAllowedOrigins   string
+	SlackSigningSecret string
+	SlackClientID      string
+	SlackClientSecret  string
+	Port               string
+	DatabaseURL        string
+	DatabaseSchema     string
+	ClerkSecretKey     string
+	CORSAllowedOrigins string
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -64,14 +64,14 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	config := &AppConfig{
-		SlackSigningSecret:   slackSigningSecret,
-		SlackClientID:        slackClientID,
-		SlackClientSecret:    slackClientSecret,
-		Port:                 port,
-		DatabaseURL:          databaseURL,
-		DatabaseSchema:       databaseSchema,
-		ClerkSecretKey:       clerkSecretKey,
-		CORSAllowedOrigins:   corsAllowedOrigins,
+		SlackSigningSecret: slackSigningSecret,
+		SlackClientID:      slackClientID,
+		SlackClientSecret:  slackClientSecret,
+		Port:               port,
+		DatabaseURL:        databaseURL,
+		DatabaseSchema:     databaseSchema,
+		ClerkSecretKey:     clerkSecretKey,
+		CORSAllowedOrigins: corsAllowedOrigins,
 	}
 
 	return config, nil

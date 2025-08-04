@@ -10,7 +10,6 @@ import (
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/models"
-
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
@@ -19,25 +18,25 @@ import (
 // LoadTestConfig loads configuration for tests from environment variables
 func LoadTestConfig() (*config.AppConfig, error) {
 	// Try to load environment variables from various possible locations
-	_ = godotenv.Load("../.env.test")  // From services/ directory
-	_ = godotenv.Load(".env.test")     // From root directory  
-	_ = godotenv.Load()                // Default .env file
-	
+	_ = godotenv.Load("../.env.test") // From services/ directory
+	_ = godotenv.Load(".env.test")    // From root directory
+	_ = godotenv.Load()               // Default .env file
+
 	databaseURL := os.Getenv("DB_URL")
 	if databaseURL == "" {
 		return nil, fmt.Errorf("DB_URL is not set")
 	}
-	
+
 	databaseSchema := os.Getenv("DB_SCHEMA")
 	if databaseSchema == "" {
 		return nil, fmt.Errorf("DB_SCHEMA is not set")
 	}
-	
+
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
 	if clerkSecretKey == "" {
 		return nil, fmt.Errorf("CLERK_SECRET_KEY is not set")
 	}
-	
+
 	return &config.AppConfig{
 		DatabaseURL:    databaseURL,
 		DatabaseSchema: databaseSchema,
@@ -76,7 +75,7 @@ func CreateTestSlackIntegration(t *testing.T, slackIntegrationsRepo *db.Postgres
 		SlackTeamName:  "Test Team",
 		UserID:         userID,
 	}
-	
+
 	err := slackIntegrationsRepo.CreateSlackIntegration(testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 	return testIntegration

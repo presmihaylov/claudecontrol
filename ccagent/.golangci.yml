@@ -1,0 +1,78 @@
+run:
+  timeout: 5m
+  go: "1.21"
+
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/presmihaylov/ccpg/cc2/ccagent)
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+  govet:
+    enable:
+      - shadow
+  misspell:
+    locale: US
+  nolintlint:
+    allow-leading-space: true
+    allow-unused: false
+    require-explanation: false
+    require-specific: false
+  lll:
+    line-length: 140
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - dogsled
+    - errcheck
+    - gci
+    - gochecknoinits
+    - goconst
+    - gocyclo
+    - gofmt
+    - goimports
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - staticcheck
+    - typecheck
+    - unconvert
+    - unused
+    - whitespace
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - mnd
+        - gocritic
+        - gosec
+        - lll
+        - noctx
+        - dupl
+    - text: "Magic number"
+      linters:
+        - mnd
+    - text: "duplicate of"
+      linters:
+        - dupl
+    - text: "exceeds the maximum"
+      linters:
+        - lll
+  max-issues-per-linter: 0
+  max-same-issues: 0

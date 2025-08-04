@@ -2,7 +2,6 @@ package services
 
 import (
 	"ccagent/models"
-
 	"github.com/google/uuid"
 )
 
@@ -17,4 +16,3 @@ func (s *SessionService) GenerateSession() *models.Session {
 		ID: uuid.New().String(),
 	}
 }
-
