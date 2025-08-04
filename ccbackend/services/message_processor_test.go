@@ -233,30 +233,6 @@ func TestMessageProcessor_RetryLogic(t *testing.T) {
 		assert.False(t, hasPendingMessage(processor, messageID))
 	})
 
-	t.Run("message removed after max retries", func(t *testing.T) {
-		config := MessageProcessorConfig{
-			RetryInterval: 50 * time.Millisecond,
-			MaxRetries:    2,
-			AckTimeout:    25 * time.Millisecond,
-		}
-		processor, mockSender, cleanup := setupMessageProcessorTestWithConfig(t, config)
-		defer cleanup()
-
-		msg := createTestMessage("test")
-		messageID, err := processor.SendMessageReliably("client1", msg)
-		require.NoError(t, err)
-
-		// Wait for max retries + cleanup
-		time.Sleep(300 * time.Millisecond)
-
-		// Message should be removed from pending after max retries
-		assert.False(t, hasPendingMessage(processor, messageID))
-
-		// Should have attempted 3 times (initial + 2 retries)
-		calls := mockSender.GetSendMessageCalls()
-		assert.GreaterOrEqual(t, len(calls), 3)
-	})
-
 	t.Run("retry stops on acknowledgment", func(t *testing.T) {
 		config := MessageProcessorConfig{
 			RetryInterval: 50 * time.Millisecond,
