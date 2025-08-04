@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"ccbackend/clients"
 	"ccbackend/models"
 )
 
@@ -106,7 +105,7 @@ type MessageProcessorConfig struct {
 }
 
 // NewMessageProcessorWithConfig creates a MessageProcessor with custom configuration
-func NewMessageProcessorWithConfig(messageSender clients.MessageSender, config MessageProcessorConfig) *MessageProcessor {
+func NewMessageProcessorWithConfig(messageSender MessageSender, config MessageProcessorConfig) *MessageProcessor {
 	processor := NewMessageProcessor(messageSender)
 
 	// Override default configuration
