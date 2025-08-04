@@ -60,6 +60,12 @@ func (g *GitUseCase) ValidateGitEnvironment() error {
 		return fmt.Errorf("GitHub CLI (gh) must be installed and configured: %w", err)
 	}
 
+	// Validate remote repository access credentials
+	if err := g.gitClient.ValidateRemoteAccess(); err != nil {
+		log.Error("❌ Remote repository access validation failed: %v", err)
+		return fmt.Errorf("remote repository access validation failed: %w", err)
+	}
+
 	log.Info("✅ Git environment validation passed")
 	log.Info("📋 Completed successfully - validated Git environment")
 	return nil
