@@ -198,8 +198,8 @@ func (h *SlackWebhooksHandler) handleReactionAdded(event map[string]any, slackIn
 	user := event["user"].(string)
 	item := event["item"].(map[string]any)
 
-	// Only handle white check mark or check mark reactions
-	if reactionName != "white_check_mark" && reactionName != "heavy_check_mark" {
+	// Only handle white check mark, check mark, or white tick reactions
+	if reactionName != "white_check_mark" && reactionName != "heavy_check_mark" && reactionName != "white_tick" {
 		log.Printf("⏭️ Ignoring reaction: %s (not a completion emoji)", reactionName)
 		return nil
 	}
