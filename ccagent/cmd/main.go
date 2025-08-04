@@ -29,16 +29,17 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService        *services.SessionService
-	claudeService         *services.ClaudeService
-	gitUseCase            *usecases.GitUseCase
-	appState              *models.AppState
-	logFilePath           string
-	agentID               uuid.UUID
-	reconnectChan         chan struct{}
-	healthcheckTimer      *time.Timer
-	healthcheckTimerMutex sync.Mutex
-	messageProcessor      *services.MessageProcessor
+	sessionService         *services.SessionService
+	claudeService          *services.ClaudeService
+	gitUseCase             *usecases.GitUseCase
+	appState               *models.AppState
+	logFilePath            string
+	agentID                uuid.UUID
+	reconnectChan          chan struct{}
+	healthcheckTimer       *time.Timer
+	healthcheckTimerMutex  sync.Mutex
+	messageProcessor       *services.MessageProcessor
+	reliableMessageHandler *services.ReliableMessageHandler
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -57,15 +58,20 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	messageProcessor := services.NewMessageProcessor(nil)
 	log.Info("📤 Initialized message processor")
 
+	// Initialize reliable message handler
+	reliableMessageHandler := services.NewReliableMessageHandler(messageProcessor)
+	log.Info("🔄 Initialized reliable message handler")
+
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		sessionService:   sessionService,
-		claudeService:    claudeService,
-		gitUseCase:       gitUseCase,
-		appState:         appState,
-		agentID:          agentID,
-		reconnectChan:    make(chan struct{}, 1),
-		messageProcessor: messageProcessor,
+		sessionService:         sessionService,
+		claudeService:          claudeService,
+		gitUseCase:             gitUseCase,
+		appState:               appState,
+		agentID:                agentID,
+		reconnectChan:          make(chan struct{}, 1),
+		messageProcessor:       messageProcessor,
+		reliableMessageHandler: reliableMessageHandler,
 	}, nil
 }
 
@@ -277,12 +283,12 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 				// Route messages to appropriate worker pool
 				if instantMessageTypes[msg.Type] {
 					instantWP.Submit(func() {
-						cr.handleMessage(msg, conn)
+						cr.handleMessageWithReliability(msg, conn)
 					})
 				} else {
 					// NON-BLOCKING: Submit to regular worker pool
 					wp.Submit(func() {
-						cr.handleMessage(msg, conn)
+						cr.handleMessageWithReliability(msg, conn)
 					})
 				}
 			}
@@ -400,6 +406,28 @@ func (cr *CmdRunner) setupProgramLogging() (string, error) {
 	log.SetWriter(writer)
 
 	return logFilePath, nil
+}
+
+func (cr *CmdRunner) handleMessageWithReliability(msg models.UnknownMessage, conn *websocket.Conn) {
+	// First, check if this is a reliable message that was already processed
+	handled, err := cr.reliableMessageHandler.ProcessReliableMessage(msg)
+	if err != nil {
+		log.Info("❌ Error processing reliable message: %v", err)
+		return
+	}
+
+	if handled {
+		// Message was already processed (duplicate), acknowledgement already sent
+		return
+	}
+
+	// Process the message normally
+	cr.handleMessage(msg, conn)
+
+	// Mark message as processed and send acknowledgement if it has an ID
+	if err := cr.reliableMessageHandler.MarkMessageProcessed(msg); err != nil {
+		log.Info("❌ Error marking message as processed: %v", err)
+	}
 }
 
 func (cr *CmdRunner) handleMessage(msg models.UnknownMessage, conn *websocket.Conn) {
