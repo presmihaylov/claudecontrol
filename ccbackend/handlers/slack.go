@@ -141,12 +141,35 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 
 	event := body["event"].(map[string]any)
 	eventType := event["type"].(string)
-	if eventType != "app_mention" {
+
+	switch eventType {
+	case "app_mention":
+		if err := h.handleAppMention(event, slackIntegration.ID.String()); err != nil {
+			log.Printf("❌ Failed to handle app mention: %v", err)
+		}
+	case "reaction_added":
+		if err := h.handleReactionAdded(event, slackIntegration.ID.String()); err != nil {
+			log.Printf("❌ Failed to handle reaction added: %v", err)
+		}
+	default:
 		log.Printf("❌ Unsupported event type: %s", eventType)
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
+	log.Printf("🚀 Registering Slack webhook endpoints")
+
+	router.HandleFunc("/slack/events", h.HandleSlackEvent).Methods("POST")
+	log.Printf("✅ POST /slack/events endpoint registered")
+
+	log.Printf("✅ All Slack webhook endpoints registered successfully")
+}
+
+func (h *SlackWebhooksHandler) handleAppMention(event map[string]any, slackIntegrationID string) error {
 	channel := event["channel"].(string)
 	user := event["user"].(string)
 	text := event["text"].(string)
@@ -167,18 +190,31 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 		ThreadTS: threadTS,
 	}
 
-	if err := h.coreUseCase.ProcessSlackMessageEvent(slackEvent, slackIntegration.ID.String()); err != nil {
-		log.Printf("❌ Failed to process Slack message event: %v", err)
-	}
-
-	w.WriteHeader(http.StatusOK)
+	return h.coreUseCase.ProcessSlackMessageEvent(slackEvent, slackIntegrationID)
 }
 
-func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
-	log.Printf("🚀 Registering Slack webhook endpoints")
+func (h *SlackWebhooksHandler) handleReactionAdded(event map[string]any, slackIntegrationID string) error {
+	reactionName := event["reaction"].(string)
+	user := event["user"].(string)
+	item := event["item"].(map[string]any)
 
-	router.HandleFunc("/slack/events", h.HandleSlackEvent).Methods("POST")
-	log.Printf("✅ POST /slack/events endpoint registered")
+	// Only handle white check mark, check mark, or white tick reactions
+	if reactionName != "white_check_mark" && reactionName != "heavy_check_mark" && reactionName != "white_tick" {
+		log.Printf("⏭️ Ignoring reaction: %s (not a completion emoji)", reactionName)
+		return nil
+	}
 
-	log.Printf("✅ All Slack webhook endpoints registered successfully")
+	// Extract item details
+	itemType := item["type"].(string)
+	if itemType != "message" {
+		log.Printf("⏭️ Ignoring reaction on non-message item: %s", itemType)
+		return nil
+	}
+
+	channel := item["channel"].(string)
+	ts := item["ts"].(string)
+
+	log.Printf("✅ Completion reaction added by %s on message %s in %s", user, ts, channel)
+
+	return h.coreUseCase.ProcessReactionAdded(user, channel, ts, slackIntegrationID)
 }
