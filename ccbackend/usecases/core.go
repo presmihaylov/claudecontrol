@@ -340,7 +340,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 		},
 	}
 
-	if err := s.wsClient.SendMessage(clientID, startConversationMessage); err != nil {
+	if _, err := s.messageProcessor.SendMessageReliably(clientID, startConversationMessage); err != nil {
 		return fmt.Errorf("failed to send start conversation message to client %s: %v", clientID, err)
 	}
 	log.Printf("🚀 Sent start conversation message to client %s", clientID)
@@ -376,7 +376,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 		},
 	}
 
-	if err := s.wsClient.SendMessage(clientID, userMessage); err != nil {
+	if _, err := s.messageProcessor.SendMessageReliably(clientID, userMessage); err != nil {
 		return fmt.Errorf("failed to send user message to client %s: %v", clientID, err)
 	}
 	log.Printf("💬 Sent user message to client %s", clientID)
@@ -706,7 +706,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 		}
 
 		for _, agent := range connectedAgents {
-			if err := s.wsClient.SendMessage(agent.WSConnectionID, checkIdleJobsMessage); err != nil {
+			if _, err := s.messageProcessor.SendMessageReliably(agent.WSConnectionID, checkIdleJobsMessage); err != nil {
 				broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to send CheckIdleJobs message to agent %s: %v", agent.ID, err))
 				continue
 			}
@@ -822,7 +822,7 @@ func (s *CoreUseCase) SendHealthcheckAck(clientID string, slackIntegrationID str
 	}
 
 	// Send the message to the client
-	if err := s.wsClient.SendMessage(clientID, healthcheckAckMsg); err != nil {
+	if _, err := s.messageProcessor.SendMessageReliably(clientID, healthcheckAckMsg); err != nil {
 		log.Printf("❌ Failed to send healthcheck ack to client %s: %v", clientID, err)
 		return fmt.Errorf("failed to send healthcheck ack: %w", err)
 	}
@@ -874,7 +874,7 @@ func (s *CoreUseCase) BroadcastHealthcheck() error {
 		}
 
 		for _, agent := range connectedAgents {
-			if err := s.wsClient.SendMessage(agent.WSConnectionID, healthcheckMessage); err != nil {
+			if _, err := s.messageProcessor.SendMessageReliably(agent.WSConnectionID, healthcheckMessage); err != nil {
 				broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to send healthcheck message to agent %s: %v", agent.ID, err))
 				continue
 			}
