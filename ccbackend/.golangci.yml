@@ -1,6 +1,6 @@
 run:
   timeout: 5m
-  go: "1.21"
+  go: "1.24"
 
 linters-settings:
   gci:
@@ -90,8 +90,5 @@ issues:
     - text: "should not use underscores in Go names"
       linters:
         - stylecheck
-    - text: "File is not properly formatted"
-      linters:
-        - goimports
   max-issues-per-linter: 0
   max-same-issues: 0
