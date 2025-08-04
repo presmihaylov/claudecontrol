@@ -280,15 +280,22 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 
 				log.Info("📨 Received message type: %s", msg.Type)
 
+				// Check if already processed and send acknowledgement immediately
+				shouldSkip := cr.reliableMessageHandler.CheckAndAcknowledgeMessage(msg)
+				if shouldSkip {
+					log.Info("⏭️ Skipping duplicate message %s", msg.ID)
+					continue
+				}
+
 				// Route messages to appropriate worker pool
 				if instantMessageTypes[msg.Type] {
 					instantWP.Submit(func() {
-						cr.handleMessageWithReliability(msg, conn)
+						cr.handleMessage(msg, conn)
 					})
 				} else {
 					// NON-BLOCKING: Submit to regular worker pool
 					wp.Submit(func() {
-						cr.handleMessageWithReliability(msg, conn)
+						cr.handleMessage(msg, conn)
 					})
 				}
 			}
@@ -406,28 +413,6 @@ func (cr *CmdRunner) setupProgramLogging() (string, error) {
 	log.SetWriter(writer)
 
 	return logFilePath, nil
-}
-
-func (cr *CmdRunner) handleMessageWithReliability(msg models.UnknownMessage, conn *websocket.Conn) {
-	// First, check if this is a reliable message that was already processed
-	handled, err := cr.reliableMessageHandler.ProcessReliableMessage(msg)
-	if err != nil {
-		log.Info("❌ Error processing reliable message: %v", err)
-		return
-	}
-
-	if handled {
-		// Message was already processed (duplicate), acknowledgement already sent
-		return
-	}
-
-	// Process the message normally
-	cr.handleMessage(msg, conn)
-
-	// Mark message as processed and send acknowledgement if it has an ID
-	if err := cr.reliableMessageHandler.MarkMessageProcessed(msg); err != nil {
-		log.Info("❌ Error marking message as processed: %v", err)
-	}
 }
 
 func (cr *CmdRunner) handleMessage(msg models.UnknownMessage, conn *websocket.Conn) {
