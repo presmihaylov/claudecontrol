@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/testutils"
 )
@@ -22,9 +21,9 @@ type TestUserHelper struct {
 
 // NewTestUserHelper creates a new test user helper with Clerk client
 func NewTestUserHelper(t *testing.T) *TestUserHelper {
-	// Load config to get Clerk secret key
-	cfg, err := config.LoadConfig()
-	require.NoError(t, err, "Failed to load config for test")
+	// Load test config to get Clerk secret key
+	cfg, err := testutils.LoadTestConfig()
+	require.NoError(t, err, "Failed to load test config")
 
 	// Create Clerk client config
 	clerkConfig := &clerk.ClientConfig{

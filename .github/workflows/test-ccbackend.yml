@@ -1,0 +1,115 @@
+name: Test ccbackend
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'ccbackend/**'
+      - '.github/workflows/test-ccbackend.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'ccbackend/**'
+      - '.github/workflows/test-ccbackend.yml'
+
+jobs:
+  test-ccbackend:
+    name: Test ccbackend
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        cache-dependency-path: ccbackend/go.sum
+
+    - name: Wait for PostgreSQL to be ready
+      run: |
+        timeout 60 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
+    - name: Apply database migrations
+      run: |
+        cd ccbackend
+        # Apply all migrations manually to the PostgreSQL service
+        for migration in supabase/migrations/*.sql; do
+          echo "Applying migration: $migration"
+          psql postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable -f "$migration"
+        done
+    - name: Set up test environment variables
+      run: |
+        cd ccbackend
+        echo "SLACK_SIGNING_SECRET=test_signing_secret" >> .env.test
+        echo "SLACK_BOT_TOKEN=NA" >> .env.test
+        echo "SLACK_CLIENT_ID=NA" >> .env.test
+        echo "SLACK_CLIENT_SECRET=NA" >> .env.test
+        echo "DB_URL=postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable" > .env.test
+        echo "DB_SCHEMA=claudecontrol_test" >> .env.test
+        echo "CLERK_SECRET_KEY=${{ secrets.CLERK_TEST_SECRET_KEY }}" >> .env.test
+        echo "CORS_ALLOWED_ORIGINS=*" >> .env.test
+        echo "PORT=8080" >> .env.test
+        echo "Created .env.test file:"
+        cat .env.test
+    - name: Download Go modules
+      run: |
+        cd ccbackend
+        go mod download
+    - name: Test DB connection
+      run: |
+        cd ccbackend
+        echo "Environment variables:"
+        echo "DB_URL=$DB_URL"
+        echo "DB_SCHEMA=$DB_SCHEMA"
+        echo "Testing database connection:"
+        pg_isready -h localhost -p 5432 -U postgres || echo "DB not ready on 5432"
+        psql postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable -c "SELECT version();" || echo "Connection failed"
+      env:
+        DB_URL: postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable
+        DB_SCHEMA: claudecontrol_test
+
+    - name: Run tests
+      run: |
+        cd ccbackend
+        # Export environment variables to make them available to the test process
+        export DB_URL="postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+        export DB_SCHEMA="claudecontrol_test"
+        export SLACK_SIGNING_SECRET="test_signing_secret"
+        export SLACK_BOT_TOKEN="test_bot_token" 
+        export CLERK_SECRET_KEY="${{ secrets.CLERK_TEST_SECRET_KEY }}"
+        echo "Exported environment variables:"
+        echo "DB_URL=$DB_URL"
+        echo "DB_SCHEMA=$DB_SCHEMA"
+        make test
+      env:
+        DB_URL: postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable
+        DB_SCHEMA: claudecontrol_test
+        SLACK_SIGNING_SECRET: test_signing_secret
+        SLACK_BOT_TOKEN: test_bot_token
+        CLERK_SECRET_KEY: ${{ secrets.CLERK_TEST_SECRET_KEY }}
