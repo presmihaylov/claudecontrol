@@ -23,4 +23,5 @@ lint:
 	golangci-lint run
 
 lint-fix:
+	goimports -w .
 	golangci-lint run --fix

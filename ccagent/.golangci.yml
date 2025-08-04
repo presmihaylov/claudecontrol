@@ -7,7 +7,7 @@ linters-settings:
     sections:
       - standard
       - default
-      - prefix(github.com/presmihaylov/ccpg/cc2/ccagent)
+      - prefix(ccagent)
   gocritic:
     enabled-tags:
       - diagnostic

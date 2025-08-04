@@ -1,8 +1,9 @@
 package services
 
 import (
-	"ccagent/models"
 	"github.com/google/uuid"
+
+	"ccagent/models"
 )
 
 type SessionService struct{}
