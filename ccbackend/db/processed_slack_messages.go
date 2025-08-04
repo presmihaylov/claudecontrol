@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"ccbackend/models"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+
+	"ccbackend/models"
 )
 
 type PostgresProcessedSlackMessagesRepository struct {

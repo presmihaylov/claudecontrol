@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 
-	"ccbackend/models"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
+
+	"ccbackend/models"
 )
 
 type PostgresAgentsRepository struct {

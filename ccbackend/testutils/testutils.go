@@ -6,13 +6,14 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/require"
+
 	"ccbackend/appctx"
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/models"
-	"github.com/google/uuid"
-	"github.com/joho/godotenv"
-	"github.com/stretchr/testify/require"
 )
 
 // LoadTestConfig loads configuration for tests from environment variables

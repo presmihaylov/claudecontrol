@@ -8,11 +8,12 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"ccbackend/appctx"
 	"ccbackend/clients"
 	"ccbackend/db"
 	"ccbackend/models"
-	"github.com/google/uuid"
 )
 
 type SlackIntegrationsService struct {

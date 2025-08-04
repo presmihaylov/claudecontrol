@@ -5,9 +5,10 @@ import (
 	"log"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"ccbackend/db"
 	"ccbackend/models"
-	"github.com/google/uuid"
 )
 
 type AgentsService struct {
