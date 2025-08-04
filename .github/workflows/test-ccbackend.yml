@@ -65,15 +65,11 @@ jobs:
     - name: Set up test environment variables
       run: |
         cd ccbackend
-        echo "SLACK_SIGNING_SECRET=\"NA\"" > .env.test
-        echo "SLACK_BOT_TOKEN=\"NA\"" >> .env.test
-        echo "SLACK_CLIENT_ID=\"NA\"" >> .env.test
-        echo "SLACK_CLIENT_SECRET=\"NA\"" >> .env.test
-        echo "DB_URL=postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres?sslmode=disable" >> .env.test
+        echo "DB_URL=postgresql://postgres:postgres@localhost:54322/postgres" > .env.test
         echo "DB_SCHEMA=claudecontrol_test" >> .env.test
-        echo "CLERK_SECRET_KEY=sk_test_6rxe9xRkj0rwr35AjCtCfPanEE7Xr9Yjd4e42YGKMW" >> .env.test
-        echo "CORS_ALLOWED_ORIGINS=*" >> .env.test
-        echo "PORT=8080" >> .env.test
+        echo "SLACK_SIGNING_SECRET=test_signing_secret" >> .env.test
+        echo "SLACK_BOT_TOKEN=test_bot_token" >> .env.test
+        echo "CLERK_SECRET_KEY=test_clerk_key" >> .env.test
         echo "Created .env.test file:"
         cat .env.test
 
@@ -94,65 +90,49 @@ jobs:
         echo "Content of .env.test:"
         cat .env.test || echo ".env.test not found"
         echo "Testing database connection:"
-        pg_isready -h localhost -p 54329 -U postgres.pooler-dev || echo "DB not ready on 54329"
-        psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres?sslmode=disable" -c "SELECT version();" || echo "Connection failed"
+        pg_isready -h localhost -p 54322 -U postgres || echo "DB not ready on 54322"
+        psql postgresql://postgres:postgres@localhost:54322/postgres -c "SELECT version();" || echo "Connection failed"
       env:
-        DB_URL: postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres?sslmode=disable
+        DB_URL: postgresql://postgres:postgres@localhost:54322/postgres
         DB_SCHEMA: claudecontrol_test
 
     - name: Run tests
       run: |
         cd ccbackend
         # Export environment variables to make them available to the test process
-        export DB_URL="postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres?sslmode=disable"
+        export DB_URL="postgresql://postgres:postgres@localhost:54322/postgres"
         export DB_SCHEMA="claudecontrol_test"
-        export SLACK_SIGNING_SECRET="NA"
-        export SLACK_BOT_TOKEN="NA" 
-        export SLACK_CLIENT_ID="NA"
-        export SLACK_CLIENT_SECRET="NA"
-        export CLERK_SECRET_KEY="sk_test_6rxe9xRkj0rwr35AjCtCfPanEE7Xr9Yjd4e42YGKMW"
-        export CORS_ALLOWED_ORIGINS="*"
-        export PORT="8080"
+        export SLACK_SIGNING_SECRET="test_signing_secret"
+        export SLACK_BOT_TOKEN="test_bot_token" 
+        export CLERK_SECRET_KEY="test_clerk_key"
         echo "Exported environment variables:"
         echo "DB_URL=$DB_URL"
         echo "DB_SCHEMA=$DB_SCHEMA"
         make test
       env:
-        DB_URL: postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres?sslmode=disable
+        DB_URL: postgresql://postgres:postgres@localhost:54322/postgres
         DB_SCHEMA: claudecontrol_test
-        SLACK_SIGNING_SECRET: "NA"
-        SLACK_BOT_TOKEN: "NA"
-        SLACK_CLIENT_ID: "NA"
-        SLACK_CLIENT_SECRET: "NA"
-        CLERK_SECRET_KEY: sk_test_6rxe9xRkj0rwr35AjCtCfPanEE7Xr9Yjd4e42YGKMW
-        CORS_ALLOWED_ORIGINS: "*"
-        PORT: "8080"
+        SLACK_SIGNING_SECRET: test_signing_secret
+        SLACK_BOT_TOKEN: test_bot_token
+        CLERK_SECRET_KEY: test_clerk_key
 
     - name: Run tests with verbose output on failure
       if: failure()
       run: |
         cd ccbackend
         # Export environment variables to make them available to the test process
-        export DB_URL="postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres?sslmode=disable"
+        export DB_URL="postgresql://postgres:postgres@localhost:54322/postgres"
         export DB_SCHEMA="claudecontrol_test"
-        export SLACK_SIGNING_SECRET="NA"
-        export SLACK_BOT_TOKEN="NA" 
-        export SLACK_CLIENT_ID="NA"
-        export SLACK_CLIENT_SECRET="NA"
-        export CLERK_SECRET_KEY="sk_test_6rxe9xRkj0rwr35AjCtCfPanEE7Xr9Yjd4e42YGKMW"
-        export CORS_ALLOWED_ORIGINS="*"
-        export PORT="8080"
+        export SLACK_SIGNING_SECRET="test_signing_secret"
+        export SLACK_BOT_TOKEN="test_bot_token" 
+        export CLERK_SECRET_KEY="test_clerk_key"
         make test-verbose
       env:
-        DB_URL: postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres?sslmode=disable
+        DB_URL: postgresql://postgres:postgres@localhost:54322/postgres
         DB_SCHEMA: claudecontrol_test
-        SLACK_SIGNING_SECRET: "NA"
-        SLACK_BOT_TOKEN: "NA"
-        SLACK_CLIENT_ID: "NA"
-        SLACK_CLIENT_SECRET: "NA"
-        CLERK_SECRET_KEY: sk_test_6rxe9xRkj0rwr35AjCtCfPanEE7Xr9Yjd4e42YGKMW
-        CORS_ALLOWED_ORIGINS: "*"
-        PORT: "8080"
+        SLACK_SIGNING_SECRET: test_signing_secret
+        SLACK_BOT_TOKEN: test_bot_token
+        CLERK_SECRET_KEY: test_clerk_key
 
     - name: Stop Supabase
       if: always()
