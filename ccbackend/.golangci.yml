@@ -20,11 +20,6 @@ linters-settings:
       - shadow
   misspell:
     locale: US
-  nolintlint:
-    allow-leading-space: true
-    allow-unused: false
-    require-explanation: false
-    require-specific: false
   lll:
     line-length: 140
 
