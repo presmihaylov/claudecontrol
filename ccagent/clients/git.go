@@ -396,6 +396,24 @@ func (g *GitClient) GetLatestCommitHash() (string, error) {
 	return commitHash, nil
 }
 
+// getRawRemoteURL gets the remote URL without any conversion (for error messages)
+func (g *GitClient) getRawRemoteURL() (string, error) {
+	log.Info("📋 Starting to get raw remote URL")
+
+	cmd := exec.Command("git", "remote", "get-url", "origin")
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to get raw remote URL: %v\nOutput: %s", err, string(output))
+		return "", fmt.Errorf("failed to get raw remote URL: %w\nOutput: %s", err, string(output))
+	}
+
+	rawRemoteURL := strings.TrimSpace(string(output))
+	log.Info("✅ Raw remote URL: %s", rawRemoteURL)
+	log.Info("📋 Completed successfully - got raw remote URL")
+	return rawRemoteURL, nil
+}
+
 func (g *GitClient) GetRemoteURL() (string, error) {
 	log.Info("📋 Starting to get remote URL")
 
@@ -578,14 +596,14 @@ func (g *GitClient) GetBranchDiffContent(branchName, baseBranch string) (string,
 func (g *GitClient) ValidateRemoteAccess() error {
 	log.Info("📋 Starting to validate remote repository access")
 
-	// Get remote URL first
-	remoteURL, err := g.GetRemoteURL()
+	// Get raw remote URL for error messages (without conversion)
+	rawRemoteURL, err := g.getRawRemoteURL()
 	if err != nil {
 		log.Error("❌ Failed to get remote URL: %v", err)
 		return fmt.Errorf("failed to get remote URL: %w", err)
 	}
 
-	log.Info("🔍 Testing remote access for: %s", remoteURL)
+	log.Info("🔍 Testing remote access for: %s", rawRemoteURL)
 
 	// Test remote access with git ls-remote HEAD with 10s timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -597,12 +615,14 @@ func (g *GitClient) ValidateRemoteAccess() error {
 	cmd.Env = append(os.Environ(),
 		"GIT_TERMINAL_PROMPT=0",
 		"SSH_ASKPASS=",
+		"DISPLAY=", // Disable X11 forwarding for SSH
+		"GIT_SSH_COMMAND=ssh -o BatchMode=yes -o ConnectTimeout=10", // Force non-interactive SSH
 	)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Error("❌ Remote access validation failed: %v\nOutput: %s", err, string(output))
-		return g.parseRemoteAccessError(err, string(output), remoteURL)
+		return g.parseRemoteAccessError(err, string(output), rawRemoteURL)
 	}
 
 	log.Info("✅ Remote repository access validated successfully")
@@ -620,7 +640,12 @@ func (g *GitClient) parseRemoteAccessError(err error, output, remoteURL string) 
 
 	// SSH credential issues
 	if strings.Contains(outputStr, "permission denied (publickey)") {
-		return fmt.Errorf("SSH key authentication failed for %s. Please ensure your SSH key is added to your Git provider and ssh-agent", remoteURL)
+		return fmt.Errorf("SSH key authentication failed for %s. Please ensure your SSH key is added to your Git provider and loaded in ssh-agent (or use a key without passphrase)", remoteURL)
+	}
+
+	// SSH passphrase/key loading issues
+	if strings.Contains(outputStr, "enter passphrase") || strings.Contains(outputStr, "bad passphrase") {
+		return fmt.Errorf("SSH key requires passphrase for %s. Please add your key to ssh-agent with 'ssh-add ~/.ssh/id_rsa' or use a key without passphrase", remoteURL)
 	}
 
 	if strings.Contains(outputStr, "could not read from remote repository") {
