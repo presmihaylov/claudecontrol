@@ -92,34 +92,6 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 			return fmt.Errorf("failed to process job complete: %w", err)
 		}
 
-	case models.MessageTypeHealthcheckAck:
-		var payload models.HealthcheckAckPayload
-		if err := unmarshalPayload(parsedMsg.Payload, &payload); err != nil {
-			log.Printf("❌ Failed to unmarshal healthcheck ack payload from client %s: %v", client.ID, err)
-			return fmt.Errorf("failed to unmarshal healthcheck ack payload: %w", err)
-		}
-
-		log.Printf("💓 Received healthcheck ack from client %s", client.ID)
-		if err := h.coreUseCase.ProcessHealthcheckAck(client.ID, payload, client.SlackIntegrationID); err != nil {
-			log.Printf("❌ Failed to process healthcheck ack from client %s: %v", client.ID, err)
-			return fmt.Errorf("failed to process healthcheck ack: %w", err)
-		}
-
-	case models.MessageTypeHealthcheckCheck:
-		var payload models.HealthcheckCheckPayload
-		if err := unmarshalPayload(parsedMsg.Payload, &payload); err != nil {
-			log.Printf("❌ Failed to unmarshal healthcheck check payload from client %s: %v", client.ID, err)
-			return fmt.Errorf("failed to unmarshal healthcheck check payload: %w", err)
-		}
-
-		log.Printf("💓 Received healthcheck check from client %s - sending ack", client.ID)
-
-		// Send healthcheck ack back to the client
-		if err := h.coreUseCase.SendHealthcheckAck(client.ID, client.SlackIntegrationID); err != nil {
-			log.Printf("❌ Failed to send healthcheck ack to client %s: %v", client.ID, err)
-			return fmt.Errorf("failed to send healthcheck ack: %w", err)
-		}
-
 	default:
 		log.Printf("⚠️ Unknown message type '%s' from client %s", parsedMsg.Type, client.ID)
 		return fmt.Errorf("unknown message type: %s", parsedMsg.Type)

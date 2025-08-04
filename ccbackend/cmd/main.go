@@ -66,9 +66,8 @@ func run() error {
 
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)
 
-	// Initialize message processor and reliable message handler
+	// Initialize message processor
 	messageProcessor := services.NewMessageProcessor(wsClient)
-	reliableMessageHandler := services.NewReliableMessageHandler(wsClient, messageProcessor)
 
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, messageProcessor)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
@@ -103,52 +102,14 @@ func run() error {
 		return nil
 	})
 
-	// Register acknowledgment handler first
+	// Register WebSocket message handler
 	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
-		msgMap, ok := msg.(map[string]any)
-		if !ok {
-			return
-		}
-
-		msgType, hasType := msgMap["type"].(string)
-		if !hasType {
-			return
-		}
-
-		// Handle acknowledgment messages
-		if msgType == "acknowledgement" {
-			if payload, ok := msgMap["payload"].(map[string]any); ok {
-				if messageID, ok := payload["messageId"].(string); ok {
-					messageProcessor.HandleAcknowledgement(messageID)
-				}
-			}
-			return
-		}
-	})
-
-	// Register reliable message handler second (for deduplication and acknowledgements)
-	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
-		isAlreadyProcessed, err := reliableMessageHandler.ProcessReliableMessage(client, msg)
-		if err != nil {
-			log.Printf("❌ Error processing reliable message from client %s: %v", client.ID, err)
-			return
-		}
-		if isAlreadyProcessed {
-			return
-		}
-		// Handle message normally
 		if err := wsHandler.HandleMessage(client, msg); err != nil {
 			log.Printf("❌ Error handling message from client %s: %v", client.ID, err)
-			// Do not mark message as processed - let it be retried from ccagent
-			return
-		}
-		// Mark message as processed after successful handling
-		if err := reliableMessageHandler.MarkMessageProcessed(client, msg); err != nil {
-			log.Printf("❌ Error marking message as processed from client %s: %v", client.ID, err)
 		}
 	})
 
-	// Start periodic broadcast of CheckIdleJobs, healthcheck, cleanup of inactive agents, and processing of queued jobs
+	// Start periodic broadcast of CheckIdleJobs, cleanup of inactive agents, and processing of queued jobs
 	cleanupTicker := time.NewTicker(2 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
@@ -157,9 +118,6 @@ func run() error {
 			}
 			if err := coreUseCase.BroadcastCheckIdleJobs(); err != nil {
 				log.Printf("⚠️ Periodic CheckIdleJobs broadcast encountered errors: %v", err)
-			}
-			if err := coreUseCase.BroadcastHealthcheck(); err != nil {
-				log.Printf("⚠️ Periodic healthcheck broadcast encountered errors: %v", err)
 			}
 			if err := coreUseCase.CleanupInactiveAgents(); err != nil {
 				log.Printf("⚠️ Periodic inactive agent cleanup encountered errors: %v", err)

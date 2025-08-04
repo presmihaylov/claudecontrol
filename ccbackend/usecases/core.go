@@ -340,7 +340,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 		},
 	}
 
-	if _, err := s.messageProcessor.SendMessageReliably(clientID, startConversationMessage); err != nil {
+	if _, err := s.messageProcessor.SendMessage(clientID, startConversationMessage); err != nil {
 		return fmt.Errorf("failed to send start conversation message to client %s: %v", clientID, err)
 	}
 	log.Printf("🚀 Sent start conversation message to client %s", clientID)
@@ -376,7 +376,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 		},
 	}
 
-	if _, err := s.messageProcessor.SendMessageReliably(clientID, userMessage); err != nil {
+	if _, err := s.messageProcessor.SendMessage(clientID, userMessage); err != nil {
 		return fmt.Errorf("failed to send user message to client %s: %v", clientID, err)
 	}
 	log.Printf("💬 Sent user message to client %s", clientID)
@@ -706,7 +706,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 		}
 
 		for _, agent := range connectedAgents {
-			if _, err := s.messageProcessor.SendMessageReliably(agent.WSConnectionID, checkIdleJobsMessage); err != nil {
+			if _, err := s.messageProcessor.SendMessage(agent.WSConnectionID, checkIdleJobsMessage); err != nil {
 				broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to send CheckIdleJobs message to agent %s: %v", agent.ID, err))
 				continue
 			}
@@ -795,102 +795,6 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 
 	log.Printf("📤 Sent completion message to Slack thread %s: %s", job.SlackThreadTS, completionMessage)
 	log.Printf("📋 Completed successfully - processed job complete for job %s", jobID)
-	return nil
-}
-
-func (s *CoreUseCase) ProcessHealthcheckAck(clientID string, payload models.HealthcheckAckPayload, slackIntegrationID string) error {
-	log.Printf("📋 Starting to process healthcheck ack from client %s", clientID)
-
-	// Update the last_active_at timestamp for this agent
-	if err := s.agentsService.UpdateAgentLastActiveAt(clientID, slackIntegrationID); err != nil {
-		log.Printf("❌ Failed to update last_active_at for client %s: %v", clientID, err)
-		return fmt.Errorf("failed to update agent last_active_at: %w", err)
-	}
-
-	log.Printf("📋 Completed successfully - updated last_active_at for client %s", clientID)
-	return nil
-}
-
-func (s *CoreUseCase) SendHealthcheckAck(clientID string, slackIntegrationID string) error {
-	log.Printf("📋 Starting to send healthcheck ack to client %s", clientID)
-
-	// Create healthcheck ack message
-	healthcheckAckMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
-		Type:    models.MessageTypeHealthcheckAck,
-		Payload: models.HealthcheckAckPayload{},
-	}
-
-	// Send the message to the client
-	if _, err := s.messageProcessor.SendMessageReliably(clientID, healthcheckAckMsg); err != nil {
-		log.Printf("❌ Failed to send healthcheck ack to client %s: %v", clientID, err)
-		return fmt.Errorf("failed to send healthcheck ack: %w", err)
-	}
-
-	log.Printf("📋 Completed successfully - sent healthcheck ack to client %s", clientID)
-	return nil
-}
-
-func (s *CoreUseCase) BroadcastHealthcheck() error {
-	log.Printf("📋 Starting to broadcast healthcheck to all connected agents")
-
-	// Get all slack integrations to broadcast to agents in each integration
-	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
-	if err != nil {
-		return fmt.Errorf("failed to get slack integrations: %w", err)
-	}
-
-	if len(integrations) == 0 {
-		log.Printf("📋 No slack integrations found")
-		return nil
-	}
-
-	totalAgentCount := 0
-	var broadcastErrors []string
-	connectedClientIDs := s.wsClient.GetClientIDs()
-	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
-
-	for _, integration := range integrations {
-		slackIntegrationID := integration.ID.String()
-
-		// Get connected agents for this integration using centralized service method
-		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
-		if err != nil {
-			broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to get connected agents for integration %s: %v", slackIntegrationID, err))
-			continue
-		}
-
-		if len(connectedAgents) == 0 {
-			continue
-		}
-
-		log.Printf("💓 Broadcasting healthcheck to %d connected agents for integration %s", len(connectedAgents), slackIntegrationID)
-
-		// Send healthcheck message to each connected agent
-		healthcheckMessage := models.UnknownMessage{
-			ID:      uuid.New().String(),
-			Type:    models.MessageTypeHealthcheckCheck,
-			Payload: models.HealthcheckCheckPayload{},
-		}
-
-		for _, agent := range connectedAgents {
-			if _, err := s.messageProcessor.SendMessageReliably(agent.WSConnectionID, healthcheckMessage); err != nil {
-				broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to send healthcheck message to agent %s: %v", agent.ID, err))
-				continue
-			}
-			log.Printf("💓 Sent healthcheck message to agent %s", agent.ID)
-			totalAgentCount++
-		}
-	}
-
-	log.Printf("📋 Completed broadcast - sent healthcheck to %d agents", totalAgentCount)
-
-	// Return error if there were any broadcast failures
-	if len(broadcastErrors) > 0 {
-		return fmt.Errorf("healthcheck broadcast encountered %d errors: %s", len(broadcastErrors), strings.Join(broadcastErrors, "; "))
-	}
-
-	log.Printf("📋 Completed successfully - broadcasted healthcheck to %d agents", totalAgentCount)
 	return nil
 }
 
