@@ -35,7 +35,7 @@ jobs:
     - name: Start Supabase local development
       run: |
         cd ccbackend
-        supabase start --ignore-health-check
+        supabase start --ignore-health-check --exclude gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
       env:
         SUPABASE_DB_PASSWORD: postgres
 
