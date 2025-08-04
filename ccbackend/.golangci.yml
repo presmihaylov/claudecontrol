@@ -87,5 +87,8 @@ issues:
     - text: "shadow: declaration of"
       linters:
         - govet
+    - text: "should not use underscores in Go names"
+      linters:
+        - stylecheck
   max-issues-per-linter: 0
   max-same-issues: 0
