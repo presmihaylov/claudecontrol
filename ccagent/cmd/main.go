@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -15,7 +14,9 @@ import (
 
 	"github.com/gammazero/workerpool"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
+	socketio "github.com/googollee/go-socket.io"
+	"github.com/googollee/go-socket.io/engineio/transport"
+	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 	"github.com/jessevdk/go-flags"
 
 	"ccagent/clients"
@@ -133,10 +134,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get WebSocket URL from environment variable with default fallback
+	// Get Socket.IO URL from environment variable with default fallback
 	wsURL := os.Getenv("CCAGENT_WS_API_URL")
 	if wsURL == "" {
-		wsURL = "wss://claudecontrol.onrender.com/ws"
+		wsURL = "https://claudecontrol.onrender.com"
 	}
 
 	// Set up deferred cleanup
@@ -144,26 +145,17 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
 	}()
 
-	// Start WebSocket client
-	err = cmdRunner.startWebSocketClient(wsURL, ccagentAPIKey)
+	// Start Socket.IO client
+	err = cmdRunner.startSocketIOClient(wsURL, ccagentAPIKey)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error starting WebSocket client: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error starting Socket.IO client: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
-	log.Info("📋 Starting to connect to WebSocket server at %s", serverURLStr)
-	serverURL, err := url.Parse(serverURLStr)
-	if err != nil {
-		return fmt.Errorf("invalid URL: %w", err)
-	}
-
-	// Initialize reconnect channel if not already initialized
-	if cr.reconnectChan == nil {
-		cr.reconnectChan = make(chan struct{}, 1)
-	}
-
+func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
+	log.Info("📋 Starting to connect to Socket.IO server at %s", serverURLStr)
+	
 	// Set up global interrupt handling
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -179,8 +171,8 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 	}
 
 	for {
-		conn, connected := cr.connectWithRetry(serverURL.String(), apiKey, retryIntervals, interrupt)
-		if conn == nil {
+		client, connected := cr.connectSocketIOWithRetry(serverURLStr, apiKey, retryIntervals, interrupt)
+		if client == nil {
 			select {
 			case <-interrupt:
 				log.Info("🔌 Interrupt received during connection attempts, shutting down")
@@ -201,7 +193,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 			}
 		}
 
-		log.Info("✅ Connected to WebSocket server")
+		log.Info("✅ Connected to Socket.IO server")
 
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
@@ -210,57 +202,23 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 		wp := workerpool.New(1)
 		defer wp.StopWait()
 
-		// Initialize worker pool for message processing
+		// Set up event handlers
+		cr.setupSocketIOEventHandlers(client, wp, reconnect)
 
-		// Start message reading goroutine
-		go func() {
-			defer close(done)
-			defer wp.StopWait() // Ensure all queued messages complete
-
-			for {
-				var msg models.UnknownMessage
-				err := conn.ReadJSON(&msg)
-				if err != nil {
-					log.Info("❌ Read error: %v", err)
-
-					// trigger ws reconnect
-					close(reconnect)
-					return
-				}
-
-				log.Info("📨 Received message type: %s", msg.Type)
-
-				// Submit to worker pool for sequential processing
-				wp.Submit(func() {
-					cr.handleMessage(msg, conn)
-				})
-			}
-		}()
-
-		// Wait for connection to close or interruption
+		// Wait for connection to close or interruption  
 		shouldExit := false
 		select {
 		case <-done:
 			// Connection closed, trigger reconnection
-			conn.Close()
+			client.Close()
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-reconnect:
-			// Connection lost from read goroutine, trigger reconnection
-			conn.Close()
+			// Connection lost, trigger reconnection
+			client.Close()
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-interrupt:
 			log.Info("🔌 Interrupt received, closing connection...")
-
-			err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Info("❌ Failed to send close message: %v", err)
-			}
-
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
-			conn.Close()
+			client.Close()
 			shouldExit = true
 		}
 
@@ -270,16 +228,18 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 	}
 }
 
-func (cr *CmdRunner) connectWithRetry(serverURL, apiKey string, retryIntervals []time.Duration, interrupt <-chan os.Signal) (*websocket.Conn, bool) {
-	log.Info("🔌 Attempting to connect to WebSocket server at %s", serverURL)
+func (cr *CmdRunner) connectSocketIOWithRetry(serverURL, apiKey string, retryIntervals []time.Duration, interrupt <-chan os.Signal) (*socketio.Client, bool) {
+	log.Info("🔌 Attempting to connect to Socket.IO server at %s", serverURL)
 
-	headers := http.Header{
-		"X-CCAGENT-API-KEY": []string{apiKey},
-		"X-CCAGENT-ID":      []string{cr.agentID.String()},
-	}
-	conn, _, err := websocket.DefaultDialer.Dial(serverURL, headers)
+	// Build Socket.IO URL with query parameters for authentication
+	socketURL := fmt.Sprintf("%s/socket.io/?api_key=%s&agent_id=%s", serverURL, url.QueryEscape(apiKey), url.QueryEscape(cr.agentID.String()))
+	
+	client, err := socketio.NewClient(socketURL)
 	if err == nil {
-		return conn, true
+		err = client.Connect()
+		if err == nil {
+			return client, true
+		}
 	}
 
 	log.Info("❌ Initial connection failed: %v", err)
@@ -299,11 +259,14 @@ func (cr *CmdRunner) connectWithRetry(serverURL, apiKey string, retryIntervals [
 			return nil, false
 		}
 
-		log.Info("🔌 Retry attempt %d/%d: connecting to %s", attempt+1, len(retryIntervals), serverURL)
-		conn, _, err := websocket.DefaultDialer.Dial(serverURL, headers)
+		log.Info("🔌 Retry attempt %d/%d: connecting to %s", attempt+1, len(retryIntervals), socketURL)
+		client, err := socketio.NewClient(socketURL)
 		if err == nil {
-			log.Info("✅ Successfully connected on retry attempt %d/%d", attempt+1, len(retryIntervals))
-			return conn, true
+			err = client.Connect()
+			if err == nil {
+				log.Info("✅ Successfully connected on retry attempt %d/%d", attempt+1, len(retryIntervals))
+				return client, true
+			}
 		}
 
 		log.Info("❌ Retry attempt %d/%d failed: %v", attempt+1, len(retryIntervals), err)
@@ -311,6 +274,54 @@ func (cr *CmdRunner) connectWithRetry(serverURL, apiKey string, retryIntervals [
 
 	log.Info("💀 All %d retry attempts failed, giving up", len(retryIntervals))
 	return nil, false
+}
+
+func (cr *CmdRunner) setupSocketIOEventHandlers(client *socketio.Client, wp *workerpool.WorkerPool, reconnect chan struct{}) {
+	// Handle connection events
+	client.OnConnect(func() {
+		log.Info("🔗 Socket.IO connected")
+	})
+
+	client.OnDisconnect(func() {
+		log.Info("🔌 Socket.IO disconnected")
+		close(reconnect)
+	})
+
+	client.OnError(func(err error) {
+		log.Info("❌ Socket.IO error: %v", err)
+		close(reconnect)
+	})
+
+	// Handle message events - maintain compatibility with existing protocol
+	client.On("message", func(data any) {
+		log.Info("📥 Generic message received")
+		wp.Submit(func() {
+			cr.handleSocketIOMessage(data, client)
+		})
+	})
+
+	// Handle specific event types
+	eventTypes := []string{
+		"start_conversation_v1",
+		"user_message_v1",
+		"job_unassigned_v1", 
+		"check_idle_jobs_v1",
+	}
+
+	for _, eventType := range eventTypes {
+		eventType := eventType // capture for closure
+		client.On(eventType, func(data any) {
+			log.Info("📥 Event '%s' received", eventType)
+			wp.Submit(func() {
+				// Convert to compatible message format
+				msg := models.UnknownMessage{
+					Type:    eventType,
+					Payload: data,
+				}
+				cr.handleSocketIOMessage(msg, client)
+			})
+		})
+	}
 }
 
 func (cr *CmdRunner) setupProgramLogging() (string, error) {
@@ -343,46 +354,63 @@ func (cr *CmdRunner) setupProgramLogging() (string, error) {
 	return logFilePath, nil
 }
 
-func (cr *CmdRunner) handleMessage(msg models.UnknownMessage, conn *websocket.Conn) {
-	switch msg.Type {
+func (cr *CmdRunner) handleSocketIOMessage(msg any, client *socketio.Client) {
+	// Convert message to UnknownMessage format if needed
+	var unknownMsg models.UnknownMessage
+	if umsg, ok := msg.(models.UnknownMessage); ok {
+		unknownMsg = umsg
+	} else {
+		// Try to convert from raw data
+		msgBytes, err := json.Marshal(msg)
+		if err != nil {
+			log.Info("❌ Failed to marshal message: %v", err)
+			return
+		}
+		if err := json.Unmarshal(msgBytes, &unknownMsg); err != nil {
+			log.Info("❌ Failed to parse message: %v", err)
+			return
+		}
+	}
+
+	switch unknownMsg.Type {
 	case models.MessageTypeStartConversation:
-		if err := cr.handleStartConversation(msg, conn); err != nil {
+		if err := cr.handleStartConversation(unknownMsg, client); err != nil {
 			// Extract SlackMessageID from payload for error reporting
 			var payload models.StartConversationPayload
 			slackMessageID := ""
-			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
+			if unmarshalErr := unmarshalPayload(unknownMsg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			if sendErr := cr.sendErrorMessage(conn, err, slackMessageID); sendErr != nil {
+			if sendErr := cr.sendErrorMessage(client, err, slackMessageID); sendErr != nil {
 				log.Error("Failed to send error message: %v", sendErr)
 			}
 		}
 	case models.MessageTypeUserMessage:
-		if err := cr.handleUserMessage(msg, conn); err != nil {
+		if err := cr.handleUserMessage(unknownMsg, client); err != nil {
 			// Extract SlackMessageID from payload for error reporting
 			var payload models.UserMessagePayload
 			slackMessageID := ""
-			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
+			if unmarshalErr := unmarshalPayload(unknownMsg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			if sendErr := cr.sendErrorMessage(conn, err, slackMessageID); sendErr != nil {
+			if sendErr := cr.sendErrorMessage(client, err, slackMessageID); sendErr != nil {
 				log.Error("Failed to send error message: %v", sendErr)
 			}
 		}
 	case models.MessageTypeJobUnassigned:
-		if err := cr.handleJobUnassigned(msg, conn); err != nil {
+		if err := cr.handleJobUnassigned(unknownMsg, client); err != nil {
 			log.Info("❌ Error handling JobUnassigned message: %v", err)
 		}
 	case models.MessageTypeCheckIdleJobs:
-		if err := cr.handleCheckIdleJobs(msg, conn); err != nil {
+		if err := cr.handleCheckIdleJobs(unknownMsg, client); err != nil {
 			log.Info("❌ Error handling CheckIdleJobs message: %v", err)
 		}
 	default:
-		log.Info("⚠️ Unhandled message type: %s", msg.Type)
+		log.Info("⚠️ Unhandled message type: %s", unknownMsg.Type)
 	}
 }
 
-func (cr *CmdRunner) handleStartConversation(msg models.UnknownMessage, conn *websocket.Conn) error {
+func (cr *CmdRunner) handleStartConversation(msg models.UnknownMessage, client *socketio.Client) error {
 	log.Info("📋 Starting to handle start conversation message")
 	var payload models.StartConversationPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -391,7 +419,7 @@ func (cr *CmdRunner) handleStartConversation(msg models.UnknownMessage, conn *we
 	}
 
 	// Send processing slack message notification that agent is starting to process
-	if err := cr.sendProcessingSlackMessage(conn, payload.SlackMessageID); err != nil {
+	if err := cr.sendProcessingSlackMessage(client, payload.SlackMessageID); err != nil {
 		log.Info("❌ Failed to send processing slack message notification: %v", err)
 		return fmt.Errorf("failed to send processing slack message notification: %w", err)
 	}
@@ -436,7 +464,7 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 	claudeResult, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions)
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
-		systemErr := cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), payload.SlackMessageID)
+		systemErr := cr.sendSystemMessage(client, fmt.Sprintf("ccagent encountered error: %v", err), payload.SlackMessageID)
 		if systemErr != nil {
 			log.Error("❌ Failed to send system message for Claude error: %v", systemErr)
 		}
@@ -482,14 +510,15 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
-	if err := conn.WriteJSON(assistantMsg); err != nil {
+	client.Emit(assistantMsg.Type, assistantMsg.Payload)
+	if false { // Socket.IO doesn't return errors from emit, so we skip error handling
 		log.Info("❌ Failed to send assistant response: %v", err)
 		return fmt.Errorf("failed to send assistant response: %w", err)
 	}
 	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
 
 	// Send system message after assistant message for git activity
-	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
+	if err := cr.sendGitActivitySystemMessage(client, commitResult, payload.SlackMessageID); err != nil {
 		log.Info("❌ Failed to send git activity system message: %v", err)
 		return fmt.Errorf("failed to send git activity system message: %w", err)
 	}
@@ -504,7 +533,7 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 	return nil
 }
 
-func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, conn *websocket.Conn) error {
+func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, client *socketio.Client) error {
 	log.Info("📋 Starting to handle user message")
 	var payload models.UserMessagePayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -513,7 +542,7 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, conn *websocke
 	}
 
 	// Send processing slack message notification that agent is starting to process
-	if err := cr.sendProcessingSlackMessage(conn, payload.SlackMessageID); err != nil {
+	if err := cr.sendProcessingSlackMessage(client, payload.SlackMessageID); err != nil {
 		log.Info("❌ Failed to send processing slack message notification: %v", err)
 		return fmt.Errorf("failed to send processing slack message notification: %w", err)
 	}
@@ -546,7 +575,7 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, conn *websocke
 	claudeResult, err := cr.claudeService.ContinueConversation(sessionID, payload.Message)
 	if err != nil {
 		log.Info("❌ Error continuing Claude session: %v", err)
-		systemErr := cr.sendSystemMessage(conn, fmt.Sprintf("ccagent encountered error: %v", err), payload.SlackMessageID)
+		systemErr := cr.sendSystemMessage(client, fmt.Sprintf("ccagent encountered error: %v", err), payload.SlackMessageID)
 		if systemErr != nil {
 			log.Error("❌ Failed to send system message for Claude error: %v", systemErr)
 		}
@@ -592,14 +621,15 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, conn *websocke
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
-	if err := conn.WriteJSON(assistantMsg); err != nil {
+	client.Emit(assistantMsg.Type, assistantMsg.Payload)
+	if false { // Socket.IO doesn't return errors from emit, so we skip error handling
 		log.Info("❌ Failed to send assistant response: %v", err)
 		return fmt.Errorf("failed to send assistant response: %w", err)
 	}
 	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
 
 	// Send system message after assistant message for git activity
-	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
+	if err := cr.sendGitActivitySystemMessage(client, commitResult, payload.SlackMessageID); err != nil {
 		log.Info("❌ Failed to send git activity system message: %v", err)
 		return fmt.Errorf("failed to send git activity system message: %w", err)
 	}
@@ -614,7 +644,7 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, conn *websocke
 	return nil
 }
 
-func (cr *CmdRunner) handleJobUnassigned(msg models.UnknownMessage, _ *websocket.Conn) error {
+func (cr *CmdRunner) handleJobUnassigned(msg models.UnknownMessage, _ *socketio.Client) error {
 	log.Info("📋 Starting to handle job unassigned message")
 	var payload models.JobUnassignedPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -627,7 +657,7 @@ func (cr *CmdRunner) handleJobUnassigned(msg models.UnknownMessage, _ *websocket
 	return nil
 }
 
-func (cr *CmdRunner) handleCheckIdleJobs(msg models.UnknownMessage, conn *websocket.Conn) error {
+func (cr *CmdRunner) handleCheckIdleJobs(msg models.UnknownMessage, client *socketio.Client) error {
 	log.Info("📋 Starting to handle check idle jobs message")
 	var payload models.CheckIdleJobsPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -661,7 +691,7 @@ func (cr *CmdRunner) handleCheckIdleJobs(msg models.UnknownMessage, conn *websoc
 	return nil
 }
 
-func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn *websocket.Conn) error {
+func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, client *socketio.Client) error {
 	log.Info("📋 Starting to check idleness for job %s", jobID)
 
 	// Switch to the job's branch to check PR status
@@ -727,7 +757,7 @@ func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn
 	}
 
 	if shouldComplete {
-		if err := cr.sendJobCompleteMessage(conn, jobID, reason); err != nil {
+		if err := cr.sendJobCompleteMessage(client, jobID, reason); err != nil {
 			log.Error("❌ Failed to send job complete message for job %s: %v", jobID, err)
 			return fmt.Errorf("failed to send job complete message: %w", err)
 		}
@@ -741,7 +771,7 @@ func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn
 	return nil
 }
 
-func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason string) error {
+func (cr *CmdRunner) sendJobCompleteMessage(conn *socketio.Client, jobID, reason string) error {
 	log.Info("📋 Sending job complete message for job %s with reason: %s", jobID, reason)
 
 	payload := models.JobCompletePayload{
@@ -754,7 +784,8 @@ func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason 
 		Type:    models.MessageTypeJobComplete,
 		Payload: payload,
 	}
-	if err := conn.WriteJSON(jobMsg); err != nil {
+	client.Emit(jobMsg.Type, jobMsg.Payload)
+	if false { // Socket.IO doesn't return errors from emit, so we skip error handling
 		log.Error("❌ Failed to send job complete message: %v", err)
 		return fmt.Errorf("failed to send job complete message: %w", err)
 	}
@@ -763,7 +794,7 @@ func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason 
 	return nil
 }
 
-func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessageID string) error {
+func (cr *CmdRunner) sendSystemMessage(conn *socketio.Client, message, slackMessageID string) error {
 	payload := models.SystemMessagePayload{
 		Message:        message,
 		SlackMessageID: slackMessageID,
@@ -774,7 +805,8 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 		Type:    models.MessageTypeSystemMessage,
 		Payload: payload,
 	}
-	if err := conn.WriteJSON(sysMsg); err != nil {
+	client.Emit(sysMsg.Type, sysMsg.Payload)
+	if false { // Socket.IO doesn't return errors from emit, so we skip error handling
 		log.Info("❌ Failed to send system message: %v", err)
 		return err
 	}
@@ -785,12 +817,12 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 
 // sendErrorMessage sends an error as a system message. The Claude service handles
 // all error processing internally, so we just need to format and send the error.
-func (cr *CmdRunner) sendErrorMessage(conn *websocket.Conn, err error, slackMessageID string) error {
+func (cr *CmdRunner) sendErrorMessage(conn *socketio.Client, err error, slackMessageID string) error {
 	messageToSend := fmt.Sprintf("ccagent encountered error: %v", err)
-	return cr.sendSystemMessage(conn, messageToSend, slackMessageID)
+	return cr.sendSystemMessage(client, messageToSend, slackMessageID)
 }
 
-func (cr *CmdRunner) sendProcessingSlackMessage(conn *websocket.Conn, slackMessageID string) error {
+func (cr *CmdRunner) sendProcessingSlackMessage(conn *socketio.Client, slackMessageID string) error {
 	processingSlackMessageMsg := models.UnknownMessage{
 		ID:   uuid.New().String(),
 		Type: models.MessageTypeProcessingSlackMessage,
@@ -799,7 +831,8 @@ func (cr *CmdRunner) sendProcessingSlackMessage(conn *websocket.Conn, slackMessa
 		},
 	}
 
-	if err := conn.WriteJSON(processingSlackMessageMsg); err != nil {
+	client.Emit(processingSlackMessageMsg.Type, processingSlackMessageMsg.Payload)
+	if false { // Socket.IO doesn't return errors from emit, so we skip error handling
 		log.Info("❌ Failed to send processing slack message notification: %v", err)
 		return err
 	}
@@ -822,7 +855,7 @@ func extractPRNumber(prURL string) string {
 	return ""
 }
 
-func (cr *CmdRunner) sendGitActivitySystemMessage(conn *websocket.Conn, commitResult *usecases.AutoCommitResult, slackMessageID string) error {
+func (cr *CmdRunner) sendGitActivitySystemMessage(conn *socketio.Client, commitResult *usecases.AutoCommitResult, slackMessageID string) error {
 	if commitResult == nil {
 		return nil
 	}
@@ -830,7 +863,7 @@ func (cr *CmdRunner) sendGitActivitySystemMessage(conn *websocket.Conn, commitRe
 	if commitResult.JustCreatedPR && commitResult.PullRequestLink != "" {
 		// New PR created
 		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
-		if err := cr.sendSystemMessage(conn, message, slackMessageID); err != nil {
+		if err := cr.sendSystemMessage(client, message, slackMessageID); err != nil {
 			log.Info("❌ Failed to send PR creation system message: %v", err)
 			return fmt.Errorf("failed to send PR creation system message: %w", err)
 		}
@@ -851,7 +884,7 @@ func (cr *CmdRunner) sendGitActivitySystemMessage(conn *websocket.Conn, commitRe
 			}
 		}
 
-		if err := cr.sendSystemMessage(conn, message, slackMessageID); err != nil {
+		if err := cr.sendSystemMessage(client, message, slackMessageID); err != nil {
 			log.Info("❌ Failed to send commit system message: %v", err)
 			return fmt.Errorf("failed to send commit system message: %w", err)
 		}

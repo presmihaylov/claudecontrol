@@ -55,7 +55,7 @@ func run() error {
 	slackOAuthClient := clients.NewConcreteSlackClient()
 	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
 
-	// Create API key validator for WebSocket connections
+	// Create API key validator for Socket.IO connections
 	apiKeyValidator := func(apiKey string) (string, error) {
 		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(apiKey)
 		if err != nil {
@@ -89,11 +89,11 @@ func run() error {
 		}
 	}).Methods("GET")
 
-	// Register WebSocket hooks for agent lifecycle
+	// Register Socket.IO hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
 	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
 
-	// Register WebSocket message handler
+	// Register Socket.IO message handler
 	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
 		if err := wsHandler.HandleMessage(client, msg); err != nil {
 			log.Printf("❌ Error handling message from client %s: %v", client.ID, err)

@@ -4,11 +4,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
+	socketio "github.com/googollee/go-socket.io"
+	"github.com/googollee/go-socket.io/engineio"
+	"github.com/googollee/go-socket.io/engineio/transport"
+	"github.com/googollee/go-socket.io/engineio/transport/polling"
+	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 )
 
 type Message struct {
@@ -18,7 +23,7 @@ type Message struct {
 
 type Client struct {
 	ID                 string
-	ClientConn         *websocket.Conn
+	SocketConn         socketio.Conn
 	SlackIntegrationID string
 	AgentID            uuid.UUID
 }
@@ -28,9 +33,9 @@ type ConnectionHookFunc func(client *Client) error
 type APIKeyValidatorFunc func(apiKey string) (string, error)
 
 type WebSocketClient struct {
+	server             *socketio.Server
 	clients            []*Client
 	mutex              sync.RWMutex
-	upgrader           websocket.Upgrader
 	messageHandlers    []MessageHandlerFunc
 	connectionHooks    []ConnectionHookFunc
 	disconnectionHooks []ConnectionHookFunc
@@ -38,101 +43,151 @@ type WebSocketClient struct {
 }
 
 func NewWebSocketClient(apiKeyValidator APIKeyValidatorFunc) *WebSocketClient {
-	return &WebSocketClient{
-		clients: make([]*Client, 0),
-		upgrader: websocket.Upgrader{
-			CheckOrigin: func(_ *http.Request) bool {
-				return true
+	// Create Socket.IO server with custom transports
+	server := socketio.NewServer(&engineio.Options{
+		Transports: []transport.Transport{
+			&polling.Transport{
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
+			},
+			&websocket.Transport{
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
 			},
 		},
+	})
+
+	ws := &WebSocketClient{
+		server:             server,
+		clients:            make([]*Client, 0),
 		messageHandlers:    make([]MessageHandlerFunc, 0),
 		connectionHooks:    make([]ConnectionHookFunc, 0),
 		disconnectionHooks: make([]ConnectionHookFunc, 0),
 		apiKeyValidator:    apiKeyValidator,
 	}
+
+	// Set up connection event handler
+	server.OnConnect("/", func(s socketio.Conn) error {
+		return ws.handleSocketConnection(s)
+	})
+
+	// Set up disconnection event handler
+	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
+		ws.handleSocketDisconnection(s, reason)
+	})
+
+	// Set up message handlers for all message types
+	ws.setupMessageHandlers(server)
+
+	return ws
 }
 
-func (ws *WebSocketClient) RegisterWithRouter(router *mux.Router) {
-	log.Printf("🚀 Registering WebSocket server on /ws endpoint")
-	router.HandleFunc("/ws", ws.handleWebSocketConnection)
-	log.Printf("✅ WebSocket server registered on /ws")
-}
+func (ws *WebSocketClient) handleSocketConnection(s socketio.Conn) error {
+	log.Printf("🔗 New Socket.IO connection from %s", s.RemoteAddr())
 
-func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
-	log.Printf("🔗 New WebSocket connection attempt from %s", r.RemoteAddr)
-
-	// Extract and validate API key before upgrading connection
-	apiKey := r.Header.Get("X-CCAGENT-API-KEY")
+	// Extract and validate authentication from query parameters (since go-socket.io doesn't support custom headers easily)
+	queryValues, err := url.ParseQuery(s.URL().RawQuery)
+	if err != nil {
+		log.Printf("❌ Failed to parse query parameters: %v", err)
+		return fmt.Errorf("failed to parse query parameters")
+	}
+	
+	// Extract and validate API key
+	apiKey := queryValues.Get("api_key")
 	if apiKey == "" {
-		log.Printf("❌ Rejecting WebSocket connection from %s: missing X-CCAGENT-API-KEY header", r.RemoteAddr)
-		http.Error(w, "Missing X-CCAGENT-API-KEY header", http.StatusUnauthorized)
-		return
+		log.Printf("❌ Rejecting Socket.IO connection: missing api_key parameter")
+		return fmt.Errorf("missing api_key parameter")
 	}
 
 	// Extract agent ID and validate it's a UUID
-	agentIDStr := r.Header.Get("X-CCAGENT-ID")
+	agentIDStr := queryValues.Get("agent_id")
 	if agentIDStr == "" {
-		log.Printf("❌ No X-CCAGENT-ID provided, rejecting connection")
-		http.Error(w, "Invalid X-CCAGENT-ID header", http.StatusBadRequest)
-		return
+		log.Printf("❌ No agent_id provided, rejecting connection")
+		return fmt.Errorf("missing agent_id parameter")
 	}
 
 	agentID, err := uuid.Parse(agentIDStr)
 	if err != nil {
-		log.Printf("❌ Rejecting WebSocket connection from %s: invalid agent ID format (must be UUID): %s", r.RemoteAddr, agentIDStr)
-		http.Error(w, "Invalid X-CCAGENT-ID format (must be UUID)", http.StatusBadRequest)
-		return
+		log.Printf("❌ Rejecting Socket.IO connection: invalid agent ID format (must be UUID): %s", agentIDStr)
+		return fmt.Errorf("invalid agent_id format (must be UUID)")
 	}
 
 	// Validate API key
 	slackIntegrationID, err := ws.apiKeyValidator(apiKey)
 	if err != nil {
-		log.Printf("❌ Rejecting WebSocket connection from %s: invalid API key: %v", r.RemoteAddr, err)
-		http.Error(w, "Invalid API key", http.StatusUnauthorized)
-		return
+		log.Printf("❌ Rejecting Socket.IO connection: invalid API key: %v", err)
+		return fmt.Errorf("invalid API key")
 	}
-
-	conn, err := ws.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Printf("❌ WebSocket upgrade failed from %s: %v", r.RemoteAddr, err)
-		return
-	}
-	defer func() {
-		log.Printf("🔌 Closing WebSocket connection")
-		conn.Close()
-	}()
 
 	client := &Client{
-		ID:                 uuid.New().String(),
-		ClientConn:         conn,
+		ID:                 s.ID(),
+		SocketConn:         s,
 		SlackIntegrationID: slackIntegrationID,
 		AgentID:            agentID,
 	}
+
 	ws.addClient(client)
-	log.Printf("✅ WebSocket client connected with ID: %s from %s", client.ID, r.RemoteAddr)
+	log.Printf("✅ Socket.IO client connected with ID: %s", client.ID)
 	ws.invokeConnectionHooks(client)
-	defer func() {
+
+	return nil
+}
+
+func (ws *WebSocketClient) handleSocketDisconnection(s socketio.Conn, reason string) {
+	log.Printf("🔌 Socket.IO client %s disconnected: %s", s.ID(), reason)
+	
+	client := ws.getClientByID(s.ID())
+	if client != nil {
 		ws.invokeDisconnectionHooks(client)
 		ws.removeClient(client.ID)
-	}()
-
-	log.Printf("👂 Starting message listener for client %s", client.ID)
-	for {
-		var msg any
-		err := conn.ReadJSON(&msg)
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("❌ WebSocket unexpected error from client %s: %v", client.ID, err)
-			} else {
-				log.Printf("🔌 WebSocket connection closed for client %s (normal closure)", client.ID)
-			}
-			break
-		}
-
-		log.Printf("📥 Raw message received from client %s", client.ID)
-		ws.invokeMessageHandlers(client, msg)
 	}
-	log.Printf("🛑 Message listener stopped for client %s", client.ID)
+}
+
+func (ws *WebSocketClient) setupMessageHandlers(server *socketio.Server) {
+	// Handle generic message events - maintain compatibility with existing protocol
+	server.OnEvent("/", "message", func(s socketio.Conn, data any) {
+		log.Printf("📥 Message received from client %s", s.ID())
+		client := ws.getClientByID(s.ID())
+		if client != nil {
+			ws.invokeMessageHandlers(client, data)
+		}
+	})
+
+	// Handle specific event types for better Socket.IO integration
+	eventTypes := []string{
+		"start_conversation_v1",
+		"user_message_v1", 
+		"assistant_message_v1",
+		"system_message_v1",
+		"job_complete_v1",
+		"processing_slack_message_v1",
+		"job_unassigned_v1",
+		"check_idle_jobs_v1",
+	}
+
+	for _, eventType := range eventTypes {
+		eventType := eventType // capture for closure
+		server.OnEvent("/", eventType, func(s socketio.Conn, data any) {
+			log.Printf("📥 Event '%s' received from client %s", eventType, s.ID())
+			client := ws.getClientByID(s.ID())
+			if client != nil {
+				// Convert to compatible message format
+				msg := Message{
+					Type:    eventType,
+					Payload: data,
+				}
+				ws.invokeMessageHandlers(client, msg)
+			}
+		})
+	}
+}
+
+func (ws *WebSocketClient) RegisterWithRouter(router *mux.Router) {
+	log.Printf("🚀 Registering Socket.IO server on /socket.io/ endpoint")
+	router.Handle("/socket.io/", ws.server)
+	log.Printf("✅ Socket.IO server registered on /socket.io/")
 }
 
 func (ws *WebSocketClient) addClient(client *Client) {
@@ -148,7 +203,7 @@ func (ws *WebSocketClient) removeClient(clientID string) {
 	for i, client := range ws.clients {
 		if client.ID == clientID {
 			ws.clients = append(ws.clients[:i], ws.clients[i+1:]...)
-			log.Printf("🔌 WebSocket client %s disconnected. Remaining clients: %d", clientID, len(ws.clients))
+			log.Printf("🔌 Socket.IO client %s disconnected. Remaining clients: %d", clientID, len(ws.clients))
 			return
 		}
 	}
@@ -199,11 +254,20 @@ func (ws *WebSocketClient) SendMessage(clientID string, msg any) error {
 		return fmt.Errorf("client with ID %s not found", clientID)
 	}
 
-	if err := client.ClientConn.WriteJSON(msg); err != nil {
-		log.Printf("❌ Failed to send message to client %s: %v", clientID, err)
-		return err
+	// Check if message has a type field for event-based sending
+	if msgMap, ok := msg.(map[string]any); ok {
+		if msgType, hasType := msgMap["type"]; hasType {
+			if typeStr, isString := msgType.(string); isString {
+				// Send as specific event type
+				client.SocketConn.Emit(typeStr, msgMap["payload"])
+				log.Printf("✅ Event '%s' sent successfully to client %s", typeStr, clientID)
+				return nil
+			}
+		}
 	}
-
+	
+	// Fallback to generic message event
+	client.SocketConn.Emit("message", msg)
 	log.Printf("✅ Message sent successfully to client %s", clientID)
 	return nil
 }
