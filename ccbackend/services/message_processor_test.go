@@ -33,19 +33,6 @@ func NewMessageProcessorWithConfig(messageSender MessageSender, config MessagePr
 	return processor
 }
 
-// Helper functions for safe access to private fields that need mutex protection
-func hasPendingMessage(processor *MessageProcessor, messageID string) bool {
-	processor.pendingMutex.RLock()
-	defer processor.pendingMutex.RUnlock()
-	_, exists := processor.pendingMessages[messageID]
-	return exists
-}
-
-func getPendingMessageCount(processor *MessageProcessor) int {
-	processor.pendingMutex.RLock()
-	defer processor.pendingMutex.RUnlock()
-	return len(processor.pendingMessages)
-}
 
 // Test setup helper
 func setupMessageProcessorTest(t *testing.T) (*MessageProcessor, *MockMessageSender, func()) {
@@ -122,8 +109,12 @@ func TestMessageProcessor_ReliableDelivery(t *testing.T) {
 		require.NoError(t, err)
 
 		// Message should be in pending list initially
-		assert.True(t, hasPendingMessage(processor, messageID))
-		assert.Equal(t, 1, getPendingMessageCount(processor))
+		processor.pendingMutex.RLock()
+		_, exists := processor.pendingMessages[messageID]
+		pendingCount := len(processor.pendingMessages)
+		processor.pendingMutex.RUnlock()
+		assert.True(t, exists)
+		assert.Equal(t, 1, pendingCount)
 
 		// Wait for send to complete
 		time.Sleep(150 * time.Millisecond)
@@ -172,14 +163,21 @@ func TestMessageProcessor_Acknowledgments(t *testing.T) {
 
 		// Wait for send to complete
 		time.Sleep(50 * time.Millisecond)
-		assert.True(t, hasPendingMessage(processor, messageID))
+		processor.pendingMutex.RLock()
+		_, exists := processor.pendingMessages[messageID]
+		processor.pendingMutex.RUnlock()
+		assert.True(t, exists)
 
 		// Send acknowledgment
 		processor.HandleAcknowledgement(messageID)
 
 		// Message should be removed from pending
-		assert.False(t, hasPendingMessage(processor, messageID))
-		assert.Equal(t, 0, getPendingMessageCount(processor))
+		processor.pendingMutex.RLock()
+		_, existsAfter := processor.pendingMessages[messageID]
+		pendingCountAfter := len(processor.pendingMessages)
+		processor.pendingMutex.RUnlock()
+		assert.False(t, existsAfter)
+		assert.Equal(t, 0, pendingCountAfter)
 	})
 
 	t.Run("acknowledgment for unknown message is handled gracefully", func(t *testing.T) {
@@ -190,7 +188,10 @@ func TestMessageProcessor_Acknowledgments(t *testing.T) {
 		processor.HandleAcknowledgement("unknown-message-id")
 
 		// Verify no pending messages
-		assert.Equal(t, 0, getPendingMessageCount(processor))
+		processor.pendingMutex.RLock()
+		pendingCount := len(processor.pendingMessages)
+		processor.pendingMutex.RUnlock()
+		assert.Equal(t, 0, pendingCount)
 	})
 
 	t.Run("multiple acknowledgments for same message", func(t *testing.T) {
@@ -202,7 +203,10 @@ func TestMessageProcessor_Acknowledgments(t *testing.T) {
 		require.NoError(t, err)
 
 		time.Sleep(50 * time.Millisecond)
-		assert.True(t, hasPendingMessage(processor, messageID))
+		processor.pendingMutex.RLock()
+		_, exists := processor.pendingMessages[messageID]
+		processor.pendingMutex.RUnlock()
+		assert.True(t, exists)
 
 		// Send acknowledgment multiple times
 		processor.HandleAcknowledgement(messageID)
@@ -210,7 +214,10 @@ func TestMessageProcessor_Acknowledgments(t *testing.T) {
 		processor.HandleAcknowledgement(messageID)
 
 		// Should not cause issues
-		assert.False(t, hasPendingMessage(processor, messageID))
+		processor.pendingMutex.RLock()
+		_, existsAfter := processor.pendingMessages[messageID]
+		processor.pendingMutex.RUnlock()
+		assert.False(t, existsAfter)
 	})
 }
 
@@ -245,7 +252,10 @@ func TestMessageProcessor_RetryLogic(t *testing.T) {
 
 		// Send ACK to stop retries
 		processor.HandleAcknowledgement(messageID)
-		assert.False(t, hasPendingMessage(processor, messageID))
+		processor.pendingMutex.RLock()
+		_, exists := processor.pendingMessages[messageID]
+		processor.pendingMutex.RUnlock()
+		assert.False(t, exists)
 	})
 
 	t.Run("message removed after max retries", func(t *testing.T) {
@@ -265,7 +275,10 @@ func TestMessageProcessor_RetryLogic(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 
 		// Message should be removed from pending after max retries
-		assert.False(t, hasPendingMessage(processor, messageID))
+		processor.pendingMutex.RLock()
+		_, exists := processor.pendingMessages[messageID]
+		processor.pendingMutex.RUnlock()
+		assert.False(t, exists)
 
 		// Should have attempted 3 times (initial + 2 retries)
 		calls := mockSender.GetSendMessageCalls()
@@ -321,19 +334,31 @@ func TestMessageProcessor_ClientCleanup(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// All should be pending
-		assert.True(t, hasPendingMessage(processor, msg1ID))
-		assert.True(t, hasPendingMessage(processor, msg2ID))
-		assert.True(t, hasPendingMessage(processor, msg3ID))
-		assert.Equal(t, 3, getPendingMessageCount(processor))
+		processor.pendingMutex.RLock()
+		_, exists1 := processor.pendingMessages[msg1ID]
+		_, exists2 := processor.pendingMessages[msg2ID]
+		_, exists3 := processor.pendingMessages[msg3ID]
+		pendingCount := len(processor.pendingMessages)
+		processor.pendingMutex.RUnlock()
+		assert.True(t, exists1)
+		assert.True(t, exists2)
+		assert.True(t, exists3)
+		assert.Equal(t, 3, pendingCount)
 
 		// Cleanup client1
 		processor.CleanupClientMessages("client1")
 
 		// Only client1 messages should be removed
-		assert.False(t, hasPendingMessage(processor, msg1ID))
-		assert.False(t, hasPendingMessage(processor, msg2ID))
-		assert.True(t, hasPendingMessage(processor, msg3ID))
-		assert.Equal(t, 1, getPendingMessageCount(processor))
+		processor.pendingMutex.RLock()
+		_, exists1After := processor.pendingMessages[msg1ID]
+		_, exists2After := processor.pendingMessages[msg2ID]
+		_, exists3After := processor.pendingMessages[msg3ID]
+		pendingCountAfter := len(processor.pendingMessages)
+		processor.pendingMutex.RUnlock()
+		assert.False(t, exists1After)
+		assert.False(t, exists2After)
+		assert.True(t, exists3After)
+		assert.Equal(t, 1, pendingCountAfter)
 	})
 
 	t.Run("cleanup with no messages for client", func(t *testing.T) {
@@ -344,14 +369,21 @@ func TestMessageProcessor_ClientCleanup(t *testing.T) {
 		msgID, _ := processor.SendMessageReliably("client1", msg)
 
 		time.Sleep(50 * time.Millisecond)
-		assert.Equal(t, 1, getPendingMessageCount(processor))
+		processor.pendingMutex.RLock()
+		pendingCount := len(processor.pendingMessages)
+		processor.pendingMutex.RUnlock()
+		assert.Equal(t, 1, pendingCount)
 
 		// Cleanup different client
 		processor.CleanupClientMessages("client2")
 
 		// Should not affect client1's message
-		assert.True(t, hasPendingMessage(processor, msgID))
-		assert.Equal(t, 1, getPendingMessageCount(processor))
+		processor.pendingMutex.RLock()
+		_, exists := processor.pendingMessages[msgID]
+		pendingCountAfter := len(processor.pendingMessages)
+		processor.pendingMutex.RUnlock()
+		assert.True(t, exists)
+		assert.Equal(t, 1, pendingCountAfter)
 	})
 }
 
@@ -414,7 +446,10 @@ func TestMessageProcessor_ConcurrentAccess(t *testing.T) {
 		}
 
 		time.Sleep(50 * time.Millisecond)
-		assert.Equal(t, 20, getPendingMessageCount(processor))
+		processor.pendingMutex.RLock()
+		pendingCount := len(processor.pendingMessages)
+		processor.pendingMutex.RUnlock()
+		assert.Equal(t, 20, pendingCount)
 
 		// Send acknowledgments concurrently
 		var wg sync.WaitGroup
@@ -429,7 +464,10 @@ func TestMessageProcessor_ConcurrentAccess(t *testing.T) {
 		wg.Wait()
 
 		// All messages should be acknowledged
-		assert.Equal(t, 0, getPendingMessageCount(processor))
+		processor.pendingMutex.RLock()
+		pendingCountAfter := len(processor.pendingMessages)
+		processor.pendingMutex.RUnlock()
+		assert.Equal(t, 0, pendingCountAfter)
 	})
 }
 
@@ -447,7 +485,10 @@ func TestMessageProcessor_ErrorHandling(t *testing.T) {
 
 		// Should not return error immediately (queued for processing)
 		require.NoError(t, err)
-		assert.True(t, hasPendingMessage(processor, messageID))
+		processor.pendingMutex.RLock()
+		_, exists := processor.pendingMessages[messageID]
+		processor.pendingMutex.RUnlock()
+		assert.True(t, exists)
 
 		// Wait for send attempt
 		time.Sleep(50 * time.Millisecond)
@@ -457,7 +498,10 @@ func TestMessageProcessor_ErrorHandling(t *testing.T) {
 		assert.Len(t, calls, 1)
 
 		// Message should still be pending for retry
-		assert.True(t, hasPendingMessage(processor, messageID))
+		processor.pendingMutex.RLock()
+		_, existsAfter := processor.pendingMessages[messageID]
+		processor.pendingMutex.RUnlock()
+		assert.True(t, existsAfter)
 	})
 
 	t.Run("processor stop cleans up resources", func(t *testing.T) {
@@ -469,7 +513,10 @@ func TestMessageProcessor_ErrorHandling(t *testing.T) {
 		require.NoError(t, err)
 
 		time.Sleep(50 * time.Millisecond)
-		assert.True(t, hasPendingMessage(processor, messageID))
+		processor.pendingMutex.RLock()
+		_, exists := processor.pendingMessages[messageID]
+		processor.pendingMutex.RUnlock()
+		assert.True(t, exists)
 
 		// Stop processor
 		processor.Stop()
