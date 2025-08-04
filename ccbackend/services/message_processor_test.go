@@ -33,7 +33,6 @@ func NewMessageProcessorWithConfig(messageSender MessageSender, config MessagePr
 	return processor
 }
 
-
 // Test setup helper
 func setupMessageProcessorTest(t *testing.T) (*MessageProcessor, *MockMessageSender, func()) {
 	mockSender := NewMockMessageSender()
@@ -67,7 +66,6 @@ func createTestMessage(msgType string) models.UnknownMessage {
 		},
 	}
 }
-
 
 // Reliable Message Delivery Tests
 func TestMessageProcessor_ReliableDelivery(t *testing.T) {
