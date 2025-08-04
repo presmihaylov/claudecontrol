@@ -232,7 +232,7 @@ export default function IntegrationDetail() {
 									variant="outline"
 									onClick={() =>
 										window.open(
-											"https://drive.google.com/drive/folders/12M6c9Ql9PObqKBPWbrHCMcNCcvXHMLFH?usp=sharing",
+											"https://github.com/presmihaylov/ccagent/blob/main/ccagent-beta.zip",
 											"_blank",
 										)
 									}
