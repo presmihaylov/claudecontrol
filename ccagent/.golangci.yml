@@ -50,6 +50,7 @@ linters:
     - noctx
     - nolintlint
     - staticcheck
+    - stylecheck
     - typecheck
     - unconvert
     - unused
