@@ -36,10 +36,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
+        cache-dependency-path: ccbackend/go.sum
 
     - name: Set up Supabase CLI
       uses: supabase/setup-cli@v1
@@ -71,7 +83,7 @@ jobs:
         echo "SLACK_CLIENT_SECRET=NA" >> .env.test
         echo "DB_URL=postgresql://postgres:postgres@localhost:54322/postgres?sslmode=disable" > .env.test
         echo "DB_SCHEMA=claudecontrol_test" >> .env.test
-        echo "CLERK_SECRET_KEY=test_clerk_key" >> .env.test
+        echo "CLERK_SECRET_KEY=${{ secrets.CLERK_TEST_SECRET_KEY }}" >> .env.test
         echo "CORS_ALLOWED_ORIGINS=*" >> .env.test
         echo "PORT=8080" >> .env.test
         echo "Created .env.test file:"
@@ -82,17 +94,12 @@ jobs:
         cd ccbackend
         go mod download
 
-    - name: Debug environment variables and test DB connection
+    - name: Test DB connection
       run: |
         cd ccbackend
         echo "Environment variables:"
         echo "DB_URL=$DB_URL"
         echo "DB_SCHEMA=$DB_SCHEMA"
-        echo "Current directory: $(pwd)"
-        echo "Files in directory:"
-        ls -la
-        echo "Content of .env.test:"
-        cat .env.test || echo ".env.test not found"
         echo "Testing database connection:"
         pg_isready -h localhost -p 54322 -U postgres || echo "DB not ready on 54322"
         psql postgresql://postgres:postgres@localhost:54322/postgres?sslmode=disable -c "SELECT version();" || echo "Connection failed"
@@ -108,7 +115,7 @@ jobs:
         export DB_SCHEMA="claudecontrol_test"
         export SLACK_SIGNING_SECRET="test_signing_secret"
         export SLACK_BOT_TOKEN="test_bot_token" 
-        export CLERK_SECRET_KEY="test_clerk_key"
+        export CLERK_SECRET_KEY="${{ secrets.CLERK_TEST_SECRET_KEY }}"
         echo "Exported environment variables:"
         echo "DB_URL=$DB_URL"
         echo "DB_SCHEMA=$DB_SCHEMA"
@@ -118,7 +125,7 @@ jobs:
         DB_SCHEMA: claudecontrol_test
         SLACK_SIGNING_SECRET: test_signing_secret
         SLACK_BOT_TOKEN: test_bot_token
-        CLERK_SECRET_KEY: test_clerk_key
+        CLERK_SECRET_KEY: ${{ secrets.CLERK_TEST_SECRET_KEY }}
 
     - name: Stop Supabase
       if: always()
