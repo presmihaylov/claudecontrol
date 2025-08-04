@@ -21,7 +21,6 @@ import (
 	"ccagent/services"
 	"ccagent/usecases"
 	"ccagent/utils"
-
 	"github.com/gammazero/workerpool"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -29,16 +28,16 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService           *services.SessionService
-	claudeService            *services.ClaudeService
-	gitUseCase               *usecases.GitUseCase
-	appState                 *models.AppState
-	logFilePath              string
-	agentID                  uuid.UUID
-	reconnectChan            chan struct{}
-	healthcheckTimer         *time.Timer
-	healthcheckTimerMutex    sync.Mutex
-	messageProcessor         *services.MessageProcessor
+	sessionService        *services.SessionService
+	claudeService         *services.ClaudeService
+	gitUseCase            *usecases.GitUseCase
+	appState              *models.AppState
+	logFilePath           string
+	agentID               uuid.UUID
+	reconnectChan         chan struct{}
+	healthcheckTimer      *time.Timer
+	healthcheckTimerMutex sync.Mutex
+	messageProcessor      *services.MessageProcessor
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -239,7 +238,7 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 		// Start message reading goroutine
 		go func() {
 			defer close(done)
-			defer wp.StopWait()      // Ensure all queued messages complete
+			defer wp.StopWait()        // Ensure all queued messages complete
 			defer instantWP.StopWait() // Ensure all instant messages complete
 
 			for {
@@ -720,7 +719,7 @@ func (cr *CmdRunner) handleHealthcheckCheck(msg models.UnknownMessage, conn *web
 	}
 
 	log.Info("💓 Received healthcheck ping from backend - sending ack")
-	
+
 	// Cancel any existing healthcheck timer since we got a response
 	cr.cancelHealthcheckTimer()
 
@@ -757,34 +756,34 @@ func (cr *CmdRunner) handleAcknowledgement(msg models.UnknownMessage) error {
 
 func (cr *CmdRunner) sendHealthcheck(conn *websocket.Conn) {
 	log.Info("💓 Sending healthcheck check to backend")
-	
+
 	// Send healthcheck check message
 	healthcheckMsg := models.UnknownMessage{
 		ID:      uuid.New().String(),
 		Type:    models.MessageTypeHealthcheckCheck,
 		Payload: models.HealthcheckCheckPayload{},
 	}
-	
+
 	if err := conn.WriteJSON(healthcheckMsg); err != nil {
 		log.Info("❌ Failed to send healthcheck check: %v", err)
 		return
 	}
-	
+
 	// Start a timer to trigger reconnection if we don't get a response
 	cr.startHealthcheckTimer()
-	
+
 	log.Info("💓 Sent healthcheck check, waiting for ack")
 }
 
 func (cr *CmdRunner) startHealthcheckTimer() {
 	cr.healthcheckTimerMutex.Lock()
 	defer cr.healthcheckTimerMutex.Unlock()
-	
+
 	// Cancel any existing timer
 	if cr.healthcheckTimer != nil {
 		cr.healthcheckTimer.Stop()
 	}
-	
+
 	// Start a new timer that triggers reconnection after 10 seconds
 	cr.healthcheckTimer = time.AfterFunc(10*time.Second, func() {
 		log.Info("⚠️ Healthcheck timeout - no response received within 10 seconds")
@@ -799,7 +798,7 @@ func (cr *CmdRunner) startHealthcheckTimer() {
 func (cr *CmdRunner) cancelHealthcheckTimer() {
 	cr.healthcheckTimerMutex.Lock()
 	defer cr.healthcheckTimerMutex.Unlock()
-	
+
 	if cr.healthcheckTimer != nil {
 		cr.healthcheckTimer.Stop()
 		cr.healthcheckTimer = nil

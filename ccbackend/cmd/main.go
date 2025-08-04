@@ -17,7 +17,6 @@ import (
 	"ccbackend/middleware"
 	"ccbackend/services"
 	"ccbackend/usecases"
-
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
@@ -55,7 +54,6 @@ func run() error {
 	slackOAuthClient := clients.NewConcreteSlackClient()
 	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
 
-	
 	// Create API key validator for WebSocket connections
 	apiKeyValidator := func(apiKey string) (string, error) {
 		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(apiKey)
@@ -64,26 +62,26 @@ func run() error {
 		}
 		return integration.ID.String(), nil
 	}
-	
+
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)
-	
+
 	// Initialize reliable message handler
 	reliableMessageHandler := services.NewReliableMessageHandler(wsClient)
-	
+
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
 	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, cfg.ClerkSecretKey)
-	
+
 	// Create a new router
 	router := mux.NewRouter()
-	
+
 	// Setup endpoints with the new router
 	wsClient.RegisterWithRouter(router)
 	slackHandler.SetupEndpoints(router)
 	dashboardHandler.SetupEndpoints(router, authMiddleware)
-	
+
 	// Health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -94,7 +92,7 @@ func run() error {
 	// Register WebSocket hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
 	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
-	
+
 	// Register reliable message handler first (for deduplication and acknowledgements)
 	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
 		isAlreadyProcessed, err := reliableMessageHandler.ProcessReliableMessage(client, msg)
@@ -116,7 +114,6 @@ func run() error {
 			log.Printf("❌ Error marking message as processed from client %s: %v", client.ID, err)
 		}
 	})
-
 
 	// Start periodic broadcast of CheckIdleJobs, healthcheck, cleanup of inactive agents, and processing of queued jobs
 	cleanupTicker := time.NewTicker(2 * time.Minute)
@@ -190,4 +187,3 @@ func handleGracefulShutdown(server *http.Server) error {
 	log.Printf("✅ Server stopped gracefully")
 	return nil
 }
-

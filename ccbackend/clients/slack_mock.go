@@ -21,7 +21,7 @@ func (m *MockSlackClient) GetOAuthV2Response(httpClient *http.Client, clientID, 
 	if m.MockGetOAuthV2Response != nil {
 		return m.MockGetOAuthV2Response(httpClient, clientID, clientSecret, code, redirectURL)
 	}
-	
+
 	// Default mock response for testing
 	return &OAuthV2Response{
 		TeamID:      "T123456789",
@@ -58,7 +58,7 @@ func (m *MockSlackClient) WithOAuthV2Validation() *MockSlackClient {
 		if code == "" {
 			return nil, fmt.Errorf("authorization code is required")
 		}
-		
+
 		return &OAuthV2Response{
 			TeamID:      "T123456789",
 			TeamName:    "Test Team",

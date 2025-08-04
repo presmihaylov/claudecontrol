@@ -6,10 +6,8 @@ import (
 	"time"
 
 	"ccbackend/models"
-
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 )
@@ -195,4 +193,3 @@ func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(slackIntegrationID st
 
 	return jobs, nil
 }
-

@@ -11,7 +11,6 @@ import (
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/utils"
-
 	"github.com/google/uuid"
 	"github.com/slack-go/slack"
 )
@@ -441,7 +440,7 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 		log.Printf("❌ Failed to check for existing agent assignment: %v", err)
 		return "", fmt.Errorf("failed to check for existing agent assignment: %w", err)
 	}
-	
+
 	if existingAgent == nil {
 		// Job not assigned to any agent yet - need to assign to an available agent
 		return s.assignJobToAvailableAgent(job, threadTS, slackIntegrationID)
@@ -468,7 +467,7 @@ func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slack
 	if err != nil {
 		return "", err
 	}
-	
+
 	if !assigned {
 		log.Printf("⚠️ No agents have active WebSocket connections")
 		return "", fmt.Errorf("no agents with active WebSocket connections available for job assignment")
@@ -489,7 +488,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(jobID uuid.UUID, slackIntegrationID st
 	if err != nil {
 		return "", false, fmt.Errorf("failed to check for existing agent assignment: %w", err)
 	}
-	
+
 	if existingAgent != nil {
 		// Job is already assigned - check if agent still has active connection
 		connectedClientIDs := s.wsClient.GetClientIDs()
@@ -501,7 +500,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(jobID uuid.UUID, slackIntegrationID st
 		log.Printf("⚠️ Job %s assigned to agent %s but no active connection", jobID, existingAgent.ID)
 		return "", false, nil
 	}
-	
+
 	// Job not assigned - proceed with assignment
 	// Get active WebSocket connections first
 	connectedClientIDs := s.wsClient.GetClientIDs()
@@ -553,13 +552,13 @@ func (s *CoreUseCase) sortAgentsByLoad(agents []*models.ActiveAgent, slackIntegr
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
 		}
-		
+
 		// Get count of active messages (IN_PROGRESS or QUEUED) for these jobs
 		activeMessageCount, err := s.jobsService.GetActiveMessageCountForJobs(jobIDs, slackIntegrationID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get active message count for agent %s: %w", agent.ID, err)
 		}
-		
+
 		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: activeMessageCount})
 	}
 
@@ -797,7 +796,6 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	return nil
 }
 
-
 func (s *CoreUseCase) ProcessHealthcheckAck(clientID string, payload models.HealthcheckAckPayload, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process healthcheck ack from client %s", clientID)
 
@@ -813,24 +811,23 @@ func (s *CoreUseCase) ProcessHealthcheckAck(clientID string, payload models.Heal
 
 func (s *CoreUseCase) SendHealthcheckAck(clientID string, slackIntegrationID string) error {
 	log.Printf("📋 Starting to send healthcheck ack to client %s", clientID)
-	
+
 	// Create healthcheck ack message
 	healthcheckAckMsg := models.UnknownMessage{
 		ID:      uuid.New().String(),
 		Type:    models.MessageTypeHealthcheckAck,
 		Payload: models.HealthcheckAckPayload{},
 	}
-	
+
 	// Send the message to the client
 	if err := s.wsClient.SendMessage(clientID, healthcheckAckMsg); err != nil {
 		log.Printf("❌ Failed to send healthcheck ack to client %s: %v", clientID, err)
 		return fmt.Errorf("failed to send healthcheck ack: %w", err)
 	}
-	
+
 	log.Printf("📋 Completed successfully - sent healthcheck ack to client %s", clientID)
 	return nil
 }
-
 
 func (s *CoreUseCase) BroadcastHealthcheck() error {
 	log.Printf("📋 Starting to broadcast healthcheck to all connected agents")

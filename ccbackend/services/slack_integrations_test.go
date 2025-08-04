@@ -8,23 +8,21 @@ import (
 	"ccbackend/clients"
 	"ccbackend/db"
 	"ccbackend/testutils"
-
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-
 func setupSlackIntegrationsTest(t *testing.T) (*SlackIntegrationsService, *db.PostgresUsersRepository, func()) {
 	cfg, err := testutils.LoadTestConfig()
 	require.NoError(t, err)
-	
+
 	dbConn, err := db.NewConnection(cfg.DatabaseURL)
 	require.NoError(t, err)
 
 	repo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
-	
+
 	mockClient := clients.NewMockSlackClient()
 	service := NewSlackIntegrationsService(repo, mockClient, "test-client-id", "test-client-secret")
 
@@ -38,7 +36,7 @@ func setupSlackIntegrationsTest(t *testing.T) (*SlackIntegrationsService, *db.Po
 func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 	service, usersRepo, cleanup := setupSlackIntegrationsTest(t)
 	defer cleanup()
-	
+
 	t.Run("successful integration creation", func(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
@@ -77,7 +75,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 	t.Run("empty auth code returns error", func(t *testing.T) {
 		mockClient := clients.NewMockSlackClient()
 		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
-		
+
 		// Use a real user ID even though this test should fail before DB operations
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
@@ -102,7 +100,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 	t.Run("slack OAuth error is propagated", func(t *testing.T) {
 		mockClient := clients.NewMockSlackClient().WithOAuthV2Error(fmt.Errorf("invalid authorization code"))
 		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
-		
+
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		integration, err := testService.CreateSlackIntegration("invalid-code", "http://localhost:3000/callback", testUser.ID)
@@ -120,7 +118,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 			AccessToken: "xoxb-test-token-123",
 		})
 		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
-		
+
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		integration, err := testService.CreateSlackIntegration("test-auth-code", "http://localhost:3000/callback", testUser.ID)
@@ -137,7 +135,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 			AccessToken: "xoxb-test-token-123",
 		})
 		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
-		
+
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		integration, err := testService.CreateSlackIntegration("test-auth-code", "http://localhost:3000/callback", testUser.ID)
@@ -154,7 +152,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 			AccessToken: "", // Empty access token
 		})
 		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
-		
+
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		integration, err := testService.CreateSlackIntegration("test-auth-code", "http://localhost:3000/callback", testUser.ID)
@@ -168,7 +166,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		cfg, _ := testutils.LoadTestConfig()
 		dbConn, _ := db.NewConnection(cfg.DatabaseURL)
 		defer dbConn.Close()
-		
+
 		// Use invalid schema to trigger database error
 		invalidRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, "nonexistent_schema")
 		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
@@ -177,7 +175,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 			AccessToken: "xoxb-test-token-123",
 		})
 		testService := NewSlackIntegrationsService(invalidRepo, mockClient, "test-client-id", "test-client-secret")
-		
+
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		integration, err := testService.CreateSlackIntegration("test-auth-code", "http://localhost:3000/callback", testUser.ID)
@@ -308,7 +306,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 
 	t.Run("cannot delete other user's integration", func(t *testing.T) {
 		// Create two users
-		user1 := testutils.CreateTestUser(t, usersRepo) 
+		user1 := testutils.CreateTestUser(t, usersRepo)
 		user2 := testutils.CreateTestUser(t, usersRepo)
 
 		// Create integration for user1 with unique team ID
@@ -405,7 +403,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		integrations, err := service.GetSlackIntegrationsByUserID(testUser.ID)
 		require.NoError(t, err)
 		require.Len(t, integrations, 1)
-		
+
 		updatedIntegration := integrations[0]
 		assert.NotNil(t, updatedIntegration.CCAgentSecretKey)
 		assert.Equal(t, secretKey, *updatedIntegration.CCAgentSecretKey)
@@ -461,7 +459,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		integrations, err = service.GetSlackIntegrationsByUserID(testUser.ID)
 		require.NoError(t, err)
 		require.Len(t, integrations, 1)
-		
+
 		updatedIntegration := integrations[0]
 		assert.NotNil(t, updatedIntegration.CCAgentSecretKey)
 		assert.Equal(t, secondSecretKey, *updatedIntegration.CCAgentSecretKey)

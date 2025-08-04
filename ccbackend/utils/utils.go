@@ -40,25 +40,25 @@ type SlackUserInfoClient interface {
 func ResolveMentionsInSlackMessage(ctx context.Context, message string, slackClient SlackUserInfoClient) string {
 	// Regex to match user mentions in the format <@U123456>
 	mentionRegex := regexp.MustCompile(`<@([UW][A-Z0-9]+)>`)
-	
+
 	// Find all unique user IDs mentioned in the message
 	matches := mentionRegex.FindAllStringSubmatch(message, -1)
 	if len(matches) == 0 {
 		return message // No mentions found
 	}
-	
+
 	// Create a map to cache user info to avoid duplicate API calls
 	userCache := make(map[string]string)
-	
+
 	// Resolve each unique user ID
 	for _, match := range matches {
 		userID := match[1] // The captured group contains the user ID
-		
+
 		// Skip if we already resolved this user
 		if _, exists := userCache[userID]; exists {
 			continue
 		}
-		
+
 		// Get user info from Slack API
 		user, err := slackClient.GetUserInfoContext(ctx, userID)
 		if err != nil {
@@ -67,14 +67,14 @@ func ResolveMentionsInSlackMessage(ctx context.Context, message string, slackCli
 			userCache[userID] = fmt.Sprintf("<@%s>", userID)
 			continue
 		}
-		
+
 		// Get the best display name available
 		displayName := getUserDisplayName(user)
 		userCache[userID] = fmt.Sprintf("@%s", displayName)
-		
+
 		log.Printf("🔍 Resolved user mention %s to %s", userID, displayName)
 	}
-	
+
 	// Replace all mentions in the message
 	result := mentionRegex.ReplaceAllStringFunc(message, func(match string) string {
 		// Extract user ID from the match
@@ -87,7 +87,7 @@ func ResolveMentionsInSlackMessage(ctx context.Context, message string, slackCli
 		}
 		return match // Fallback to original mention if something went wrong
 	})
-	
+
 	return result
 }
 

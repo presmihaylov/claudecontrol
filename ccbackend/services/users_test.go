@@ -7,7 +7,6 @@ import (
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/testutils"
-
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +15,7 @@ import (
 
 // TestUserHelper provides utilities for creating and managing test users with Clerk
 type TestUserHelper struct {
-	clerkClient *user.Client
+	clerkClient  *user.Client
 	createdUsers []string // Track created user IDs for cleanup
 }
 
@@ -47,7 +46,7 @@ func (h *TestUserHelper) CreateTestUser(t *testing.T, emailAddress string) strin
 
 	// Create test user with Clerk
 	clerkUser, err := h.clerkClient.Create(ctx, &user.CreateParams{
-		EmailAddresses: &[]string{emailAddress},
+		EmailAddresses:          &[]string{emailAddress},
 		SkipPasswordChecks:      clerk.Bool(true),
 		SkipPasswordRequirement: clerk.Bool(true),
 	})
@@ -76,7 +75,6 @@ func (h *TestUserHelper) CleanupTestUsers(t *testing.T) {
 
 	h.createdUsers = make([]string, 0)
 }
-
 
 func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
 	// Load test config and initialize database connection
@@ -135,7 +133,7 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 
 	// Use a mock Clerk user ID for testing
 	mockClerkUserID := "user_test_12345"
-	
+
 	// Test GetOrCreateUser with mock data
 	user, err := usersService.GetOrCreateUser("clerk", mockClerkUserID)
 	require.NoError(t, err)

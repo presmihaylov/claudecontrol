@@ -12,8 +12,8 @@ import (
 )
 
 type WebSocketHandler struct {
-	coreUseCase               *usecases.CoreUseCase
-	slackIntegrationsService  *services.SlackIntegrationsService
+	coreUseCase              *usecases.CoreUseCase
+	slackIntegrationsService *services.SlackIntegrationsService
 }
 
 func NewWebSocketHandler(coreUseCase *usecases.CoreUseCase, slackIntegrationsService *services.SlackIntegrationsService) *WebSocketHandler {
@@ -113,7 +113,7 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 		}
 
 		log.Printf("💓 Received healthcheck check from client %s - sending ack", client.ID)
-		
+
 		// Send healthcheck ack back to the client
 		if err := h.coreUseCase.SendHealthcheckAck(client.ID, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to send healthcheck ack to client %s: %v", client.ID, err)

@@ -8,7 +8,6 @@ import (
 	"ccagent/clients"
 	"ccagent/core/log"
 	"ccagent/services"
-
 	"github.com/lucasepe/codename"
 )
 
@@ -209,7 +208,6 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 	}
 
 	log.Info("✅ Uncommitted changes detected - proceeding with auto-commit")
-
 
 	// Generate commit message using Claude
 	commitMessage, err := g.generateCommitMessageWithClaude(currentBranch)

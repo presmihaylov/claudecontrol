@@ -4,9 +4,7 @@ import (
 	"fmt"
 
 	"ccbackend/models"
-
 	"github.com/jmoiron/sqlx"
-
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 )
@@ -36,4 +34,3 @@ func (r *PostgresUsersRepository) GetOrCreateUser(authProvider, authProviderID s
 
 	return user, nil
 }
-
