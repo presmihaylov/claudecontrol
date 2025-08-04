@@ -33,30 +33,18 @@ func NewMessageProcessorWithConfig(messageSender MessageSender, config MessagePr
 	return processor
 }
 
-// Helper methods to access private fields for testing
-func (mp *MessageProcessor) GetRetryInterval() time.Duration {
-	return mp.retryInterval
-}
-
-func (mp *MessageProcessor) GetMaxRetries() int {
-	return mp.maxRetries
-}
-
-func (mp *MessageProcessor) GetAckTimeout() time.Duration {
-	return mp.ackTimeout
-}
-
-func (mp *MessageProcessor) HasPendingMessage(messageID string) bool {
-	mp.pendingMutex.RLock()
-	defer mp.pendingMutex.RUnlock()
-	_, exists := mp.pendingMessages[messageID]
+// Helper functions for safe access to private fields that need mutex protection
+func hasPendingMessage(processor *MessageProcessor, messageID string) bool {
+	processor.pendingMutex.RLock()
+	defer processor.pendingMutex.RUnlock()
+	_, exists := processor.pendingMessages[messageID]
 	return exists
 }
 
-func (mp *MessageProcessor) GetPendingMessageCount() int {
-	mp.pendingMutex.RLock()
-	defer mp.pendingMutex.RUnlock()
-	return len(mp.pendingMessages)
+func getPendingMessageCount(processor *MessageProcessor) int {
+	processor.pendingMutex.RLock()
+	defer processor.pendingMutex.RUnlock()
+	return len(processor.pendingMessages)
 }
 
 // Test setup helper
@@ -100,9 +88,9 @@ func TestMessageProcessor_Configuration(t *testing.T) {
 		defer cleanup()
 
 		// Verify default values
-		assert.Equal(t, 30*time.Second, processor.GetRetryInterval())
-		assert.Equal(t, 5, processor.GetMaxRetries())
-		assert.Equal(t, 30*time.Second, processor.GetAckTimeout())
+		assert.Equal(t, 30*time.Second, processor.retryInterval)
+		assert.Equal(t, 5, processor.maxRetries)
+		assert.Equal(t, 30*time.Second, processor.ackTimeout)
 	})
 
 	t.Run("custom configuration", func(t *testing.T) {
@@ -114,9 +102,9 @@ func TestMessageProcessor_Configuration(t *testing.T) {
 		processor, _, cleanup := setupMessageProcessorTestWithConfig(t, config)
 		defer cleanup()
 
-		assert.Equal(t, 10*time.Second, processor.GetRetryInterval())
-		assert.Equal(t, 3, processor.GetMaxRetries())
-		assert.Equal(t, 15*time.Second, processor.GetAckTimeout())
+		assert.Equal(t, 10*time.Second, processor.retryInterval)
+		assert.Equal(t, 3, processor.maxRetries)
+		assert.Equal(t, 15*time.Second, processor.ackTimeout)
 	})
 }
 
@@ -160,8 +148,8 @@ func TestMessageProcessor_ReliableDelivery(t *testing.T) {
 		require.NoError(t, err)
 
 		// Message should be in pending list initially
-		assert.True(t, processor.HasPendingMessage(messageID))
-		assert.Equal(t, 1, processor.GetPendingMessageCount())
+		assert.True(t, hasPendingMessage(processor, messageID))
+		assert.Equal(t, 1, getPendingMessageCount(processor))
 
 		// Wait for send to complete
 		time.Sleep(150 * time.Millisecond)
@@ -210,14 +198,14 @@ func TestMessageProcessor_Acknowledgments(t *testing.T) {
 
 		// Wait for send to complete
 		time.Sleep(50 * time.Millisecond)
-		assert.True(t, processor.HasPendingMessage(messageID))
+		assert.True(t, hasPendingMessage(processor, messageID))
 
 		// Send acknowledgment
 		processor.HandleAcknowledgement(messageID)
 
 		// Message should be removed from pending
-		assert.False(t, processor.HasPendingMessage(messageID))
-		assert.Equal(t, 0, processor.GetPendingMessageCount())
+		assert.False(t, hasPendingMessage(processor, messageID))
+		assert.Equal(t, 0, getPendingMessageCount(processor))
 	})
 
 	t.Run("acknowledgment for unknown message is handled gracefully", func(t *testing.T) {
@@ -228,7 +216,7 @@ func TestMessageProcessor_Acknowledgments(t *testing.T) {
 		processor.HandleAcknowledgement("unknown-message-id")
 
 		// Verify no pending messages
-		assert.Equal(t, 0, processor.GetPendingMessageCount())
+		assert.Equal(t, 0, getPendingMessageCount(processor))
 	})
 
 	t.Run("multiple acknowledgments for same message", func(t *testing.T) {
@@ -240,7 +228,7 @@ func TestMessageProcessor_Acknowledgments(t *testing.T) {
 		require.NoError(t, err)
 
 		time.Sleep(50 * time.Millisecond)
-		assert.True(t, processor.HasPendingMessage(messageID))
+		assert.True(t, hasPendingMessage(processor, messageID))
 
 		// Send acknowledgment multiple times
 		processor.HandleAcknowledgement(messageID)
@@ -248,7 +236,7 @@ func TestMessageProcessor_Acknowledgments(t *testing.T) {
 		processor.HandleAcknowledgement(messageID)
 
 		// Should not cause issues
-		assert.False(t, processor.HasPendingMessage(messageID))
+		assert.False(t, hasPendingMessage(processor, messageID))
 	})
 }
 
@@ -283,7 +271,7 @@ func TestMessageProcessor_RetryLogic(t *testing.T) {
 
 		// Send ACK to stop retries
 		processor.HandleAcknowledgement(messageID)
-		assert.False(t, processor.HasPendingMessage(messageID))
+		assert.False(t, hasPendingMessage(processor, messageID))
 	})
 
 	t.Run("message removed after max retries", func(t *testing.T) {
@@ -303,7 +291,7 @@ func TestMessageProcessor_RetryLogic(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 
 		// Message should be removed from pending after max retries
-		assert.False(t, processor.HasPendingMessage(messageID))
+		assert.False(t, hasPendingMessage(processor, messageID))
 
 		// Should have attempted 3 times (initial + 2 retries)
 		calls := mockSender.GetSendMessageCalls()
@@ -359,19 +347,19 @@ func TestMessageProcessor_ClientCleanup(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// All should be pending
-		assert.True(t, processor.HasPendingMessage(msg1ID))
-		assert.True(t, processor.HasPendingMessage(msg2ID))
-		assert.True(t, processor.HasPendingMessage(msg3ID))
-		assert.Equal(t, 3, processor.GetPendingMessageCount())
+		assert.True(t, hasPendingMessage(processor, msg1ID))
+		assert.True(t, hasPendingMessage(processor, msg2ID))
+		assert.True(t, hasPendingMessage(processor, msg3ID))
+		assert.Equal(t, 3, getPendingMessageCount(processor))
 
 		// Cleanup client1
 		processor.CleanupClientMessages("client1")
 
 		// Only client1 messages should be removed
-		assert.False(t, processor.HasPendingMessage(msg1ID))
-		assert.False(t, processor.HasPendingMessage(msg2ID))
-		assert.True(t, processor.HasPendingMessage(msg3ID))
-		assert.Equal(t, 1, processor.GetPendingMessageCount())
+		assert.False(t, hasPendingMessage(processor, msg1ID))
+		assert.False(t, hasPendingMessage(processor, msg2ID))
+		assert.True(t, hasPendingMessage(processor, msg3ID))
+		assert.Equal(t, 1, getPendingMessageCount(processor))
 	})
 
 	t.Run("cleanup with no messages for client", func(t *testing.T) {
@@ -382,14 +370,14 @@ func TestMessageProcessor_ClientCleanup(t *testing.T) {
 		msgID, _ := processor.SendMessageReliably("client1", msg)
 
 		time.Sleep(50 * time.Millisecond)
-		assert.Equal(t, 1, processor.GetPendingMessageCount())
+		assert.Equal(t, 1, getPendingMessageCount(processor))
 
 		// Cleanup different client
 		processor.CleanupClientMessages("client2")
 
 		// Should not affect client1's message
-		assert.True(t, processor.HasPendingMessage(msgID))
-		assert.Equal(t, 1, processor.GetPendingMessageCount())
+		assert.True(t, hasPendingMessage(processor, msgID))
+		assert.Equal(t, 1, getPendingMessageCount(processor))
 	})
 }
 
@@ -452,7 +440,7 @@ func TestMessageProcessor_ConcurrentAccess(t *testing.T) {
 		}
 
 		time.Sleep(50 * time.Millisecond)
-		assert.Equal(t, 20, processor.GetPendingMessageCount())
+		assert.Equal(t, 20, getPendingMessageCount(processor))
 
 		// Send acknowledgments concurrently
 		var wg sync.WaitGroup
@@ -467,7 +455,7 @@ func TestMessageProcessor_ConcurrentAccess(t *testing.T) {
 		wg.Wait()
 
 		// All messages should be acknowledged
-		assert.Equal(t, 0, processor.GetPendingMessageCount())
+		assert.Equal(t, 0, getPendingMessageCount(processor))
 	})
 }
 
@@ -485,7 +473,7 @@ func TestMessageProcessor_ErrorHandling(t *testing.T) {
 
 		// Should not return error immediately (queued for processing)
 		require.NoError(t, err)
-		assert.True(t, processor.HasPendingMessage(messageID))
+		assert.True(t, hasPendingMessage(processor, messageID))
 
 		// Wait for send attempt
 		time.Sleep(50 * time.Millisecond)
@@ -495,7 +483,7 @@ func TestMessageProcessor_ErrorHandling(t *testing.T) {
 		assert.Len(t, calls, 1)
 
 		// Message should still be pending for retry
-		assert.True(t, processor.HasPendingMessage(messageID))
+		assert.True(t, hasPendingMessage(processor, messageID))
 	})
 
 	t.Run("processor stop cleans up resources", func(t *testing.T) {
@@ -507,7 +495,7 @@ func TestMessageProcessor_ErrorHandling(t *testing.T) {
 		require.NoError(t, err)
 
 		time.Sleep(50 * time.Millisecond)
-		assert.True(t, processor.HasPendingMessage(messageID))
+		assert.True(t, hasPendingMessage(processor, messageID))
 
 		// Stop processor
 		processor.Stop()
