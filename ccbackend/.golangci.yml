@@ -50,6 +50,7 @@ linters:
     - noctx
     - nolintlint
     - staticcheck
+    - stylecheck
     - typecheck
     - unconvert
     - unused
@@ -71,15 +72,6 @@ issues:
     - text: "duplicate of"
       linters:
         - dupl
-    - text: "should be TS"
-      linters:
-        - stylecheck
-    - text: "should be ThreadTS"
-      linters:
-        - stylecheck
-    - text: "should be threadTS"
-      linters:
-        - stylecheck
     - text: "exceeds the maximum"
       linters:
         - lll
