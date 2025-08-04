@@ -42,7 +42,7 @@ func (c *ClaudeService) writeClaudeErrorLog(rawOutput string) (string, error) {
 	filename := fmt.Sprintf("claude-error-%s.log", timestamp)
 	filepath := filepath.Join(logDir, filename)
 
-	if err := os.WriteFile(filepath, []byte(rawOutput), 0644); err != nil {
+	if err := os.WriteFile(filepath, []byte(rawOutput), 0600); err != nil {
 		return "", fmt.Errorf("failed to write log file: %w", err)
 	}
 

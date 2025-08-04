@@ -89,8 +89,8 @@ func main() {
 	log.SetLevel(slog.LevelInfo)
 
 	// Validate CCAGENT_API_KEY environment variable
-	ccagentApiKey := os.Getenv("CCAGENT_API_KEY")
-	if ccagentApiKey == "" {
+	ccagentAPIKey := os.Getenv("CCAGENT_API_KEY")
+	if ccagentAPIKey == "" {
 		fmt.Fprintf(os.Stderr, "Error: CCAGENT_API_KEY environment variable is required but not set\n")
 		os.Exit(1)
 	}
@@ -136,7 +136,7 @@ func main() {
 	}()
 
 	// Start WebSocket client
-	err = cmdRunner.startWebSocketClient(wsURL, ccagentApiKey)
+	err = cmdRunner.startWebSocketClient(wsURL, ccagentAPIKey)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting WebSocket client: %v\n", err)
 		os.Exit(1)
@@ -392,7 +392,9 @@ func (cr *CmdRunner) handleMessage(msg models.UnknownMessage, conn *websocket.Co
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			cr.sendErrorMessage(conn, err, slackMessageID)
+			if sendErr := cr.sendErrorMessage(conn, err, slackMessageID); sendErr != nil {
+				log.Error("Failed to send error message: %v", sendErr)
+			}
 		}
 	case models.MessageTypeUserMessage:
 		if err := cr.handleUserMessage(msg, conn); err != nil {
@@ -402,7 +404,9 @@ func (cr *CmdRunner) handleMessage(msg models.UnknownMessage, conn *websocket.Co
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
 			}
-			cr.sendErrorMessage(conn, err, slackMessageID)
+			if sendErr := cr.sendErrorMessage(conn, err, slackMessageID); sendErr != nil {
+				log.Error("Failed to send error message: %v", sendErr)
+			}
 		}
 	case models.MessageTypeJobUnassigned:
 		if err := cr.handleJobUnassigned(msg, conn); err != nil {
