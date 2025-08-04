@@ -13,7 +13,15 @@ type Job struct {
 	SlackThreadTS      string    `json:"slack_thread_ts" db:"slack_thread_ts"`
 	SlackChannelID     string    `json:"slack_channel_id" db:"slack_channel_id"`
 	SlackIntegrationID uuid.UUID `json:"slack_integration_id" db:"slack_integration_id"`
+	Status             JobStatus `json:"status" db:"status"`
 }
+
+type JobStatus string
+
+const (
+	JobStatusActive           JobStatus = "ACTIVE"
+	JobStatusManuallyComplete JobStatus = "MANUALLY_COMPLETE"
+)
 
 type JobCreationStatus string
 

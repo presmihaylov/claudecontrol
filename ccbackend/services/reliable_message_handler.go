@@ -24,6 +24,7 @@ type ReliableMessageHandler struct {
 	cleanupInterval   time.Duration
 	messageRetention  time.Duration
 	wsClient          *clients.WebSocketClient
+	messageProcessor  *MessageProcessor
 }
 
 func NewReliableMessageHandler(wsClient *clients.WebSocketClient) *ReliableMessageHandler {
@@ -32,12 +33,17 @@ func NewReliableMessageHandler(wsClient *clients.WebSocketClient) *ReliableMessa
 		cleanupInterval:   5 * time.Minute,
 		messageRetention:  30 * time.Minute,
 		wsClient:          wsClient,
+		messageProcessor:  nil, // Will be set later to avoid circular dependency
 	}
 
 	// Start cleanup goroutine
 	go handler.cleanupLoop()
 
 	return handler
+}
+
+func (rmh *ReliableMessageHandler) SetMessageProcessor(messageProcessor *MessageProcessor) {
+	rmh.messageProcessor = messageProcessor
 }
 
 func (rmh *ReliableMessageHandler) ProcessReliableMessage(client *clients.Client, rawMsg any) (bool, error) {
@@ -48,6 +54,12 @@ func (rmh *ReliableMessageHandler) ProcessReliableMessage(client *clients.Client
 	if !ok {
 		log.Printf("⚠️ Message from client %s is not a map, processing as regular message", client.ID)
 		return false, nil // Not a reliable message, process normally
+	}
+
+	// Skip acknowledgement messages - they should not be processed as reliable messages to prevent loops
+	if msgType, ok := msgMap["type"].(string); ok && msgType == models.MessageTypeAcknowledgement {
+		log.Printf("⚠️ Skipping acknowledgement message from client %s - ACKs don't need reliable processing", client.ID)
+		return false, nil // Let ACK messages be processed normally by other handlers
 	}
 
 	messageID, hasID := msgMap["id"].(string)
@@ -89,6 +101,12 @@ func (rmh *ReliableMessageHandler) MarkMessageProcessed(client *clients.Client, 
 		return nil // Not a reliable message, nothing to mark
 	}
 
+	// Skip acknowledgement messages - they don't need to be marked as processed
+	if msgType, ok := msgMap["type"].(string); ok && msgType == models.MessageTypeAcknowledgement {
+		log.Printf("⚠️ Skipping acknowledgement message from client %s - ACKs don't need processing markers", client.ID)
+		return nil // Skip ACK messages
+	}
+
 	messageID, hasID := msgMap["id"].(string)
 	if !hasID || messageID == "" {
 		log.Printf("⚠️ Message from client %s has no ID, skipping processing marker", client.ID)
@@ -127,9 +145,18 @@ func (rmh *ReliableMessageHandler) sendAcknowledgement(clientID, messageID strin
 		},
 	}
 
-	if err := rmh.wsClient.SendMessage(clientID, ackMsg); err != nil {
-		log.Printf("❌ Failed to send acknowledgement to client %s: %v", clientID, err)
-		return err
+	// Use reliable delivery if message processor is available, otherwise fall back to direct sending
+	// Note: ACKs themselves don't need ACKs to prevent infinite loops
+	if rmh.messageProcessor != nil {
+		if _, err := rmh.messageProcessor.SendMessage(clientID, ackMsg); err != nil {
+			log.Printf("❌ Failed to send acknowledgement reliably to client %s: %v", clientID, err)
+			return err
+		}
+	} else {
+		if err := rmh.wsClient.SendMessage(clientID, ackMsg); err != nil {
+			log.Printf("❌ Failed to send acknowledgement to client %s: %v", clientID, err)
+			return err
+		}
 	}
 
 	log.Printf("✅ Acknowledgement sent successfully for message %s", messageID)

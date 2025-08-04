@@ -69,7 +69,13 @@ func run() error {
 	// Initialize reliable message handler
 	reliableMessageHandler := services.NewReliableMessageHandler(wsClient)
 
-	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
+	// Initialize message processor for reliable outbound message delivery
+	messageProcessor := services.NewMessageProcessor(wsClient)
+
+	// Connect reliable message handler with message processor to fix ACK delivery
+	reliableMessageHandler.SetMessageProcessor(messageProcessor)
+
+	coreUseCase := usecases.NewCoreUseCase(wsClient, messageProcessor, agentsService, jobsService, slackIntegrationsService)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
 	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
@@ -106,6 +112,19 @@ func run() error {
 		if isAlreadyProcessed {
 			return
 		}
+
+		// Check if this is an acknowledgement for outbound messages
+		if msgMap, ok := msg.(map[string]any); ok {
+			if msgType, ok := msgMap["type"].(string); ok && msgType == "acknowledgement_v1" {
+				if payload, ok := msgMap["payload"].(map[string]any); ok {
+					if messageID, ok := payload["message_id"].(string); ok {
+						messageProcessor.HandleAcknowledgement(messageID)
+						return
+					}
+				}
+			}
+		}
+
 		// Handle message normally
 		if err := wsHandler.HandleMessage(client, msg); err != nil {
 			log.Printf("❌ Error handling message from client %s: %v", client.ID, err)
