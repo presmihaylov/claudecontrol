@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lucasepe/codename"
+
 	"ccagent/clients"
 	"ccagent/core/log"
 	"ccagent/services"
-
-	"github.com/lucasepe/codename"
 )
 
 type GitUseCase struct {
@@ -51,7 +51,7 @@ func (g *GitUseCase) ValidateGitEnvironment() error {
 	// Check if remote repository exists
 	if err := g.gitClient.HasRemoteRepository(); err != nil {
 		log.Error("❌ No remote repository configured: %v", err)
-		return fmt.Errorf("Git repository must have a remote configured: %w", err)
+		return fmt.Errorf("git repository must have a remote configured: %w", err)
 	}
 
 	// Check if GitHub CLI is available (for PR creation)
@@ -209,7 +209,6 @@ func (g *GitUseCase) AutoCommitChangesIfNeeded(slackThreadLink string) (*AutoCom
 	}
 
 	log.Info("✅ Uncommitted changes detected - proceeding with auto-commit")
-
 
 	// Generate commit message using Claude
 	commitMessage, err := g.generateCommitMessageWithClaude(currentBranch)

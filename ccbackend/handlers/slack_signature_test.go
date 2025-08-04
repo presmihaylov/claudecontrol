@@ -1,15 +1,15 @@
 package handlers
 
 import (
-	"net/http"
-	"strconv"
-	"testing"
-	"time"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net/http"
+	"strconv"
 	"strings"
+	"testing"
+	"time"
 )
 
 func TestVerifySlackSignature(t *testing.T) {

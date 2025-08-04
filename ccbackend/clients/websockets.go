@@ -265,4 +265,3 @@ func (ws *WebSocketClient) invokeDisconnectionHooks(client *Client) {
 	}
 	log.Printf("✅ All disconnection hooks completed for client %s", client.ID)
 }
-

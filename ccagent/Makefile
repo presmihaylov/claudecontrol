@@ -1,4 +1,4 @@
-.PHONY: build clean build-prod test test-verbose
+.PHONY: run build clean build-prod test test-verbose lint lint-fix
 
 run:
 	go run cmd/*.go
@@ -18,3 +18,10 @@ test:
 
 test-verbose:
 	go test -v ./...
+
+lint:
+	golangci-lint run
+
+lint-fix:
+	goimports -w .
+	golangci-lint run --fix

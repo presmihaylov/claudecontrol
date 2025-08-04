@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/clerk/clerk-sdk-go/v2"
+	"github.com/clerk/clerk-sdk-go/v2/jwks"
+	"github.com/clerk/clerk-sdk-go/v2/jwt"
+
 	"ccbackend/appctx"
 	"ccbackend/services"
-
-	"github.com/clerk/clerk-sdk-go/v2"
-	"github.com/clerk/clerk-sdk-go/v2/jwt"
-	"github.com/clerk/clerk-sdk-go/v2/jwks"
 )
 
 // ClerkAuthMiddleware handles JWT authentication using Clerk SDK
@@ -98,7 +98,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 func (m *ClerkAuthMiddleware) writeErrorResponse(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	
+
 	errorResponse := map[string]string{"error": message}
 	if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
 		log.Printf("❌ Failed to encode error response: %v", err)

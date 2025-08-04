@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"ccbackend/db"
 	"ccbackend/models"
-
-	"github.com/google/uuid"
 )
 
 type JobsService struct {
@@ -26,12 +26,12 @@ func NewJobsService(repo *db.PostgresJobsRepository, processedSlackMessagesRepo 
 
 func (s *JobsService) GetActiveMessageCountForJobs(jobIDs []uuid.UUID, slackIntegrationID string) (int, error) {
 	log.Printf("📋 Starting to get active message count for %d jobs", len(jobIDs))
-	
+
 	count, err := s.processedSlackMessagesRepo.GetActiveMessageCountForJobs(jobIDs, slackIntegrationID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get active message count: %w", err)
 	}
-	
+
 	log.Printf("📋 Completed successfully - found %d active messages", count)
 	return count, nil
 }

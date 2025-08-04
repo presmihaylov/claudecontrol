@@ -5,10 +5,10 @@ import (
 	"log"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"ccbackend/db"
 	"ccbackend/models"
-
-	"github.com/google/uuid"
 )
 
 type AgentsService struct {
@@ -132,7 +132,6 @@ func (s *AgentsService) GetAvailableAgents(slackIntegrationID string) ([]*models
 	return agents, nil
 }
 
-
 // GetConnectedActiveAgents returns only agents that have active WebSocket connections
 func (s *AgentsService) GetConnectedActiveAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get connected active agents")
@@ -215,8 +214,6 @@ func (s *AgentsService) CheckAgentHasActiveConnection(agent *models.ActiveAgent,
 	log.Printf("📋 Completed check - agent %s has active connection: %t", agent.ID, hasConnection)
 	return hasConnection
 }
-
-
 
 func (s *AgentsService) AssignAgentToJob(agentID, jobID uuid.UUID, slackIntegrationID string) error {
 	log.Printf("📋 Starting to assign agent %s to job %s", agentID, jobID)
