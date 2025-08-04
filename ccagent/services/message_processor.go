@@ -53,39 +53,33 @@ func NewMessageProcessor(conn *websocket.Conn) *MessageProcessor {
 	return processor
 }
 
-func (mp *MessageProcessor) SendMessage(msg any) (string, error) {
+func (mp *MessageProcessor) SendMessage(msg models.UnknownMessage) (string, error) {
 	log.Info("📋 Starting to send message")
 
-	messageID := uuid.New().String()
-
-	msgMap, ok := msg.(map[string]any)
-	if !ok {
-		log.Info("❌ Message is not a map, cannot add ID")
-		return "", fmt.Errorf("message must be a map to add ID")
+	if msg.ID == "" {
+		return "", fmt.Errorf("message ID cannot be empty")
 	}
 
-	msgMap["id"] = messageID
-
 	pendingMsg := &PendingMessage{
-		ID:        messageID,
-		Message:   msgMap,
+		ID:        msg.ID,
+		Message:   msg,
 		Timestamp: time.Now(),
 		Retries:   0,
 	}
 
 	mp.pendingMutex.Lock()
-	mp.pendingMessages[messageID] = pendingMsg
+	mp.pendingMessages[msg.ID] = pendingMsg
 	mp.pendingMutex.Unlock()
 
 	// Always submit to worker pool - let sendMessage handle connection failures
 	mp.workerPool.Submit(func() {
 		if err := mp.sendMessage(pendingMsg); err != nil {
-			log.Info("❌ Failed to send message %s: %v", messageID, err)
+			log.Info("❌ Failed to send message %s: %v", msg.ID, err)
 		}
 	})
 
-	log.Info("📋 Completed successfully - queued message %s for sending", messageID)
-	return messageID, nil
+	log.Info("📋 Completed successfully - queued message %s for sending", msg.ID)
+	return msg.ID, nil
 }
 
 func (mp *MessageProcessor) SendMessageReliably(msg models.UnknownMessage) (string, error) {

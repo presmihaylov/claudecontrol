@@ -84,7 +84,6 @@ func (rmh *ReliableMessageHandler) sendAcknowledgement(messageID string) {
 		},
 	}
 
-	// Send acknowledgement (don't use reliable delivery to avoid loops)
 	if _, err := rmh.messageProcessor.SendMessage(ackMsg); err != nil {
 		log.Info("❌ Failed to send acknowledgement for message %s: %v", messageID, err)
 	} else {
