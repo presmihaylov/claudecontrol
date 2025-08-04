@@ -12,5 +12,6 @@ require (
 
 require (
 	github.com/gammazero/deque v0.2.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	github.com/gofrs/flock v0.12.1 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 )
