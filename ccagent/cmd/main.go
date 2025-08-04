@@ -89,6 +89,25 @@ func main() {
 	// Always enable info level logging
 	log.SetLevel(slog.LevelInfo)
 
+	// Acquire directory lock to prevent multiple instances in same directory
+	dirLock, err := utils.NewDirLock()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating directory lock: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := dirLock.TryLock(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Ensure lock is released on program exit
+	defer func() {
+		if unlockErr := dirLock.Unlock(); unlockErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to release directory lock: %v\n", unlockErr)
+		}
+	}()
+
 	// Validate CCAGENT_API_KEY environment variable
 	ccagentAPIKey := os.Getenv("CCAGENT_API_KEY")
 	if ccagentAPIKey == "" {
