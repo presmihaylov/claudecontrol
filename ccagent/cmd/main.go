@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,7 +11,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gammazero/workerpool"
@@ -29,17 +27,13 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService         *services.SessionService
-	claudeService          *services.ClaudeService
-	gitUseCase             *usecases.GitUseCase
-	appState               *models.AppState
-	logFilePath            string
-	agentID                uuid.UUID
-	reconnectChan          chan struct{}
-	healthcheckTimer       *time.Timer
-	healthcheckTimerMutex  sync.Mutex
-	messageProcessor       *services.MessageProcessor
-	reliableMessageHandler *services.ReliableMessageHandler
+	sessionService *services.SessionService
+	claudeService  *services.ClaudeService
+	gitUseCase     *usecases.GitUseCase
+	appState       *models.AppState
+	logFilePath    string
+	agentID        uuid.UUID
+	reconnectChan  chan struct{}
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -54,24 +48,14 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	agentID := uuid.New()
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
-	// Initialize message processor with nil connection
-	messageProcessor := services.NewMessageProcessor(nil)
-	log.Info("📤 Initialized message processor")
-
-	// Initialize reliable message handler
-	reliableMessageHandler := services.NewReliableMessageHandler(messageProcessor)
-	log.Info("🔄 Initialized reliable message handler")
-
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		sessionService:         sessionService,
-		claudeService:          claudeService,
-		gitUseCase:             gitUseCase,
-		appState:               appState,
-		agentID:                agentID,
-		reconnectChan:          make(chan struct{}, 1),
-		messageProcessor:       messageProcessor,
-		reliableMessageHandler: reliableMessageHandler,
+		sessionService: sessionService,
+		claudeService:  claudeService,
+		gitUseCase:     gitUseCase,
+		appState:       appState,
+		agentID:        agentID,
+		reconnectChan:  make(chan struct{}, 1),
 	}, nil
 }
 
@@ -157,7 +141,6 @@ func main() {
 
 	// Set up deferred cleanup
 	defer func() {
-		cmdRunner.messageProcessor.Stop()
 		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
 	}()
 
@@ -220,10 +203,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 
 		log.Info("✅ Connected to WebSocket server")
 
-		// Reset the connection in the message processor
-		cr.messageProcessor.ResetConnection(conn)
-		log.Info("📤 Updated message processor with WebSocket connection")
-
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
 
@@ -231,41 +210,12 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 		wp := workerpool.New(1)
 		defer wp.StopWait()
 
-		// Initialize instant worker pool for healthcheck messages with 10 concurrent workers
-		instantWP := workerpool.New(10)
-		defer instantWP.StopWait()
-
-		// Define message types that should be processed instantly
-		instantMessageTypes := map[string]bool{
-			models.MessageTypeHealthcheckCheck: true,
-			models.MessageTypeHealthcheckAck:   true,
-			models.MessageTypeAcknowledgement:  true,
-		}
-
-		// Start periodic WebSocket healthcheck
-		healthcheckTicker := time.NewTicker(30 * time.Second)
-		defer healthcheckTicker.Stop()
-
-		// Create a context to stop the healthcheck goroutine when connection is lost
-		healthcheckCtx, cancelHealthcheck := context.WithCancel(context.Background())
-		defer cancelHealthcheck()
-
-		go func() {
-			for {
-				select {
-				case <-healthcheckTicker.C:
-					cr.sendHealthcheck(conn)
-				case <-healthcheckCtx.Done():
-					return
-				}
-			}
-		}()
+		// Initialize worker pool for message processing
 
 		// Start message reading goroutine
 		go func() {
 			defer close(done)
-			defer wp.StopWait()        // Ensure all queued messages complete
-			defer instantWP.StopWait() // Ensure all instant messages complete
+			defer wp.StopWait() // Ensure all queued messages complete
 
 			for {
 				var msg models.UnknownMessage
@@ -280,24 +230,10 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 
 				log.Info("📨 Received message type: %s", msg.Type)
 
-				// Check if already processed and send acknowledgement immediately
-				shouldSkip := cr.reliableMessageHandler.CheckAndAcknowledgeMessage(msg)
-				if shouldSkip {
-					log.Info("⏭️ Skipping duplicate message %s", msg.ID)
-					continue
-				}
-
-				// Route messages to appropriate worker pool
-				if instantMessageTypes[msg.Type] {
-					instantWP.Submit(func() {
-						cr.handleMessage(msg, conn)
-					})
-				} else {
-					// NON-BLOCKING: Submit to regular worker pool
-					wp.Submit(func() {
-						cr.handleMessage(msg, conn)
-					})
-				}
+				// Submit to worker pool for sequential processing
+				wp.Submit(func() {
+					cr.handleMessage(msg, conn)
+				})
 			}
 		}()
 
@@ -307,18 +243,11 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 		case <-done:
 			// Connection closed, trigger reconnection
 			conn.Close()
-			cancelHealthcheck() // Stop the healthcheck goroutine
 			log.Info("🔄 Connection lost, attempting to reconnect...")
 		case <-reconnect:
 			// Connection lost from read goroutine, trigger reconnection
 			conn.Close()
-			cancelHealthcheck() // Stop the healthcheck goroutine
 			log.Info("🔄 Connection lost, attempting to reconnect...")
-		case <-cr.reconnectChan:
-			// Healthcheck failed, trigger reconnection
-			conn.Close()
-			cancelHealthcheck() // Stop the healthcheck goroutine
-			log.Info("🔄 Healthcheck failed, attempting to reconnect...")
 		case <-interrupt:
 			log.Info("🔌 Interrupt received, closing connection...")
 
@@ -332,7 +261,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 			case <-time.After(time.Second):
 			}
 			conn.Close()
-			cancelHealthcheck() // Stop the healthcheck goroutine
 			shouldExit = true
 		}
 
@@ -449,18 +377,6 @@ func (cr *CmdRunner) handleMessage(msg models.UnknownMessage, conn *websocket.Co
 		if err := cr.handleCheckIdleJobs(msg, conn); err != nil {
 			log.Info("❌ Error handling CheckIdleJobs message: %v", err)
 		}
-	case models.MessageTypeHealthcheckCheck:
-		if err := cr.handleHealthcheckCheck(msg, conn); err != nil {
-			log.Info("❌ Error handling HealthcheckCheck message: %v", err)
-		}
-	case models.MessageTypeHealthcheckAck:
-		// Cancel the healthcheck timer since we got a response
-		cr.cancelHealthcheckTimer()
-		log.Info("💓 Received healthcheck ack from backend")
-	case models.MessageTypeAcknowledgement:
-		if err := cr.handleAcknowledgement(msg); err != nil {
-			log.Info("❌ Error handling acknowledgement message: %v", err)
-		}
 	default:
 		log.Info("⚠️ Unhandled message type: %s", msg.Type)
 	}
@@ -566,12 +482,11 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
-	messageID, msgErr := cr.messageProcessor.SendMessageReliably(assistantMsg)
-	if msgErr != nil {
-		log.Info("❌ Failed to send reliable assistant response: %v", msgErr)
-		return fmt.Errorf("failed to send reliable assistant response: %w", msgErr)
+	if err := conn.WriteJSON(assistantMsg); err != nil {
+		log.Info("❌ Failed to send assistant response: %v", err)
+		return fmt.Errorf("failed to send assistant response: %w", err)
 	}
-	log.Info("🤖 Sent reliable assistant response (message ID: %s)", messageID)
+	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
@@ -677,12 +592,11 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, conn *websocke
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
-	messageID, msgErr := cr.messageProcessor.SendMessageReliably(assistantMsg)
-	if msgErr != nil {
-		log.Info("❌ Failed to send reliable assistant response: %v", msgErr)
-		return fmt.Errorf("failed to send reliable assistant response: %w", msgErr)
+	if err := conn.WriteJSON(assistantMsg); err != nil {
+		log.Info("❌ Failed to send assistant response: %v", err)
+		return fmt.Errorf("failed to send assistant response: %w", err)
 	}
-	log.Info("🤖 Sent reliable assistant response (message ID: %s)", messageID)
+	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
@@ -745,101 +659,6 @@ func (cr *CmdRunner) handleCheckIdleJobs(msg models.UnknownMessage, conn *websoc
 
 	log.Info("📋 Completed successfully - checked all jobs for idleness")
 	return nil
-}
-
-func (cr *CmdRunner) handleHealthcheckCheck(msg models.UnknownMessage, conn *websocket.Conn) error {
-	log.Info("📋 Starting to handle healthcheck check message")
-	var payload models.HealthcheckCheckPayload
-	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
-		log.Info("❌ Failed to unmarshal healthcheck check payload: %v", err)
-		return fmt.Errorf("failed to unmarshal healthcheck check payload: %w", err)
-	}
-
-	log.Info("💓 Received healthcheck ping from backend - sending ack")
-
-	// Cancel any existing healthcheck timer since we got a response
-	cr.cancelHealthcheckTimer()
-
-	// Send healthcheck acknowledgment back to backend
-	healthcheckAckMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
-		Type:    models.MessageTypeHealthcheckAck,
-		Payload: models.HealthcheckAckPayload{},
-	}
-
-	if err := conn.WriteJSON(healthcheckAckMsg); err != nil {
-		log.Info("❌ Failed to send healthcheck ack: %v", err)
-		return fmt.Errorf("failed to send healthcheck ack: %w", err)
-	}
-
-	log.Info("💓 Sent healthcheck ack to backend")
-	log.Info("📋 Completed successfully - handled healthcheck check message")
-	return nil
-}
-
-func (cr *CmdRunner) handleAcknowledgement(msg models.UnknownMessage) error {
-	log.Info("📋 Starting to handle acknowledgement message")
-	var payload models.AcknowledgementPayload
-	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
-		log.Info("❌ Failed to unmarshal acknowledgement payload: %v", err)
-		return fmt.Errorf("failed to unmarshal acknowledgement payload: %w", err)
-	}
-
-	cr.messageProcessor.HandleAcknowledgement(payload.MessageID)
-
-	log.Info("📋 Completed successfully - handled acknowledgement message")
-	return nil
-}
-
-func (cr *CmdRunner) sendHealthcheck(conn *websocket.Conn) {
-	log.Info("💓 Sending healthcheck check to backend")
-
-	// Send healthcheck check message
-	healthcheckMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
-		Type:    models.MessageTypeHealthcheckCheck,
-		Payload: models.HealthcheckCheckPayload{},
-	}
-
-	if err := conn.WriteJSON(healthcheckMsg); err != nil {
-		log.Info("❌ Failed to send healthcheck check: %v", err)
-		return
-	}
-
-	// Start a timer to trigger reconnection if we don't get a response
-	cr.startHealthcheckTimer()
-
-	log.Info("💓 Sent healthcheck check, waiting for ack")
-}
-
-func (cr *CmdRunner) startHealthcheckTimer() {
-	cr.healthcheckTimerMutex.Lock()
-	defer cr.healthcheckTimerMutex.Unlock()
-
-	// Cancel any existing timer
-	if cr.healthcheckTimer != nil {
-		cr.healthcheckTimer.Stop()
-	}
-
-	// Start a new timer that triggers reconnection after 10 seconds
-	cr.healthcheckTimer = time.AfterFunc(10*time.Second, func() {
-		log.Info("⚠️ Healthcheck timeout - no response received within 10 seconds")
-		select {
-		case cr.reconnectChan <- struct{}{}:
-		default:
-			// Channel already has a signal, don't block
-		}
-	})
-}
-
-func (cr *CmdRunner) cancelHealthcheckTimer() {
-	cr.healthcheckTimerMutex.Lock()
-	defer cr.healthcheckTimerMutex.Unlock()
-
-	if cr.healthcheckTimer != nil {
-		cr.healthcheckTimer.Stop()
-		cr.healthcheckTimer = nil
-	}
 }
 
 func (cr *CmdRunner) checkJobIdleness(jobID string, jobData models.JobData, conn *websocket.Conn) error {
@@ -935,12 +754,11 @@ func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason 
 		Type:    models.MessageTypeJobComplete,
 		Payload: payload,
 	}
-	messageID, err := cr.messageProcessor.SendMessageReliably(jobMsg)
-	if err != nil {
-		log.Error("❌ Failed to send reliable job complete message: %v", err)
-		return fmt.Errorf("failed to send reliable job complete message: %w", err)
+	if err := conn.WriteJSON(jobMsg); err != nil {
+		log.Error("❌ Failed to send job complete message: %v", err)
+		return fmt.Errorf("failed to send job complete message: %w", err)
 	}
-	log.Info("📤 Sent reliable job complete message for job: %s (message ID: %s)", jobID, messageID)
+	log.Info("📤 Sent job complete message for job: %s (message ID: %s)", jobID, jobMsg.ID)
 
 	return nil
 }
@@ -956,12 +774,11 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 		Type:    models.MessageTypeSystemMessage,
 		Payload: payload,
 	}
-	messageID, err := cr.messageProcessor.SendMessageReliably(sysMsg)
-	if err != nil {
-		log.Info("❌ Failed to send reliable system message: %v", err)
+	if err := conn.WriteJSON(sysMsg); err != nil {
+		log.Info("❌ Failed to send system message: %v", err)
 		return err
 	}
-	log.Info("⚙️ Sent reliable system message: %s (message ID: %s)", message, messageID)
+	log.Info("⚙️ Sent system message: %s (message ID: %s)", message, sysMsg.ID)
 
 	return nil
 }
