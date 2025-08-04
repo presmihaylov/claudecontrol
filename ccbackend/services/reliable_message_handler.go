@@ -24,14 +24,16 @@ type ReliableMessageHandler struct {
 	cleanupInterval   time.Duration
 	messageRetention  time.Duration
 	wsClient          *clients.WebSocketClient
+	messageProcessor  *MessageProcessor
 }
 
-func NewReliableMessageHandler(wsClient *clients.WebSocketClient) *ReliableMessageHandler {
+func NewReliableMessageHandler(wsClient *clients.WebSocketClient, messageProcessor *MessageProcessor) *ReliableMessageHandler {
 	handler := &ReliableMessageHandler{
 		processedMessages: make(map[string]*ProcessedMessage),
 		cleanupInterval:   5 * time.Minute,
 		messageRetention:  30 * time.Minute,
 		wsClient:          wsClient,
+		messageProcessor:  messageProcessor,
 	}
 
 	// Start cleanup goroutine
@@ -127,12 +129,13 @@ func (rmh *ReliableMessageHandler) sendAcknowledgement(clientID, messageID strin
 		},
 	}
 
-	if err := rmh.wsClient.SendMessage(clientID, ackMsg); err != nil {
-		log.Printf("❌ Failed to send acknowledgement to client %s: %v", clientID, err)
+	// Use reliable delivery for ACK messages to prevent infinite retry loops
+	if _, err := rmh.messageProcessor.SendMessageReliably(clientID, ackMsg); err != nil {
+		log.Printf("❌ Failed to send reliable acknowledgement to client %s: %v", clientID, err)
 		return err
 	}
 
-	log.Printf("✅ Acknowledgement sent successfully for message %s", messageID)
+	log.Printf("✅ Acknowledgement sent reliably for message %s", messageID)
 	return nil
 }
 
