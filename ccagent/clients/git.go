@@ -1,10 +1,12 @@
 package clients
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"ccagent/core/log"
 )
@@ -571,4 +573,82 @@ func (g *GitClient) GetBranchDiffContent(branchName, baseBranch string) (string,
 	log.Info("✅ Got diff content with %d characters", len(diffContent))
 	log.Info("📋 Completed successfully - got branch diff content")
 	return diffContent, nil
+}
+
+func (g *GitClient) ValidateRemoteAccess() error {
+	log.Info("📋 Starting to validate remote repository access")
+
+	// Get remote URL first
+	remoteURL, err := g.GetRemoteURL()
+	if err != nil {
+		log.Error("❌ Failed to get remote URL: %v", err)
+		return fmt.Errorf("failed to get remote URL: %w", err)
+	}
+
+	log.Info("🔍 Testing remote access for: %s", remoteURL)
+
+	// Test remote access with git ls-remote HEAD with 10s timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "ls-remote", remoteURL, "HEAD")
+
+	// Set environment variables to prevent credential prompting
+	cmd.Env = append(os.Environ(),
+		"GIT_TERMINAL_PROMPT=0",
+		"SSH_ASKPASS=",
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Error("❌ Remote access validation failed: %v\nOutput: %s", err, string(output))
+		return g.parseRemoteAccessError(err, string(output), remoteURL)
+	}
+
+	log.Info("✅ Remote repository access validated successfully")
+	log.Info("📋 Completed successfully - validated remote repository access")
+	return nil
+}
+
+func (g *GitClient) parseRemoteAccessError(err error, output, remoteURL string) error {
+	outputStr := strings.ToLower(output)
+
+	// Check for timeout first
+	if strings.Contains(err.Error(), "context deadline exceeded") {
+		return fmt.Errorf("remote repository access timed out after 10 seconds for %s. Check your network connection", remoteURL)
+	}
+
+	// SSH credential issues
+	if strings.Contains(outputStr, "permission denied (publickey)") {
+		return fmt.Errorf("SSH key authentication failed for %s. Please ensure your SSH key is added to your Git provider and ssh-agent", remoteURL)
+	}
+
+	if strings.Contains(outputStr, "could not read from remote repository") {
+		return fmt.Errorf("cannot access remote repository %s. Check your SSH keys or network connection", remoteURL)
+	}
+
+	if strings.Contains(outputStr, "host key verification failed") {
+		return fmt.Errorf("SSH host key verification failed for %s. Run 'ssh-keyscan' to add the host key or disable StrictHostKeyChecking", remoteURL)
+	}
+
+	// HTTPS credential issues
+	if strings.Contains(outputStr, "authentication failed") {
+		return fmt.Errorf("HTTPS authentication failed for %s. Please check credentials or use SSH", remoteURL)
+	}
+
+	if strings.Contains(outputStr, "repository not found") {
+		return fmt.Errorf("repository not found: %s. Check the URL and your access permissions", remoteURL)
+	}
+
+	// Network/connectivity issues
+	if strings.Contains(outputStr, "could not resolve host") {
+		return fmt.Errorf("network error: cannot resolve host for %s", remoteURL)
+	}
+
+	if strings.Contains(outputStr, "connection timed out") || strings.Contains(outputStr, "network is unreachable") {
+		return fmt.Errorf("network connection failed for %s. Check your internet connection", remoteURL)
+	}
+
+	// Generic fallback
+	return fmt.Errorf("remote repository access failed for %s: %w\nOutput: %s", remoteURL, err, output)
 }
