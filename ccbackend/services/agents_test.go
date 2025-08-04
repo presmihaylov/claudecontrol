@@ -4,12 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"ccbackend/db"
-	"ccbackend/models"
-	"ccbackend/testutils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"ccbackend/db"
+	"ccbackend/models"
+	"ccbackend/testutils"
 )
 
 func setupTestService(t *testing.T) (*AgentsService, *JobsService, *models.SlackIntegration, func()) {

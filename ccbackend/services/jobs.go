@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"ccbackend/db"
 	"ccbackend/models"
-	"github.com/google/uuid"
 )
 
 type JobsService struct {

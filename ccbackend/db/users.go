@@ -3,10 +3,11 @@ package db
 import (
 	"fmt"
 
-	"ccbackend/models"
 	"github.com/jmoiron/sqlx"
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
+
+	"ccbackend/models"
 )
 
 type PostgresUsersRepository struct {

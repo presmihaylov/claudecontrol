@@ -10,6 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gorilla/mux"
+	"github.com/rs/cors"
+
 	"ccbackend/clients"
 	"ccbackend/config"
 	"ccbackend/db"
@@ -17,8 +20,6 @@ import (
 	"ccbackend/middleware"
 	"ccbackend/services"
 	"ccbackend/usecases"
-	"github.com/gorilla/mux"
-	"github.com/rs/cors"
 )
 
 func main() {
@@ -86,7 +87,9 @@ func run() error {
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+			log.Printf("❌ Failed to write health check response: %v", err)
+		}
 	}).Methods("GET")
 
 	// Register WebSocket hooks for agent lifecycle
@@ -150,8 +153,9 @@ func run() error {
 
 	// Setup and handle graceful shutdown
 	server := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: c.Handler(router),
+		Addr:              ":" + cfg.Port,
+		Handler:           c.Handler(router),
+		ReadHeaderTimeout: 30 * time.Second,
 	}
 
 	return handleGracefulShutdown(server)

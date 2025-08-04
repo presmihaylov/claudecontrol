@@ -12,10 +12,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gorilla/mux"
+
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/usecases"
-	"github.com/gorilla/mux"
 )
 
 type SlackWebhooksHandler struct {
@@ -106,7 +107,9 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 		}
 		log.Printf("✅ Responding to Slack URL verification challenge")
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(challenge))
+		if _, err := w.Write([]byte(challenge)); err != nil {
+			log.Printf("❌ Failed to write challenge response: %v", err)
+		}
 		return
 	}
 

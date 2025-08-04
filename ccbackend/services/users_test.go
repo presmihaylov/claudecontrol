@@ -4,13 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"ccbackend/config"
-	"ccbackend/db"
-	"ccbackend/testutils"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"ccbackend/config"
+	"ccbackend/db"
+	"ccbackend/testutils"
 )
 
 // TestUserHelper provides utilities for creating and managing test users with Clerk

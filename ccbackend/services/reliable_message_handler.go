@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"ccbackend/clients"
 	"ccbackend/models"
-	"github.com/google/uuid"
 )
 
 type ProcessedMessage struct {

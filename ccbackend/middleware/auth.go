@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"strings"
 
-	"ccbackend/appctx"
-	"ccbackend/services"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/jwks"
 	"github.com/clerk/clerk-sdk-go/v2/jwt"
+
+	"ccbackend/appctx"
+	"ccbackend/services"
 )
 
 // ClerkAuthMiddleware handles JWT authentication using Clerk SDK

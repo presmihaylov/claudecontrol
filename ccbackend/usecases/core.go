@@ -7,12 +7,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/google/uuid"
+	"github.com/slack-go/slack"
+
 	"ccbackend/clients"
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/utils"
-	"github.com/google/uuid"
-	"github.com/slack-go/slack"
 )
 
 type CoreUseCase struct {
