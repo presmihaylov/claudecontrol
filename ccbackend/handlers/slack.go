@@ -154,17 +154,17 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 
 	log.Printf("📨 Bot mentioned by %s in %s: %s", user, channel, text)
 
-	threadTs, hasThreadTs := event["thread_ts"].(string)
-	if !hasThreadTs {
-		threadTs = ""
+	threadTS, hasThreadTS := event["thread_ts"].(string)
+	if !hasThreadTS {
+		threadTS = ""
 	}
 
 	slackEvent := models.SlackMessageEvent{
 		Channel:  channel,
 		User:     user,
 		Text:     text,
-		Ts:       timestamp,
-		ThreadTs: threadTs,
+		TS:       timestamp,
+		ThreadTS: threadTS,
 	}
 
 	if err := h.coreUseCase.ProcessSlackMessageEvent(slackEvent, slackIntegration.ID.String()); err != nil {

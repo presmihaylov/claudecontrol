@@ -223,14 +223,14 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 
 	// Determine the thread timestamp to use for job lookup/creation
 	var threadTS string
-	if event.ThreadTs == "" {
+	if event.ThreadTS == "" {
 		// New thread - use the message timestamp
-		threadTS = event.Ts
+		threadTS = event.TS
 		log.Printf("🆕 Bot mentioned at start of new thread in channel %s", event.Channel)
 	} else {
 		// Existing thread - use the thread timestamp
-		threadTS = event.ThreadTs
-		log.Printf("💬 Bot mentioned in ongoing thread %s in channel %s", event.ThreadTs, event.Channel)
+		threadTS = event.ThreadTS
+		log.Printf("💬 Bot mentioned in ongoing thread %s in channel %s", event.ThreadTS, event.Channel)
 	}
 
 	// Create or get existing job for this slack thread
@@ -272,7 +272,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 	processedMessage, err := s.jobsService.CreateProcessedSlackMessage(
 		job.ID,
 		event.Channel,
-		event.Ts,
+		event.TS,
 		event.Text,
 		slackIntegrationID,
 		messageStatus,
