@@ -228,7 +228,7 @@ export default function Home() {
 													Manage
 												</Button>
 												<Button
-													variant="secondary"
+													variant="destructive"
 													size="sm"
 													onClick={() => handleDeleteIntegration(integration)}
 													disabled={deleting === integration.id}
