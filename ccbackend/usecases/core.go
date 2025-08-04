@@ -22,16 +22,14 @@ type CoreUseCase struct {
 	agentsService            *services.AgentsService
 	jobsService              *services.JobsService
 	slackIntegrationsService *services.SlackIntegrationsService
-	messageProcessor         *services.MessageProcessor
 }
 
-func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.AgentsService, jobsService *services.JobsService, slackIntegrationsService *services.SlackIntegrationsService, messageProcessor *services.MessageProcessor) *CoreUseCase {
+func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.AgentsService, jobsService *services.JobsService, slackIntegrationsService *services.SlackIntegrationsService) *CoreUseCase {
 	return &CoreUseCase{
 		wsClient:                 wsClient,
 		agentsService:            agentsService,
 		jobsService:              jobsService,
 		slackIntegrationsService: slackIntegrationsService,
-		messageProcessor:         messageProcessor,
 	}
 }
 
@@ -340,7 +338,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 		},
 	}
 
-	if _, err := s.messageProcessor.SendMessage(clientID, startConversationMessage); err != nil {
+	if err := s.wsClient.SendMessage(clientID, startConversationMessage); err != nil {
 		return fmt.Errorf("failed to send start conversation message to client %s: %v", clientID, err)
 	}
 	log.Printf("🚀 Sent start conversation message to client %s", clientID)
@@ -376,7 +374,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 		},
 	}
 
-	if _, err := s.messageProcessor.SendMessage(clientID, userMessage); err != nil {
+	if err := s.wsClient.SendMessage(clientID, userMessage); err != nil {
 		return fmt.Errorf("failed to send user message to client %s: %v", clientID, err)
 	}
 	log.Printf("💬 Sent user message to client %s", clientID)
@@ -706,7 +704,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 		}
 
 		for _, agent := range connectedAgents {
-			if _, err := s.messageProcessor.SendMessage(agent.WSConnectionID, checkIdleJobsMessage); err != nil {
+			if err := s.wsClient.SendMessage(agent.WSConnectionID, checkIdleJobsMessage); err != nil {
 				broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to send CheckIdleJobs message to agent %s: %v", agent.ID, err))
 				continue
 			}
