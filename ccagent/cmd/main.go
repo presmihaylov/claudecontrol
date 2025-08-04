@@ -27,14 +27,13 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService   *services.SessionService
-	claudeService    *services.ClaudeService
-	gitUseCase       *usecases.GitUseCase
-	appState         *models.AppState
-	logFilePath      string
-	agentID          uuid.UUID
-	reconnectChan    chan struct{}
-	messageProcessor *services.MessageProcessor
+	sessionService *services.SessionService
+	claudeService  *services.ClaudeService
+	gitUseCase     *usecases.GitUseCase
+	appState       *models.AppState
+	logFilePath    string
+	agentID        uuid.UUID
+	reconnectChan  chan struct{}
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -49,19 +48,14 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	agentID := uuid.New()
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
-	// Initialize message processor with nil connection
-	messageProcessor := services.NewMessageProcessor(nil)
-	log.Info("📤 Initialized message processor")
-
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		sessionService:   sessionService,
-		claudeService:    claudeService,
-		gitUseCase:       gitUseCase,
-		appState:         appState,
-		agentID:          agentID,
-		reconnectChan:    make(chan struct{}, 1),
-		messageProcessor: messageProcessor,
+		sessionService: sessionService,
+		claudeService:  claudeService,
+		gitUseCase:     gitUseCase,
+		appState:       appState,
+		agentID:        agentID,
+		reconnectChan:  make(chan struct{}, 1),
 	}, nil
 }
 
@@ -147,7 +141,6 @@ func main() {
 
 	// Set up deferred cleanup
 	defer func() {
-		cmdRunner.messageProcessor.Stop()
 		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
 	}()
 
@@ -209,10 +202,6 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 		}
 
 		log.Info("✅ Connected to WebSocket server")
-
-		// Reset the connection in the message processor
-		cr.messageProcessor.ResetConnection(conn)
-		log.Info("📤 Updated message processor with WebSocket connection")
 
 		done := make(chan struct{})
 		reconnect := make(chan struct{})
@@ -493,12 +482,11 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
-	messageID, msgErr := cr.messageProcessor.SendMessage(assistantMsg)
-	if msgErr != nil {
-		log.Info("❌ Failed to send reliable assistant response: %v", msgErr)
-		return fmt.Errorf("failed to send reliable assistant response: %w", msgErr)
+	if err := conn.WriteJSON(assistantMsg); err != nil {
+		log.Info("❌ Failed to send assistant response: %v", err)
+		return fmt.Errorf("failed to send assistant response: %w", err)
 	}
-	log.Info("🤖 Sent reliable assistant response (message ID: %s)", messageID)
+	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
@@ -604,12 +592,11 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, conn *websocke
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
-	messageID, msgErr := cr.messageProcessor.SendMessage(assistantMsg)
-	if msgErr != nil {
-		log.Info("❌ Failed to send reliable assistant response: %v", msgErr)
-		return fmt.Errorf("failed to send reliable assistant response: %w", msgErr)
+	if err := conn.WriteJSON(assistantMsg); err != nil {
+		log.Info("❌ Failed to send assistant response: %v", err)
+		return fmt.Errorf("failed to send assistant response: %w", err)
 	}
-	log.Info("🤖 Sent reliable assistant response (message ID: %s)", messageID)
+	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(conn, commitResult, payload.SlackMessageID); err != nil {
@@ -767,12 +754,11 @@ func (cr *CmdRunner) sendJobCompleteMessage(conn *websocket.Conn, jobID, reason 
 		Type:    models.MessageTypeJobComplete,
 		Payload: payload,
 	}
-	messageID, err := cr.messageProcessor.SendMessage(jobMsg)
-	if err != nil {
-		log.Error("❌ Failed to send reliable job complete message: %v", err)
-		return fmt.Errorf("failed to send reliable job complete message: %w", err)
+	if err := conn.WriteJSON(jobMsg); err != nil {
+		log.Error("❌ Failed to send job complete message: %v", err)
+		return fmt.Errorf("failed to send job complete message: %w", err)
 	}
-	log.Info("📤 Sent reliable job complete message for job: %s (message ID: %s)", jobID, messageID)
+	log.Info("📤 Sent job complete message for job: %s (message ID: %s)", jobID, jobMsg.ID)
 
 	return nil
 }
@@ -788,12 +774,11 @@ func (cr *CmdRunner) sendSystemMessage(conn *websocket.Conn, message, slackMessa
 		Type:    models.MessageTypeSystemMessage,
 		Payload: payload,
 	}
-	messageID, err := cr.messageProcessor.SendMessage(sysMsg)
-	if err != nil {
-		log.Info("❌ Failed to send reliable system message: %v", err)
+	if err := conn.WriteJSON(sysMsg); err != nil {
+		log.Info("❌ Failed to send system message: %v", err)
 		return err
 	}
-	log.Info("⚙️ Sent reliable system message: %s (message ID: %s)", message, messageID)
+	log.Info("⚙️ Sent system message: %s (message ID: %s)", message, sysMsg.ID)
 
 	return nil
 }
