@@ -3,11 +3,6 @@ run:
   go: "1.24"
 
 linters-settings:
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(ccagent)
   gocritic:
     enabled-tags:
       - diagnostic
@@ -29,7 +24,6 @@ linters:
     - bodyclose
     - dogsled
     - errcheck
-    - gci
     - gochecknoinits
     - goconst
     - gocyclo

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"slices"
 	"sort"
 	"strings"
 
@@ -46,11 +47,9 @@ func (s *CoreUseCase) validateJobBelongsToAgent(agentID, jobID uuid.UUID, slackI
 	if err != nil {
 		return fmt.Errorf("failed to get jobs for agent: %w", err)
 	}
-
-	for _, assignedJobID := range agentJobs {
-		if assignedJobID == jobID {
-			return nil
-		}
+	if slices.Contains(agentJobs, jobID) {
+		log.Printf("✅ Agent %s is assigned to job %s", agentID, jobID)
+		return nil
 	}
 
 	log.Printf("❌ Agent %s is not assigned to job %s", agentID, jobID)
