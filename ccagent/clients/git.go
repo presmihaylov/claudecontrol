@@ -591,7 +591,7 @@ func (g *GitClient) ValidateRemoteAccess() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "git", "ls-remote", remoteURL, "HEAD")
+	cmd := exec.CommandContext(ctx, "git", "ls-remote", "origin", "HEAD")
 
 	// Set environment variables to prevent credential prompting
 	cmd.Env = append(os.Environ(),
