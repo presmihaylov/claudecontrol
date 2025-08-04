@@ -62,6 +62,7 @@ func (s *JobsService) CreateJob(slackThreadTS, slackChannelID, slackIntegrationI
 		SlackThreadTS:      slackThreadTS,
 		SlackChannelID:     slackChannelID,
 		SlackIntegrationID: integrationUUID,
+		Status:             models.JobStatusActive,
 	}
 
 	if err := s.jobsRepo.CreateJob(job); err != nil {

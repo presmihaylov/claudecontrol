@@ -308,6 +308,55 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 	return nil
 }
 
+func (s *CoreUseCase) ProcessSlackReactionEvent(event models.SlackReactionEvent, slackIntegrationID string) error {
+	log.Printf("📋 Starting to process Slack reaction event from user %s with reaction %s", event.User, event.Reaction)
+
+	// Find the job associated with this thread (the message timestamp should be the thread timestamp)
+	job, err := s.jobsService.GetJobBySlackThread(event.TS, event.Channel, slackIntegrationID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			log.Printf("📋 No job found for reaction on message %s in channel %s - ignoring", event.TS, event.Channel)
+			return nil
+		}
+		return fmt.Errorf("failed to get job by slack thread: %w", err)
+	}
+
+	// Check if the job is already manually completed
+	if job.Status == models.JobStatusManuallyComplete {
+		log.Printf("📋 Job %s is already manually completed - ignoring reaction", job.ID)
+		return nil
+	}
+
+	// TODO: Validate that the reaction is from the job initiator
+	// For now, we'll accept reactions from any user, but we should validate this
+
+	log.Printf("✅ Marking job %s as manually complete due to white_check_mark reaction from user %s", job.ID, event.User)
+
+	// Mark the job as manually complete
+	if err := s.jobsService.UpdateJobStatus(job.ID, models.JobStatusManuallyComplete, slackIntegrationID); err != nil {
+		return fmt.Errorf("failed to update job status to manually complete: %w", err)
+	}
+
+	// Send confirmation message to the thread
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
+	if err != nil {
+		return fmt.Errorf("failed to get Slack client for integration: %w", err)
+	}
+
+	confirmationMessage := ":gear: Job manually marked as complete"
+	_, _, err = slackClient.PostMessage(job.SlackChannelID,
+		slack.MsgOptionText(utils.ConvertMarkdownToSlack(confirmationMessage), false),
+		slack.MsgOptionTS(job.SlackThreadTS),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to send confirmation message to Slack: %w", err)
+	}
+
+	log.Printf("📤 Sent confirmation message to Slack thread %s", job.SlackThreadTS)
+	log.Printf("📋 Completed successfully - processed Slack reaction event")
+	return nil
+}
+
 func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *models.ProcessedSlackMessage) error {
 	// Get integration-specific Slack client
 	slackClient, err := s.getSlackClientForIntegration(message.SlackIntegrationID)

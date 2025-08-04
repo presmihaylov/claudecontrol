@@ -141,6 +141,16 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 
 	event := body["event"].(map[string]any)
 	eventType := event["type"].(string)
+	
+	if eventType == "reaction_added" {
+		// Handle reaction events for manual job completion
+		if err := h.handleReactionEvent(event, slackIntegration.ID.String()); err != nil {
+			log.Printf("❌ Failed to process reaction event: %v", err)
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
 	if eventType != "app_mention" {
 		log.Printf("❌ Unsupported event type: %s", eventType)
 		w.WriteHeader(http.StatusOK)
@@ -172,6 +182,58 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *SlackWebhooksHandler) handleReactionEvent(event map[string]any, slackIntegrationID string) error {
+	log.Printf("📋 Starting to process reaction event")
+
+	// Extract reaction details
+	reaction, ok := event["reaction"].(string)
+	if !ok {
+		return fmt.Errorf("reaction not found in event")
+	}
+
+	// Only handle white_check_mark reactions
+	if reaction != "white_check_mark" {
+		log.Printf("📋 Ignoring reaction: %s (not white_check_mark)", reaction)
+		return nil
+	}
+
+	user, ok := event["user"].(string)
+	if !ok {
+		return fmt.Errorf("user not found in reaction event")
+	}
+
+	item, ok := event["item"].(map[string]any)
+	if !ok {
+		return fmt.Errorf("item not found in reaction event")
+	}
+
+	channel, ok := item["channel"].(string)
+	if !ok {
+		return fmt.Errorf("channel not found in reaction event item")
+	}
+
+	ts, ok := item["ts"].(string)
+	if !ok {
+		return fmt.Errorf("ts not found in reaction event item")
+	}
+
+	log.Printf("✅ Processing white_check_mark reaction from user %s on message %s in channel %s", user, ts, channel)
+
+	slackReactionEvent := models.SlackReactionEvent{
+		User:     user,
+		Reaction: reaction,
+		Channel:  channel,
+		TS:       ts,
+	}
+
+	if err := h.coreUseCase.ProcessSlackReactionEvent(slackReactionEvent, slackIntegrationID); err != nil {
+		return fmt.Errorf("failed to process slack reaction event: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - processed reaction event")
+	return nil
 }
 
 func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
