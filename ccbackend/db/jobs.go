@@ -25,11 +25,11 @@ func NewPostgresJobsRepository(db *sqlx.DB, schema string) *PostgresJobsReposito
 
 func (r *PostgresJobsRepository) CreateJob(job *models.Job) error {
 	query := fmt.Sprintf(`
-		INSERT INTO %s.jobs (id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at) 
-		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
-		RETURNING id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at`, r.schema)
+		INSERT INTO %s.jobs (id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at) 
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
+		RETURNING id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at`, r.schema)
 
-	err := r.db.QueryRowx(query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackIntegrationID).StructScan(job)
+	err := r.db.QueryRowx(query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackUserID, job.SlackIntegrationID).StructScan(job)
 	if err != nil {
 		return fmt.Errorf("failed to create job: %w", err)
 	}
@@ -39,7 +39,7 @@ func (r *PostgresJobsRepository) CreateJob(job *models.Job) error {
 
 func (r *PostgresJobsRepository) GetJobByID(id uuid.UUID, slackIntegrationID string) (*models.Job, error) {
 	query := fmt.Sprintf(`
-		SELECT id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at 
+		SELECT id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at 
 		FROM %s.jobs 
 		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
 
@@ -57,7 +57,7 @@ func (r *PostgresJobsRepository) GetJobByID(id uuid.UUID, slackIntegrationID str
 
 func (r *PostgresJobsRepository) GetJobBySlackThread(threadTS, channelID, slackIntegrationID string) (*models.Job, error) {
 	query := fmt.Sprintf(`
-		SELECT id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at 
+		SELECT id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at 
 		FROM %s.jobs 
 		WHERE slack_thread_ts = $1 AND slack_channel_id = $2 AND slack_integration_id = $3`, r.schema)
 
@@ -76,11 +76,11 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(threadTS, channelID, slackI
 func (r *PostgresJobsRepository) UpdateJob(job *models.Job) error {
 	query := fmt.Sprintf(`
 		UPDATE %s.jobs 
-		SET slack_thread_ts = $2, slack_channel_id = $3, updated_at = NOW() 
-		WHERE id = $1 AND slack_integration_id = $4
-		RETURNING id, slack_thread_ts, slack_channel_id, slack_integration_id, created_at, updated_at`, r.schema)
+		SET slack_thread_ts = $2, slack_channel_id = $3, slack_user_id = $4, updated_at = NOW() 
+		WHERE id = $1 AND slack_integration_id = $5
+		RETURNING id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at`, r.schema)
 
-	err := r.db.QueryRowx(query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackIntegrationID).StructScan(job)
+	err := r.db.QueryRowx(query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackUserID, job.SlackIntegrationID).StructScan(job)
 	if err != nil {
 		return fmt.Errorf("failed to update job: %w", err)
 	}
@@ -104,7 +104,7 @@ func (r *PostgresJobsRepository) UpdateJobTimestamp(jobID uuid.UUID, slackIntegr
 
 func (r *PostgresJobsRepository) GetIdleJobs(idleMinutes int) ([]*models.Job, error) {
 	query := fmt.Sprintf(`
-		SELECT j.id, j.slack_thread_ts, j.slack_channel_id, j.slack_integration_id, j.created_at, j.updated_at 
+		SELECT j.id, j.slack_thread_ts, j.slack_channel_id, j.slack_user_id, j.slack_integration_id, j.created_at, j.updated_at 
 		FROM %s.jobs j
 		WHERE NOT EXISTS (
 			-- No messages that are not COMPLETED
@@ -180,7 +180,7 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedA
 // GetJobsWithQueuedMessages returns jobs that have at least one message in QUEUED status
 func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(slackIntegrationID string) ([]*models.Job, error) {
 	query := fmt.Sprintf(`
-		SELECT DISTINCT j.id, j.slack_thread_ts, j.slack_channel_id, j.slack_integration_id, j.created_at, j.updated_at 
+		SELECT DISTINCT j.id, j.slack_thread_ts, j.slack_channel_id, j.slack_user_id, j.slack_integration_id, j.created_at, j.updated_at 
 		FROM %s.jobs j
 		INNER JOIN %s.processed_slack_messages psm ON j.id = psm.job_id
 		WHERE j.slack_integration_id = $1 

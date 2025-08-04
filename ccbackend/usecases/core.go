@@ -233,7 +233,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 	}
 
 	// Create or get existing job for this slack thread
-	jobResult, err := s.jobsService.GetOrCreateJobForSlackThread(threadTS, event.Channel, slackIntegrationID)
+	jobResult, err := s.jobsService.GetOrCreateJobForSlackThread(threadTS, event.Channel, event.User, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to get or create job for slack thread: %v", err)
 		return fmt.Errorf("failed to get or create job for slack thread: %w", err)
@@ -1060,5 +1060,79 @@ func (s *CoreUseCase) CleanupInactiveAgents() error {
 	}
 
 	log.Printf("📋 Completed successfully - cleaned up %d inactive agents", totalInactiveAgents)
+	return nil
+}
+
+func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIntegrationID string) error {
+	log.Printf("📋 Starting to process reaction added by %s on message %s in channel %s", userID, messageTS, channelID)
+
+	// Find the job by thread TS and channel - the messageTS is the thread root
+	job, err := s.jobsService.GetJobBySlackThread(messageTS, channelID, slackIntegrationID)
+	if err != nil {
+		// Job not found - this might be a reaction on a non-job message
+		log.Printf("⏭️ No job found for message %s in channel %s - ignoring reaction", messageTS, channelID)
+		return nil
+	}
+
+	// Check if the user who added the reaction is the same as the user who created the job
+	if job.SlackUserID == nil || *job.SlackUserID != userID {
+		if job.SlackUserID == nil {
+			log.Printf("⏭️ Job %s has no slack_user_id - ignoring reaction from %s", job.ID, userID)
+		} else {
+			log.Printf("⏭️ Reaction from %s ignored - job %s was created by %s", userID, job.ID, *job.SlackUserID)
+		}
+		return nil
+	}
+
+	log.Printf("✅ Job completion reaction confirmed - user %s is the job creator", userID)
+
+	// Get the assigned agent for this job to unassign them
+	agent, err := s.agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
+	if err != nil {
+		log.Printf("⚠️ Failed to find agent for job %s: %v", job.ID, err)
+		// Don't return error - continue with job completion
+	}
+
+	// If agent is found, unassign them from the job
+	if agent != nil {
+		if err := s.agentsService.UnassignAgentFromJob(agent.ID, job.ID, slackIntegrationID); err != nil {
+			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, job.ID, err)
+			return fmt.Errorf("failed to unassign agent from job: %w", err)
+		}
+		log.Printf("✅ Unassigned agent %s from manually completed job %s", agent.ID, job.ID)
+	}
+
+	// Update Slack reactions - remove eyes emoji and add white_check_mark
+	if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "white_check_mark", slackIntegrationID); err != nil {
+		log.Printf("⚠️ Failed to update reaction for completed job %s: %v", job.ID, err)
+		// Don't return error - this is not critical
+	}
+
+	// Send completion message to Slack thread
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
+	if err != nil {
+		log.Printf("❌ Failed to get Slack client for integration: %v", err)
+		return fmt.Errorf("failed to get Slack client for integration: %w", err)
+	}
+
+	completionMessage := ":gear: Job manually marked as complete"
+	_, _, err = slackClient.PostMessage(job.SlackChannelID,
+		slack.MsgOptionText(utils.ConvertMarkdownToSlack(completionMessage), false),
+		slack.MsgOptionTS(job.SlackThreadTS),
+	)
+	if err != nil {
+		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
+		return fmt.Errorf("failed to send completion message to Slack: %w", err)
+	}
+
+	// Delete the job and its associated processed messages
+	if err := s.jobsService.DeleteJob(job.ID, slackIntegrationID); err != nil {
+		log.Printf("❌ Failed to delete completed job %s: %v", job.ID, err)
+		return fmt.Errorf("failed to delete completed job: %w", err)
+	}
+
+	log.Printf("📤 Sent completion message to Slack thread %s", job.SlackThreadTS)
+	log.Printf("🗑️ Deleted manually completed job %s", job.ID)
+	log.Printf("📋 Completed successfully - processed manual job completion for job %s", job.ID)
 	return nil
 }
