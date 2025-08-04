@@ -66,10 +66,7 @@ func run() error {
 
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)
 
-	// Initialize message processor
-	messageProcessor := services.NewMessageProcessor(wsClient)
-
-	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, messageProcessor)
+	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
 	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
@@ -95,12 +92,6 @@ func run() error {
 	// Register WebSocket hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
 	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
-
-	// Register disconnection hook to clean up pending messages and prevent memory leaks
-	wsClient.RegisterDisconnectionHook(func(client *clients.Client) error {
-		messageProcessor.CleanupClientMessages(client.ID)
-		return nil
-	})
 
 	// Register WebSocket message handler
 	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
