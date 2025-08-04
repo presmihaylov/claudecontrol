@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gammazero/workerpool"
-	"github.com/google/uuid"
 
 	"ccbackend/clients"
 	"ccbackend/models"
@@ -52,51 +51,30 @@ func NewMessageProcessor(wsClient *clients.WebSocketClient) *MessageProcessor {
 	return processor
 }
 
-func (mp *MessageProcessor) SendMessageReliably(clientID string, msg any) (string, error) {
+func (mp *MessageProcessor) SendMessageReliably(clientID string, msg models.UnknownMessage) (string, error) {
 	log.Printf("📋 Starting to send reliable message to client %s", clientID)
 
-	messageID := uuid.New().String()
-
-	// Add ID to message if it's a map
-	if msgMap, ok := msg.(map[string]any); ok {
-		msgMap["id"] = messageID
-		msg = msgMap
-	}
-
-	// Convert to UnknownMessage if it's not already
-	var reliableMsg models.UnknownMessage
-	if unknownMsg, ok := msg.(models.UnknownMessage); ok {
-		reliableMsg = unknownMsg
-		reliableMsg.ID = messageID
-	} else {
-		reliableMsg = models.UnknownMessage{
-			ID:      messageID,
-			Type:    "unknown",
-			Payload: msg,
-		}
-	}
-
 	pendingMsg := &PendingMessage{
-		ID:        messageID,
-		Message:   reliableMsg,
+		ID:        msg.ID,
+		Message:   msg,
 		ClientID:  clientID,
 		Timestamp: time.Now(),
 		Retries:   0,
 	}
 
 	mp.pendingMutex.Lock()
-	mp.pendingMessages[messageID] = pendingMsg
+	mp.pendingMessages[msg.ID] = pendingMsg
 	mp.pendingMutex.Unlock()
 
 	// Submit to worker pool for sequential processing
 	mp.workerPool.Submit(func() {
 		if err := mp.sendMessage(pendingMsg); err != nil {
-			log.Printf("❌ Failed to send reliable message %s: %v", messageID, err)
+			log.Printf("❌ Failed to send reliable message %s: %v", msg.ID, err)
 		}
 	})
 
-	log.Printf("📋 Completed successfully - queued reliable message %s for sending", messageID)
-	return messageID, nil
+	log.Printf("📋 Completed successfully - queued reliable message %s for sending", msg.ID)
+	return msg.ID, nil
 }
 
 func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
