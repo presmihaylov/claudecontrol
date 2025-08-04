@@ -65,11 +65,15 @@ jobs:
     - name: Set up test environment variables
       run: |
         cd ccbackend
+        echo "SLACK_SIGNING_SECRET=test_signing_secret" >> .env.test
+        echo "SLACK_BOT_TOKEN=NA" >> .env.test
+        echo "SLACK_CLIENT_ID=NA" >> .env.test
+        echo "SLACK_CLIENT_SECRET=NA" >> .env.test
         echo "DB_URL=postgresql://postgres:postgres@localhost:54322/postgres?sslmode=disable" > .env.test
         echo "DB_SCHEMA=claudecontrol_test" >> .env.test
-        echo "SLACK_SIGNING_SECRET=test_signing_secret" >> .env.test
-        echo "SLACK_BOT_TOKEN=test_bot_token" >> .env.test
         echo "CLERK_SECRET_KEY=test_clerk_key" >> .env.test
+        echo "CORS_ALLOWED_ORIGINS=*" >> .env.test
+        echo "PORT=8080" >> .env.test
         echo "Created .env.test file:"
         cat .env.test
 
