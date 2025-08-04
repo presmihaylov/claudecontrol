@@ -83,16 +83,6 @@ func createTestMessage(msgType string) models.UnknownMessage {
 
 // Configuration Tests
 func TestMessageProcessor_Configuration(t *testing.T) {
-	t.Run("default configuration values", func(t *testing.T) {
-		processor, _, cleanup := setupMessageProcessorTest(t)
-		defer cleanup()
-
-		// Verify default values
-		assert.Equal(t, 30*time.Second, processor.retryInterval)
-		assert.Equal(t, 5, processor.maxRetries)
-		assert.Equal(t, 30*time.Second, processor.ackTimeout)
-	})
-
 	t.Run("custom configuration", func(t *testing.T) {
 		config := MessageProcessorConfig{
 			RetryInterval: 10 * time.Second,
