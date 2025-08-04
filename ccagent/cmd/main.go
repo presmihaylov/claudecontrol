@@ -15,16 +15,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gammazero/workerpool"
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/jessevdk/go-flags"
+
 	"ccagent/clients"
 	"ccagent/core/log"
 	"ccagent/models"
 	"ccagent/services"
 	"ccagent/usecases"
 	"ccagent/utils"
-	"github.com/gammazero/workerpool"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
-	"github.com/jessevdk/go-flags"
 )
 
 type CmdRunner struct {

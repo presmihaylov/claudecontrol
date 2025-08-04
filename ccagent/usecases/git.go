@@ -5,10 +5,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lucasepe/codename"
+
 	"ccagent/clients"
 	"ccagent/core/log"
 	"ccagent/services"
-	"github.com/lucasepe/codename"
 )
 
 type GitUseCase struct {

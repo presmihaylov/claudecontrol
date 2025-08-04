@@ -7,7 +7,7 @@ linters-settings:
     sections:
       - standard
       - default
-      - prefix(github.com/presmihaylov/ccpg/cc2/ccbackend)
+      - prefix(ccbackend)
   gocritic:
     enabled-tags:
       - diagnostic
