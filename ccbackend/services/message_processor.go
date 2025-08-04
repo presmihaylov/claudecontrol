@@ -21,7 +21,7 @@ type PendingMessage struct {
 }
 
 type MessageProcessor struct {
-	wsClient        *clients.WebSocketClient
+	messageSender   clients.MessageSender
 	pendingMessages map[string]*PendingMessage
 	pendingMutex    sync.RWMutex
 	workerPool      *workerpool.WorkerPool
@@ -32,11 +32,11 @@ type MessageProcessor struct {
 	ackTimeout      time.Duration
 }
 
-func NewMessageProcessor(wsClient *clients.WebSocketClient) *MessageProcessor {
+func NewMessageProcessor(messageSender clients.MessageSender) *MessageProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	processor := &MessageProcessor{
-		wsClient:        wsClient,
+		messageSender:   messageSender,
 		pendingMessages: make(map[string]*PendingMessage),
 		workerPool:      workerpool.New(1), // Sequential processing
 		ctx:             ctx,
@@ -80,7 +80,7 @@ func (mp *MessageProcessor) SendMessageReliably(clientID string, msg models.Unkn
 func (mp *MessageProcessor) sendMessage(pendingMsg *PendingMessage) error {
 	log.Printf("📤 Sending message %s to client %s (attempt %d)", pendingMsg.ID, pendingMsg.ClientID, pendingMsg.Retries+1)
 
-	if err := mp.wsClient.SendMessage(pendingMsg.ClientID, pendingMsg.Message); err != nil {
+	if err := mp.messageSender.SendMessage(pendingMsg.ClientID, pendingMsg.Message); err != nil {
 		log.Printf("❌ Failed to send message %s to client %s: %v", pendingMsg.ID, pendingMsg.ClientID, err)
 		return err
 	}
