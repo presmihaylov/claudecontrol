@@ -66,10 +66,11 @@ func run() error {
 
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)
 
-	// Initialize reliable message handler
-	reliableMessageHandler := services.NewReliableMessageHandler(wsClient)
+	// Initialize message processor and reliable message handler
+	messageProcessor := services.NewMessageProcessor(wsClient)
+	reliableMessageHandler := services.NewReliableMessageHandler(wsClient, messageProcessor)
 
-	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
+	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, messageProcessor)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
 	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
@@ -96,7 +97,36 @@ func run() error {
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
 	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
 
-	// Register reliable message handler first (for deduplication and acknowledgements)
+	// Register disconnection hook to clean up pending messages and prevent memory leaks
+	wsClient.RegisterDisconnectionHook(func(client *clients.Client) error {
+		messageProcessor.CleanupClientMessages(client.ID)
+		return nil
+	})
+
+	// Register acknowledgment handler first
+	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
+		msgMap, ok := msg.(map[string]any)
+		if !ok {
+			return
+		}
+
+		msgType, hasType := msgMap["type"].(string)
+		if !hasType {
+			return
+		}
+
+		// Handle acknowledgment messages
+		if msgType == "acknowledgement" {
+			if payload, ok := msgMap["payload"].(map[string]any); ok {
+				if messageID, ok := payload["messageId"].(string); ok {
+					messageProcessor.HandleAcknowledgement(messageID)
+				}
+			}
+			return
+		}
+	})
+
+	// Register reliable message handler second (for deduplication and acknowledgements)
 	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
 		isAlreadyProcessed, err := reliableMessageHandler.ProcessReliableMessage(client, msg)
 		if err != nil {
