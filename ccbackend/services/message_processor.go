@@ -8,9 +8,13 @@ import (
 
 	"github.com/gammazero/workerpool"
 
-	"ccbackend/clients"
 	"ccbackend/models"
 )
+
+// MessageSender defines the interface for sending messages to WebSocket clients
+type MessageSender interface {
+	SendMessage(clientID string, msg any) error
+}
 
 type PendingMessage struct {
 	ID        string
@@ -21,7 +25,7 @@ type PendingMessage struct {
 }
 
 type MessageProcessor struct {
-	messageSender   clients.MessageSender
+	messageSender   MessageSender
 	pendingMessages map[string]*PendingMessage
 	pendingMutex    sync.RWMutex
 	workerPool      *workerpool.WorkerPool
@@ -32,7 +36,7 @@ type MessageProcessor struct {
 	ackTimeout      time.Duration
 }
 
-func NewMessageProcessor(messageSender clients.MessageSender) *MessageProcessor {
+func NewMessageProcessor(messageSender MessageSender) *MessageProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	processor := &MessageProcessor{
