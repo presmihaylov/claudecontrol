@@ -1,0 +1,100 @@
+name: Test ccbackend
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'ccbackend/**'
+      - '.github/workflows/test-ccbackend.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'ccbackend/**'
+      - '.github/workflows/test-ccbackend.yml'
+
+jobs:
+  test-ccbackend:
+    name: Test ccbackend with Supabase
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Set up Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
+
+    - name: Start Supabase local development
+      run: |
+        cd ccbackend
+        supabase start --ignore-health-check
+      env:
+        SUPABASE_DB_PASSWORD: postgres
+
+    - name: Wait for Supabase to be ready
+      run: |
+        timeout 60 bash -c 'until pg_isready -h localhost -p 54322 -U postgres; do sleep 1; done'
+
+    - name: Apply database migrations
+      run: |
+        cd ccbackend
+        supabase migration up
+
+    - name: Set up test environment variables
+      run: |
+        cd ccbackend
+        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres" > .env.test
+        echo "DB_SCHEMA=claudecontrol_test" >> .env.test
+        echo "SLACK_SIGNING_SECRET=test_signing_secret" >> .env.test
+        echo "SLACK_BOT_TOKEN=test_bot_token" >> .env.test
+        echo "CLERK_SECRET_KEY=test_clerk_key" >> .env.test
+
+    - name: Download Go modules
+      run: |
+        cd ccbackend
+        go mod download
+
+    - name: Run tests
+      run: |
+        cd ccbackend
+        make test
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:54322/postgres
+        DB_SCHEMA: claudecontrol_test
+
+    - name: Run tests with verbose output on failure
+      if: failure()
+      run: |
+        cd ccbackend
+        make test-verbose
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:54322/postgres
+        DB_SCHEMA: claudecontrol_test
+
+    - name: Stop Supabase
+      if: always()
+      run: |
+        cd ccbackend
+        supabase stop
