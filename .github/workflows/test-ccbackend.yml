@@ -52,17 +52,26 @@ jobs:
         go-version: '1.21'
         cache-dependency-path: ccbackend/go.sum
 
-    - name: Wait for PostgreSQL to be ready
+    - name: Set up Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
+
+    - name: Start Supabase local development
       run: |
-        timeout 60 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
+        cd ccbackend
+        supabase start --ignore-health-check
+      env:
+        SUPABASE_DB_PASSWORD: postgres
+
+    - name: Wait for Supabase to be ready
+      run: |
+        timeout 60 bash -c 'until pg_isready -h localhost -p 54322 -U postgres; do sleep 1; done'
+
     - name: Apply database migrations
       run: |
         cd ccbackend
-        # Apply all migrations manually to the PostgreSQL service
-        for migration in supabase/migrations/*.sql; do
-          echo "Applying migration: $migration"
-          psql postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable -f "$migration"
-        done
+        supabase migration up
     - name: Set up test environment variables
       run: |
         cd ccbackend
@@ -70,7 +79,7 @@ jobs:
         echo "SLACK_BOT_TOKEN=NA" >> .env.test
         echo "SLACK_CLIENT_ID=NA" >> .env.test
         echo "SLACK_CLIENT_SECRET=NA" >> .env.test
-        echo "DB_URL=postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable" > .env.test
+        echo "DB_URL=postgresql://postgres:postgres@localhost:54322/postgres?sslmode=disable" > .env.test
         echo "DB_SCHEMA=claudecontrol_test" >> .env.test
         echo "CLERK_SECRET_KEY=${{ secrets.CLERK_TEST_SECRET_KEY }}" >> .env.test
         echo "CORS_ALLOWED_ORIGINS=*" >> .env.test
@@ -88,17 +97,17 @@ jobs:
         echo "DB_URL=$DB_URL"
         echo "DB_SCHEMA=$DB_SCHEMA"
         echo "Testing database connection:"
-        pg_isready -h localhost -p 5432 -U postgres || echo "DB not ready on 5432"
-        psql postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable -c "SELECT version();" || echo "Connection failed"
+        pg_isready -h localhost -p 54322 -U postgres || echo "DB not ready on 54322"
+        psql postgresql://postgres:postgres@localhost:54322/postgres?sslmode=disable -c "SELECT version();" || echo "Connection failed"
       env:
-        DB_URL: postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable
+        DB_URL: postgresql://postgres:postgres@localhost:54322/postgres?sslmode=disable
         DB_SCHEMA: claudecontrol_test
 
     - name: Run tests
       run: |
         cd ccbackend
         # Export environment variables to make them available to the test process
-        export DB_URL="postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+        export DB_URL="postgresql://postgres:postgres@localhost:54322/postgres?sslmode=disable"
         export DB_SCHEMA="claudecontrol_test"
         export SLACK_SIGNING_SECRET="test_signing_secret"
         export SLACK_BOT_TOKEN="test_bot_token" 
@@ -108,8 +117,14 @@ jobs:
         echo "DB_SCHEMA=$DB_SCHEMA"
         make test
       env:
-        DB_URL: postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable
+        DB_URL: postgresql://postgres:postgres@localhost:54322/postgres?sslmode=disable
         DB_SCHEMA: claudecontrol_test
         SLACK_SIGNING_SECRET: test_signing_secret
         SLACK_BOT_TOKEN: test_bot_token
         CLERK_SECRET_KEY: ${{ secrets.CLERK_TEST_SECRET_KEY }}
+
+    - name: Stop Supabase
+      if: always()
+      run: |
+        cd ccbackend
+        supabase stop
