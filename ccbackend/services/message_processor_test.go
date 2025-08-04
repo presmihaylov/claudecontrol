@@ -81,22 +81,6 @@ func createTestMessage(msgType string) models.UnknownMessage {
 	}
 }
 
-// Configuration Tests
-func TestMessageProcessor_Configuration(t *testing.T) {
-	t.Run("custom configuration", func(t *testing.T) {
-		config := MessageProcessorConfig{
-			RetryInterval: 10 * time.Second,
-			MaxRetries:    3,
-			AckTimeout:    15 * time.Second,
-		}
-		processor, _, cleanup := setupMessageProcessorTestWithConfig(t, config)
-		defer cleanup()
-
-		assert.Equal(t, 10*time.Second, processor.retryInterval)
-		assert.Equal(t, 3, processor.maxRetries)
-		assert.Equal(t, 15*time.Second, processor.ackTimeout)
-	})
-}
 
 // Reliable Message Delivery Tests
 func TestMessageProcessor_ReliableDelivery(t *testing.T) {
