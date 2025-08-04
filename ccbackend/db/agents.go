@@ -4,13 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 
-	"ccbackend/models"
-
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
+
+	"ccbackend/models"
 )
 
 type PostgresAgentsRepository struct {
@@ -130,7 +130,6 @@ func (r *PostgresAgentsRepository) GetAllActiveAgents(slackIntegrationID string)
 	return agents, nil
 }
 
-
 func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
 		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.agent_id, a.created_at, a.updated_at, a.last_active_at 
@@ -248,4 +247,3 @@ func (r *PostgresAgentsRepository) GetInactiveAgents(slackIntegrationID string, 
 
 	return agents, nil
 }
-

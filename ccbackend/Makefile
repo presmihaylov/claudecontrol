@@ -1,4 +1,4 @@
-.PHONY: run build clean test test-verbose
+.PHONY: run build clean test test-verbose lint lint-fix
 
 run:
 	go run cmd/main.go
@@ -15,3 +15,9 @@ test:
 
 test-verbose:
 	go test -count=1 ./... -v
+
+lint:
+	golangci-lint run
+
+lint-fix:
+	golangci-lint run --fix

@@ -351,8 +351,6 @@ func (g *GitClient) HasUncommittedChanges() (bool, error) {
 	return hasChanges, nil
 }
 
-
-
 func (g *GitClient) HasExistingPR(branchName string) (bool, error) {
 	log.Info("📋 Starting to check for existing PR for branch: %s", branchName)
 
@@ -562,7 +560,7 @@ func (g *GitClient) GetBranchDiffContent(branchName, baseBranch string) (string,
 	}
 
 	diffContent := strings.TrimSpace(string(output))
-	
+
 	// If diff is very large, truncate it to avoid overwhelming Claude
 	const maxDiffLength = 8000 // Reasonable limit to avoid token limits
 	if len(diffContent) > maxDiffLength {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 )

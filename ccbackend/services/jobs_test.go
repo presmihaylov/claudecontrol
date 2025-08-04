@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"ccbackend/db"
-	"ccbackend/models"
-	"ccbackend/testutils"
-
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"ccbackend/db"
+	"ccbackend/models"
+	"ccbackend/testutils"
 )
 
 // Helper function to check if a job is in the idle jobs list
@@ -876,7 +876,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 			// Should return both jobs, ordered by created_at ASC
 			require.Len(t, queuedJobs, 2)
-			
+
 			// Find our test jobs in the results
 			var foundJob1, foundJob2 bool
 			for _, job := range queuedJobs {
@@ -981,4 +981,3 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		})
 	})
 }
-

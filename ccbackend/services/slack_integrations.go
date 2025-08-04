@@ -8,12 +8,12 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"ccbackend/appctx"
 	"ccbackend/clients"
 	"ccbackend/db"
 	"ccbackend/models"
-
-	"github.com/google/uuid"
 )
 
 type SlackIntegrationsService struct {
@@ -165,7 +165,7 @@ func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context,
 
 func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(secretKey string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by secret key")
-	
+
 	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationBySecretKey(secretKey)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by secret key: %v", err)
@@ -178,11 +178,11 @@ func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(secretKey stri
 
 func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(teamID string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by team ID: %s", teamID)
-	
+
 	if teamID == "" {
 		return nil, fmt.Errorf("team ID cannot be empty")
 	}
-	
+
 	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByTeamID(teamID)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by team ID: %v", err)
@@ -195,11 +195,11 @@ func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(teamID string) (*
 
 func (s *SlackIntegrationsService) GetSlackIntegrationByID(id uuid.UUID) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by ID: %s", id)
-	
+
 	if id == uuid.Nil {
 		return nil, fmt.Errorf("integration ID cannot be nil")
 	}
-	
+
 	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByID(id)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by ID: %v", err)

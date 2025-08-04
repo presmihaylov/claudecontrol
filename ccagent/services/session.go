@@ -1,9 +1,9 @@
 package services
 
 import (
-	"ccagent/models"
-
 	"github.com/google/uuid"
+
+	"ccagent/models"
 )
 
 type SessionService struct{}
@@ -17,4 +17,3 @@ func (s *SessionService) GenerateSession() *models.Session {
 		ID: uuid.New().String(),
 	}
 }
-
