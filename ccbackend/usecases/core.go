@@ -22,14 +22,16 @@ type CoreUseCase struct {
 	agentsService            *services.AgentsService
 	jobsService              *services.JobsService
 	slackIntegrationsService *services.SlackIntegrationsService
+	messageProcessor         *services.MessageProcessor
 }
 
-func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.AgentsService, jobsService *services.JobsService, slackIntegrationsService *services.SlackIntegrationsService) *CoreUseCase {
+func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.AgentsService, jobsService *services.JobsService, slackIntegrationsService *services.SlackIntegrationsService, messageProcessor *services.MessageProcessor) *CoreUseCase {
 	return &CoreUseCase{
 		wsClient:                 wsClient,
 		agentsService:            agentsService,
 		jobsService:              jobsService,
 		slackIntegrationsService: slackIntegrationsService,
+		messageProcessor:         messageProcessor,
 	}
 }
 
