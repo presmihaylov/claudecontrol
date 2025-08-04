@@ -87,7 +87,7 @@ func TestAgentsService(t *testing.T) {
 			agentID := uuid.New()
 
 			// Create a real job first
-			job, err := jobsService.CreateJob("test.thread.assigned", "C1234567890", slackIntegrationID)
+			job, err := jobsService.CreateJob("test.thread.assigned", "C1234567890", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 
 			agent, err := agentsService.UpsertActiveAgent(wsConnectionID, slackIntegrationID, agentID)
@@ -241,7 +241,7 @@ func TestAgentsService(t *testing.T) {
 			wsConnectionID := "test-ws-connection-4"
 
 			// Create a real job first
-			job, err := jobsService.CreateJob("test.thread.getbyid", "C1234567890", slackIntegrationID)
+			job, err := jobsService.CreateJob("test.thread.getbyid", "C1234567890", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 
 			agentID := uuid.New()
@@ -303,7 +303,7 @@ func TestAgentsService(t *testing.T) {
 			defer func() { _ = agentsService.DeleteActiveAgent(agent1.ID, slackIntegrationID) }()
 
 			// Create a real job first
-			job, err := jobsService.CreateJob("test.thread.available", "C1234567890", slackIntegrationID)
+			job, err := jobsService.CreateJob("test.thread.available", "C1234567890", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 
 			agentID2 := uuid.New()
@@ -351,7 +351,7 @@ func TestAgentsService(t *testing.T) {
 
 			// Create only agents with jobs
 			// Create real jobs first
-			job1, err := jobsService.CreateJob("test.thread.busy1", "C1111111111", slackIntegrationID)
+			job1, err := jobsService.CreateJob("test.thread.busy1", "C1111111111", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 
 			agentIDBusy1 := uuid.New()
@@ -364,7 +364,7 @@ func TestAgentsService(t *testing.T) {
 
 			defer func() { _ = agentsService.DeleteActiveAgent(agent1.ID, slackIntegrationID) }()
 
-			job2, err := jobsService.CreateJob("test.thread.busy2", "C2222222222", slackIntegrationID)
+			job2, err := jobsService.CreateJob("test.thread.busy2", "C2222222222", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 			agentIDBusy2 := uuid.New()
 			agent2, err := agentsService.UpsertActiveAgent("test-ws-busy-2", slackIntegrationID, agentIDBusy2)

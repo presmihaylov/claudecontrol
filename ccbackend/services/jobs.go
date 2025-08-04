@@ -36,8 +36,8 @@ func (s *JobsService) GetActiveMessageCountForJobs(jobIDs []uuid.UUID, slackInte
 	return count, nil
 }
 
-func (s *JobsService) CreateJob(slackThreadTS, slackChannelID, slackIntegrationID string) (*models.Job, error) {
-	log.Printf("📋 Starting to create job for slack thread: %s, channel: %s", slackThreadTS, slackChannelID)
+func (s *JobsService) CreateJob(slackThreadTS, slackChannelID, slackUserID, slackIntegrationID string) (*models.Job, error) {
+	log.Printf("📋 Starting to create job for slack thread: %s, channel: %s, user: %s", slackThreadTS, slackChannelID, slackUserID)
 
 	if slackThreadTS == "" {
 		return nil, fmt.Errorf("slack_thread_ts cannot be empty")
@@ -57,10 +57,16 @@ func (s *JobsService) CreateJob(slackThreadTS, slackChannelID, slackIntegrationI
 		return nil, fmt.Errorf("invalid slack_integration_id format: %w", err)
 	}
 
+	var userPtr *string
+	if slackUserID != "" {
+		userPtr = &slackUserID
+	}
+
 	job := &models.Job{
 		ID:                 id,
 		SlackThreadTS:      slackThreadTS,
 		SlackChannelID:     slackChannelID,
+		SlackUserID:        userPtr,
 		SlackIntegrationID: integrationUUID,
 	}
 
@@ -92,8 +98,32 @@ func (s *JobsService) GetJobByID(id uuid.UUID, slackIntegrationID string) (*mode
 	return job, nil
 }
 
-func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID, slackIntegrationID string) (*models.JobCreationResult, error) {
-	log.Printf("📋 Starting to get or create job for slack thread: %s, channel: %s", threadTS, channelID)
+func (s *JobsService) GetJobBySlackThread(threadTS, channelID, slackIntegrationID string) (*models.Job, error) {
+	log.Printf("📋 Starting to get job by slack thread: %s, channel: %s", threadTS, channelID)
+
+	if threadTS == "" {
+		return nil, fmt.Errorf("slack_thread_ts cannot be empty")
+	}
+
+	if channelID == "" {
+		return nil, fmt.Errorf("slack_channel_id cannot be empty")
+	}
+
+	if slackIntegrationID == "" {
+		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	}
+
+	job, err := s.jobsRepo.GetJobBySlackThread(threadTS, channelID, slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job by slack thread: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - retrieved job with ID: %s", job.ID)
+	return job, nil
+}
+
+func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID, slackUserID, slackIntegrationID string) (*models.JobCreationResult, error) {
+	log.Printf("📋 Starting to get or create job for slack thread: %s, channel: %s, user: %s", threadTS, channelID, slackUserID)
 
 	if threadTS == "" {
 		return nil, fmt.Errorf("slack_thread_ts cannot be empty")
@@ -119,7 +149,7 @@ func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID, slackInt
 
 	// If not found, create a new job
 	if strings.Contains(fmt.Sprintf("%v", err), "not found") {
-		newJob, createErr := s.CreateJob(threadTS, channelID, slackIntegrationID)
+		newJob, createErr := s.CreateJob(threadTS, channelID, slackUserID, slackIntegrationID)
 		if createErr != nil {
 			return nil, fmt.Errorf("failed to create new job: %w", createErr)
 		}
