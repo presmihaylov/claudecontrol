@@ -29,16 +29,17 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService        *services.SessionService
-	claudeService         *services.ClaudeService
-	gitUseCase            *usecases.GitUseCase
-	appState              *models.AppState
-	logFilePath           string
-	agentID               uuid.UUID
-	reconnectChan         chan struct{}
-	healthcheckTimer      *time.Timer
-	healthcheckTimerMutex sync.Mutex
-	messageProcessor      *services.MessageProcessor
+	sessionService         *services.SessionService
+	claudeService          *services.ClaudeService
+	gitUseCase             *usecases.GitUseCase
+	appState               *models.AppState
+	logFilePath            string
+	agentID                uuid.UUID
+	reconnectChan          chan struct{}
+	healthcheckTimer       *time.Timer
+	healthcheckTimerMutex  sync.Mutex
+	messageProcessor       *services.MessageProcessor
+	reliableMessageHandler *services.ReliableMessageHandler
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -57,15 +58,20 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	messageProcessor := services.NewMessageProcessor(nil)
 	log.Info("📤 Initialized message processor")
 
+	// Initialize reliable message handler
+	reliableMessageHandler := services.NewReliableMessageHandler(messageProcessor)
+	log.Info("🔄 Initialized reliable message handler")
+
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		sessionService:   sessionService,
-		claudeService:    claudeService,
-		gitUseCase:       gitUseCase,
-		appState:         appState,
-		agentID:          agentID,
-		reconnectChan:    make(chan struct{}, 1),
-		messageProcessor: messageProcessor,
+		sessionService:         sessionService,
+		claudeService:          claudeService,
+		gitUseCase:             gitUseCase,
+		appState:               appState,
+		agentID:                agentID,
+		reconnectChan:          make(chan struct{}, 1),
+		messageProcessor:       messageProcessor,
+		reliableMessageHandler: reliableMessageHandler,
 	}, nil
 }
 
@@ -273,6 +279,13 @@ func (cr *CmdRunner) startWebSocketClient(serverURLStr, apiKey string) error {
 				}
 
 				log.Info("📨 Received message type: %s", msg.Type)
+
+				// Check if already processed and send acknowledgement immediately
+				shouldSkip := cr.reliableMessageHandler.CheckAndAcknowledgeMessage(msg)
+				if shouldSkip {
+					log.Info("⏭️ Skipping duplicate message %s", msg.ID)
+					continue
+				}
 
 				// Route messages to appropriate worker pool
 				if instantMessageTypes[msg.Type] {
