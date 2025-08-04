@@ -47,6 +47,10 @@ func (s *JobsService) CreateJob(slackThreadTS, slackChannelID, slackUserID, slac
 		return nil, fmt.Errorf("slack_channel_id cannot be empty")
 	}
 
+	if slackUserID == "" {
+		return nil, fmt.Errorf("slack_user_id cannot be empty")
+	}
+
 	if slackIntegrationID == "" {
 		return nil, fmt.Errorf("slack_integration_id cannot be empty")
 	}
@@ -57,16 +61,11 @@ func (s *JobsService) CreateJob(slackThreadTS, slackChannelID, slackUserID, slac
 		return nil, fmt.Errorf("invalid slack_integration_id format: %w", err)
 	}
 
-	var userPtr *string
-	if slackUserID != "" {
-		userPtr = &slackUserID
-	}
-
 	job := &models.Job{
 		ID:                 id,
 		SlackThreadTS:      slackThreadTS,
 		SlackChannelID:     slackChannelID,
-		SlackUserID:        userPtr,
+		SlackUserID:        slackUserID,
 		SlackIntegrationID: integrationUUID,
 	}
 
@@ -131,6 +130,10 @@ func (s *JobsService) GetOrCreateJobForSlackThread(threadTS, channelID, slackUse
 
 	if channelID == "" {
 		return nil, fmt.Errorf("slack_channel_id cannot be empty")
+	}
+
+	if slackUserID == "" {
+		return nil, fmt.Errorf("slack_user_id cannot be empty")
 	}
 
 	if slackIntegrationID == "" {

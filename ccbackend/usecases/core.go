@@ -1075,12 +1075,8 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 	}
 
 	// Check if the user who added the reaction is the same as the user who created the job
-	if job.SlackUserID == nil || *job.SlackUserID != userID {
-		if job.SlackUserID == nil {
-			log.Printf("⏭️ Job %s has no slack_user_id - ignoring reaction from %s", job.ID, userID)
-		} else {
-			log.Printf("⏭️ Reaction from %s ignored - job %s was created by %s", userID, job.ID, *job.SlackUserID)
-		}
+	if job.SlackUserID != userID {
+		log.Printf("⏭️ Reaction from %s ignored - job %s was created by %s", userID, job.ID, job.SlackUserID)
 		return nil
 	}
 
