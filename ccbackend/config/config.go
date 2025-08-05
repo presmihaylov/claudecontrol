@@ -16,6 +16,10 @@ type AppConfig struct {
 	DatabaseSchema     string
 	ClerkSecretKey     string
 	CORSAllowedOrigins string
+	// Optional Slack alerting
+	SlackAlertWebhookURL string
+	Environment          string
+	LogsURL              string
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -72,6 +76,10 @@ func LoadConfig() (*AppConfig, error) {
 		DatabaseSchema:     databaseSchema,
 		ClerkSecretKey:     clerkSecretKey,
 		CORSAllowedOrigins: corsAllowedOrigins,
+		// Optional Slack alerting
+		SlackAlertWebhookURL: os.Getenv("SLACK_ALERT_WEBHOOK_URL"), // Optional
+		Environment:          getEnvWithDefault("ENVIRONMENT", "production"),
+		LogsURL:              getEnvWithDefault("LOGS_URL", "https://logs.example.com"),
 	}
 
 	return config, nil
@@ -83,4 +91,11 @@ func getEnvRequired(key string) (string, error) {
 		return "", fmt.Errorf("%s is not set", key)
 	}
 	return value, nil
+}
+
+func getEnvWithDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
