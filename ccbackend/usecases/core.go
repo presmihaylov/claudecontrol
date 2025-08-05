@@ -222,21 +222,38 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 
 	// Determine the thread timestamp to use for job lookup/creation
 	var threadTS string
+	var jobResult *models.JobCreationResult
+	var err error
+
 	if event.ThreadTS == "" {
-		// New thread - use the message timestamp
+		// New thread - use the message timestamp and create job if needed
 		threadTS = event.TS
 		log.Printf("🆕 Bot mentioned at start of new thread in channel %s", event.Channel)
+
+		// Create or get existing job for this slack thread
+		jobResult, err = s.jobsService.GetOrCreateJobForSlackThread(threadTS, event.Channel, event.User, slackIntegrationID)
+		if err != nil {
+			log.Printf("❌ Failed to get or create job for slack thread: %v", err)
+			return fmt.Errorf("failed to get or create job for slack thread: %w", err)
+		}
 	} else {
-		// Existing thread - use the thread timestamp
+		// Existing thread - use the thread timestamp but only get existing job
 		threadTS = event.ThreadTS
 		log.Printf("💬 Bot mentioned in ongoing thread %s in channel %s", event.ThreadTS, event.Channel)
-	}
 
-	// Create or get existing job for this slack thread
-	jobResult, err := s.jobsService.GetOrCreateJobForSlackThread(threadTS, event.Channel, event.User, slackIntegrationID)
-	if err != nil {
-		log.Printf("❌ Failed to get or create job for slack thread: %v", err)
-		return fmt.Errorf("failed to get or create job for slack thread: %w", err)
+		// Try to get existing job only - don't create new ones for thread replies
+		existingJob, err := s.jobsService.GetJobBySlackThread(threadTS, event.Channel, slackIntegrationID)
+		if err != nil {
+			// Job not found for thread reply - send error message
+			log.Printf("❌ No existing job found for thread reply in %s: %v", event.Channel, err)
+			return s.sendThreadReplyErrorMessage(event.Channel, event.TS, slackIntegrationID)
+		}
+
+		// Job exists - create result object
+		jobResult = &models.JobCreationResult{
+			Job:    existingJob,
+			Status: models.JobCreationStatusNA,
+		}
 	}
 
 	job := jobResult.Job
@@ -1046,5 +1063,28 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 	log.Printf("📤 Sent completion message to Slack thread %s", job.SlackThreadTS)
 	log.Printf("🗑️ Deleted manually completed job %s", job.ID)
 	log.Printf("📋 Completed successfully - processed manual job completion for job %s", job.ID)
+	return nil
+}
+
+func (s *CoreUseCase) sendThreadReplyErrorMessage(channelID, messageTS, slackIntegrationID string) error {
+	log.Printf("📋 Starting to send thread reply error message to channel %s", channelID)
+
+	// Get integration-specific Slack client
+	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
+	if err != nil {
+		return fmt.Errorf("failed to get Slack client for integration: %w", err)
+	}
+
+	// Send error message as reply to the message
+	errorMessage := ":gear: Error: new jobs can only be started from top-level messages"
+	_, _, err = slackClient.PostMessage(channelID,
+		slack.MsgOptionText(utils.ConvertMarkdownToSlack(errorMessage), false),
+		slack.MsgOptionTS(messageTS),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to send thread reply error message to Slack: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - sent thread reply error message to channel %s", channelID)
 	return nil
 }
