@@ -10,6 +10,7 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
+	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -55,7 +56,7 @@ func (r *PostgresAgentsRepository) DeleteActiveAgent(id uuid.UUID, slackIntegrat
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("active agent with id %s not found", id)
+		return core.ErrNotFound
 	}
 
 	return nil
@@ -71,7 +72,7 @@ func (r *PostgresAgentsRepository) GetAgentByID(id uuid.UUID, slackIntegrationID
 	err := r.db.Get(agent, query, id, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("active agent with id %s not found", id)
+			return nil, core.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get active agent: %w", err)
 	}
@@ -89,7 +90,7 @@ func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(wsConnectionID, slac
 	err := r.db.Get(agent, query, wsConnectionID, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("active agent with ws_connection_id %s not found", wsConnectionID)
+			return nil, core.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get active agent: %w", err)
 	}
@@ -142,7 +143,7 @@ func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID, slackIntegra
 	err := r.db.Get(agent, query, jobID, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("active agent with assigned_job_id %s not found", jobID)
+			return nil, core.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get active agent by job ID: %w", err)
 	}
@@ -187,7 +188,7 @@ func (r *PostgresAgentsRepository) UnassignAgentFromJob(agentID, jobID uuid.UUID
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("agent-job assignment not found")
+		return core.ErrNotFound
 	}
 
 	return nil
@@ -226,7 +227,7 @@ func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(wsConnectionID, slack
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("active agent with ws_connection_id %s not found", wsConnectionID)
+		return core.ErrNotFound
 	}
 
 	return nil
