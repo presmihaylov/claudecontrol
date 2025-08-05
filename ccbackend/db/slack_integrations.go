@@ -11,6 +11,7 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
+	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -113,7 +114,7 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integra
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("slack integration not found or does not belong to user")
+		return core.ErrNotFound
 	}
 
 	return nil
@@ -148,7 +149,7 @@ func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx conte
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("slack integration not found or does not belong to user")
+		return core.ErrNotFound
 	}
 
 	return nil

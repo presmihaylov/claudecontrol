@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
 	"ccbackend/testutils"
@@ -132,7 +134,7 @@ func TestJobsService(t *testing.T) {
 
 			_, err := service.GetJobByID(id, slackIntegrationID)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "not found")
+			assert.True(t, errors.Is(err, core.ErrNotFound))
 		})
 	})
 
@@ -224,7 +226,7 @@ func TestJobsService(t *testing.T) {
 			// Verify job no longer exists
 			_, err = service.GetJobByID(job.ID, slackIntegrationID)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "not found")
+			assert.True(t, errors.Is(err, core.ErrNotFound))
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
@@ -246,7 +248,7 @@ func TestJobsService(t *testing.T) {
 
 			err := service.DeleteJob(id, slackIntegrationID)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "not found")
+			assert.True(t, errors.Is(err, core.ErrNotFound))
 		})
 	})
 }
@@ -446,7 +448,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Test with non-existent connection ID
 		_, err = agentsService.GetAgentByWSConnectionID("non-existent-connection", slackIntegrationID)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Test with empty connection ID
 		_, err = agentsService.GetAgentByWSConnectionID("", slackIntegrationID)
@@ -695,7 +697,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 			_, err := jobsService.UpdateProcessedSlackMessage(id, models.ProcessedSlackMessageStatusCompleted, slackIntegrationID)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "not found")
+			assert.True(t, errors.Is(err, core.ErrNotFound))
 		})
 	})
 
@@ -728,7 +730,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Verify job is deleted
 		_, err = jobsService.GetJobByID(job.ID, slackIntegrationID)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Verify agent still exists but has no job assigned
 		remainingAgent, err := agentsService.GetAgentByID(agent.ID, slackIntegrationID)
@@ -770,20 +772,20 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Verify job is deleted
 		_, err = jobsService.GetJobByID(job.ID, slackIntegrationID)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Verify all processed slack messages are also deleted (cascade)
 		_, err = jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(message1.ID, slackIntegrationID)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		_, err = jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(message2.ID, slackIntegrationID)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		_, err = jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(message3.ID, slackIntegrationID)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 	})
 
 	t.Run("ProcessedSlackMessageStatusTransitions", func(t *testing.T) {
