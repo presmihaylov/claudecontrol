@@ -95,10 +95,12 @@ func run() error {
 	wsClient.RegisterPingHook(coreUseCase.ProcessPing)
 
 	// Register WebSocket message handler
-	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
+	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) error {
 		if err := wsHandler.HandleMessage(client, msg); err != nil {
 			log.Printf("❌ Error handling message from client %s: %v", client.ID, err)
+			return err
 		}
+		return nil
 	})
 
 	// Start periodic broadcast of CheckIdleJobs, cleanup of inactive agents, and processing of queued jobs
