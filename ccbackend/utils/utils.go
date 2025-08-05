@@ -16,17 +16,22 @@ func AssertInvariant(condition bool, message string) {
 }
 
 func ConvertMarkdownToSlack(message string) string {
-	// This regex matches **text** (double asterisks) and converts to *text* (single asterisks)
-	// It uses a non-greedy match to properly handle multiple bold sections
-	boldRegex := regexp.MustCompile(`\*\*(.+?)\*\*`)
-
-	// Replace all instances of **text** with *text*
-	result := boldRegex.ReplaceAllString(message, "*$1*")
-
-	// Convert lines starting with hashtags (headings) to bold text
-	// This regex matches lines starting with one or more # followed by optional space and text
+	// Handle headings with embedded bold markdown by extracting and converting the content first
 	headingRegex := regexp.MustCompile(`(?m)^#+\s*(.+)$`)
-	result = headingRegex.ReplaceAllString(result, "*$1*")
+	result := headingRegex.ReplaceAllStringFunc(message, func(match string) string {
+		// Extract the heading content after the hashtags
+		content := regexp.MustCompile(`^#+\s*(.+)$`).ReplaceAllString(match, "$1")
+		// Convert any **bold** to *bold* within the heading content
+		boldRegex := regexp.MustCompile(`\*\*(.+?)\*\*`)
+		content = boldRegex.ReplaceAllString(content, "$1")
+		// Return as Slack bold format
+		return "*" + content + "*"
+	})
+
+	// Then, convert remaining **text** (double asterisks) to *text* (single asterisks)
+	// This handles bold text that's not inside headings
+	boldRegex := regexp.MustCompile(`\*\*(.+?)\*\*`)
+	result = boldRegex.ReplaceAllString(result, "*$1*")
 
 	return result
 }
