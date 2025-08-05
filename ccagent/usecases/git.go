@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -568,10 +569,16 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 		return fmt.Errorf("failed to get PR description: %w", err)
 	}
 
-	// Check if the expected footer is present
-	expectedFooter := fmt.Sprintf("Generated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
+	// Check if the expected footer pattern is present (using regex to handle different permalinks)
+	footerPattern := `---\s*\n.*Generated with \[Claude Control\]\(https://claudecontrol\.com\) from this \[slack thread\]\([^)]+\)`
 
-	if strings.Contains(currentDescription, expectedFooter) {
+	matched, err := regexp.MatchString(footerPattern, currentDescription)
+	if err != nil {
+		log.Error("❌ Failed to match footer pattern: %v", err)
+		return fmt.Errorf("failed to match footer pattern: %w", err)
+	}
+
+	if matched {
 		log.Info("✅ PR description already has correct Claude Control footer")
 		log.Info("📋 Completed successfully - footer validation passed")
 		return nil
@@ -628,6 +635,7 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	}
 
 	// Add the correct footer
+	expectedFooter := fmt.Sprintf("Generated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
 	restoredDescription := strings.Join(cleanedLines, "\n")
 	if restoredDescription != "" {
 		// Check if description already ends with a separator
