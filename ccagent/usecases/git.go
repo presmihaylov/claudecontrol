@@ -13,10 +13,55 @@ import (
 	"ccagent/services"
 )
 
+// GitClientInterface defines the interface for Git operations
+type GitClientInterface interface {
+	IsGitRepository() error
+	IsGitRepositoryRoot() error
+	HasRemoteRepository() error
+	IsGitHubCLIAvailable() error
+	ValidateRemoteAccess() error
+	ResetHard() error
+	CleanUntracked() error
+	GetDefaultBranch() (string, error)
+	CheckoutBranch(branchName string) error
+	PullLatest() error
+	CreateAndCheckoutBranch(branchName string) error
+	GetCurrentBranch() (string, error)
+	HasUncommittedChanges() (bool, error)
+	AddAll() error
+	Commit(message string) error
+	GetLatestCommitHash() (string, error)
+	GetRemoteURL() (string, error)
+	PushBranch(branchName string) error
+	ExtractPRIDFromURL(prURL string) string
+	HasExistingPR(branchName string) (bool, error)
+	GetPRURL(branchName string) (string, error)
+	CreatePullRequest(title, body, baseBranch string) (string, error)
+	GetBranchCommitMessages(branchName, baseBranch string) ([]string, error)
+	GetBranchDiffSummary(branchName, baseBranch string) (string, error)
+	GetBranchDiffContent(branchName, baseBranch string) (string, error)
+	GetPRDescription(branchName string) (string, error)
+	UpdatePRDescription(branchName, newDescription string) error
+	GetPRState(branchName string) (string, error)
+	GetPRStateByID(prID string) (string, error)
+	GetLocalBranches() ([]string, error)
+	DeleteLocalBranch(branchName string) error
+}
+
+// ClaudeServiceInterface defines the interface for Claude operations
+type ClaudeServiceInterface interface {
+	StartNewConversation(prompt string) (*services.ClaudeResult, error)
+}
+
+// AppStateInterface defines the interface for application state operations
+type AppStateInterface interface {
+	GetAllJobs() map[string]*models.JobData
+}
+
 type GitUseCase struct {
-	gitClient     *clients.GitClient
-	claudeService *services.ClaudeService
-	appState      *models.AppState
+	gitClient     GitClientInterface
+	claudeService ClaudeServiceInterface
+	appState      AppStateInterface
 }
 
 type AutoCommitResult struct {
@@ -28,12 +73,17 @@ type AutoCommitResult struct {
 	BranchName      string
 }
 
-func NewGitUseCase(gitClient *clients.GitClient, claudeService *services.ClaudeService, appState *models.AppState) *GitUseCase {
+func NewGitUseCase(gitClient GitClientInterface, claudeService ClaudeServiceInterface, appState AppStateInterface) *GitUseCase {
 	return &GitUseCase{
 		gitClient:     gitClient,
 		claudeService: claudeService,
 		appState:      appState,
 	}
+}
+
+// NewGitUseCaseConcrete creates a GitUseCase with concrete implementations for backward compatibility
+func NewGitUseCaseConcrete(gitClient *clients.GitClient, claudeService *services.ClaudeService, appState *models.AppState) *GitUseCase {
+	return NewGitUseCase(gitClient, claudeService, appState)
 }
 
 func (g *GitUseCase) ValidateGitEnvironment() error {
