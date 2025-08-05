@@ -16,8 +16,9 @@ func AssertInvariant(condition bool, message string) {
 }
 
 func ConvertMarkdownToSlack(message string) string {
-	// This regex matches **text** where text contains any characters except **
-	boldRegex := regexp.MustCompile(`\*\*([^*]+(?:\*[^*])*[^*]*)\*\*`)
+	// This regex matches **text** (double asterisks) and converts to *text* (single asterisks)
+	// It uses a non-greedy match to properly handle multiple bold sections
+	boldRegex := regexp.MustCompile(`\*\*(.+?)\*\*`)
 
 	// Replace all instances of **text** with *text*
 	result := boldRegex.ReplaceAllString(message, "*$1*")
