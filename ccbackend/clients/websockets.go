@@ -1,14 +1,14 @@
 package clients
 
 import (
+	"ccbackend/utils"
 	"fmt"
 	"log"
-	"net/http"
 	"sync"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
+	"github.com/zishang520/socket.io/v2/socket"
 )
 
 type Message struct {
@@ -18,7 +18,7 @@ type Message struct {
 
 type Client struct {
 	ID                 string
-	ClientConn         *websocket.Conn
+	Socket             *socket.Socket
 	SlackIntegrationID string
 	AgentID            uuid.UUID
 }
@@ -28,9 +28,10 @@ type ConnectionHookFunc func(client *Client) error
 type APIKeyValidatorFunc func(apiKey string) (string, error)
 
 type WebSocketClient struct {
+	server             *socket.Server
 	clients            []*Client
+	clientsBySocketID  map[string]*Client
 	mutex              sync.RWMutex
-	upgrader           websocket.Upgrader
 	messageHandlers    []MessageHandlerFunc
 	connectionHooks    []ConnectionHookFunc
 	disconnectionHooks []ConnectionHookFunc
@@ -38,107 +39,105 @@ type WebSocketClient struct {
 }
 
 func NewWebSocketClient(apiKeyValidator APIKeyValidatorFunc) *WebSocketClient {
-	return &WebSocketClient{
-		clients: make([]*Client, 0),
-		upgrader: websocket.Upgrader{
-			CheckOrigin: func(_ *http.Request) bool {
-				return true
-			},
-		},
+	server := socket.NewServer(nil, nil)
+	wsClient := &WebSocketClient{
+		server:             server,
+		clients:            make([]*Client, 0),
+		clientsBySocketID:  make(map[string]*Client),
 		messageHandlers:    make([]MessageHandlerFunc, 0),
 		connectionHooks:    make([]ConnectionHookFunc, 0),
 		disconnectionHooks: make([]ConnectionHookFunc, 0),
 		apiKeyValidator:    apiKeyValidator,
 	}
+
+	// Set up Socket.IO connection handler
+	err := server.On("connection", func(sockets ...any) {
+		sock := sockets[0].(*socket.Socket)
+		wsClient.handleSocketIOConnection(sock)
+	})
+	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to register connection handler: %v", err))
+
+	return wsClient
 }
 
 func (ws *WebSocketClient) RegisterWithRouter(router *mux.Router) {
-	log.Printf("🚀 Registering WebSocket server on /ws endpoint")
-	router.HandleFunc("/ws", ws.handleWebSocketConnection)
-	log.Printf("✅ WebSocket server registered on /ws")
+	log.Printf("🚀 Registering Socket.IO server on /socket.io/ endpoint")
+	router.PathPrefix("/socket.io/").Handler(ws.server.ServeHandler(nil))
+	log.Printf("✅ Socket.IO server registered on /socket.io/")
 }
 
-func (ws *WebSocketClient) handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
-	log.Printf("🔗 New WebSocket connection attempt from %s", r.RemoteAddr)
+func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
+	log.Printf("🔗 New Socket.IO connection attempt, socket ID: %s", sock.Id())
 
-	// Extract and validate API key before upgrading connection
-	apiKey := r.Header.Get("X-CCAGENT-API-KEY")
-	if apiKey == "" {
-		log.Printf("❌ Rejecting WebSocket connection from %s: missing X-CCAGENT-API-KEY header", r.RemoteAddr)
-		http.Error(w, "Missing X-CCAGENT-API-KEY header", http.StatusUnauthorized)
+	// Extract and validate API key from handshake headers
+	headers := sock.Handshake().Headers
+	apiKeyHeaders, exists := headers["X-CCAGENT-API-KEY"]
+	if !exists || len(apiKeyHeaders) == 0 || apiKeyHeaders[0] == "" {
+		log.Printf("❌ Rejecting Socket.IO connection: missing X-CCAGENT-API-KEY header")
+		sock.Disconnect(true)
 		return
 	}
+	apiKey := apiKeyHeaders[0]
 
 	// Extract agent ID and validate it's a UUID
-	agentIDStr := r.Header.Get("X-CCAGENT-ID")
-	if agentIDStr == "" {
+	agentIDHeaders, exists := headers["X-CCAGENT-ID"]
+	if !exists || len(agentIDHeaders) == 0 || agentIDHeaders[0] == "" {
 		log.Printf("❌ No X-CCAGENT-ID provided, rejecting connection")
-		http.Error(w, "Invalid X-CCAGENT-ID header", http.StatusBadRequest)
+		sock.Disconnect(true)
 		return
 	}
+	agentIDStr := agentIDHeaders[0]
 
 	agentID, err := uuid.Parse(agentIDStr)
 	if err != nil {
-		log.Printf("❌ Rejecting WebSocket connection from %s: invalid agent ID format (must be UUID): %s", r.RemoteAddr, agentIDStr)
-		http.Error(w, "Invalid X-CCAGENT-ID format (must be UUID)", http.StatusBadRequest)
+		log.Printf("❌ Rejecting Socket.IO connection: invalid agent ID format (must be UUID): %s", agentIDStr)
+		sock.Disconnect(true)
 		return
 	}
 
 	// Validate API key
 	slackIntegrationID, err := ws.apiKeyValidator(apiKey)
 	if err != nil {
-		log.Printf("❌ Rejecting WebSocket connection from %s: invalid API key: %v", r.RemoteAddr, err)
-		http.Error(w, "Invalid API key", http.StatusUnauthorized)
+		log.Printf("❌ Rejecting Socket.IO connection: invalid API key: %v", err)
+		sock.Disconnect(true)
 		return
 	}
-
-	conn, err := ws.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Printf("❌ WebSocket upgrade failed from %s: %v", r.RemoteAddr, err)
-		return
-	}
-	defer func() {
-		log.Printf("🔌 Closing WebSocket connection")
-		conn.Close()
-	}()
 
 	client := &Client{
 		ID:                 uuid.New().String(),
-		ClientConn:         conn,
+		Socket:             sock,
 		SlackIntegrationID: slackIntegrationID,
 		AgentID:            agentID,
 	}
 	ws.addClient(client)
-	log.Printf("✅ WebSocket client connected with ID: %s from %s", client.ID, r.RemoteAddr)
+	log.Printf("✅ Socket.IO client connected with ID: %s, socket ID: %s", client.ID, sock.Id())
 	ws.invokeConnectionHooks(client)
-	defer func() {
+
+	// Set up message handler for cc_message event
+	err = sock.On("cc_message", func(data ...any) {
+		if len(data) > 0 {
+			log.Printf("📥 Raw message received from client %s", client.ID)
+			ws.invokeMessageHandlers(client, data[0])
+		}
+	})
+	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up message handler for client %s: %v", client.ID, err))
+
+	// Handle disconnection
+	err = sock.On("disconnect", func(data ...any) {
+		log.Printf("🔌 Socket.IO connection closed for client %s (socket ID: %s)", client.ID, sock.Id())
 		ws.invokeDisconnectionHooks(client)
 		ws.removeClient(client.ID)
-	}()
+	})
+	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up disconnection handler for client %s: %v", client.ID, err))
 
-	log.Printf("👂 Starting message listener for client %s", client.ID)
-	for {
-		var msg any
-		err := conn.ReadJSON(&msg)
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("❌ WebSocket unexpected error from client %s: %v", client.ID, err)
-			} else {
-				log.Printf("🔌 WebSocket connection closed for client %s (normal closure)", client.ID)
-			}
-			break
-		}
-
-		log.Printf("📥 Raw message received from client %s", client.ID)
-		ws.invokeMessageHandlers(client, msg)
-	}
-	log.Printf("🛑 Message listener stopped for client %s", client.ID)
+	log.Printf("👂 Message listener setup complete for client %s", client.ID)
 }
 
 func (ws *WebSocketClient) addClient(client *Client) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	ws.clients = append(ws.clients, client)
+	ws.clientsBySocketID[string(client.Socket.Id())] = client
 	log.Printf("📊 Client %s added to active connections. Total clients: %d", client.ID, len(ws.clients))
 }
 
@@ -147,8 +146,10 @@ func (ws *WebSocketClient) removeClient(clientID string) {
 	defer ws.mutex.Unlock()
 	for i, client := range ws.clients {
 		if client.ID == clientID {
+			// Remove from both slices and map
+			delete(ws.clientsBySocketID, string(client.Socket.Id()))
 			ws.clients = append(ws.clients[:i], ws.clients[i+1:]...)
-			log.Printf("🔌 WebSocket client %s disconnected. Remaining clients: %d", clientID, len(ws.clients))
+			log.Printf("🔌 Socket.IO client %s disconnected. Remaining clients: %d", clientID, len(ws.clients))
 			return
 		}
 	}
@@ -199,9 +200,11 @@ func (ws *WebSocketClient) SendMessage(clientID string, msg any) error {
 		return fmt.Errorf("client with ID %s not found", clientID)
 	}
 
-	if err := client.ClientConn.WriteJSON(msg); err != nil {
+	// Send message via Socket.IO emit to specific client
+	err := client.Socket.Emit("cc_message", msg)
+	if err != nil {
 		log.Printf("❌ Failed to send message to client %s: %v", clientID, err)
-		return err
+		return fmt.Errorf("failed to send message to client %s: %w", clientID, err)
 	}
 
 	log.Printf("✅ Message sent successfully to client %s", clientID)
