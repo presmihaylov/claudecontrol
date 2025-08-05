@@ -748,11 +748,6 @@ func extractPRNumber(prURL string) string {
 	}
 
 	// Extract PR number from URL like https://github.com/user/repo/pull/1234
-	if prURL == "" {
-		return ""
-	}
-
-	// Extract PR number from URL like https://github.com/user/repo/pull/1234
 	parts := strings.Split(prURL, "/")
 	if len(parts) > 0 && parts[len(parts)-1] != "" {
 		return "#" + parts[len(parts)-1]
