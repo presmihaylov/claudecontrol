@@ -4,6 +4,7 @@ import (
 	"ccbackend/utils"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -66,27 +67,35 @@ func (ws *WebSocketClient) RegisterWithRouter(router *mux.Router) {
 	log.Printf("✅ Socket.IO server registered on /socket.io/")
 }
 
+// getSocketIOHeader performs a case-insensitive lookup for a header in the headers map
+func getSocketIOHeader(headers map[string][]string, headerName string) (string, bool) {
+	for key, value := range headers {
+		if strings.EqualFold(key, headerName) {
+			if len(value) > 0 && value[0] != "" {
+				return value[0], true
+			}
+		}
+	}
+	return "", false
+}
+
 func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 	log.Printf("🔗 New Socket.IO connection attempt, socket ID: %s", sock.Id())
 
-	// Extract and validate API key from handshake headers
 	headers := sock.Handshake().Headers
-	apiKeyHeaders, exists := headers["X-CCAGENT-API-KEY"]
-	if !exists || len(apiKeyHeaders) == 0 || apiKeyHeaders[0] == "" {
+	apiKey, exists := getSocketIOHeader(headers, "X-CCAGENT-API-KEY")
+	if !exists {
 		log.Printf("❌ Rejecting Socket.IO connection: missing X-CCAGENT-API-KEY header")
 		sock.Disconnect(true)
 		return
 	}
-	apiKey := apiKeyHeaders[0]
 
-	// Extract agent ID and validate it's a UUID
-	agentIDHeaders, exists := headers["X-CCAGENT-ID"]
-	if !exists || len(agentIDHeaders) == 0 || agentIDHeaders[0] == "" {
+	agentIDStr, exists := getSocketIOHeader(headers, "X-CCAGENT-ID")
+	if !exists {
 		log.Printf("❌ No X-CCAGENT-ID provided, rejecting connection")
 		sock.Disconnect(true)
 		return
 	}
-	agentIDStr := agentIDHeaders[0]
 
 	agentID, err := uuid.Parse(agentIDStr)
 	if err != nil {
