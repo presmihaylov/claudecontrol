@@ -201,29 +201,12 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(clientID string, payload mod
 func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process Slack message event from %s in %s: %s", event.User, event.Channel, event.Text)
 
-	// Determine the thread timestamp to use for job lookup/creation
-	var threadTS string
-	var jobResult *models.JobCreationResult
-	var err error
-
-	if event.ThreadTS == "" {
-		// New thread - use the message timestamp and create job if needed
-		threadTS = event.TS
-		log.Printf("🆕 Bot mentioned at start of new thread in channel %s", event.Channel)
-
-		// Create or get existing job for this slack thread
-		jobResult, err = s.jobsService.GetOrCreateJobForSlackThread(threadTS, event.Channel, event.User, slackIntegrationID)
-		if err != nil {
-			log.Printf("❌ Failed to get or create job for slack thread: %v", err)
-			return fmt.Errorf("failed to get or create job for slack thread: %w", err)
-		}
-	} else {
-		// Existing thread - use the thread timestamp but only get existing job
-		threadTS = event.ThreadTS
+	// For thread replies, validate that a job exists first (don't create new jobs)
+	if event.ThreadTS != "" {
 		log.Printf("💬 Bot mentioned in ongoing thread %s in channel %s", event.ThreadTS, event.Channel)
 
-		// Try to get existing job only - don't create new ones for thread replies
-		existingJob, err := s.jobsService.GetJobBySlackThread(threadTS, event.Channel, slackIntegrationID)
+		// Check if job exists for this thread - thread replies cannot create new jobs
+		_, err := s.jobsService.GetJobBySlackThread(event.ThreadTS, event.Channel, slackIntegrationID)
 		if err != nil {
 			// Check if it's a "not found" error specifically
 			if core.IsNotFoundError(err) {
@@ -236,12 +219,21 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 			log.Printf("❌ Failed to get job for thread reply in %s: %v", event.Channel, err)
 			return fmt.Errorf("failed to get job for thread reply: %w", err)
 		}
+	} else {
+		log.Printf("🆕 Bot mentioned at start of new thread in channel %s", event.Channel)
+	}
 
-		// Job exists - create result object
-		jobResult = &models.JobCreationResult{
-			Job:    existingJob,
-			Status: models.JobCreationStatusNA,
-		}
+	// Determine thread timestamp for job lookup/creation
+	threadTS := event.TS
+	if event.ThreadTS != "" {
+		threadTS = event.ThreadTS
+	}
+
+	// Get or create job for this slack thread
+	jobResult, err := s.jobsService.GetOrCreateJobForSlackThread(threadTS, event.Channel, event.User, slackIntegrationID)
+	if err != nil {
+		log.Printf("❌ Failed to get or create job for slack thread: %v", err)
+		return fmt.Errorf("failed to get or create job for slack thread: %w", err)
 	}
 
 	job := jobResult.Job
