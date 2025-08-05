@@ -11,8 +11,8 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
+	"ccbackend/core"
 	"ccbackend/models"
-	"ccbackend/utils"
 )
 
 type PostgresJobsRepository struct {
@@ -66,7 +66,7 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(threadTS, channelID, slackI
 	err := r.db.Get(job, query, threadTS, channelID, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("job with slack_thread_ts %s and slack_channel_id %s: %w", threadTS, channelID, utils.ErrNotFound)
+			return nil, fmt.Errorf("job with slack_thread_ts %s and slack_channel_id %s: %w", threadTS, channelID, core.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get job by slack thread: %w", err)
 	}

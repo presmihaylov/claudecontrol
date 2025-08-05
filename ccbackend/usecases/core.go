@@ -12,6 +12,7 @@ import (
 	"github.com/slack-go/slack"
 
 	"ccbackend/clients"
+	"ccbackend/core"
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/utils"
@@ -225,7 +226,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 		existingJob, err := s.jobsService.GetJobBySlackThread(threadTS, event.Channel, slackIntegrationID)
 		if err != nil {
 			// Check if it's a "not found" error specifically
-			if utils.IsNotFoundError(err) {
+			if core.IsNotFoundError(err) {
 				// Job not found for thread reply - send error message
 				log.Printf("❌ No existing job found for thread reply in %s: %v", event.Channel, err)
 				errorMessage := "Error: new jobs can only be started from top-level messages"
