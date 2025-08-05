@@ -8,12 +8,12 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/googollee/go-socket.io/engineio"
 	"github.com/googollee/go-socket.io/engineio/transport"
 	"github.com/googollee/go-socket.io/engineio/transport/polling"
 	"github.com/googollee/go-socket.io/engineio/transport/websocket"
+	"github.com/gorilla/mux"
 )
 
 type Message struct {
@@ -93,7 +93,7 @@ func (ws *WebSocketClient) handleSocketConnection(s socketio.Conn) error {
 		log.Printf("❌ Failed to parse query parameters: %v", err)
 		return fmt.Errorf("failed to parse query parameters")
 	}
-	
+
 	// Extract and validate API key
 	apiKey := queryValues.Get("api_key")
 	if apiKey == "" {
@@ -137,7 +137,7 @@ func (ws *WebSocketClient) handleSocketConnection(s socketio.Conn) error {
 
 func (ws *WebSocketClient) handleSocketDisconnection(s socketio.Conn, reason string) {
 	log.Printf("🔌 Socket.IO client %s disconnected: %s", s.ID(), reason)
-	
+
 	client := ws.getClientByID(s.ID())
 	if client != nil {
 		ws.invokeDisconnectionHooks(client)
@@ -158,7 +158,7 @@ func (ws *WebSocketClient) setupMessageHandlers(server *socketio.Server) {
 	// Handle specific event types for better Socket.IO integration
 	eventTypes := []string{
 		"start_conversation_v1",
-		"user_message_v1", 
+		"user_message_v1",
 		"assistant_message_v1",
 		"system_message_v1",
 		"job_complete_v1",
@@ -265,7 +265,7 @@ func (ws *WebSocketClient) SendMessage(clientID string, msg any) error {
 			}
 		}
 	}
-	
+
 	// Fallback to generic message event
 	client.SocketConn.Emit("message", msg)
 	log.Printf("✅ Message sent successfully to client %s", clientID)
