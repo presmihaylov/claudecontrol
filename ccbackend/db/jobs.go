@@ -48,7 +48,7 @@ func (r *PostgresJobsRepository) GetJobByID(id uuid.UUID, slackIntegrationID str
 	err := r.db.Get(job, query, id, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("job with id %s not found", id)
+			return nil, core.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}
@@ -148,7 +148,7 @@ func (r *PostgresJobsRepository) DeleteJob(id uuid.UUID, slackIntegrationID stri
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("job with id %s not found", id)
+		return core.ErrNotFound
 	}
 
 	return nil
@@ -172,7 +172,7 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedA
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("job with id %s not found", id)
+		return core.ErrNotFound
 	}
 
 	return nil
