@@ -225,10 +225,16 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 		// Try to get existing job only - don't create new ones for thread replies
 		existingJob, err := s.jobsService.GetJobBySlackThread(threadTS, event.Channel, slackIntegrationID)
 		if err != nil {
-			// Job not found for thread reply - send error message
-			log.Printf("❌ No existing job found for thread reply in %s: %v", event.Channel, err)
-			errorMessage := ":gear: Error: new jobs can only be started from top-level messages"
-			return s.sendSystemMessage(event.Channel, event.TS, errorMessage, slackIntegrationID)
+			// Check if it's a "not found" error specifically
+			if utils.IsNotFoundError(err) {
+				// Job not found for thread reply - send error message
+				log.Printf("❌ No existing job found for thread reply in %s: %v", event.Channel, err)
+				errorMessage := ":gear: Error: new jobs can only be started from top-level messages"
+				return s.sendSystemMessage(event.Channel, event.TS, errorMessage, slackIntegrationID)
+			}
+			// Other error - propagate upstream
+			log.Printf("❌ Failed to get job for thread reply in %s: %v", event.Channel, err)
+			return fmt.Errorf("failed to get job for thread reply: %w", err)
 		}
 
 		// Job exists - create result object
