@@ -312,10 +312,16 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
 
-	// Generate permalink for the Slack message
+	// Get job to access thread timestamp
+	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID.String())
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	// Generate permalink for the thread's first message
 	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
 		Channel: message.SlackChannelID,
-		Ts:      message.SlackTS,
+		Ts:      job.SlackThreadTS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
@@ -349,9 +355,16 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
 
+	// Get job to access thread timestamp
+	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID.String())
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	// Generate permalink for the thread's first message
 	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
 		Channel: message.SlackChannelID,
-		Ts:      message.SlackTS,
+		Ts:      job.SlackThreadTS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
