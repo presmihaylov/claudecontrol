@@ -133,6 +133,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Clean up stale ccagent branches before starting
+	err = cmdRunner.cleanupStaleBranches()
+	if err != nil {
+		// Log error but don't exit - cleanup failure shouldn't prevent agent startup
+		fmt.Fprintf(os.Stderr, "Warning: Stale branch cleanup failed: %v\n", err)
+	}
+
 	// Get WebSocket URL from environment variable with default fallback
 	wsURL := os.Getenv("CCAGENT_WS_API_URL")
 	if wsURL == "" {
@@ -271,6 +278,41 @@ func (cr *CmdRunner) setupProgramLogging() (string, error) {
 	log.SetWriter(writer)
 
 	return logFilePath, nil
+}
+
+func (cr *CmdRunner) cleanupStaleBranches() error {
+	log.Info("🧹 Starting stale branch cleanup process")
+
+	// Get active branch names from current job state
+	allJobs := cr.appState.GetAllJobs()
+	activeBranches := make([]string, 0, len(allJobs))
+
+	for _, job := range allJobs {
+		if job.BranchName != "" {
+			activeBranches = append(activeBranches, job.BranchName)
+		}
+	}
+
+	if len(activeBranches) > 0 {
+		log.Info("🔒 Protected active job branches: %v", activeBranches)
+	} else {
+		log.Info("🔒 No active job branches to protect")
+	}
+
+	// Perform cleanup
+	result, err := cr.gitUseCase.CleanupStaleBranches(activeBranches)
+	if err != nil {
+		log.Error("❌ Stale branch cleanup failed: %v", err)
+		return err
+	}
+
+	// Log summary to stderr so user sees it even with log files
+	if len(result.DeletedBranches) > 0 {
+		fmt.Fprintf(os.Stderr, "🧹 Cleaned up %d stale ccagent branches\n", len(result.DeletedBranches))
+	}
+
+	log.Info("🧹 Completed stale branch cleanup process")
+	return nil
 }
 
 func (cr *CmdRunner) handleMessage(msg models.UnknownMessage, socketClient *socket.Socket) {

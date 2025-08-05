@@ -685,3 +685,109 @@ func (g *GitUseCase) CheckPRStatusByID(prID string) (string, error) {
 	log.Info("📋 Completed successfully - PR status for ID %s: %s", prID, prStatus)
 	return prStatus, nil
 }
+
+type CleanupResult struct {
+	TotalBranches   int
+	DeletedBranches []string
+	SkippedBranches []string
+	FailedBranches  []string
+}
+
+func (g *GitUseCase) CleanupStaleBranches(activeBranchNames []string) (*CleanupResult, error) {
+	log.Info("📋 Starting stale branch cleanup")
+
+	result := &CleanupResult{
+		DeletedBranches: []string{},
+		SkippedBranches: []string{},
+		FailedBranches:  []string{},
+	}
+
+	// Get current branch to avoid deleting it
+	currentBranch, err := g.gitClient.GetCurrentBranch()
+	if err != nil {
+		log.Error("❌ Failed to get current branch: %v", err)
+		return result, fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	// Get all local branches
+	allBranches, err := g.gitClient.GetAllLocalBranches()
+	if err != nil {
+		log.Error("❌ Failed to get local branches: %v", err)
+		return result, fmt.Errorf("failed to get local branches: %w", err)
+	}
+
+	result.TotalBranches = len(allBranches)
+	log.Info("🔍 Found %d total local branches", len(allBranches))
+
+	// Create sets for faster lookup
+	activeBranchSet := make(map[string]bool)
+	for _, branch := range activeBranchNames {
+		activeBranchSet[branch] = true
+	}
+
+	protectedBranches := map[string]bool{
+		"main":   true,
+		"master": true,
+	}
+
+	// Process each branch
+	ccagentBranchCount := 0
+	for _, branch := range allBranches {
+		// Only process ccagent/ branches
+		if !strings.HasPrefix(branch, "ccagent/") {
+			continue
+		}
+		ccagentBranchCount++
+
+		// Skip current branch
+		if branch == currentBranch {
+			log.Info("⚠️ Skipping current branch: %s", branch)
+			result.SkippedBranches = append(result.SkippedBranches, fmt.Sprintf("%s (current)", branch))
+			continue
+		}
+
+		// Skip protected branches (shouldn't happen with ccagent/ prefix, but safety first)
+		if protectedBranches[branch] {
+			log.Info("⚠️ Skipping protected branch: %s", branch)
+			result.SkippedBranches = append(result.SkippedBranches, fmt.Sprintf("%s (protected)", branch))
+			continue
+		}
+
+		// Skip active job branches
+		if activeBranchSet[branch] {
+			log.Info("⚠️ Skipping active job branch: %s", branch)
+			result.SkippedBranches = append(result.SkippedBranches, fmt.Sprintf("%s (active job)", branch))
+			continue
+		}
+
+		// This is a stale ccagent branch - delete it
+		log.Info("🗑️ Deleting stale branch: %s", branch)
+		if err := g.gitClient.DeleteBranch(branch, true); err != nil {
+			log.Error("❌ Failed to delete branch %s: %v", branch, err)
+			result.FailedBranches = append(result.FailedBranches, branch)
+		} else {
+			log.Info("✅ Successfully deleted stale branch: %s", branch)
+			result.DeletedBranches = append(result.DeletedBranches, branch)
+		}
+	}
+
+	log.Info("📊 Cleanup summary:")
+	log.Info("   📁 Total branches: %d", result.TotalBranches)
+	log.Info("   🏷️ ccagent/ branches: %d", ccagentBranchCount)
+	log.Info("   🗑️ Deleted: %d", len(result.DeletedBranches))
+	log.Info("   ⏭️ Skipped: %d", len(result.SkippedBranches))
+	log.Info("   ❌ Failed: %d", len(result.FailedBranches))
+
+	if len(result.DeletedBranches) > 0 {
+		log.Info("✅ Deleted branches: %v", result.DeletedBranches)
+	}
+	if len(result.SkippedBranches) > 0 {
+		log.Info("⏭️ Skipped branches: %v", result.SkippedBranches)
+	}
+	if len(result.FailedBranches) > 0 {
+		log.Info("❌ Failed branches: %v", result.FailedBranches)
+	}
+
+	log.Info("📋 Completed successfully - stale branch cleanup")
+	return result, nil
+}

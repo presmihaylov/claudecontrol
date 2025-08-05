@@ -677,3 +677,54 @@ func (g *GitClient) parseRemoteAccessError(err error, output, remoteURL string) 
 	// Generic fallback
 	return fmt.Errorf("remote repository access failed for %s: %w\nOutput: %s", remoteURL, err, output)
 }
+
+func (g *GitClient) GetAllLocalBranches() ([]string, error) {
+	log.Info("📋 Starting to get all local branches")
+
+	cmd := exec.Command("git", "branch", "--list")
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to get local branches: %v\nOutput: %s", err, string(output))
+		return nil, fmt.Errorf("failed to get local branches: %w\nOutput: %s", err, string(output))
+	}
+
+	branches := []string{}
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			// Remove the asterisk prefix for current branch
+			if strings.HasPrefix(line, "* ") {
+				line = strings.TrimSpace(line[2:])
+			}
+			branches = append(branches, line)
+		}
+	}
+
+	log.Info("✅ Found %d local branches", len(branches))
+	log.Info("📋 Completed successfully - got all local branches")
+	return branches, nil
+}
+
+func (g *GitClient) DeleteBranch(branchName string, force bool) error {
+	log.Info("📋 Starting to delete branch: %s (force: %t)", branchName, force)
+
+	var cmd *exec.Cmd
+	if force {
+		cmd = exec.Command("git", "branch", "-D", branchName)
+	} else {
+		cmd = exec.Command("git", "branch", "-d", branchName)
+	}
+
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to delete branch %s: %v\nOutput: %s", branchName, err, string(output))
+		return fmt.Errorf("failed to delete branch %s: %w\nOutput: %s", branchName, err, string(output))
+	}
+
+	log.Info("✅ Successfully deleted branch: %s", branchName)
+	log.Info("📋 Completed successfully - deleted branch")
+	return nil
+}
