@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/gammazero/workerpool"
-	"github.com/google/uuid"
 	"github.com/jessevdk/go-flags"
 	"github.com/zishang520/engine.io-client-go/transports"
 	"github.com/zishang520/engine.io/v2/types"
 	"github.com/zishang520/socket.io-client-go/socket"
 
 	"ccagent/clients"
+	"ccagent/core"
 	"ccagent/core/log"
 	"ccagent/models"
 	"ccagent/services"
@@ -33,7 +33,7 @@ type CmdRunner struct {
 	gitUseCase     *usecases.GitUseCase
 	appState       *models.AppState
 	logFilePath    string
-	agentID        uuid.UUID
+	agentID        string
 	reconnectChan  chan struct{}
 }
 
@@ -46,7 +46,10 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService)
 	appState := models.NewAppState()
 
-	agentID := uuid.New()
+	agentID, err := core.NewID("a")
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate agent ID: %w", err)
+	}
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
@@ -167,7 +170,7 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 	// Set authentication headers
 	opts.SetExtraHeaders(map[string][]string{
 		"X-CCAGENT-API-KEY": {apiKey},
-		"X-CCAGENT-ID":      {cr.agentID.String()},
+		"X-CCAGENT-ID":      {cr.agentID},
 	})
 
 	manager := socket.NewManager(serverURLStr, opts)
@@ -433,8 +436,12 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		SlackMessageID: payload.SlackMessageID,
 	}
 
+	msgID, err := core.NewID("msg")
+	if err != nil {
+		return fmt.Errorf("failed to generate message ID: %w", err)
+	}
 	assistantMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
+		ID:      msgID,
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
@@ -544,8 +551,12 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, socketClient *
 		SlackMessageID: payload.SlackMessageID,
 	}
 
+	msgID, err := core.NewID("msg")
+	if err != nil {
+		return fmt.Errorf("failed to generate message ID: %w", err)
+	}
 	assistantMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
+		ID:      msgID,
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
@@ -707,8 +718,12 @@ func (cr *CmdRunner) sendJobCompleteMessage(socketClient *socket.Socket, jobID, 
 		Reason: reason,
 	}
 
+	msgID, err := core.NewID("msg")
+	if err != nil {
+		return fmt.Errorf("failed to generate message ID: %w", err)
+	}
 	jobMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
+		ID:      msgID,
 		Type:    models.MessageTypeJobComplete,
 		Payload: payload,
 	}
@@ -728,8 +743,12 @@ func (cr *CmdRunner) sendSystemMessage(socketClient *socket.Socket, message, sla
 		SlackMessageID: slackMessageID,
 	}
 
+	msgID, err := core.NewID("msg")
+	if err != nil {
+		return fmt.Errorf("failed to generate message ID: %w", err)
+	}
 	sysMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
+		ID:      msgID,
 		Type:    models.MessageTypeSystemMessage,
 		Payload: payload,
 	}
@@ -751,8 +770,12 @@ func (cr *CmdRunner) sendErrorMessage(socketClient *socket.Socket, err error, sl
 }
 
 func (cr *CmdRunner) sendProcessingSlackMessage(socketClient *socket.Socket, slackMessageID string) error {
+	msgID, err := core.NewID("msg")
+	if err != nil {
+		return fmt.Errorf("failed to generate message ID: %w", err)
+	}
 	processingSlackMessageMsg := models.UnknownMessage{
-		ID:   uuid.New().String(),
+		ID:   msgID,
 		Type: models.MessageTypeProcessingSlackMessage,
 		Payload: models.ProcessingSlackMessagePayload{
 			SlackMessageID: slackMessageID,

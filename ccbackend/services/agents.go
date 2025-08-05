@@ -5,8 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/google/uuid"
-
+	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
 )
@@ -19,7 +18,7 @@ func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
 	return &AgentsService{agentsRepo: repo}
 }
 
-func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID string, agentID uuid.UUID) (*models.ActiveAgent, error) {
+func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID string, agentID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to upsert active agent for wsConnectionID: %s, agentID: %s", wsConnectionID, agentID)
 
 	if wsConnectionID == "" {
@@ -30,16 +29,19 @@ func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID str
 		return nil, fmt.Errorf("slack_integration_id cannot be empty")
 	}
 
-	id := uuid.New()
-	integrationUUID, err := uuid.Parse(slackIntegrationID)
+	if agentID == "" {
+		return nil, fmt.Errorf("agent_id cannot be empty")
+	}
+
+	id, err := core.NewID("agent")
 	if err != nil {
-		return nil, fmt.Errorf("invalid slack_integration_id format: %w", err)
+		return nil, fmt.Errorf("failed to generate agent ID: %w", err)
 	}
 
 	agent := &models.ActiveAgent{
 		ID:                 id,
 		WSConnectionID:     wsConnectionID,
-		SlackIntegrationID: integrationUUID,
+		SlackIntegrationID: slackIntegrationID,
 		AgentID:            agentID,
 	}
 
@@ -77,11 +79,11 @@ func (s *AgentsService) DeleteActiveAgentByWsConnectionID(wsConnectionID, slackI
 	return nil
 }
 
-func (s *AgentsService) DeleteActiveAgent(id uuid.UUID, slackIntegrationID string) error {
+func (s *AgentsService) DeleteActiveAgent(id string, slackIntegrationID string) error {
 	log.Printf("📋 Starting to delete active agent with ID: %s", id)
 
-	if id == uuid.Nil {
-		return fmt.Errorf("agent ID cannot be nil")
+	if id == "" {
+		return fmt.Errorf("agent ID cannot be empty")
 	}
 
 	if slackIntegrationID == "" {
@@ -96,11 +98,11 @@ func (s *AgentsService) DeleteActiveAgent(id uuid.UUID, slackIntegrationID strin
 	return nil
 }
 
-func (s *AgentsService) GetAgentByID(id uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (s *AgentsService) GetAgentByID(id string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get agent by ID: %s", id)
 
-	if id == uuid.Nil {
-		return nil, fmt.Errorf("agent ID cannot be nil")
+	if id == "" {
+		return nil, fmt.Errorf("agent ID cannot be empty")
 	}
 
 	if slackIntegrationID == "" {
@@ -215,31 +217,31 @@ func (s *AgentsService) CheckAgentHasActiveConnection(agent *models.ActiveAgent,
 	return hasConnection
 }
 
-func (s *AgentsService) AssignAgentToJob(agentID, jobID uuid.UUID, slackIntegrationID string) error {
+func (s *AgentsService) AssignAgentToJob(agentID, jobID string, slackIntegrationID string) error {
 	log.Printf("📋 Starting to assign agent %s to job %s", agentID, jobID)
 
-	if agentID == uuid.Nil {
-		return fmt.Errorf("agent ID cannot be nil")
+	if agentID == "" {
+		return fmt.Errorf("agent ID cannot be empty")
 	}
 
-	if jobID == uuid.Nil {
-		return fmt.Errorf("job ID cannot be nil")
+	if jobID == "" {
+		return fmt.Errorf("job ID cannot be empty")
 	}
 
 	if slackIntegrationID == "" {
 		return fmt.Errorf("slack_integration_id cannot be empty")
 	}
 
-	integrationUUID, err := uuid.Parse(slackIntegrationID)
+	assignmentID, err := core.NewID("assignment")
 	if err != nil {
-		return fmt.Errorf("invalid slack_integration_id format: %w", err)
+		return fmt.Errorf("failed to generate assignment ID: %w", err)
 	}
 
 	assignment := &models.AgentJobAssignment{
-		ID:                 uuid.New(),
+		ID:                 assignmentID,
 		AgentID:            agentID,
 		JobID:              jobID,
-		SlackIntegrationID: integrationUUID,
+		SlackIntegrationID: slackIntegrationID,
 	}
 
 	if err := s.agentsRepo.AssignAgentToJob(assignment); err != nil {
@@ -250,15 +252,15 @@ func (s *AgentsService) AssignAgentToJob(agentID, jobID uuid.UUID, slackIntegrat
 	return nil
 }
 
-func (s *AgentsService) UnassignAgentFromJob(agentID, jobID uuid.UUID, slackIntegrationID string) error {
+func (s *AgentsService) UnassignAgentFromJob(agentID, jobID string, slackIntegrationID string) error {
 	log.Printf("📋 Starting to unassign agent %s from job %s", agentID, jobID)
 
-	if agentID == uuid.Nil {
-		return fmt.Errorf("agent ID cannot be nil")
+	if agentID == "" {
+		return fmt.Errorf("agent ID cannot be empty")
 	}
 
-	if jobID == uuid.Nil {
-		return fmt.Errorf("job ID cannot be nil")
+	if jobID == "" {
+		return fmt.Errorf("job ID cannot be empty")
 	}
 
 	if slackIntegrationID == "" {
@@ -273,11 +275,11 @@ func (s *AgentsService) UnassignAgentFromJob(agentID, jobID uuid.UUID, slackInte
 	return nil
 }
 
-func (s *AgentsService) GetAgentByJobID(jobID uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (s *AgentsService) GetAgentByJobID(jobID string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get agent by job ID: %s", jobID)
 
-	if jobID == uuid.Nil {
-		return nil, fmt.Errorf("job ID cannot be nil")
+	if jobID == "" {
+		return nil, fmt.Errorf("job ID cannot be empty")
 	}
 
 	if slackIntegrationID == "" {
@@ -318,11 +320,11 @@ func (s *AgentsService) GetAgentByWSConnectionID(wsConnectionID, slackIntegratio
 	return agent, nil
 }
 
-func (s *AgentsService) GetActiveAgentJobAssignments(agentID uuid.UUID, slackIntegrationID string) ([]uuid.UUID, error) {
+func (s *AgentsService) GetActiveAgentJobAssignments(agentID string, slackIntegrationID string) ([]string, error) {
 	log.Printf("📋 Starting to get active job assignments for agent %s", agentID)
 
-	if agentID == uuid.Nil {
-		return nil, fmt.Errorf("agent ID cannot be nil")
+	if agentID == "" {
+		return nil, fmt.Errorf("agent ID cannot be empty")
 	}
 
 	if slackIntegrationID == "" {

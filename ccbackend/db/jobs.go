@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	// necessary import to wire up the postgres driver
@@ -37,7 +36,7 @@ func (r *PostgresJobsRepository) CreateJob(job *models.Job) error {
 	return nil
 }
 
-func (r *PostgresJobsRepository) GetJobByID(id uuid.UUID, slackIntegrationID string) (*models.Job, error) {
+func (r *PostgresJobsRepository) GetJobByID(id string, slackIntegrationID string) (*models.Job, error) {
 	query := fmt.Sprintf(`
 		SELECT id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at 
 		FROM %s.jobs 
@@ -88,7 +87,7 @@ func (r *PostgresJobsRepository) UpdateJob(job *models.Job) error {
 	return nil
 }
 
-func (r *PostgresJobsRepository) UpdateJobTimestamp(jobID uuid.UUID, slackIntegrationID string) error {
+func (r *PostgresJobsRepository) UpdateJobTimestamp(jobID string, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		UPDATE %s.jobs 
 		SET updated_at = NOW() 
@@ -131,7 +130,7 @@ func (r *PostgresJobsRepository) GetIdleJobs(idleMinutes int) ([]*models.Job, er
 	return jobs, nil
 }
 
-func (r *PostgresJobsRepository) DeleteJob(id uuid.UUID, slackIntegrationID string) error {
+func (r *PostgresJobsRepository) DeleteJob(id string, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		DELETE FROM %s.jobs 
 		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
@@ -154,7 +153,7 @@ func (r *PostgresJobsRepository) DeleteJob(id uuid.UUID, slackIntegrationID stri
 }
 
 // TESTS_UpdateJobUpdatedAt updates the updated_at timestamp of a job for testing purposes
-func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(id uuid.UUID, updatedAt time.Time, slackIntegrationID string) error {
+func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(id string, updatedAt time.Time, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		UPDATE %s.jobs 
 		SET updated_at = $2 

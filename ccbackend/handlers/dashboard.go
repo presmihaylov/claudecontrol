@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
 	"ccbackend/appctx"
@@ -186,12 +185,13 @@ func (h *DashboardAPIHandler) handleDeleteSlackIntegration(w http.ResponseWriter
 		return
 	}
 
-	integrationID, err := uuid.Parse(integrationIDStr)
-	if err != nil {
-		log.Printf("❌ Invalid integration ID format: %v", err)
-		http.Error(w, "invalid integration ID format", http.StatusBadRequest)
+	if integrationIDStr == "" {
+		log.Printf("❌ Empty integration ID")
+		http.Error(w, "integration ID cannot be empty", http.StatusBadRequest)
 		return
 	}
+
+	integrationID := integrationIDStr
 
 	// Delete the integration (service will get user from context)
 	if err := h.slackIntegrationsService.DeleteSlackIntegration(r.Context(), integrationID); err != nil {
@@ -222,12 +222,13 @@ func (h *DashboardAPIHandler) handleGenerateCCAgentSecretKey(w http.ResponseWrit
 		return
 	}
 
-	integrationID, err := uuid.Parse(integrationIDStr)
-	if err != nil {
-		log.Printf("❌ Invalid integration ID format: %v", err)
-		http.Error(w, "invalid integration ID format", http.StatusBadRequest)
+	if integrationIDStr == "" {
+		log.Printf("❌ Empty integration ID")
+		http.Error(w, "integration ID cannot be empty", http.StatusBadRequest)
 		return
 	}
+
+	integrationID := integrationIDStr
 
 	// Generate the secret key (service will get user from context)
 	secretKey, err := h.slackIntegrationsService.GenerateCCAgentSecretKey(r.Context(), integrationID)

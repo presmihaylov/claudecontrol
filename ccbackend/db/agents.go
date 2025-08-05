@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	// necessary import to wire up the postgres driver
@@ -41,7 +40,7 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(agent *models.ActiveAgent) 
 	return nil
 }
 
-func (r *PostgresAgentsRepository) DeleteActiveAgent(id uuid.UUID, slackIntegrationID string) error {
+func (r *PostgresAgentsRepository) DeleteActiveAgent(id string, slackIntegrationID string) error {
 	query := fmt.Sprintf("DELETE FROM %s.active_agents WHERE id = $1 AND slack_integration_id = $2", r.schema)
 
 	result, err := r.db.Exec(query, id, slackIntegrationID)
@@ -61,7 +60,7 @@ func (r *PostgresAgentsRepository) DeleteActiveAgent(id uuid.UUID, slackIntegrat
 	return nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByID(id uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAgentByID(id string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
 		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
@@ -130,7 +129,7 @@ func (r *PostgresAgentsRepository) GetAllActiveAgents(slackIntegrationID string)
 	return agents, nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByJobID(jobID uuid.UUID, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAgentByJobID(jobID string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
 		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.agent_id, a.created_at, a.updated_at, a.last_active_at 
 		FROM %s.active_agents a
@@ -171,7 +170,7 @@ func (r *PostgresAgentsRepository) AssignAgentToJob(assignment *models.AgentJobA
 	return nil
 }
 
-func (r *PostgresAgentsRepository) UnassignAgentFromJob(agentID, jobID uuid.UUID, slackIntegrationID string) error {
+func (r *PostgresAgentsRepository) UnassignAgentFromJob(agentID, jobID string, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		DELETE FROM %s.agent_job_assignments 
 		WHERE agent_id = $1 AND job_id = $2 AND slack_integration_id = $3`, r.schema)
@@ -193,14 +192,14 @@ func (r *PostgresAgentsRepository) UnassignAgentFromJob(agentID, jobID uuid.UUID
 	return nil
 }
 
-func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(agentID uuid.UUID, slackIntegrationID string) ([]uuid.UUID, error) {
+func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(agentID string, slackIntegrationID string) ([]string, error) {
 	query := fmt.Sprintf(`
 		SELECT job_id 
 		FROM %s.agent_job_assignments
 		WHERE agent_id = $1 AND slack_integration_id = $2
 		ORDER BY assigned_at ASC`, r.schema)
 
-	var jobIDs []uuid.UUID
+	var jobIDs []string
 	err := r.db.Select(&jobIDs, query, agentID, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active agent job assignments: %w", err)
