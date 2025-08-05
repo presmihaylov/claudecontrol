@@ -510,16 +510,18 @@ Files changed:
 Actual code changes:
 %s
 
-Please generate a professional pull request description based on the actual changes shown above. Include:
-- ## Summary section with what was accomplished
-- ## Changes section with key modifications
-- Keep it concise but informative
+Generate a concise pull request description with:
+- ## Summary: High-level overview of what changed (2-3 bullet points max)
+- ## Why: Brief explanation of the motivation/reasoning behind the change
+
+Keep it professional but brief. Focus on WHAT changed at a high level and WHY the change was necessary, not detailed implementation specifics.
 
 Use proper markdown formatting.
 
 IMPORTANT: 
 - Do NOT include any "Generated with Claude Control" or similar footer text. I will add that separately.
-- Base your description on the actual commits and file changes shown above
+- Keep the summary concise - avoid listing every single file or detailed code changes
+- Focus on the business/functional purpose of the changes
 - Do NOT include any introductory text like "Here is your description"
 
 Respond with ONLY the PR body in markdown format, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
