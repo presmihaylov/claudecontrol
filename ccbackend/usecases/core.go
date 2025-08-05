@@ -967,6 +967,19 @@ func (s *CoreUseCase) CleanupInactiveAgents() error {
 	return nil
 }
 
+func (s *CoreUseCase) ProcessPing(client *clients.Client) error {
+	log.Printf("📋 Starting to process ping from client %s", client.ID)
+
+	// Update the agent's last_active_at timestamp
+	if err := s.agentsService.UpdateAgentLastActiveAt(client.ID, client.SlackIntegrationID); err != nil {
+		log.Printf("❌ Failed to update agent last_active_at for client %s: %v", client.ID, err)
+		return fmt.Errorf("failed to update agent last_active_at: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated last_active_at for client %s", client.ID)
+	return nil
+}
+
 func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process reaction added by %s on message %s in channel %s", userID, messageTS, channelID)
 
