@@ -9,12 +9,14 @@ import (
 
 	"ccagent/clients"
 	"ccagent/core/log"
+	"ccagent/models"
 	"ccagent/services"
 )
 
 type GitUseCase struct {
 	gitClient     *clients.GitClient
 	claudeService *services.ClaudeService
+	appState      *models.AppState
 }
 
 type AutoCommitResult struct {
@@ -26,10 +28,11 @@ type AutoCommitResult struct {
 	BranchName      string
 }
 
-func NewGitUseCase(gitClient *clients.GitClient, claudeService *services.ClaudeService) *GitUseCase {
+func NewGitUseCase(gitClient *clients.GitClient, claudeService *services.ClaudeService, appState *models.AppState) *GitUseCase {
 	return &GitUseCase{
 		gitClient:     gitClient,
 		claudeService: claudeService,
+		appState:      appState,
 	}
 }
 
@@ -684,4 +687,95 @@ func (g *GitUseCase) CheckPRStatusByID(prID string) (string, error) {
 
 	log.Info("📋 Completed successfully - PR status for ID %s: %s", prID, prStatus)
 	return prStatus, nil
+}
+
+func (g *GitUseCase) CleanupStaleBranches() error {
+	log.Info("📋 Starting to cleanup stale ccagent branches")
+
+	// Get all local branches
+	localBranches, err := g.gitClient.GetLocalBranches()
+	if err != nil {
+		log.Error("❌ Failed to get local branches: %v", err)
+		return fmt.Errorf("failed to get local branches: %w", err)
+	}
+
+	// Get current branch to avoid deleting it
+	currentBranch, err := g.gitClient.GetCurrentBranch()
+	if err != nil {
+		log.Error("❌ Failed to get current branch: %v", err)
+		return fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	// Get default branch to avoid deleting it
+	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	if err != nil {
+		log.Error("❌ Failed to get default branch: %v", err)
+		return fmt.Errorf("failed to get default branch: %w", err)
+	}
+
+	// Get all tracked job branches from app state
+	trackedJobs := g.appState.GetAllJobs()
+	trackedBranches := make(map[string]bool)
+	for _, jobData := range trackedJobs {
+		if jobData.BranchName != "" {
+			trackedBranches[jobData.BranchName] = true
+		}
+	}
+
+	// Filter branches for cleanup
+	var branchesToDelete []string
+	protectedBranches := []string{"main", "master", currentBranch, defaultBranch}
+
+	for _, branch := range localBranches {
+		// Only process ccagent/ branches
+		if !strings.HasPrefix(branch, "ccagent/") {
+			continue
+		}
+
+		// Skip protected branches
+		isProtected := false
+		for _, protected := range protectedBranches {
+			if branch == protected {
+				isProtected = true
+				break
+			}
+		}
+		if isProtected {
+			log.Info("⚠️ Skipping protected branch: %s", branch)
+			continue
+		}
+
+		// Skip tracked branches
+		if trackedBranches[branch] {
+			log.Info("⚠️ Skipping tracked branch: %s", branch)
+			continue
+		}
+
+		// This branch is stale - mark for deletion
+		branchesToDelete = append(branchesToDelete, branch)
+	}
+
+	if len(branchesToDelete) == 0 {
+		log.Info("✅ No stale ccagent branches found")
+		log.Info("📋 Completed successfully - no stale branches to cleanup")
+		return nil
+	}
+
+	log.Info("🧹 Found %d stale ccagent branches to delete", len(branchesToDelete))
+
+	// Delete each stale branch
+	deletedCount := 0
+	for _, branch := range branchesToDelete {
+		if err := g.gitClient.DeleteLocalBranch(branch); err != nil {
+			log.Error("❌ Failed to delete stale branch %s: %v", branch, err)
+			// Continue with other branches even if one fails
+			continue
+		}
+		deletedCount++
+		log.Info("🗑️ Deleted stale branch: %s", branch)
+	}
+
+	log.Info("✅ Successfully deleted %d out of %d stale ccagent branches", deletedCount, len(branchesToDelete))
+	log.Info("📋 Completed successfully - cleaned up stale branches")
+	return nil
 }
