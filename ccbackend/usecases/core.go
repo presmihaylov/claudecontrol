@@ -220,17 +220,33 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(clientID string, payload mod
 func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process Slack message event from %s in %s: %s", event.User, event.Channel, event.Text)
 
-	// Determine the thread timestamp to use for job lookup/creation
-	var threadTS string
-	if event.ThreadTS == "" {
-		// New thread - use the message timestamp
-		threadTS = event.TS
-		log.Printf("🆕 Bot mentioned at start of new thread in channel %s", event.Channel)
-	} else {
-		// Existing thread - use the thread timestamp
-		threadTS = event.ThreadTS
-		log.Printf("💬 Bot mentioned in ongoing thread %s in channel %s", event.ThreadTS, event.Channel)
+	// Check if this is a thread reply (not a top-level message)
+	if event.ThreadTS != "" {
+		log.Printf("⚠️ Received app mention in thread reply - jobs can only be created from top-level messages")
+
+		// Send error system message to the thread
+		slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
+		if err != nil {
+			return fmt.Errorf("failed to get Slack client for integration: %w", err)
+		}
+
+		errorMessage := ":gear: Error: new jobs can only be started from top-level messages"
+		_, _, err = slackClient.PostMessage(event.Channel,
+			slack.MsgOptionText(utils.ConvertMarkdownToSlack(errorMessage), false),
+			slack.MsgOptionTS(event.ThreadTS),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to send error message to Slack: %w", err)
+		}
+
+		log.Printf("📤 Sent error message to thread %s", event.ThreadTS)
+		log.Printf("📋 Completed successfully - rejected thread reply app mention")
+		return nil
 	}
+
+	// Top-level message - use message timestamp as thread timestamp
+	threadTS := event.TS
+	log.Printf("🆕 Bot mentioned at start of new thread in channel %s", event.Channel)
 
 	// Create or get existing job for this slack thread
 	jobResult, err := s.jobsService.GetOrCreateJobForSlackThread(threadTS, event.Channel, event.User, slackIntegrationID)
