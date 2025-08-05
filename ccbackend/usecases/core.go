@@ -976,7 +976,6 @@ func (s *CoreUseCase) ProcessPing(client *clients.Client) error {
 		return fmt.Errorf("failed to update agent last_active_at: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - updated last_active_at for client %s", client.ID)
 	return nil
 }
 
