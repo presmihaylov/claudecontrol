@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
+	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -45,7 +46,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 	err := r.db.Get(message, query, id, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("processed slack message with id %s not found", id)
+			return nil, core.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get processed slack message: %w", err)
 	}
@@ -64,7 +65,7 @@ func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageSt
 	err := r.db.QueryRowx(query, id, status, slackIntegrationID).StructScan(message)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("processed slack message with id %s not found", id)
+			return nil, core.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to update processed slack message status: %w", err)
 	}
@@ -134,7 +135,7 @@ func (r *PostgresProcessedSlackMessagesRepository) TESTS_UpdateProcessedSlackMes
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("processed slack message with id %s not found", id)
+		return core.ErrNotFound
 	}
 
 	return nil

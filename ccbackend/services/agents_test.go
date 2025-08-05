@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
 	"ccbackend/testutils"
@@ -232,7 +234,7 @@ func TestAgentsService(t *testing.T) {
 
 			err := agentsService.DeleteActiveAgent(id, slackIntegrationID)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "not found")
+			assert.True(t, errors.Is(err, core.ErrNotFound))
 		})
 	})
 
@@ -290,7 +292,7 @@ func TestAgentsService(t *testing.T) {
 
 			_, err := agentsService.GetAgentByID(id, slackIntegrationID)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "not found")
+			assert.True(t, errors.Is(err, core.ErrNotFound))
 		})
 	})
 
@@ -433,7 +435,7 @@ func TestAgentsService(t *testing.T) {
 		t.Run("NotFound", func(t *testing.T) {
 			err := agentsService.UpdateAgentLastActiveAt("non-existent-ws-id", slackIntegrationID)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "not found")
+			assert.True(t, errors.Is(err, core.ErrNotFound))
 		})
 	})
 

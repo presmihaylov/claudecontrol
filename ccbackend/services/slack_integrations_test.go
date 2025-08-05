@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"ccbackend/clients"
+	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/testutils"
 )
@@ -327,7 +329,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 
 		err = service.DeleteSlackIntegration(ctx, integration.ID)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not found or does not belong to user")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Verify integration still exists
 		integrations, err := service.GetSlackIntegrationsByUserID(user1.ID)
@@ -367,7 +369,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 
 		err := service.DeleteSlackIntegration(ctx, uuid.New())
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 	})
 }
 
@@ -500,7 +502,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		secretKey, err := service.GenerateCCAgentSecretKey(ctx, integration.ID)
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
-		assert.Contains(t, err.Error(), "not found or does not belong to user")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Verify integration still has no secret key
 		integrations, err := service.GetSlackIntegrationsByUserID(user1.ID)
@@ -545,7 +547,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		secretKey, err := service.GenerateCCAgentSecretKey(ctx, uuid.New())
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
-		assert.Contains(t, err.Error(), "not found or does not belong to user")
+		assert.True(t, errors.Is(err, core.ErrNotFound))
 	})
 
 	t.Run("generated keys are unique", func(t *testing.T) {
