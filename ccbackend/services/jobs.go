@@ -246,7 +246,7 @@ func (s *JobsService) CreateProcessedSlackMessage(jobID string, slackChannelID, 
 		return nil, fmt.Errorf("slack_integration_id cannot be empty")
 	}
 
-	id, err := core.NewID("msg")
+	id, err := core.NewID("psm")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ID: %w", err)
 	}
