@@ -35,6 +35,14 @@ func run() error {
 		return err
 	}
 
+	// Initialize error alert middleware
+	alertMiddleware := middleware.NewErrorAlertMiddleware(middleware.SlackAlertConfig{
+		WebhookURL:  cfg.SlackAlertWebhookURL,
+		Environment: cfg.Environment,
+		AppName:     "ccbackend",
+		LogsURL:     cfg.LogsURL,
+	})
+
 	// Initialize database connection
 	dbConn, err := db.NewConnection(cfg.DatabaseURL)
 	if err != nil {
@@ -90,30 +98,20 @@ func run() error {
 	}).Methods("GET")
 
 	// Register WebSocket hooks for agent lifecycle
-	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
-	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
-	wsClient.RegisterPingHook(coreUseCase.ProcessPing)
+	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(coreUseCase.RegisterAgent))
+	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(coreUseCase.DeregisterAgent))
+	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(coreUseCase.ProcessPing))
 
 	// Register WebSocket message handler
-	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {
-		if err := wsHandler.HandleMessage(client, msg); err != nil {
-			log.Printf("❌ Error handling message from client %s: %v", client.ID, err)
-		}
-	})
+	wsClient.RegisterMessageHandler(alertMiddleware.WrapMessageHandler(wsHandler.HandleMessage))
 
 	// Start periodic broadcast of CheckIdleJobs, cleanup of inactive agents, and processing of queued jobs
 	cleanupTicker := time.NewTicker(2 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
-			if err := coreUseCase.ProcessQueuedJobs(); err != nil {
-				log.Printf("⚠️ Periodic queued job processing encountered errors: %v", err)
-			}
-			if err := coreUseCase.BroadcastCheckIdleJobs(); err != nil {
-				log.Printf("⚠️ Periodic CheckIdleJobs broadcast encountered errors: %v", err)
-			}
-			if err := coreUseCase.CleanupInactiveAgents(); err != nil {
-				log.Printf("⚠️ Periodic inactive agent cleanup encountered errors: %v", err)
-			}
+			_ = alertMiddleware.WrapBackgroundTask("ProcessQueuedJobs", coreUseCase.ProcessQueuedJobs)()
+			_ = alertMiddleware.WrapBackgroundTask("BroadcastCheckIdleJobs", coreUseCase.BroadcastCheckIdleJobs)()
+			_ = alertMiddleware.WrapBackgroundTask("CleanupInactiveAgents", coreUseCase.CleanupInactiveAgents)()
 		}
 	}()
 	defer cleanupTicker.Stop()
@@ -134,7 +132,7 @@ func run() error {
 	// Setup and handle graceful shutdown
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           c.Handler(router),
+		Handler:           alertMiddleware.HTTPMiddleware(c.Handler(router)),
 		ReadHeaderTimeout: 30 * time.Second,
 	}
 

@@ -1,7 +1,8 @@
 package middleware
 
 import (
-	"crypto/md5"
+	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -47,18 +48,18 @@ func (m *ErrorAlertMiddleware) HTTPMiddleware(next http.Handler) http.Handler {
 func (m *ErrorAlertMiddleware) WrapMessageHandler(handler func(*clients.Client, any) error) func(*clients.Client, any) {
 	return func(client *clients.Client, msg any) {
 		defer m.recoverAndAlert(fmt.Sprintf("WebSocket message from client %s", client.ID))
-		
+
 		if err := handler(client, msg); err != nil {
 			m.alertOnError(err, fmt.Sprintf("WebSocket message handler (client: %s)", client.ID))
 		}
 	}
 }
 
-// WebSocket Hook Wrapper  
+// WebSocket Hook Wrapper
 func (m *ErrorAlertMiddleware) WrapConnectionHook(hook func(*clients.Client) error) func(*clients.Client) error {
 	return func(client *clients.Client) error {
 		defer m.recoverAndAlert(fmt.Sprintf("WebSocket connection hook for client %s", client.ID))
-		
+
 		if err := hook(client); err != nil {
 			m.alertOnError(err, fmt.Sprintf("WebSocket connection hook (client: %s)", client.ID))
 			return err
@@ -71,7 +72,7 @@ func (m *ErrorAlertMiddleware) WrapConnectionHook(hook func(*clients.Client) err
 func (m *ErrorAlertMiddleware) WrapBackgroundTask(taskName string, task func() error) func() error {
 	return func() error {
 		defer m.recoverAndAlert(fmt.Sprintf("Background task: %s", taskName))
-		
+
 		if err := task(); err != nil {
 			m.alertOnError(err, fmt.Sprintf("Background task: %s", taskName))
 			return err
@@ -81,36 +82,36 @@ func (m *ErrorAlertMiddleware) WrapBackgroundTask(taskName string, task func() e
 }
 
 // Core error alerting logic
-func (m *ErrorAlertMiddleware) alertOnError(err error, context string) {
-	errorMsg := fmt.Sprintf("%s: %v", context, err)
-	
+func (m *ErrorAlertMiddleware) alertOnError(err error, contextMsg string) {
+	errorMsg := fmt.Sprintf("%s: %v", contextMsg, err)
+
 	// Create hash of error for deduplication
-	hash := fmt.Sprintf("%x", md5.Sum([]byte(errorMsg)))
-	
+	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(errorMsg)))
+
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	
+
 	// Check if we've alerted for this error recently
 	if lastAlert, exists := m.alertedErrors[hash]; exists {
 		if time.Since(lastAlert) < m.alertCooldown {
 			return // Skip alert - too recent
 		}
 	}
-	
+
 	// Send alert asynchronously
-	go m.sendSlackAlert(errorMsg, context)
+	go m.sendSlackAlert(errorMsg, contextMsg)
 	m.alertedErrors[hash] = time.Now()
 }
 
-func (m *ErrorAlertMiddleware) recoverAndAlert(context string) {
+func (m *ErrorAlertMiddleware) recoverAndAlert(contextMsg string) {
 	if r := recover(); r != nil {
-		errorMsg := fmt.Sprintf("%s: PANIC - %v", context, r)
+		errorMsg := fmt.Sprintf("%s: PANIC - %v", contextMsg, r)
 		log.Printf("❌ %s", errorMsg)
-		go m.sendSlackAlert(errorMsg, context+" (PANIC)")
+		go m.sendSlackAlert(errorMsg, contextMsg+" (PANIC)")
 	}
 }
 
-func (m *ErrorAlertMiddleware) sendSlackAlert(errorMsg, context string) {
+func (m *ErrorAlertMiddleware) sendSlackAlert(errorMsg, contextMsg string) {
 	if m.config.WebhookURL == "" {
 		return // Slack alerts disabled
 	}
@@ -121,9 +122,11 @@ func (m *ErrorAlertMiddleware) sendSlackAlert(errorMsg, context string) {
 				"type": "header",
 				"text": map[string]any{
 					"type": "plain_text",
-					"text": fmt.Sprintf("🚨 %s[%s] Error Alert", 
+					"text": fmt.Sprintf("🚨 %s[%s] Error Alert",
 						func() string {
-							if m.config.Environment == "dev" { return "[dev] " }
+							if m.config.Environment == "dev" {
+								return "[dev] "
+							}
 							return ""
 						}(), m.config.AppName),
 					"emoji": true,
@@ -134,7 +137,7 @@ func (m *ErrorAlertMiddleware) sendSlackAlert(errorMsg, context string) {
 				"fields": []map[string]any{
 					{"type": "mrkdwn", "text": fmt.Sprintf("*Service:* %s", m.config.AppName)},
 					{"type": "mrkdwn", "text": fmt.Sprintf("*Environment:* %s", m.config.Environment)},
-					{"type": "mrkdwn", "text": fmt.Sprintf("*Context:* %s", context)},
+					{"type": "mrkdwn", "text": fmt.Sprintf("*Context:* %s", contextMsg)},
 				},
 			},
 			{
@@ -155,15 +158,25 @@ func (m *ErrorAlertMiddleware) sendSlackAlert(errorMsg, context string) {
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
-	
-	resp, err := http.Post(m.config.WebhookURL, "application/json", 
-		strings.NewReader(string(payloadBytes)))
+
+	// Create request with context
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", m.config.WebhookURL, strings.NewReader(string(payloadBytes)))
+	if err != nil {
+		log.Printf("❌ Failed to create Slack alert request: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Printf("❌ Failed to send Slack alert: %v", err)
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("❌ Slack alert failed with status: %d", resp.StatusCode)
 	}
