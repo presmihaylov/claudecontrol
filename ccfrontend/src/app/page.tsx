@@ -228,11 +228,11 @@ export default function Home() {
 													Manage
 												</Button>
 												<Button
-													variant="destructive"
+													variant="outline"
 													size="sm"
 													onClick={() => handleDeleteIntegration(integration)}
 													disabled={deleting === integration.id}
-													className="flex items-center gap-2"
+													className="flex items-center gap-2 bg-green-500 text-white hover:bg-green-600 border-green-500 hover:border-green-600"
 												>
 													<Trash2 className="h-4 w-4" />
 													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
@@ -269,9 +269,10 @@ export default function Home() {
 								Cancel
 							</Button>
 							<Button
-								variant="destructive"
+								variant="outline"
 								onClick={confirmDeleteIntegration}
 								disabled={deleting === integrationToDelete?.id}
+								className="bg-green-500 text-white hover:bg-green-600 border-green-500 hover:border-green-600"
 							>
 								{deleting === integrationToDelete?.id ? "Disconnecting..." : "Disconnect"}
 							</Button>
