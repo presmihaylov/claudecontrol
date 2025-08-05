@@ -593,6 +593,54 @@ func (g *GitClient) GetBranchDiffContent(branchName, baseBranch string) (string,
 	return diffContent, nil
 }
 
+func (g *GitClient) GetLocalBranches() ([]string, error) {
+	log.Info("📋 Starting to get local branches")
+
+	cmd := exec.Command("git", "branch", "--format=%(refname:short)")
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to get local branches: %v\nOutput: %s", err, string(output))
+		return nil, fmt.Errorf("failed to get local branches: %w\nOutput: %s", err, string(output))
+	}
+
+	branchList := strings.TrimSpace(string(output))
+	if branchList == "" {
+		log.Info("✅ No local branches found")
+		log.Info("📋 Completed successfully - got local branches")
+		return []string{}, nil
+	}
+
+	branches := strings.Split(branchList, "\n")
+	var cleanBranches []string
+	for _, branch := range branches {
+		cleanBranch := strings.TrimSpace(branch)
+		if cleanBranch != "" {
+			cleanBranches = append(cleanBranches, cleanBranch)
+		}
+	}
+
+	log.Info("✅ Found %d local branches", len(cleanBranches))
+	log.Info("📋 Completed successfully - got local branches")
+	return cleanBranches, nil
+}
+
+func (g *GitClient) DeleteLocalBranch(branchName string) error {
+	log.Info("📋 Starting to delete local branch: %s", branchName)
+
+	cmd := exec.Command("git", "branch", "-D", branchName)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to delete local branch %s: %v\nOutput: %s", branchName, err, string(output))
+		return fmt.Errorf("failed to delete local branch %s: %w\nOutput: %s", branchName, err, string(output))
+	}
+
+	log.Info("✅ Successfully deleted local branch: %s", branchName)
+	log.Info("📋 Completed successfully - deleted local branch")
+	return nil
+}
+
 func (g *GitClient) ValidateRemoteAccess() error {
 	log.Info("📋 Starting to validate remote repository access")
 
