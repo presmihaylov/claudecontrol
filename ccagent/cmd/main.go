@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -235,6 +236,11 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up reconnect_failed handler: %v", err))
 
+	// Start ping routine once connected
+	pingCtx, pingCancel := context.WithCancel(context.Background())
+	defer pingCancel()
+	cr.startPingRoutine(pingCtx, socketClient)
+
 	// Wait for interrupt signal
 	<-interrupt
 	log.Info("🔌 Interrupt received, closing Socket.IO connection...")
@@ -271,6 +277,26 @@ func (cr *CmdRunner) setupProgramLogging() (string, error) {
 	log.SetWriter(writer)
 
 	return logFilePath, nil
+}
+
+func (cr *CmdRunner) startPingRoutine(ctx context.Context, socketClient *socket.Socket) {
+	log.Info("📋 Starting ping routine")
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				log.Info("📋 Ping routine stopped")
+				return
+			case <-ticker.C:
+				log.Info("💓 Sending ping to server")
+				if err := socketClient.Emit("ping"); err != nil {
+					log.Error("❌ Failed to send ping: %v", err)
+				}
+			}
+		}
+	}()
 }
 
 func (cr *CmdRunner) handleMessage(msg models.UnknownMessage, socketClient *socket.Socket) {
