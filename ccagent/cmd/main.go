@@ -394,6 +394,8 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 - Use clear file paths with line numbers for easy navigation
 
 IMPORTANT: If you are editing a pull request description, never include or override the "Generated with [Claude Control](https://claudecontrol.com) from this [slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
+
+CRITICAL: Never autonomously create git commits or pull requests unless explicitly asked to do so by the user. Wait for explicit instructions before making any commits or creating PRs.
 `
 
 	claudeResult, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions)
