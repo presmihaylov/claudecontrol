@@ -91,8 +91,8 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 		log.Printf("⚠️ Agent sent empty response, using fallback message")
 	}
 
-	// Send assistant message to Slack using system message function
-	if err := s.sendSystemMessage(job.SlackChannelID, job.SlackThreadTS, messageToSend, slackIntegrationID); err != nil {
+	// Send assistant message to Slack
+	if err := s.sendSlackMessage(slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, messageToSend); err != nil {
 		return fmt.Errorf("❌ Failed to send assistant message to Slack: %v", err)
 	}
 
@@ -155,9 +155,8 @@ func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.Syste
 
 	log.Printf("📤 Sending system message to Slack thread %s in channel %s", job.SlackThreadTS, processedMessage.SlackChannelID)
 
-	// Send system message with :gear: emoji prepended
-	systemMessage := ":gear: " + payload.Message
-	if err := s.sendSystemMessage(processedMessage.SlackChannelID, job.SlackThreadTS, systemMessage, slackIntegrationID); err != nil {
+	// Send system message (gear emoji will be added automatically)
+	if err := s.sendSystemMessage(slackIntegrationID, processedMessage.SlackChannelID, job.SlackThreadTS, payload.Message); err != nil {
 		return fmt.Errorf("❌ Failed to send system message to Slack: %v", err)
 	}
 
@@ -229,8 +228,8 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 			if utils.IsNotFoundError(err) {
 				// Job not found for thread reply - send error message
 				log.Printf("❌ No existing job found for thread reply in %s: %v", event.Channel, err)
-				errorMessage := ":gear: Error: new jobs can only be started from top-level messages"
-				return s.sendSystemMessage(event.Channel, event.TS, errorMessage, slackIntegrationID)
+				errorMessage := "Error: new jobs can only be started from top-level messages"
+				return s.sendSystemMessage(slackIntegrationID, event.Channel, event.TS, errorMessage)
 			}
 			// Other error - propagate upstream
 			log.Printf("❌ Failed to get job for thread reply in %s: %v", event.Channel, err)
@@ -620,9 +619,9 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 	if err != nil {
 		log.Printf("❌ Failed to get job %s for cleanup: %v", jobs[0], err)
 	} else {
-		// Send abandonment message to Slack thread
+		// Send abandonment message to Slack thread (using sendSlackMessage for custom emoji)
 		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
-		if err := s.sendSystemMessage(job.SlackChannelID, job.SlackThreadTS, abandonmentMessage, client.SlackIntegrationID); err != nil {
+		if err := s.sendSlackMessage(client.SlackIntegrationID, job.SlackChannelID, job.SlackThreadTS, abandonmentMessage); err != nil {
 			log.Printf("⚠️ Failed to send abandonment message to Slack thread %s: %v", job.SlackThreadTS, err)
 		} else {
 			log.Printf("📤 Sent abandonment message to Slack thread %s", job.SlackThreadTS)
@@ -770,13 +769,12 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	log.Printf("🗑️ Deleted completed job %s", jobID)
 
 	// Send completion message to Slack thread with reason
-	completionMessage := fmt.Sprintf(":gear: %s", payload.Reason)
-	if err := s.sendSystemMessage(job.SlackChannelID, job.SlackThreadTS, completionMessage, slackIntegrationID); err != nil {
+	if err := s.sendSystemMessage(slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, payload.Reason); err != nil {
 		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
 		return fmt.Errorf("failed to send completion message to Slack: %w", err)
 	}
 
-	log.Printf("📤 Sent completion message to Slack thread %s: %s", job.SlackThreadTS, completionMessage)
+	log.Printf("📤 Sent completion message to Slack thread %s: %s", job.SlackThreadTS, payload.Reason)
 	log.Printf("📋 Completed successfully - processed job complete for job %s", jobID)
 	return nil
 }
@@ -1006,8 +1004,7 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 	}
 
 	// Send completion message to Slack thread
-	completionMessage := ":gear: Job manually marked as complete"
-	if err := s.sendSystemMessage(job.SlackChannelID, job.SlackThreadTS, completionMessage, slackIntegrationID); err != nil {
+	if err := s.sendSystemMessage(slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, "Job manually marked as complete"); err != nil {
 		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
 		return fmt.Errorf("failed to send completion message to Slack: %w", err)
 	}
@@ -1024,8 +1021,8 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 	return nil
 }
 
-func (s *CoreUseCase) sendSystemMessage(channelID, threadTS, message, slackIntegrationID string) error {
-	log.Printf("📋 Starting to send system message to channel %s, thread %s: %s", channelID, threadTS, message)
+func (s *CoreUseCase) sendSlackMessage(slackIntegrationID, channelID, threadTS, message string) error {
+	log.Printf("📋 Starting to send message to channel %s, thread %s: %s", channelID, threadTS, message)
 
 	// Get integration-specific Slack client
 	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
@@ -1039,9 +1036,19 @@ func (s *CoreUseCase) sendSystemMessage(channelID, threadTS, message, slackInteg
 		slack.MsgOptionTS(threadTS),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to send system message to Slack: %w", err)
+		return fmt.Errorf("failed to send message to Slack: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - sent system message to channel %s, thread %s", channelID, threadTS)
+	log.Printf("📋 Completed successfully - sent message to channel %s, thread %s", channelID, threadTS)
 	return nil
+}
+
+func (s *CoreUseCase) sendSystemMessage(slackIntegrationID, channelID, threadTS, message string) error {
+	log.Printf("📋 Starting to send system message to channel %s, thread %s: %s", channelID, threadTS, message)
+
+	// Prepend gear emoji to message
+	systemMessage := ":gear: " + message
+
+	// Use the base sendSlackMessage function
+	return s.sendSlackMessage(slackIntegrationID, channelID, threadTS, systemMessage)
 }
