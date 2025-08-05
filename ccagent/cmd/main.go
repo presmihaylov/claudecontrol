@@ -440,22 +440,13 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		SlackMessageID: payload.SlackMessageID,
 	}
 
-	assistantMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
-		Type:    models.MessageTypeAssistantMessage,
-		Payload: assistantPayload,
-	}
-	if err := socketClient.Emit("cc_message", assistantMsg); err != nil {
+	// Send assistant message with acknowledgment callback that sends system message
+	if err := cr.sendAssistantMessageWithAck(socketClient, assistantPayload, func() error {
+		// Send system message after assistant message acknowledgment
+		return cr.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID)
+	}); err != nil {
 		log.Info("❌ Failed to send assistant response: %v", err)
 		return fmt.Errorf("failed to send assistant response: %w", err)
-	}
-
-	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
-
-	// Send system message after assistant message for git activity
-	if err := cr.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID); err != nil {
-		log.Info("❌ Failed to send git activity system message: %v", err)
-		return fmt.Errorf("failed to send git activity system message: %w", err)
 	}
 
 	// Validate and restore PR description footer if needed
@@ -551,22 +542,13 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, socketClient *
 		SlackMessageID: payload.SlackMessageID,
 	}
 
-	assistantMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
-		Type:    models.MessageTypeAssistantMessage,
-		Payload: assistantPayload,
-	}
-	if err := socketClient.Emit("cc_message", assistantMsg); err != nil {
+	// Send assistant message with acknowledgment callback that sends system message
+	if err := cr.sendAssistantMessageWithAck(socketClient, assistantPayload, func() error {
+		// Send system message after assistant message acknowledgment
+		return cr.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID)
+	}); err != nil {
 		log.Info("❌ Failed to send assistant response: %v", err)
 		return fmt.Errorf("failed to send assistant response: %w", err)
-	}
-
-	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
-
-	// Send system message after assistant message for git activity
-	if err := cr.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID); err != nil {
-		log.Info("❌ Failed to send git activity system message: %v", err)
-		return fmt.Errorf("failed to send git activity system message: %w", err)
 	}
 
 	// Validate and restore PR description footer if needed
@@ -726,6 +708,35 @@ func (cr *CmdRunner) sendJobCompleteMessage(socketClient *socket.Socket, jobID, 
 
 	log.Info("📤 Sent job complete message for job: %s (message ID: %s)", jobID, jobMsg.ID)
 
+	return nil
+}
+
+// sendAssistantMessageWithAck sends an assistant message and waits for acknowledgment before calling the callback
+func (cr *CmdRunner) sendAssistantMessageWithAck(socketClient *socket.Socket, payload models.AssistantMessagePayload, onAck func() error) error {
+	assistantMsg := models.UnknownMessage{
+		ID:      uuid.New().String(),
+		Type:    models.MessageTypeAssistantMessage,
+		Payload: payload,
+	}
+
+	log.Info("🤖 Sending assistant response with acknowledgment (message ID: %s)", assistantMsg.ID)
+
+	// Send message with acknowledgment callback
+	if err := socketClient.Emit("cc_message", assistantMsg, func(args ...any) {
+		log.Info("✅ Assistant message acknowledged by backend (message ID: %s)", assistantMsg.ID)
+
+		// Execute the callback after acknowledgment
+		if onAck != nil {
+			if err := onAck(); err != nil {
+				log.Error("❌ Error in acknowledgment callback: %v", err)
+			}
+		}
+	}); err != nil {
+		log.Info("❌ Failed to send assistant response: %v", err)
+		return fmt.Errorf("failed to send assistant response: %w", err)
+	}
+
+	log.Info("🤖 Sent assistant response with ack callback (message ID: %s)", assistantMsg.ID)
 	return nil
 }
 

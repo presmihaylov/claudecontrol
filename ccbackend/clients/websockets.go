@@ -136,7 +136,20 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 		}
 
 		log.Printf("📥 Raw message received from client %s", client.ID)
-		ws.invokeMessageHandlers(client, data[0])
+
+		// Check if this message has an acknowledgment callback (last parameter)
+		var ackCallback func(...any)
+		messageData := data[0]
+
+		if len(data) > 1 {
+			// Socket.IO acknowledgment callback is the last parameter when present
+			if callback, ok := data[len(data)-1].(func(...any)); ok {
+				ackCallback = callback
+				log.Printf("📨 Message from client %s includes acknowledgment callback", client.ID)
+			}
+		}
+
+		ws.invokeMessageHandlersWithAck(client, messageData, ackCallback)
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up message handler for client %s: %v", client.ID, err))
 
@@ -266,7 +279,7 @@ func (ws *WebSocketClient) RegisterPingHook(hook PingHandlerFunc) {
 	log.Printf("💓 Ping hook registered. Total ping hooks: %d", len(ws.pingHooks))
 }
 
-func (ws *WebSocketClient) invokeMessageHandlers(client *Client, msg any) {
+func (ws *WebSocketClient) invokeMessageHandlersWithAck(client *Client, msg any, ackCallback func(...any)) {
 	ws.mutex.RLock()
 	handlers := make([]MessageHandlerFunc, len(ws.messageHandlers))
 	copy(handlers, ws.messageHandlers)
@@ -276,13 +289,30 @@ func (ws *WebSocketClient) invokeMessageHandlers(client *Client, msg any) {
 
 	client.WorkerPool.Submit(func() {
 		log.Printf("🎯 Processing message sequentially for client %s", client.ID)
+		var processingError error
+
 		for i, handler := range handlers {
 			log.Printf("🎯 Executing handler %d for client %s", i+1, client.ID)
 			if err := handler(client, msg); err != nil {
 				log.Printf("❌ Handler %d failed for client %s: %v", i+1, client.ID, err)
+				if processingError == nil {
+					processingError = err // Store first error
+				}
 			}
 		}
+
 		log.Printf("✅ All message handlers completed for client %s", client.ID)
+
+		// Send acknowledgment if callback was provided
+		if ackCallback != nil {
+			if processingError != nil {
+				log.Printf("📤 Sending error acknowledgment to client %s: %v", client.ID, processingError)
+				ackCallback("error", processingError.Error())
+			} else {
+				log.Printf("📤 Sending success acknowledgment to client %s", client.ID)
+				ackCallback("success")
+			}
+		}
 	})
 }
 
