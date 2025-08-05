@@ -136,7 +136,7 @@ func main() {
 	// Get WebSocket URL from environment variable with default fallback
 	wsURL := os.Getenv("CCAGENT_WS_API_URL")
 	if wsURL == "" {
-		wsURL = "wss://claudecontrol.onrender.com/ws"
+		wsURL = "https://claudecontrol.onrender.com/socketio/"
 	}
 
 	// Set up deferred cleanup
