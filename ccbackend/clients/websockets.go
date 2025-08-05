@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gammazero/workerpool"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -23,10 +22,9 @@ type Client struct {
 	Socket             *socket.Socket
 	SlackIntegrationID string
 	AgentID            uuid.UUID
-	WorkerPool         *workerpool.WorkerPool
 }
 
-type MessageHandlerFunc func(client *Client, msg any) error
+type MessageHandlerFunc func(client *Client, msg any)
 type ConnectionHookFunc func(client *Client) error
 type PingHandlerFunc func(client *Client) error
 type APIKeyValidatorFunc func(apiKey string) (string, error)
@@ -122,7 +120,6 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 		Socket:             sock,
 		SlackIntegrationID: slackIntegrationID,
 		AgentID:            agentID,
-		WorkerPool:         workerpool.New(1),
 	}
 	ws.addClient(client)
 	log.Printf("✅ Socket.IO client connected with ID: %s, socket ID: %s", client.ID, sock.Id())
@@ -151,8 +148,6 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 	err = sock.On("disconnect", func(data ...any) {
 		log.Printf("🔌 Socket.IO connection closed for client %s (socket ID: %s)", client.ID, sock.Id())
 		ws.invokeDisconnectionHooks(client)
-		client.WorkerPool.StopWait()
-		log.Printf("🛑 Worker pool shutdown complete for client %s", client.ID)
 		ws.removeClient(client.ID)
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up disconnection handler for client %s: %v", client.ID, err))
@@ -268,22 +263,13 @@ func (ws *WebSocketClient) RegisterPingHook(hook PingHandlerFunc) {
 
 func (ws *WebSocketClient) invokeMessageHandlers(client *Client, msg any) {
 	ws.mutex.RLock()
-	handlers := make([]MessageHandlerFunc, len(ws.messageHandlers))
-	copy(handlers, ws.messageHandlers)
-	ws.mutex.RUnlock()
-
-	log.Printf("🔄 Queuing message for sequential processing by %d handlers for client %s", len(handlers), client.ID)
-
-	client.WorkerPool.Submit(func() {
-		log.Printf("🎯 Processing message sequentially for client %s", client.ID)
-		for i, handler := range handlers {
-			log.Printf("🎯 Executing handler %d for client %s", i+1, client.ID)
-			if err := handler(client, msg); err != nil {
-				log.Printf("❌ Handler %d failed for client %s: %v", i+1, client.ID, err)
-			}
-		}
-		log.Printf("✅ All message handlers completed for client %s", client.ID)
-	})
+	defer ws.mutex.RUnlock()
+	log.Printf("🔄 Invoking %d message handlers for client %s", len(ws.messageHandlers), client.ID)
+	for i, handler := range ws.messageHandlers {
+		log.Printf("🎯 Executing handler %d for client %s", i+1, client.ID)
+		handler(client, msg)
+	}
+	log.Printf("✅ All message handlers completed for client %s", client.ID)
 }
 
 func (ws *WebSocketClient) invokeConnectionHooks(client *Client) {

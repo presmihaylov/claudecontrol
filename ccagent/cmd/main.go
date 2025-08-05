@@ -454,6 +454,9 @@ CRITICAL: Never autonomously create git commits or pull requests unless explicit
 
 	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
 
+	// Add delay to ensure git activity message comes after assistant message
+	time.Sleep(200 * time.Millisecond)
+
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID); err != nil {
 		log.Info("❌ Failed to send git activity system message: %v", err)
@@ -564,6 +567,9 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, socketClient *
 	}
 
 	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
+
+	// Add delay to ensure git activity message comes after assistant message
+	time.Sleep(200 * time.Millisecond)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID); err != nil {
