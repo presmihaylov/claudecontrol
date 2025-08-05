@@ -43,8 +43,8 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	claudeClient := clients.NewClaudeClient(permissionMode)
 	claudeService := services.NewClaudeService(claudeClient)
 	gitClient := clients.NewGitClient()
-	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService)
 	appState := models.NewAppState()
+	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService, appState)
 
 	agentID := uuid.New()
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
@@ -132,6 +132,13 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Git environment validation failed: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Cleanup stale ccagent branches
+	err = cmdRunner.gitUseCase.CleanupStaleBranches()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to cleanup stale branches: %v\n", err)
+		// Don't exit - this is not critical for agent operation
 	}
 
 	// Get WebSocket URL from environment variable with default fallback
