@@ -92,6 +92,7 @@ func run() error {
 	// Register WebSocket hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(coreUseCase.RegisterAgent)
 	wsClient.RegisterDisconnectionHook(coreUseCase.DeregisterAgent)
+	wsClient.RegisterPingHook(coreUseCase.ProcessPing)
 
 	// Register WebSocket message handler
 	wsClient.RegisterMessageHandler(func(client *clients.Client, msg any) {

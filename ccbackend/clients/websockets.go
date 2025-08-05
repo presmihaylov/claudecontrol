@@ -26,6 +26,7 @@ type Client struct {
 
 type MessageHandlerFunc func(client *Client, msg any)
 type ConnectionHookFunc func(client *Client) error
+type PingHandlerFunc func(client *Client) error
 type APIKeyValidatorFunc func(apiKey string) (string, error)
 
 type WebSocketClient struct {
@@ -36,6 +37,7 @@ type WebSocketClient struct {
 	messageHandlers    []MessageHandlerFunc
 	connectionHooks    []ConnectionHookFunc
 	disconnectionHooks []ConnectionHookFunc
+	pingHooks          []PingHandlerFunc
 	apiKeyValidator    APIKeyValidatorFunc
 }
 
@@ -48,6 +50,7 @@ func NewWebSocketClient(apiKeyValidator APIKeyValidatorFunc) *WebSocketClient {
 		messageHandlers:    make([]MessageHandlerFunc, 0),
 		connectionHooks:    make([]ConnectionHookFunc, 0),
 		disconnectionHooks: make([]ConnectionHookFunc, 0),
+		pingHooks:          make([]PingHandlerFunc, 0),
 		apiKeyValidator:    apiKeyValidator,
 	}
 
@@ -133,6 +136,13 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 		ws.invokeMessageHandlers(client, data[0])
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up message handler for client %s: %v", client.ID, err))
+
+	// Handle ping events
+	err = sock.On("ping", func(data ...any) {
+		log.Printf("💓 Received ping from client %s (socket ID: %s)", client.ID, sock.Id())
+		ws.invokePingHooks(client)
+	})
+	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up ping handler for client %s: %v", client.ID, err))
 
 	// Handle disconnection
 	err = sock.On("disconnect", func(data ...any) {
@@ -244,6 +254,13 @@ func (ws *WebSocketClient) RegisterDisconnectionHook(hook ConnectionHookFunc) {
 	log.Printf("🔌 Disconnection hook registered. Total disconnection hooks: %d", len(ws.disconnectionHooks))
 }
 
+func (ws *WebSocketClient) RegisterPingHook(hook PingHandlerFunc) {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+	ws.pingHooks = append(ws.pingHooks, hook)
+	log.Printf("💓 Ping hook registered. Total ping hooks: %d", len(ws.pingHooks))
+}
+
 func (ws *WebSocketClient) invokeMessageHandlers(client *Client, msg any) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
@@ -279,4 +296,17 @@ func (ws *WebSocketClient) invokeDisconnectionHooks(client *Client) {
 		}
 	}
 	log.Printf("✅ All disconnection hooks completed for client %s", client.ID)
+}
+
+func (ws *WebSocketClient) invokePingHooks(client *Client) {
+	ws.mutex.RLock()
+	defer ws.mutex.RUnlock()
+	log.Printf("💓 Invoking %d ping hooks for client %s", len(ws.pingHooks), client.ID)
+	for i, hook := range ws.pingHooks {
+		log.Printf("🎯 Executing ping hook %d for client %s", i+1, client.ID)
+		if err := hook(client); err != nil {
+			log.Printf("❌ Ping hook %d failed for client %s: %v", i+1, client.ID, err)
+		}
+	}
+	log.Printf("✅ All ping hooks completed for client %s", client.ID)
 }
