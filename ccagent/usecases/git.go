@@ -685,3 +685,70 @@ func (g *GitUseCase) CheckPRStatusByID(prID string) (string, error) {
 	log.Info("📋 Completed successfully - PR status for ID %s: %s", prID, prStatus)
 	return prStatus, nil
 }
+
+func (g *GitUseCase) CleanupStaleBranches(activeBranches []string) error {
+	log.Info("📋 Starting to cleanup stale branches")
+
+	// Get all local branches
+	allBranches, err := g.gitClient.GetLocalBranches()
+	if err != nil {
+		log.Error("❌ Failed to get local branches: %v", err)
+		return fmt.Errorf("failed to get local branches: %w", err)
+	}
+
+	log.Info("🔍 Found %d total local branches", len(allBranches))
+
+	// Filter for ccagent/ branches only
+	ccagentBranches := []string{}
+	for _, branch := range allBranches {
+		if strings.HasPrefix(branch, "ccagent/") {
+			ccagentBranches = append(ccagentBranches, branch)
+		}
+	}
+
+	log.Info("🔍 Found %d ccagent branches", len(ccagentBranches))
+
+	if len(ccagentBranches) == 0 {
+		log.Info("✅ No ccagent branches found - nothing to cleanup")
+		log.Info("📋 Completed successfully - no branches to cleanup")
+		return nil
+	}
+
+	// Filter out branches that are currently active (have jobs)
+	staleBranches := []string{}
+	activeBranchMap := make(map[string]bool)
+	for _, activeBranch := range activeBranches {
+		activeBranchMap[activeBranch] = true
+	}
+
+	for _, branch := range ccagentBranches {
+		if !activeBranchMap[branch] {
+			staleBranches = append(staleBranches, branch)
+		}
+	}
+
+	log.Info("🧹 Found %d stale branches to cleanup", len(staleBranches))
+
+	if len(staleBranches) == 0 {
+		log.Info("✅ All ccagent branches are active - nothing to cleanup")
+		log.Info("📋 Completed successfully - no stale branches to cleanup")
+		return nil
+	}
+
+	// Delete each stale branch
+	deletedCount := 0
+	for _, branch := range staleBranches {
+		log.Info("🗑️ Deleting stale branch: %s", branch)
+		if err := g.gitClient.DeleteLocalBranch(branch); err != nil {
+			log.Error("❌ Failed to delete branch %s: %v", branch, err)
+			// Continue with other branches instead of failing completely
+			continue
+		}
+		deletedCount++
+		log.Info("✅ Successfully deleted stale branch: %s", branch)
+	}
+
+	log.Info("🧹 Cleanup completed - deleted %d out of %d stale branches", deletedCount, len(staleBranches))
+	log.Info("📋 Completed successfully - cleanup stale branches")
+	return nil
+}

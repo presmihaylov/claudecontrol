@@ -134,6 +134,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Cleanup stale branches before starting
+	activeBranches := cmdRunner.appState.GetActiveBranchNames()
+	err = cmdRunner.gitUseCase.CleanupStaleBranches(activeBranches)
+	if err != nil {
+		// Log the error but don't exit - cleanup failure shouldn't prevent agent from starting
+		fmt.Fprintf(os.Stderr, "Warning: Failed to cleanup stale branches: %v\n", err)
+	}
+
 	// Get WebSocket URL from environment variable with default fallback
 	wsURL := os.Getenv("CCAGENT_WS_API_URL")
 	if wsURL == "" {

@@ -74,3 +74,16 @@ func (a *AppState) GetAllJobs() map[string]JobData {
 	}
 	return result
 }
+
+// GetActiveBranchNames returns a list of all branch names that have active jobs
+func (a *AppState) GetActiveBranchNames() []string {
+	a.mutex.RLock()
+	defer a.mutex.RUnlock()
+	branches := make([]string, 0, len(a.jobs))
+	for _, data := range a.jobs {
+		if data.BranchName != "" {
+			branches = append(branches, data.BranchName)
+		}
+	}
+	return branches
+}
