@@ -78,7 +78,7 @@ func LoadConfig() (*AppConfig, error) {
 		CORSAllowedOrigins: corsAllowedOrigins,
 		// Optional Slack alerting
 		SlackAlertWebhookURL: os.Getenv("SLACK_ALERT_WEBHOOK_URL"), // Optional
-		Environment:          getEnvWithDefault("ENVIRONMENT", "production"),
+		Environment:          getEnvWithDefault("ENVIRONMENT", "dev"),
 		LogsURL:              getEnvWithDefault("LOGS_URL", "https://logs.example.com"),
 	}
 
