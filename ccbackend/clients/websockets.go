@@ -115,10 +115,13 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 
 	// Set up message handler for cc_message event
 	err = sock.On("cc_message", func(data ...any) {
-		if len(data) > 0 {
-			log.Printf("📥 Raw message received from client %s", client.ID)
-			ws.invokeMessageHandlers(client, data[0])
+		if len(data) == 0 {
+			log.Printf("❌ No message data received for client %s", client.ID)
+			return
 		}
+
+		log.Printf("📥 Raw message received from client %s", client.ID)
+		ws.invokeMessageHandlers(client, data[0])
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up message handler for client %s: %v", client.ID, err))
 
