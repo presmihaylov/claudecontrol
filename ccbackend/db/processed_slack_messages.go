@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
@@ -35,7 +34,7 @@ func (r *PostgresProcessedSlackMessagesRepository) CreateProcessedSlackMessage(m
 	return nil
 }
 
-func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(id uuid.UUID, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
+func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(id string, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
 	query := fmt.Sprintf(`
 		SELECT id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at 
 		FROM %s.processed_slack_messages 
@@ -53,7 +52,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 	return message, nil
 }
 
-func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageStatus(id uuid.UUID, status models.ProcessedSlackMessageStatus, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
+func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageStatus(id string, status models.ProcessedSlackMessageStatus, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
 	query := fmt.Sprintf(`
 		UPDATE %s.processed_slack_messages 
 		SET status = $2, updated_at = NOW() 
@@ -72,7 +71,7 @@ func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageSt
 	return message, nil
 }
 
-func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessagesByJobID(jobID uuid.UUID, slackIntegrationID string) ([]*models.ProcessedSlackMessage, error) {
+func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessagesByJobID(jobID string, slackIntegrationID string) ([]*models.ProcessedSlackMessage, error) {
 	query := fmt.Sprintf(`
 		SELECT id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at 
 		FROM %s.processed_slack_messages 
@@ -87,7 +86,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessagesByJo
 	return messages, nil
 }
 
-func (r *PostgresProcessedSlackMessagesRepository) DeleteProcessedSlackMessagesByJobID(jobID uuid.UUID, slackIntegrationID string) error {
+func (r *PostgresProcessedSlackMessagesRepository) DeleteProcessedSlackMessagesByJobID(jobID string, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		DELETE FROM %s.processed_slack_messages 
 		WHERE job_id = $1 AND slack_integration_id = $2`, r.schema)
@@ -100,7 +99,7 @@ func (r *PostgresProcessedSlackMessagesRepository) DeleteProcessedSlackMessagesB
 	return nil
 }
 
-func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByJobIDAndStatus(jobID uuid.UUID, status models.ProcessedSlackMessageStatus, slackIntegrationID string) ([]*models.ProcessedSlackMessage, error) {
+func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByJobIDAndStatus(jobID string, status models.ProcessedSlackMessageStatus, slackIntegrationID string) ([]*models.ProcessedSlackMessage, error) {
 	query := fmt.Sprintf(`
 		SELECT id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at 
 		FROM %s.processed_slack_messages 
@@ -117,7 +116,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByJobIDAn
 }
 
 // TESTS_UpdateProcessedSlackMessageUpdatedAt updates the updated_at timestamp of a processed slack message for testing purposes
-func (r *PostgresProcessedSlackMessagesRepository) TESTS_UpdateProcessedSlackMessageUpdatedAt(id uuid.UUID, updatedAt time.Time, slackIntegrationID string) error {
+func (r *PostgresProcessedSlackMessagesRepository) TESTS_UpdateProcessedSlackMessageUpdatedAt(id string, updatedAt time.Time, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		UPDATE %s.processed_slack_messages 
 		SET updated_at = $2 
@@ -140,7 +139,7 @@ func (r *PostgresProcessedSlackMessagesRepository) TESTS_UpdateProcessedSlackMes
 	return nil
 }
 
-func (r *PostgresProcessedSlackMessagesRepository) GetActiveMessageCountForJobs(jobIDs []uuid.UUID, slackIntegrationID string) (int, error) {
+func (r *PostgresProcessedSlackMessagesRepository) GetActiveMessageCountForJobs(jobIDs []string, slackIntegrationID string) (int, error) {
 	if len(jobIDs) == 0 {
 		return 0, nil
 	}
