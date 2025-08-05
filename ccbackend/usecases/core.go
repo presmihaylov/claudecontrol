@@ -91,17 +91,8 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 		log.Printf("⚠️ Agent sent empty response, using fallback message")
 	}
 
-	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
-	if err != nil {
-		return fmt.Errorf("failed to get Slack client for integration: %w", err)
-	}
-
-	_, _, err = slackClient.PostMessage(job.SlackChannelID,
-		slack.MsgOptionText(utils.ConvertMarkdownToSlack(messageToSend), false),
-		slack.MsgOptionTS(job.SlackThreadTS),
-	)
-	if err != nil {
+	// Send assistant message to Slack using system message function
+	if err := s.sendSystemMessage(job.SlackChannelID, job.SlackThreadTS, messageToSend, slackIntegrationID); err != nil {
 		return fmt.Errorf("❌ Failed to send assistant message to Slack: %v", err)
 	}
 
@@ -164,19 +155,9 @@ func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.Syste
 
 	log.Printf("📤 Sending system message to Slack thread %s in channel %s", job.SlackThreadTS, processedMessage.SlackChannelID)
 
-	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
-	if err != nil {
-		return fmt.Errorf("failed to get Slack client for integration: %w", err)
-	}
-
 	// Send system message with :gear: emoji prepended
 	systemMessage := ":gear: " + payload.Message
-	_, _, err = slackClient.PostMessage(processedMessage.SlackChannelID,
-		slack.MsgOptionText(utils.ConvertMarkdownToSlack(systemMessage), false),
-		slack.MsgOptionTS(job.SlackThreadTS),
-	)
-	if err != nil {
+	if err := s.sendSystemMessage(processedMessage.SlackChannelID, job.SlackThreadTS, systemMessage, slackIntegrationID); err != nil {
 		return fmt.Errorf("❌ Failed to send system message to Slack: %v", err)
 	}
 
@@ -246,7 +227,8 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 		if err != nil {
 			// Job not found for thread reply - send error message
 			log.Printf("❌ No existing job found for thread reply in %s: %v", event.Channel, err)
-			return s.sendThreadReplyErrorMessage(event.Channel, event.TS, slackIntegrationID)
+			errorMessage := ":gear: Error: new jobs can only be started from top-level messages"
+			return s.sendSystemMessage(event.Channel, event.TS, errorMessage, slackIntegrationID)
 		}
 
 		// Job exists - create result object
@@ -632,19 +614,9 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 	if err != nil {
 		log.Printf("❌ Failed to get job %s for cleanup: %v", jobs[0], err)
 	} else {
-		slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(client.SlackIntegrationID))
-		if err != nil {
-			log.Printf("❌ Failed to get Slack client for integration %s: %v", client.SlackIntegrationID, err)
-			return fmt.Errorf("failed to get Slack client for integration: %w", err)
-		}
-
 		// Send abandonment message to Slack thread
 		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
-		_, _, err = slackClient.PostMessage(job.SlackChannelID,
-			slack.MsgOptionText(utils.ConvertMarkdownToSlack(abandonmentMessage), false),
-			slack.MsgOptionTS(job.SlackThreadTS),
-		)
-		if err != nil {
+		if err := s.sendSystemMessage(job.SlackChannelID, job.SlackThreadTS, abandonmentMessage, client.SlackIntegrationID); err != nil {
 			log.Printf("⚠️ Failed to send abandonment message to Slack thread %s: %v", job.SlackThreadTS, err)
 		} else {
 			log.Printf("📤 Sent abandonment message to Slack thread %s", job.SlackThreadTS)
@@ -792,18 +764,8 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	log.Printf("🗑️ Deleted completed job %s", jobID)
 
 	// Send completion message to Slack thread with reason
-	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
-	if err != nil {
-		log.Printf("❌ Failed to get Slack client for integration: %v", err)
-		return fmt.Errorf("failed to get Slack client for integration: %w", err)
-	}
-
 	completionMessage := fmt.Sprintf(":gear: %s", payload.Reason)
-	_, _, err = slackClient.PostMessage(job.SlackChannelID,
-		slack.MsgOptionText(utils.ConvertMarkdownToSlack(completionMessage), false),
-		slack.MsgOptionTS(job.SlackThreadTS),
-	)
-	if err != nil {
+	if err := s.sendSystemMessage(job.SlackChannelID, job.SlackThreadTS, completionMessage, slackIntegrationID); err != nil {
 		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
 		return fmt.Errorf("failed to send completion message to Slack: %w", err)
 	}
@@ -1038,18 +1000,8 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 	}
 
 	// Send completion message to Slack thread
-	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
-	if err != nil {
-		log.Printf("❌ Failed to get Slack client for integration: %v", err)
-		return fmt.Errorf("failed to get Slack client for integration: %w", err)
-	}
-
 	completionMessage := ":gear: Job manually marked as complete"
-	_, _, err = slackClient.PostMessage(job.SlackChannelID,
-		slack.MsgOptionText(utils.ConvertMarkdownToSlack(completionMessage), false),
-		slack.MsgOptionTS(job.SlackThreadTS),
-	)
-	if err != nil {
+	if err := s.sendSystemMessage(job.SlackChannelID, job.SlackThreadTS, completionMessage, slackIntegrationID); err != nil {
 		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
 		return fmt.Errorf("failed to send completion message to Slack: %w", err)
 	}
@@ -1066,8 +1018,8 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 	return nil
 }
 
-func (s *CoreUseCase) sendThreadReplyErrorMessage(channelID, messageTS, slackIntegrationID string) error {
-	log.Printf("📋 Starting to send thread reply error message to channel %s", channelID)
+func (s *CoreUseCase) sendSystemMessage(channelID, threadTS, message, slackIntegrationID string) error {
+	log.Printf("📋 Starting to send system message to channel %s, thread %s: %s", channelID, threadTS, message)
 
 	// Get integration-specific Slack client
 	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
@@ -1075,16 +1027,15 @@ func (s *CoreUseCase) sendThreadReplyErrorMessage(channelID, messageTS, slackInt
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
 
-	// Send error message as reply to the message
-	errorMessage := ":gear: Error: new jobs can only be started from top-level messages"
+	// Send message to Slack
 	_, _, err = slackClient.PostMessage(channelID,
-		slack.MsgOptionText(utils.ConvertMarkdownToSlack(errorMessage), false),
-		slack.MsgOptionTS(messageTS),
+		slack.MsgOptionText(utils.ConvertMarkdownToSlack(message), false),
+		slack.MsgOptionTS(threadTS),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to send thread reply error message to Slack: %w", err)
+		return fmt.Errorf("failed to send system message to Slack: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - sent thread reply error message to channel %s", channelID)
+	log.Printf("📋 Completed successfully - sent system message to channel %s, thread %s", channelID, threadTS)
 	return nil
 }
