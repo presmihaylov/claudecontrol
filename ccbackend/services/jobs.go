@@ -296,26 +296,6 @@ func (s *JobsService) GetProcessedMessagesByJobIDAndStatus(jobID string, status 
 	return messages, nil
 }
 
-func (s *JobsService) GetProcessedSlackMessagesByJobID(jobID string, slackIntegrationID string) ([]*models.ProcessedSlackMessage, error) {
-	log.Printf("📋 Starting to get processed slack messages for job: %s", jobID)
-
-	if !core.IsValidULID(jobID) {
-		return nil, fmt.Errorf("job ID must be a valid ULID")
-	}
-
-	if !core.IsValidULID(slackIntegrationID) {
-		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
-	}
-
-	messages, err := s.processedSlackMessagesRepo.GetProcessedSlackMessagesByJobID(jobID, slackIntegrationID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get processed slack messages: %w", err)
-	}
-
-	log.Printf("📋 Completed successfully - retrieved %d processed slack messages for job %s", len(messages), jobID)
-	return messages, nil
-}
-
 func (s *JobsService) GetProcessedSlackMessageByID(id string, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
 	log.Printf("📋 Starting to get processed slack message by ID: %s", id)
 	if !core.IsValidULID(id) {
