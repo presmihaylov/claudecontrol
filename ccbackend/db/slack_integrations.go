@@ -36,7 +36,7 @@ func NewPostgresSlackIntegrationsRepository(db *sqlx.DB, schema string) *Postgre
 	return &PostgresSlackIntegrationsRepository{db: db, schema: schema}
 }
 
-func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(integration *models.SlackIntegration) error {
+func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(ctx context.Context, integration *models.SlackIntegration) error {
 	insertColumns := []string{"id", "slack_team_id", "slack_auth_token", "slack_team_name", "user_id", "created_at", "updated_at"}
 	columnsStr := strings.Join(insertColumns, ", ")
 	returningStr := strings.Join(slackIntegrationsColumns, ", ")
@@ -46,7 +46,7 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(integration
 		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowx(query, integration.ID, integration.SlackTeamID, integration.SlackAuthToken, integration.SlackTeamName, integration.UserID).StructScan(integration)
+	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.SlackTeamID, integration.SlackAuthToken, integration.SlackTeamName, integration.UserID).StructScan(integration)
 	if err != nil {
 		return fmt.Errorf("failed to create slack integration: %w", err)
 	}
@@ -54,7 +54,7 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(integration
 	return nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(userID string) ([]*models.SlackIntegration, error) {
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(ctx context.Context, userID string) ([]*models.SlackIntegration, error) {
 	if !core.IsValidULID(userID) {
 		return nil, fmt.Errorf("user ID must be a valid ULID")
 	}
@@ -67,7 +67,7 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(userI
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
 	var integrations []*models.SlackIntegration
-	err := r.db.Select(&integrations, query, userID)
+	err := r.db.SelectContext(ctx, &integrations, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integrations by user ID: %w", err)
 	}
@@ -75,7 +75,7 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(userI
 	return integrations, nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations() ([]*models.SlackIntegration, error) {
+func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations(ctx context.Context) ([]*models.SlackIntegration, error) {
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 
@@ -83,7 +83,7 @@ func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations() ([]*mode
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
 	var integrations []*models.SlackIntegration
-	err := r.db.Select(&integrations, query)
+	err := r.db.SelectContext(ctx, &integrations, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all slack integrations: %w", err)
 	}
@@ -91,7 +91,7 @@ func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations() ([]*mode
 	return integrations, nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integrationID, userID string) error {
+func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(ctx context.Context, integrationID, userID string) error {
 	if !core.IsValidULID(integrationID) {
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
@@ -102,7 +102,7 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integra
 
 	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND user_id = $2`, r.schema)
 
-	result, err := r.db.Exec(query, integrationID, userID)
+	result, err := r.db.ExecContext(ctx, query, integrationID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to delete slack integration: %w", err)
 	}
@@ -154,7 +154,7 @@ func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx conte
 	return nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(secretKey string) (*models.SlackIntegration, error) {
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (*models.SlackIntegration, error) {
 	if secretKey == "" {
 		return nil, fmt.Errorf("secret key cannot be empty")
 	}
@@ -166,7 +166,7 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(sec
 		WHERE ccagent_secret_key = $1 AND ccagent_secret_key IS NOT NULL`, columnsStr, r.schema)
 
 	var integration models.SlackIntegration
-	err := r.db.Get(&integration, query, secretKey)
+	err := r.db.GetContext(ctx, &integration, query, secretKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integration by secret key: %w", err)
 	}
@@ -174,7 +174,7 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(sec
 	return &integration, nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(teamID string) (*models.SlackIntegration, error) {
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (*models.SlackIntegration, error) {
 	if teamID == "" {
 		return nil, fmt.Errorf("team ID cannot be empty")
 	}
@@ -186,7 +186,7 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(teamID
 		WHERE slack_team_id = $1`, columnsStr, r.schema)
 
 	var integration models.SlackIntegration
-	err := r.db.Get(&integration, query, teamID)
+	err := r.db.GetContext(ctx, &integration, query, teamID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integration by team ID: %w", err)
 	}
@@ -194,7 +194,7 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(teamID
 	return &integration, nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(id string) (*models.SlackIntegration, error) {
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(ctx context.Context, id string) (*models.SlackIntegration, error) {
 	if !core.IsValidULID(id) {
 		return nil, fmt.Errorf("integration ID must be a valid ULID")
 	}
@@ -206,7 +206,7 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(id string)
 		WHERE id = $1`, columnsStr, r.schema)
 
 	var integration models.SlackIntegration
-	err := r.db.Get(&integration, query, id)
+	err := r.db.GetContext(ctx, &integration, query, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integration by ID: %w", err)
 	}

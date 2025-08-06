@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -20,7 +21,7 @@ func NewPostgresUsersRepository(db *sqlx.DB, schema string) *PostgresUsersReposi
 	return &PostgresUsersRepository{db: db, schema: schema}
 }
 
-func (r *PostgresUsersRepository) GetOrCreateUser(authProvider, authProviderID string) (*models.User, error) {
+func (r *PostgresUsersRepository) GetOrCreateUser(ctx context.Context, authProvider, authProviderID string) (*models.User, error) {
 	// Generate ULID for new users
 	userID := core.NewID("u")
 
@@ -32,7 +33,7 @@ func (r *PostgresUsersRepository) GetOrCreateUser(authProvider, authProviderID s
 		RETURNING id, auth_provider, auth_provider_id, created_at, updated_at`, r.schema)
 
 	user := &models.User{}
-	err := r.db.QueryRowx(query, userID, authProvider, authProviderID).StructScan(user)
+	err := r.db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID).StructScan(user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get or create user: %w", err)
 	}

@@ -67,7 +67,7 @@ func run() error {
 
 	// Create API key validator for WebSocket connections
 	apiKeyValidator := func(apiKey string) (string, error) {
-		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(apiKey)
+		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(context.Background(), apiKey)
 		if err != nil {
 			return "", err
 		}

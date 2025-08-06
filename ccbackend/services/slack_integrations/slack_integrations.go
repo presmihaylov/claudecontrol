@@ -31,7 +31,7 @@ func NewSlackIntegrationsService(repo *db.PostgresSlackIntegrationsRepository, s
 	}
 }
 
-func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirectURL string, userID string) (*models.SlackIntegration, error) {
+func (s *SlackIntegrationsService) CreateSlackIntegration(ctx context.Context, slackAuthCode, redirectURL string, userID string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to create Slack integration for user: %s", userID)
 	if slackAuthCode == "" {
 		return nil, fmt.Errorf("slack auth code cannot be empty")
@@ -68,7 +68,7 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirec
 		SlackTeamName:  teamName,
 		UserID:         userID,
 	}
-	if err := s.slackIntegrationsRepo.CreateSlackIntegration(integration); err != nil {
+	if err := s.slackIntegrationsRepo.CreateSlackIntegration(ctx, integration); err != nil {
 		return nil, fmt.Errorf("failed to create slack integration in database: %w", err)
 	}
 
@@ -76,13 +76,13 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirec
 	return integration, nil
 }
 
-func (s *SlackIntegrationsService) GetSlackIntegrationsByUserID(userID string) ([]*models.SlackIntegration, error) {
+func (s *SlackIntegrationsService) GetSlackIntegrationsByUserID(ctx context.Context, userID string) ([]*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get Slack integrations for user: %s", userID)
 	if !core.IsValidULID(userID) {
 		return nil, fmt.Errorf("user ID must be a valid ULID")
 	}
 
-	integrations, err := s.slackIntegrationsRepo.GetSlackIntegrationsByUserID(userID)
+	integrations, err := s.slackIntegrationsRepo.GetSlackIntegrationsByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integrations for user: %w", err)
 	}
@@ -91,9 +91,9 @@ func (s *SlackIntegrationsService) GetSlackIntegrationsByUserID(userID string) (
 	return integrations, nil
 }
 
-func (s *SlackIntegrationsService) GetAllSlackIntegrations() ([]*models.SlackIntegration, error) {
+func (s *SlackIntegrationsService) GetAllSlackIntegrations(ctx context.Context) ([]*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get all Slack integrations")
-	integrations, err := s.slackIntegrationsRepo.GetAllSlackIntegrations()
+	integrations, err := s.slackIntegrationsRepo.GetAllSlackIntegrations(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all slack integrations: %w", err)
 	}
@@ -113,7 +113,7 @@ func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, i
 		return fmt.Errorf("user not found in context")
 	}
 
-	if err := s.slackIntegrationsRepo.DeleteSlackIntegrationByID(integrationID, user.ID); err != nil {
+	if err := s.slackIntegrationsRepo.DeleteSlackIntegrationByID(ctx, integrationID, user.ID); err != nil {
 		return fmt.Errorf("failed to delete slack integration: %w", err)
 	}
 
@@ -150,9 +150,9 @@ func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context,
 	return secretKey, nil
 }
 
-func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(secretKey string) (*models.SlackIntegration, error) {
+func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by secret key")
-	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationBySecretKey(secretKey)
+	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationBySecretKey(ctx, secretKey)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by secret key: %v", err)
 		return nil, fmt.Errorf("failed to get slack integration by secret key: %w", err)
@@ -162,13 +162,13 @@ func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(secretKey stri
 	return integration, nil
 }
 
-func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(teamID string) (*models.SlackIntegration, error) {
+func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by team ID: %s", teamID)
 	if teamID == "" {
 		return nil, fmt.Errorf("team ID cannot be empty")
 	}
 
-	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByTeamID(teamID)
+	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByTeamID(ctx, teamID)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by team ID: %v", err)
 		return nil, fmt.Errorf("failed to get slack integration by team ID: %w", err)
@@ -178,13 +178,13 @@ func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(teamID string) (*
 	return integration, nil
 }
 
-func (s *SlackIntegrationsService) GetSlackIntegrationByID(id string) (*models.SlackIntegration, error) {
+func (s *SlackIntegrationsService) GetSlackIntegrationByID(ctx context.Context, id string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by ID: %s", id)
 	if !core.IsValidULID(id) {
 		return nil, fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByID(id)
+	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByID(ctx, id)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by ID: %v", err)
 		return nil, fmt.Errorf("failed to get slack integration by ID: %w", err)
