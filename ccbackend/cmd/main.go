@@ -78,6 +78,7 @@ func run() error {
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
 	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
+	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, cfg.ClerkSecretKey)
 
 	// Create a new router
@@ -86,7 +87,7 @@ func run() error {
 	// Setup endpoints with the new router
 	wsClient.RegisterWithRouter(router)
 	slackHandler.SetupEndpoints(router)
-	dashboardHandler.SetupEndpoints(router, authMiddleware)
+	dashboardHTTPHandler.SetupEndpoints(router, authMiddleware)
 
 	// Health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
