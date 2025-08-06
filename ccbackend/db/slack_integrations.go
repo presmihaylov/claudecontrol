@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	// necessary import to wire up the postgres driver
@@ -55,9 +54,9 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(integration
 	return nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(userID uuid.UUID) ([]*models.SlackIntegration, error) {
-	if userID == uuid.Nil {
-		return nil, fmt.Errorf("user ID cannot be nil")
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(userID string) ([]*models.SlackIntegration, error) {
+	if !core.IsValidULID(userID) {
+		return nil, fmt.Errorf("user ID must be a valid ULID")
 	}
 
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
@@ -92,13 +91,13 @@ func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations() ([]*mode
 	return integrations, nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integrationID, userID uuid.UUID) error {
-	if integrationID == uuid.Nil {
-		return fmt.Errorf("integration ID cannot be nil")
+func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integrationID, userID string) error {
+	if !core.IsValidULID(integrationID) {
+		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	if userID == uuid.Nil {
-		return fmt.Errorf("user ID cannot be nil")
+	if !core.IsValidULID(userID) {
+		return fmt.Errorf("user ID must be a valid ULID")
 	}
 
 	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND user_id = $2`, r.schema)
@@ -120,13 +119,13 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integra
 	return nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx context.Context, integrationID uuid.UUID, userID uuid.UUID, secretKey string) error {
-	if integrationID == uuid.Nil {
-		return fmt.Errorf("integration ID cannot be nil")
+func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx context.Context, integrationID string, userID string, secretKey string) error {
+	if !core.IsValidULID(integrationID) {
+		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	if userID == uuid.Nil {
-		return fmt.Errorf("user ID cannot be nil")
+	if !core.IsValidULID(userID) {
+		return fmt.Errorf("user ID must be a valid ULID")
 	}
 
 	if secretKey == "" {
@@ -195,9 +194,9 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(teamID
 	return &integration, nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(id uuid.UUID) (*models.SlackIntegration, error) {
-	if id == uuid.Nil {
-		return nil, fmt.Errorf("integration ID cannot be nil")
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(id string) (*models.SlackIntegration, error) {
+	if !core.IsValidULID(id) {
+		return nil, fmt.Errorf("integration ID must be a valid ULID")
 	}
 
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")

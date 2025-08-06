@@ -31,6 +31,8 @@ export default function Home() {
 	const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
 	const [integrations, setIntegrations] = useState<SlackIntegration[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [backendAuthenticated, setBackendAuthenticated] = useState(false);
+	const [authError, setAuthError] = useState<string | null>(null);
 	const [deleting, setDeleting] = useState<string | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [integrationToDelete, setIntegrationToDelete] = useState<SlackIntegration | null>(null);
@@ -55,16 +57,22 @@ export default function Home() {
 
 				if (!authResponse.ok) {
 					console.error("Failed to authenticate user:", authResponse.statusText);
+					setAuthError(`Authentication failed: ${authResponse.statusText}`);
+					setBackendAuthenticated(false);
 					return;
 				}
 
 				const user = await authResponse.json();
 				console.log("User authenticated successfully:", user);
+				setBackendAuthenticated(true);
+				setAuthError(null);
 
 				// Then fetch their Slack integrations
 				await fetchIntegrations();
 			} catch (error) {
 				console.error("Error authenticating user:", error);
+				setAuthError(`Authentication error: ${error}`);
+				setBackendAuthenticated(false);
 			} finally {
 				setLoading(false);
 			}
@@ -168,6 +176,52 @@ export default function Home() {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
 				<div className="text-muted-foreground">Redirecting to sign in...</div>
+			</div>
+		);
+	}
+
+	// Show error if backend authentication failed
+	if (!loading && authError) {
+		return (
+			<div className="min-h-screen bg-background">
+				<header className="border-b">
+					<div className="container mx-auto px-4 py-4 flex items-center justify-between">
+						<div />
+						<h1 className="text-2xl font-semibold">Claude Control</h1>
+						<Button variant="outline" size="sm" onClick={() => signOut()}>
+							Logout
+						</Button>
+					</div>
+				</header>
+				<div className="container mx-auto px-4 py-8 max-w-4xl">
+					<div className="flex flex-col items-center justify-center min-h-[60vh]">
+						<div className="text-center space-y-4">
+							<h2 className="text-xl font-semibold text-destructive">Authentication Failed</h2>
+							<p className="text-muted-foreground max-w-md">
+								Unable to authenticate with the backend server. Please try refreshing the page or
+								contact support if the issue persists.
+							</p>
+							<div className="text-sm text-muted-foreground bg-muted p-3 rounded-md font-mono">
+								{authError}
+							</div>
+							<div className="space-x-2">
+								<Button onClick={() => window.location.reload()}>Refresh Page</Button>
+								<Button variant="outline" onClick={() => signOut()}>
+									Sign Out
+								</Button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Only show main UI if backend authentication succeeded
+	if (!loading && !backendAuthenticated) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="text-muted-foreground">Authenticating with backend...</div>
 			</div>
 		);
 	}
