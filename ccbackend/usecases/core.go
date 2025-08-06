@@ -43,7 +43,7 @@ func (s *CoreUseCase) getSlackClientForIntegration(ctx context.Context, slackInt
 }
 
 func (s *CoreUseCase) validateJobBelongsToAgent(ctx context.Context, agentID, jobID string, slackIntegrationID string) error {
-	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(agentID, slackIntegrationID)
+	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agentID, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get jobs for agent: %w", err)
 	}
@@ -60,7 +60,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(ctx context.Context, clientID stri
 	log.Printf("📋 Starting to process assistant message from client %s", clientID)
 
 	// Get the agent by WebSocket connection ID
-	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID, slackIntegrationID)
+	agent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
 		return fmt.Errorf("failed to find agent for client: %w", err)
@@ -251,7 +251,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(ctx context.Context, event models
 
 	// Check if agents are available first
 	connectedClientIDs := s.wsClient.GetClientIDs()
-	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
+	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, slackIntegrationID, connectedClientIDs)
 	if err != nil {
 		log.Printf("❌ Failed to check for connected agents: %v", err)
 		return fmt.Errorf("failed to check for connected agents: %w", err)
@@ -511,7 +511,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(ctx context.Context, channelID,
 
 func (s *CoreUseCase) getOrAssignAgentForJob(ctx context.Context, job *models.Job, threadTS, slackIntegrationID string) (string, error) {
 	// Check if this job is already assigned to an agent
-	existingAgent, err := s.agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
+	existingAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, slackIntegrationID)
 	if err != nil {
 		// Some error occurred
 		log.Printf("❌ Failed to check for existing agent assignment: %v", err)
@@ -561,7 +561,7 @@ func (s *CoreUseCase) assignJobToAvailableAgent(ctx context.Context, job *models
 // - error: any error that occurred during the assignment process
 func (s *CoreUseCase) tryAssignJobToAgent(ctx context.Context, jobID string, slackIntegrationID string) (string, bool, error) {
 	// First check if this job is already assigned to an agent
-	existingAgent, err := s.agentsService.GetAgentByJobID(jobID, slackIntegrationID)
+	existingAgent, err := s.agentsService.GetAgentByJobID(ctx, jobID, slackIntegrationID)
 	if err != nil {
 		return "", false, fmt.Errorf("failed to check for existing agent assignment: %w", err)
 	}
@@ -584,7 +584,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(ctx context.Context, jobID string, sla
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
 	// Get only agents with active connections using centralized service method
-	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
+	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, slackIntegrationID, connectedClientIDs)
 	if err != nil {
 		log.Printf("❌ Failed to get connected active agents: %v", err)
 		return "", false, fmt.Errorf("failed to get connected active agents: %w", err)
@@ -606,7 +606,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(ctx context.Context, jobID string, sla
 	log.Printf("🎯 Selected agent %s with %d active messages (least loaded)", selectedAgent.ID, sortedAgents[0].load)
 
 	// Assign the job to the selected agent (agents can now handle multiple jobs simultaneously)
-	if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, jobID, slackIntegrationID); err != nil {
+	if err := s.agentsService.AssignAgentToJob(ctx, selectedAgent.ID, jobID, slackIntegrationID); err != nil {
 		log.Printf("❌ Failed to assign job %s to agent %s: %v", jobID, selectedAgent.ID, err)
 		return "", false, fmt.Errorf("failed to assign job to agent: %w", err)
 	}
@@ -625,7 +625,7 @@ func (s *CoreUseCase) sortAgentsByLoad(ctx context.Context, agents []*models.Act
 
 	for _, agent := range agents {
 		// Get job IDs assigned to this agent
-		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, slackIntegrationID)
+		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, slackIntegrationID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
 		}
@@ -651,7 +651,7 @@ func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client)
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
 
 	// Pass the agent ID to UpsertActiveAgent
-	_, err := s.agentsService.UpsertActiveAgent(client.ID, client.SlackIntegrationID, client.AgentID)
+	_, err := s.agentsService.UpsertActiveAgent(ctx, client.ID, client.SlackIntegrationID, client.AgentID)
 	if err != nil {
 		return fmt.Errorf("failed to register agent for client %s: %w", client.ID, err)
 	}
@@ -664,20 +664,20 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	log.Printf("📋 Starting to deregister agent for client %s", client.ID)
 
 	// First, get the agent to check for assigned jobs
-	agent, err := s.agentsService.GetAgentByWSConnectionID(client.ID, client.SlackIntegrationID)
+	agent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.ID, client.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to find agent for client %s: %w", client.ID, err)
 	}
 
 	// Get active jobs for agent cleanup
-	jobs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, client.SlackIntegrationID)
+	jobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, client.SlackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to get jobs for cleanup: %v", err)
 		return fmt.Errorf("failed to get jobs for cleanup: %w", err)
 	}
 	if len(jobs) == 0 {
 		// No jobs to clean up, just delete the agent
-		if err := s.agentsService.DeleteActiveAgentByWsConnectionID(client.ID, client.SlackIntegrationID); err != nil {
+		if err := s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, client.SlackIntegrationID); err != nil {
 			return fmt.Errorf("failed to delete agent: %w", err)
 		}
 		log.Printf("📋 Completed successfully - deregistered agent for client %s", client.ID)
@@ -712,7 +712,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 		log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
 
 		// Unassign agent from job
-		if err := s.agentsService.UnassignAgentFromJob(agent.ID, jobID, client.SlackIntegrationID); err != nil {
+		if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
 			return fmt.Errorf("failed to unassign agent %s from job %s: %w", agent.ID, jobID, err)
 		}
@@ -727,7 +727,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	}
 
 	// Delete the agent record
-	err = s.agentsService.DeleteActiveAgentByWsConnectionID(client.ID, client.SlackIntegrationID)
+	err = s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, client.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to deregister agent for client %s: %w", client.ID, err)
 	}
@@ -759,7 +759,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 		slackIntegrationID := integration.ID
 
 		// Get connected agents for this integration using centralized service method
-		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
+		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, slackIntegrationID, connectedClientIDs)
 		if err != nil {
 			broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to get connected agents for integration %s: %v", slackIntegrationID, err))
 			continue
@@ -820,7 +820,7 @@ func (s *CoreUseCase) ProcessJobComplete(ctx context.Context, clientID string, p
 	}
 
 	// Get the agent by WebSocket connection ID to verify ownership
-	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID, slackIntegrationID)
+	agent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
 		return fmt.Errorf("failed to find agent for client: %w", err)
@@ -839,7 +839,7 @@ func (s *CoreUseCase) ProcessJobComplete(ctx context.Context, clientID string, p
 	}
 
 	// Unassign the agent from the job
-	if err := s.agentsService.UnassignAgentFromJob(agent.ID, jobID, slackIntegrationID); err != nil {
+	if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, slackIntegrationID); err != nil {
 		log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
 		return fmt.Errorf("failed to unassign agent from job: %w", err)
 	}
@@ -996,7 +996,7 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 		slackIntegrationID := integration.ID
 
 		// Get inactive agents for this integration
-		inactiveAgents, err := s.agentsService.GetInactiveAgents(slackIntegrationID, inactiveThresholdMinutes)
+		inactiveAgents, err := s.agentsService.GetInactiveAgents(ctx, slackIntegrationID, inactiveThresholdMinutes)
 		if err != nil {
 			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to get inactive agents for integration %s: %v", slackIntegrationID, err))
 			continue
@@ -1013,7 +1013,7 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 			log.Printf("🧹 Found inactive agent %s (last active: %s) - cleaning up", agent.ID, agent.LastActiveAt.Format("2006-01-02 15:04:05"))
 
 			// Delete the inactive agent - CASCADE DELETE will automatically clean up job assignments
-			if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
+			if err := s.agentsService.DeleteActiveAgent(ctx, agent.ID, slackIntegrationID); err != nil {
 				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete inactive agent %s: %v", agent.ID, err))
 				continue
 			}
@@ -1038,7 +1038,7 @@ func (s *CoreUseCase) ProcessPing(ctx context.Context, client *clients.Client) e
 	log.Printf("📋 Starting to process ping from client %s", client.ID)
 
 	// Update the agent's last_active_at timestamp
-	if err := s.agentsService.UpdateAgentLastActiveAt(client.ID, client.SlackIntegrationID); err != nil {
+	if err := s.agentsService.UpdateAgentLastActiveAt(ctx, client.ID, client.SlackIntegrationID); err != nil {
 		log.Printf("❌ Failed to update agent last_active_at for client %s: %v", client.ID, err)
 		return fmt.Errorf("failed to update agent last_active_at: %w", err)
 	}
@@ -1066,7 +1066,7 @@ func (s *CoreUseCase) ProcessReactionAdded(ctx context.Context, userID, channelI
 	log.Printf("✅ Job completion reaction confirmed - user %s is the job creator", userID)
 
 	// Get the assigned agent for this job to unassign them
-	agent, err := s.agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
+	agent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, slackIntegrationID)
 	if err != nil {
 		log.Printf("⚠️ Failed to find agent for job %s: %v", job.ID, err)
 		// Don't return error - continue with job completion
@@ -1074,7 +1074,7 @@ func (s *CoreUseCase) ProcessReactionAdded(ctx context.Context, userID, channelI
 
 	// If agent is found, unassign them from the job
 	if agent != nil {
-		if err := s.agentsService.UnassignAgentFromJob(agent.ID, job.ID, slackIntegrationID); err != nil {
+		if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, job.ID, slackIntegrationID); err != nil {
 			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, job.ID, err)
 			return fmt.Errorf("failed to unassign agent from job: %w", err)
 		}
