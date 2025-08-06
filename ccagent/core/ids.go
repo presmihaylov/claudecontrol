@@ -2,7 +2,7 @@ package core
 
 import (
 	"ccagent/utils"
-	"math/rand"
+	"crypto/rand"
 	"strings"
 	"time"
 
@@ -15,10 +15,9 @@ import (
 func NewID(prefix string) string {
 	utils.AssertInvariant(prefix != "" && strings.TrimSpace(prefix) != "", "prefix cannot be empty")
 
-	// Generate a new ULID with current timestamp and math/rand entropy
-	entropy := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec // Intentionally using math/rand for ULID entropy
+	// Generate a new ULID with current timestamp and crypto/rand entropy
 	ms := ulid.Timestamp(time.Now())
-	id := ulid.MustNew(ms, entropy)
+	id := ulid.MustNew(ms, rand.Reader)
 
 	// Return formatted ID with lowercase prefix
 	return strings.ToLower(strings.TrimSpace(prefix)) + "_" + id.String()
