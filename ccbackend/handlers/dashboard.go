@@ -179,15 +179,9 @@ func (h *DashboardAPIHandler) handleDeleteSlackIntegration(w http.ResponseWriter
 	// Extract integration ID from URL path parameters
 	vars := mux.Vars(r)
 	integrationIDStr, ok := vars["id"]
-	if !ok || integrationIDStr == "" {
-		log.Printf("❌ Missing integration ID in URL path")
-		http.Error(w, "integration ID is required", http.StatusBadRequest)
-		return
-	}
-
-	if integrationIDStr == "" {
-		log.Printf("❌ Empty integration ID")
-		http.Error(w, "integration ID cannot be empty", http.StatusBadRequest)
+	if !ok || !core.IsValidULID(integrationIDStr) {
+		log.Printf("❌ Missing or invalid integration ID in URL path")
+		http.Error(w, "integration ID must be a valid ULID", http.StatusBadRequest)
 		return
 	}
 
@@ -216,15 +210,9 @@ func (h *DashboardAPIHandler) handleGenerateCCAgentSecretKey(w http.ResponseWrit
 	// Extract integration ID from URL path parameters
 	vars := mux.Vars(r)
 	integrationIDStr, ok := vars["id"]
-	if !ok || integrationIDStr == "" {
-		log.Printf("❌ Missing integration ID in URL path")
-		http.Error(w, "integration ID is required", http.StatusBadRequest)
-		return
-	}
-
-	if integrationIDStr == "" {
-		log.Printf("❌ Empty integration ID")
-		http.Error(w, "integration ID cannot be empty", http.StatusBadRequest)
+	if !ok || !core.IsValidULID(integrationIDStr) {
+		log.Printf("❌ Missing or invalid integration ID in URL path")
+		http.Error(w, "integration ID must be a valid ULID", http.StatusBadRequest)
 		return
 	}
 

@@ -10,6 +10,7 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
+	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -54,8 +55,8 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(integration
 }
 
 func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(userID string) ([]*models.SlackIntegration, error) {
-	if userID == "" {
-		return nil, fmt.Errorf("user ID cannot be empty")
+	if !core.IsValidULID(userID) {
+		return nil, fmt.Errorf("user ID must be a valid ULID")
 	}
 
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
@@ -91,8 +92,8 @@ func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations() ([]*mode
 }
 
 func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integrationID, userID string) error {
-	if integrationID == "" {
-		return fmt.Errorf("integration ID cannot be empty")
+	if !core.IsValidULID(integrationID) {
+		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
 	if userID == "" {
@@ -119,8 +120,8 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integra
 }
 
 func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx context.Context, integrationID string, userID string, secretKey string) error {
-	if integrationID == "" {
-		return fmt.Errorf("integration ID cannot be empty")
+	if !core.IsValidULID(integrationID) {
+		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
 	if userID == "" {
@@ -194,8 +195,8 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(teamID
 }
 
 func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(id string) (*models.SlackIntegration, error) {
-	if id == "" {
-		return nil, fmt.Errorf("integration ID cannot be empty")
+	if !core.IsValidULID(id) {
+		return nil, fmt.Errorf("integration ID must be a valid ULID")
 	}
 
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")

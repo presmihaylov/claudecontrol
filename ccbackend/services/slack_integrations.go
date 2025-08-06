@@ -38,8 +38,8 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirec
 		return nil, fmt.Errorf("slack auth code cannot be empty")
 	}
 
-	if userID == "" {
-		return nil, fmt.Errorf("user ID cannot be empty")
+	if !core.IsValidULID(userID) {
+		return nil, fmt.Errorf("user ID must be a valid ULID")
 	}
 
 	// Exchange OAuth code for access token using Slack client
@@ -87,8 +87,8 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirec
 func (s *SlackIntegrationsService) GetSlackIntegrationsByUserID(userID string) ([]*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get Slack integrations for user: %s", userID)
 
-	if userID == "" {
-		return nil, fmt.Errorf("user ID cannot be empty")
+	if !core.IsValidULID(userID) {
+		return nil, fmt.Errorf("user ID must be a valid ULID")
 	}
 
 	integrations, err := s.slackIntegrationsRepo.GetSlackIntegrationsByUserID(userID)
@@ -115,8 +115,8 @@ func (s *SlackIntegrationsService) GetAllSlackIntegrations() ([]*models.SlackInt
 func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, integrationID string) error {
 	log.Printf("📋 Starting to delete Slack integration: %s", integrationID)
 
-	if integrationID == "" {
-		return fmt.Errorf("integration ID cannot be empty")
+	if !core.IsValidULID(integrationID) {
+		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
 	// Get user from context
@@ -197,8 +197,8 @@ func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(teamID string) (*
 func (s *SlackIntegrationsService) GetSlackIntegrationByID(id string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by ID: %s", id)
 
-	if id == "" {
-		return nil, fmt.Errorf("integration ID cannot be empty")
+	if !core.IsValidULID(id) {
+		return nil, fmt.Errorf("integration ID must be a valid ULID")
 	}
 
 	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByID(id)
