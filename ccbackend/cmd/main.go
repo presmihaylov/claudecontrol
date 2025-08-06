@@ -101,9 +101,15 @@ func run() error {
 	}).Methods("GET")
 
 	// Register WebSocket hooks for agent lifecycle
-	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(coreUseCase.RegisterAgent))
-	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(coreUseCase.DeregisterAgent))
-	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(coreUseCase.ProcessPing))
+	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(func(client *clients.Client) error {
+		return coreUseCase.RegisterAgent(context.Background(), client)
+	}))
+	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(func(client *clients.Client) error {
+		return coreUseCase.DeregisterAgent(context.Background(), client)
+	}))
+	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(func(client *clients.Client) error {
+		return coreUseCase.ProcessPing(context.Background(), client)
+	}))
 
 	// Register WebSocket message handler
 	wsClient.RegisterMessageHandler(alertMiddleware.WrapMessageHandler(wsHandler.HandleMessage))
@@ -112,9 +118,15 @@ func run() error {
 	cleanupTicker := time.NewTicker(1 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
-			_ = alertMiddleware.WrapBackgroundTask("ProcessQueuedJobs", coreUseCase.ProcessQueuedJobs)()
-			_ = alertMiddleware.WrapBackgroundTask("BroadcastCheckIdleJobs", coreUseCase.BroadcastCheckIdleJobs)()
-			_ = alertMiddleware.WrapBackgroundTask("CleanupInactiveAgents", coreUseCase.CleanupInactiveAgents)()
+			_ = alertMiddleware.WrapBackgroundTask("ProcessQueuedJobs", func() error {
+				return coreUseCase.ProcessQueuedJobs(context.Background())
+			})()
+			_ = alertMiddleware.WrapBackgroundTask("BroadcastCheckIdleJobs", func() error {
+				return coreUseCase.BroadcastCheckIdleJobs(context.Background())
+			})()
+			_ = alertMiddleware.WrapBackgroundTask("CleanupInactiveAgents", func() error {
+				return coreUseCase.CleanupInactiveAgents(context.Background())
+			})()
 		}
 	}()
 	defer cleanupTicker.Stop()
