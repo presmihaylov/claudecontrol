@@ -106,3 +106,123 @@ func TestNewIDUniqueness(t *testing.T) {
 		t.Errorf("Expected %d unique IDs, got %d", numTests, len(ids))
 	}
 }
+
+func TestIsValidULID(t *testing.T) {
+	// Generate a valid ULID to test with
+	validID := NewID("test")
+
+	tests := []struct {
+		name string
+		id   string
+		want bool
+	}{
+		{
+			name: "valid ULID with single char prefix",
+			id:   validID,
+			want: true,
+		},
+		{
+			name: "valid ULID with multi char prefix",
+			id:   NewID("user"),
+			want: true,
+		},
+		{
+			name: "valid ULID with numeric prefix",
+			id:   NewID("v1"),
+			want: true,
+		},
+		{
+			name: "empty string",
+			id:   "",
+			want: false,
+		},
+		{
+			name: "no underscore separator",
+			id:   "test01G0EZ1XTM37C5X11SQTDNCTM1",
+			want: false,
+		},
+		{
+			name: "multiple underscores",
+			id:   "test_01G0_EZ1XTM37C5X11SQTDNCTM1",
+			want: false,
+		},
+		{
+			name: "empty prefix",
+			id:   "_01G0EZ1XTM37C5X11SQTDNCTM1",
+			want: false,
+		},
+		{
+			name: "uppercase prefix",
+			id:   "USER_01G0EZ1XTM37C5X11SQTDNCTM1",
+			want: false,
+		},
+		{
+			name: "prefix with special chars",
+			id:   "test-user_01G0EZ1XTM37C5X11SQTDNCTM1",
+			want: false,
+		},
+		{
+			name: "ULID part too short",
+			id:   "test_01G0EZ1XTM37C5X11SQTDNCT",
+			want: false,
+		},
+		{
+			name: "ULID part too long",
+			id:   "test_01G0EZ1XTM37C5X11SQTDNCTM12",
+			want: false,
+		},
+		{
+			name: "invalid ULID characters",
+			id:   "test_01G0EZ1XTM37C5X11SQTDNCTL1",
+			want: false,
+		},
+		{
+			name: "lowercase ULID part",
+			id:   "test_01g0ez1xtm37c5x11sqtdnctm1",
+			want: false,
+		},
+		{
+			name: "empty ULID part",
+			id:   "test_",
+			want: false,
+		},
+		{
+			name: "just prefix",
+			id:   "test",
+			want: false,
+		},
+		{
+			name: "just underscore",
+			id:   "_",
+			want: false,
+		},
+		{
+			name: "random string",
+			id:   "not-a-ulid-at-all",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsValidULID(tt.id)
+			if got != tt.want {
+				t.Errorf("IsValidULID(%q) = %v, want %v", tt.id, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsValidULIDWithGeneratedIDs(t *testing.T) {
+	// Test with various prefixes to ensure all generated IDs are valid
+	prefixes := []string{"u", "si", "j", "a", "msg", "sess", "client", "test123", "v2"}
+
+	for _, prefix := range prefixes {
+		t.Run("prefix_"+prefix, func(t *testing.T) {
+			id := NewID(prefix)
+			if !IsValidULID(id) {
+				t.Errorf("Generated ID %q should be valid but IsValidULID returned false", id)
+			}
+		})
+	}
+}
