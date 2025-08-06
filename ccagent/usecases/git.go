@@ -462,6 +462,12 @@ Examples:
 - "Add user authentication middleware"
 - "Update API response format"
 
+CRITICAL: Your response must contain ONLY the PR title text. Do not include:
+- Any explanations or reasoning
+- Quotes around the title
+- "Here is the title:" or similar phrases
+- Any other text whatsoever
+
 Respond with ONLY the short title, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
 
 	result, err := g.claudeService.StartNewConversation(prompt)
@@ -530,6 +536,13 @@ IMPORTANT:
 - Keep the summary concise - avoid listing every single file or detailed code changes
 - Focus on the business/functional purpose of the changes
 - Do NOT include any introductory text like "Here is your description"
+
+CRITICAL: Your response must contain ONLY the PR description in markdown format. Do not include:
+- Any explanations or reasoning about your response
+- "Here is the description:" or similar phrases
+- Any text before or after the description
+- Any commentary about the changes
+- Any other text whatsoever
 
 Respond with ONLY the PR body in markdown format, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
 
@@ -909,6 +922,13 @@ Examples of when NOT to update:
 - Current: "Fix authentication issues" → New commits fix more auth bugs → Keep: "Fix authentication issues"
 - Current: "Add user dashboard" → New commits fix small UI bugs → Keep: "Add user dashboard"
 
+CRITICAL: Your response must contain ONLY the PR title text. Do not include:
+- Any explanations or reasoning about your decision
+- Quotes around the title
+- "The title should be:" or similar phrases
+- Commentary about whether you updated it or not
+- Any other text whatsoever
+
 Respond with ONLY the title (updated or unchanged), nothing else.`, currentTitle, branchName, commitInfo, diffSummary)
 
 	result, err := g.claudeService.StartNewConversation(prompt)
@@ -986,6 +1006,14 @@ IMPORTANT:
 - Do NOT include any "Generated with Claude Control" or similar footer text. I will add that separately.
 - Return only the description content in markdown format, nothing else.
 - If no update is needed, return the current description exactly as provided (minus any footer).
+
+CRITICAL: Your response must contain ONLY the PR description in markdown format. Do not include:
+- Any explanations or reasoning about your decision
+- "Here is the updated description:" or similar phrases
+- Commentary about whether you updated it or not
+- Any text before or after the description
+- Any analysis of the changes
+- Any other text whatsoever
 
 Respond with ONLY the PR description in markdown format, nothing else.`, currentDescriptionClean, branchName, commitInfo, diffSummary)
 
