@@ -203,7 +203,7 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 			return
 		}
 
-		var msg models.UnknownMessage
+		var msg models.BaseMessage
 		msgBytes, err := json.Marshal(data[0])
 		if err != nil {
 			log.Info("❌ Failed to marshal message data: %v", err)
