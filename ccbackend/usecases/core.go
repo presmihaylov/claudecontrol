@@ -628,16 +628,16 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 		// Update the top-level message emoji to :x:
 		if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "x", client.SlackIntegrationID); err != nil {
 			log.Printf("⚠️ Failed to update slack message reaction to :x: for abandoned job %s: %v", job.ID, err)
-		} else {
-			log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
+			return fmt.Errorf("failed to update slack message reaction to :x: for abandoned job %s: %w", job.ID, err)
 		}
+		log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
 
 		// Delete the job
 		if err := s.jobsService.DeleteJob(job.ID, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to delete abandoned job %s: %v", job.ID, err)
-		} else {
-			log.Printf("🗑️ Deleted abandoned job %s", job.ID)
+			return fmt.Errorf("failed to delete abandoned job %s: %w", job.ID, err)
 		}
+		log.Printf("🗑️ Deleted abandoned job %s", job.ID)
 	}
 
 	// Unassign agent from all jobs
