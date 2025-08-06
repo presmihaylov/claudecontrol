@@ -123,13 +123,15 @@ func run() error {
 	cleanupTicker := time.NewTicker(1 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
-			processQueuedJobs := func() error { return coreUseCase.ProcessQueuedJobs(context.Background()) }
-			broadcastCheckIdleJobs := func() error { return coreUseCase.BroadcastCheckIdleJobs(context.Background()) }
-			cleanupInactiveAgents := func() error { return coreUseCase.CleanupInactiveAgents(context.Background()) }
-
-			_ = alertMiddleware.WrapBackgroundTask("ProcessQueuedJobs", processQueuedJobs)()
-			_ = alertMiddleware.WrapBackgroundTask("BroadcastCheckIdleJobs", broadcastCheckIdleJobs)()
-			_ = alertMiddleware.WrapBackgroundTask("CleanupInactiveAgents", cleanupInactiveAgents)()
+			_ = alertMiddleware.WrapBackgroundTask("ProcessQueuedJobs", func() error {
+				return coreUseCase.ProcessQueuedJobs(context.Background())
+			})()
+			_ = alertMiddleware.WrapBackgroundTask("BroadcastCheckIdleJobs", func() error {
+				return coreUseCase.BroadcastCheckIdleJobs(context.Background())
+			})()
+			_ = alertMiddleware.WrapBackgroundTask("CleanupInactiveAgents", func() error {
+				return coreUseCase.CleanupInactiveAgents(context.Background())
+			})()
 		}
 	}()
 	defer cleanupTicker.Stop()
