@@ -30,7 +30,7 @@ func NewMessageHandler(claudeService *services.ClaudeService, gitUseCase *usecas
 	}
 }
 
-func (mh *MessageHandler) HandleMessage(msg models.UnknownMessage, socketClient *socket.Socket) {
+func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *socket.Socket) {
 	switch msg.Type {
 	case models.MessageTypeStartConversation:
 		if err := mh.handleStartConversation(msg, socketClient); err != nil {
@@ -69,7 +69,7 @@ func (mh *MessageHandler) HandleMessage(msg models.UnknownMessage, socketClient 
 	}
 }
 
-func (mh *MessageHandler) handleStartConversation(msg models.UnknownMessage, socketClient *socket.Socket) error {
+func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socketClient *socket.Socket) error {
 	log.Info("📋 Starting to handle start conversation message")
 	var payload models.StartConversationPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -166,7 +166,7 @@ CRITICAL: Never autonomously create git commits or pull requests unless explicit
 		SlackMessageID: payload.SlackMessageID,
 	}
 
-	assistantMsg := models.UnknownMessage{
+	assistantMsg := models.BaseMessage{
 		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
@@ -197,7 +197,7 @@ CRITICAL: Never autonomously create git commits or pull requests unless explicit
 	return nil
 }
 
-func (mh *MessageHandler) handleUserMessage(msg models.UnknownMessage, socketClient *socket.Socket) error {
+func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient *socket.Socket) error {
 	log.Info("📋 Starting to handle user message")
 	var payload models.UserMessagePayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -280,7 +280,7 @@ func (mh *MessageHandler) handleUserMessage(msg models.UnknownMessage, socketCli
 		SlackMessageID: payload.SlackMessageID,
 	}
 
-	assistantMsg := models.UnknownMessage{
+	assistantMsg := models.BaseMessage{
 		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
@@ -311,7 +311,7 @@ func (mh *MessageHandler) handleUserMessage(msg models.UnknownMessage, socketCli
 	return nil
 }
 
-func (mh *MessageHandler) handleJobUnassigned(msg models.UnknownMessage, _ *socket.Socket) error {
+func (mh *MessageHandler) handleJobUnassigned(msg models.BaseMessage, _ *socket.Socket) error {
 	log.Info("📋 Starting to handle job unassigned message")
 	var payload models.JobUnassignedPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -324,7 +324,7 @@ func (mh *MessageHandler) handleJobUnassigned(msg models.UnknownMessage, _ *sock
 	return nil
 }
 
-func (mh *MessageHandler) handleCheckIdleJobs(msg models.UnknownMessage, socketClient *socket.Socket) error {
+func (mh *MessageHandler) handleCheckIdleJobs(msg models.BaseMessage, socketClient *socket.Socket) error {
 	log.Info("📋 Starting to handle check idle jobs message")
 	var payload models.CheckIdleJobsPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -446,7 +446,7 @@ func (mh *MessageHandler) sendJobCompleteMessage(socketClient *socket.Socket, jo
 		Reason: reason,
 	}
 
-	jobMsg := models.UnknownMessage{
+	jobMsg := models.BaseMessage{
 		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeJobComplete,
 		Payload: payload,
@@ -467,7 +467,7 @@ func (mh *MessageHandler) sendSystemMessage(socketClient *socket.Socket, message
 		SlackMessageID: slackMessageID,
 	}
 
-	sysMsg := models.UnknownMessage{
+	sysMsg := models.BaseMessage{
 		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeSystemMessage,
 		Payload: payload,
@@ -490,7 +490,7 @@ func (mh *MessageHandler) sendErrorMessage(socketClient *socket.Socket, err erro
 }
 
 func (mh *MessageHandler) sendProcessingSlackMessage(socketClient *socket.Socket, slackMessageID string) error {
-	processingSlackMessageMsg := models.UnknownMessage{
+	processingSlackMessageMsg := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeProcessingSlackMessage,
 		Payload: models.ProcessingSlackMessagePayload{
