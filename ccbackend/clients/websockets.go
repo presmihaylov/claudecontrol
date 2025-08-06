@@ -93,20 +93,18 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 		return
 	}
 
-	agentIDStr, exists := getSocketIOHeader(headers, "X-CCAGENT-ID")
+	agentID, exists := getSocketIOHeader(headers, "X-CCAGENT-ID")
 	if !exists {
 		log.Printf("❌ No X-CCAGENT-ID provided, rejecting connection")
 		sock.Disconnect(true)
 		return
 	}
 
-	if agentIDStr == "" {
+	if agentID == "" {
 		log.Printf("❌ Rejecting Socket.IO connection: agent ID cannot be empty")
 		sock.Disconnect(true)
 		return
 	}
-
-	agentID := agentIDStr
 
 	// Validate API key
 	slackIntegrationID, err := ws.apiKeyValidator(apiKey)
@@ -116,10 +114,8 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 		return
 	}
 
-	clientID := core.NewID("client")
-
 	client := &Client{
-		ID:                 clientID,
+		ID:                 core.NewID("cl"),
 		Socket:             sock,
 		SlackIntegrationID: slackIntegrationID,
 		AgentID:            agentID,
