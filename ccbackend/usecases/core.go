@@ -626,25 +626,10 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 		}
 
 		// Update the top-level message emoji to :x:
-		processedMessages, err := s.jobsService.GetProcessedSlackMessagesByJobID(job.ID, client.SlackIntegrationID)
-		if err != nil {
-			log.Printf("⚠️ Failed to get processed slack messages for job %s: %v", job.ID, err)
-		} else if len(processedMessages) > 0 {
-			// Find the original top-level message (first one chronologically)
-			var originalMessage *models.ProcessedSlackMessage
-			for _, msg := range processedMessages {
-				if originalMessage == nil || msg.CreatedAt.Before(originalMessage.CreatedAt) {
-					originalMessage = msg
-				}
-			}
-
-			if originalMessage != nil {
-				if err := s.updateSlackMessageReaction(originalMessage.SlackChannelID, originalMessage.SlackTS, "x", client.SlackIntegrationID); err != nil {
-					log.Printf("⚠️ Failed to update slack message reaction to :x: for abandoned job %s: %v", job.ID, err)
-				} else {
-					log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
-				}
-			}
+		if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "x", client.SlackIntegrationID); err != nil {
+			log.Printf("⚠️ Failed to update slack message reaction to :x: for abandoned job %s: %v", job.ID, err)
+		} else {
+			log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
 		}
 
 		// Delete the job
