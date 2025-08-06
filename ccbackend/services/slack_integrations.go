@@ -61,17 +61,13 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirec
 		return nil, fmt.Errorf("bot access token not found in Slack OAuth response")
 	}
 
-	// Create slack integration record
-	id := core.NewID("si")
-
 	integration := &models.SlackIntegration{
-		ID:             id,
+		ID:             core.NewID("si"),
 		SlackTeamID:    teamID,
 		SlackAuthToken: botAccessToken,
 		SlackTeamName:  teamName,
 		UserID:         userID,
 	}
-
 	if err := s.slackIntegrationsRepo.CreateSlackIntegration(integration); err != nil {
 		return nil, fmt.Errorf("failed to create slack integration in database: %w", err)
 	}
