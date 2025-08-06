@@ -678,7 +678,17 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 	// Clean up all job assignments and send notification for first job
 	log.Printf("🧹 Agent %s has %d assigned job(s), cleaning up all assignments", agent.ID, len(jobs))
 
-	// Get the first job for Slack notification
+	// Unassign agent from all jobs FIRST
+	for _, jobID := range jobs {
+		if err := s.agentsService.UnassignAgentFromJob(agent.ID, jobID, client.SlackIntegrationID); err != nil {
+			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
+			return fmt.Errorf("failed to unassign agent %s from job %s: %w", agent.ID, jobID, err)
+		}
+
+		log.Printf("🔗 Unassigned agent %s from job %s", agent.ID, jobID)
+	}
+
+	// Get the first job for Slack notification and deletion
 	job, err := s.jobsService.GetJobByID(jobs[0], client.SlackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to get job %s for cleanup: %v", jobs[0], err)
@@ -697,22 +707,12 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 		}
 		log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
 
-		// Delete the job
+		// Delete the job AFTER unassignment
 		if err := s.jobsService.DeleteJob(job.ID, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to delete abandoned job %s: %v", job.ID, err)
 			return fmt.Errorf("failed to delete abandoned job %s: %w", job.ID, err)
 		}
 		log.Printf("🗑️ Deleted abandoned job %s", job.ID)
-	}
-
-	// Unassign agent from all jobs
-	for _, jobID := range jobs {
-		if err := s.agentsService.UnassignAgentFromJob(agent.ID, jobID, client.SlackIntegrationID); err != nil {
-			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
-			return fmt.Errorf("failed to unassign agent %s from job %s: %w", agent.ID, jobID, err)
-		}
-
-		log.Printf("🔗 Unassigned agent %s from job %s", agent.ID, jobID)
 	}
 
 	// Delete the agent record
