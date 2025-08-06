@@ -98,7 +98,7 @@ func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
 	clerkUserID := testHelper.CreateTestUser(t, testEmail)
 
 	// Test GetOrCreateUser with the real Clerk user ID
-	user, err := usersService.GetOrCreateUser("clerk", clerkUserID)
+	user, err := usersService.GetOrCreateUser(context.Background(), "clerk", clerkUserID)
 	require.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.Equal(t, "clerk", user.AuthProvider)
@@ -106,7 +106,7 @@ func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
 	assert.NotEmpty(t, user.ID)
 
 	// Test that calling GetOrCreateUser again returns the same user
-	user2, err := usersService.GetOrCreateUser("clerk", clerkUserID)
+	user2, err := usersService.GetOrCreateUser(context.Background(), "clerk", clerkUserID)
 	require.NoError(t, err)
 	assert.Equal(t, user.ID, user2.ID)
 	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
@@ -135,7 +135,7 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	mockClerkUserID := "user_test_12345"
 
 	// Test GetOrCreateUser with mock data
-	user, err := usersService.GetOrCreateUser("clerk", mockClerkUserID)
+	user, err := usersService.GetOrCreateUser(context.Background(), "clerk", mockClerkUserID)
 	require.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.Equal(t, "clerk", user.AuthProvider)
@@ -143,7 +143,7 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	assert.NotEmpty(t, user.ID)
 
 	// Test that calling GetOrCreateUser again returns the same user
-	user2, err := usersService.GetOrCreateUser("clerk", mockClerkUserID)
+	user2, err := usersService.GetOrCreateUser(context.Background(), "clerk", mockClerkUserID)
 	require.NoError(t, err)
 	assert.Equal(t, user.ID, user2.ID)
 	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
@@ -175,13 +175,13 @@ func TestUsersService_GetOrCreateUser_ValidationErrors(t *testing.T) {
 	usersService := NewUsersService(usersRepo)
 
 	// Test with empty auth provider
-	user, err := usersService.GetOrCreateUser("", "test_user_id")
+	user, err := usersService.GetOrCreateUser(context.Background(), "", "test_user_id")
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.Contains(t, err.Error(), "auth_provider cannot be empty")
 
 	// Test with empty auth provider ID
-	user, err = usersService.GetOrCreateUser("clerk", "")
+	user, err = usersService.GetOrCreateUser(context.Background(), "clerk", "")
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.Contains(t, err.Error(), "auth_provider_id cannot be empty")
