@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/slack-go/slack"
 
@@ -419,6 +420,57 @@ func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) 
 	}
 }
 
+func (s *CoreUseCase) getBotUserID(slackClient *slack.Client) (string, error) {
+	authTest, err := slackClient.AuthTest()
+	if err != nil {
+		return "", fmt.Errorf("failed to get bot user ID: %w", err)
+	}
+	return authTest.UserID, nil
+}
+
+func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slackClient *slack.Client) ([]string, error) {
+	botUserID, err := s.getBotUserID(slackClient)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get message with reactions
+	msgs, _, _, err := slackClient.GetConversationReplies(&slack.GetConversationRepliesParameters{
+		ChannelID: channelID,
+		Timestamp: messageTS,
+		Limit:     1,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get message: %w", err)
+	}
+
+	if len(msgs) == 0 {
+		return []string{}, nil
+	}
+
+	var botReactions []string
+	for _, reaction := range msgs[0].Reactions {
+		// Check if bot added this reaction
+		for _, user := range reaction.Users {
+			if user == botUserID {
+				botReactions = append(botReactions, reaction.Name)
+				break
+			}
+		}
+	}
+
+	return botReactions, nil
+}
+
+func (s *CoreUseCase) contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji, slackIntegrationID string) error {
 	// Get integration-specific Slack client
 	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
@@ -426,25 +478,31 @@ func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji,
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
 
-	// Remove existing reactions
+	// Get only reactions added by our bot
+	botReactions, err := s.getBotReactionsOnMessage(channelID, messageTS, slackClient)
+	if err != nil {
+		return fmt.Errorf("failed to get bot reactions: %w", err)
+	}
+
+	// Remove only OUR reactions from the target list
 	reactionsToRemove := []string{"eyes", "hourglass", "white_check_mark", "hand", "x"}
 	for _, emoji := range reactionsToRemove {
-		if err := slackClient.RemoveReaction(emoji, slack.ItemRef{
-			Channel:   channelID,
-			Timestamp: messageTS,
-		}); err != nil {
-			// Check if it's a no_reaction error (reaction doesn't exist)
-			if strings.Contains(err.Error(), "no_reaction") {
-				// Ignore no_reaction error and continue
-				log.Printf("Note: %s reaction not found on message %s, skipping removal", emoji, messageTS)
-				continue
+		if s.contains(botReactions, emoji) {
+			// Small delay to respect rate limits
+			time.Sleep(100 * time.Millisecond)
+			if err := slackClient.RemoveReaction(emoji, slack.ItemRef{
+				Channel:   channelID,
+				Timestamp: messageTS,
+			}); err != nil {
+				return fmt.Errorf("failed to remove %s reaction: %w", emoji, err)
 			}
-			return fmt.Errorf("failed to remove %s reaction: %w", emoji, err)
 		}
 	}
 
-	// Add the new reaction
-	if newEmoji != "" {
+	// Add new reaction if not already there
+	if newEmoji != "" && !s.contains(botReactions, newEmoji) {
+		// Small delay to respect rate limits
+		time.Sleep(100 * time.Millisecond)
 		if err := slackClient.AddReaction(newEmoji, slack.ItemRef{
 			Channel:   channelID,
 			Timestamp: messageTS,
