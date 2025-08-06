@@ -19,17 +19,22 @@ import (
 	"ccbackend/models/api"
 )
 
-// MockDashboardServices implements DashboardServicesInterface for testing
-type MockDashboardServices struct {
+// MockUsersService implements UsersServiceInterface for testing
+type MockUsersService struct {
 	mock.Mock
 }
 
-func (m *MockDashboardServices) GetOrCreateUser(authProvider, authProviderID string) (*models.User, error) {
+func (m *MockUsersService) GetOrCreateUser(authProvider, authProviderID string) (*models.User, error) {
 	args := m.Called(authProvider, authProviderID)
 	return args.Get(0).(*models.User), args.Error(1)
 }
 
-func (m *MockDashboardServices) CreateSlackIntegration(slackAuthCode, redirectURL string, userID string) (*models.SlackIntegration, error) {
+// MockSlackIntegrationsService implements SlackIntegrationsServiceInterface for testing
+type MockSlackIntegrationsService struct {
+	mock.Mock
+}
+
+func (m *MockSlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirectURL string, userID string) (*models.SlackIntegration, error) {
 	args := m.Called(slackAuthCode, redirectURL, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -37,7 +42,7 @@ func (m *MockDashboardServices) CreateSlackIntegration(slackAuthCode, redirectUR
 	return args.Get(0).(*models.SlackIntegration), args.Error(1)
 }
 
-func (m *MockDashboardServices) GetSlackIntegrationsByUserID(userID string) ([]*models.SlackIntegration, error) {
+func (m *MockSlackIntegrationsService) GetSlackIntegrationsByUserID(userID string) ([]*models.SlackIntegration, error) {
 	args := m.Called(userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -45,14 +50,46 @@ func (m *MockDashboardServices) GetSlackIntegrationsByUserID(userID string) ([]*
 	return args.Get(0).([]*models.SlackIntegration), args.Error(1)
 }
 
-func (m *MockDashboardServices) DeleteSlackIntegration(ctx context.Context, integrationID string) error {
+func (m *MockSlackIntegrationsService) GetAllSlackIntegrations() ([]*models.SlackIntegration, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.SlackIntegration), args.Error(1)
+}
+
+func (m *MockSlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, integrationID string) error {
 	args := m.Called(ctx, integrationID)
 	return args.Error(0)
 }
 
-func (m *MockDashboardServices) GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error) {
+func (m *MockSlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error) {
 	args := m.Called(ctx, integrationID)
 	return args.String(0), args.Error(1)
+}
+
+func (m *MockSlackIntegrationsService) GetSlackIntegrationBySecretKey(secretKey string) (*models.SlackIntegration, error) {
+	args := m.Called(secretKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.SlackIntegration), args.Error(1)
+}
+
+func (m *MockSlackIntegrationsService) GetSlackIntegrationByTeamID(teamID string) (*models.SlackIntegration, error) {
+	args := m.Called(teamID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.SlackIntegration), args.Error(1)
+}
+
+func (m *MockSlackIntegrationsService) GetSlackIntegrationByID(id string) (*models.SlackIntegration, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.SlackIntegration), args.Error(1)
 }
 
 // Test data
@@ -83,14 +120,14 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 	tests := []struct {
 		name           string
 		user           *models.User
-		mockSetup      func(*MockDashboardServices)
+		mockSetup      func(*MockSlackIntegrationsService)
 		expectedResult []*models.SlackIntegration
 		expectedError  string
 	}{
 		{
 			name: "success - returns integrations",
 			user: testUser,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("GetSlackIntegrationsByUserID", testUser.ID).Return([]*models.SlackIntegration{testSlackIntegration}, nil)
 			},
 			expectedResult: []*models.SlackIntegration{testSlackIntegration},
@@ -99,7 +136,7 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 		{
 			name: "success - no integrations",
 			user: testUser,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("GetSlackIntegrationsByUserID", testUser.ID).Return([]*models.SlackIntegration{}, nil)
 			},
 			expectedResult: []*models.SlackIntegration{},
@@ -108,7 +145,7 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 		{
 			name: "error - service fails",
 			user: testUser,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("GetSlackIntegrationsByUserID", testUser.ID).Return(nil, fmt.Errorf("database error"))
 			},
 			expectedResult: nil,
@@ -118,10 +155,11 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockServices := &MockDashboardServices{}
-			tt.mockSetup(mockServices)
+			mockUsersService := &MockUsersService{}
+			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
+			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockServices)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
 
 			result, err := handler.ListSlackIntegrations(tt.user)
 
@@ -134,7 +172,8 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 				assert.Equal(t, tt.expectedResult, result)
 			}
 
-			mockServices.AssertExpectations(t)
+			mockUsersService.AssertExpectations(t)
+			mockSlackIntegrationsService.AssertExpectations(t)
 		})
 	}
 }
@@ -145,7 +184,7 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 		slackAuthToken string
 		redirectURL    string
 		user           *models.User
-		mockSetup      func(*MockDashboardServices)
+		mockSetup      func(*MockSlackIntegrationsService)
 		expectedResult *models.SlackIntegration
 		expectedError  string
 	}{
@@ -154,7 +193,7 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 			slackAuthToken: "test-auth-code",
 			redirectURL:    "https://example.com/redirect",
 			user:           testUser,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("CreateSlackIntegration", "test-auth-code", "https://example.com/redirect", testUser.ID).Return(testSlackIntegration, nil)
 			},
 			expectedResult: testSlackIntegration,
@@ -165,7 +204,7 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 			slackAuthToken: "test-auth-code",
 			redirectURL:    "https://example.com/redirect",
 			user:           testUser,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("CreateSlackIntegration", "test-auth-code", "https://example.com/redirect", testUser.ID).Return(nil, fmt.Errorf("oauth error"))
 			},
 			expectedResult: nil,
@@ -175,10 +214,11 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockServices := &MockDashboardServices{}
-			tt.mockSetup(mockServices)
+			mockUsersService := &MockUsersService{}
+			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
+			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockServices)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
 
 			result, err := handler.CreateSlackIntegration(tt.slackAuthToken, tt.redirectURL, tt.user)
 
@@ -191,7 +231,8 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 				assert.Equal(t, tt.expectedResult, result)
 			}
 
-			mockServices.AssertExpectations(t)
+			mockUsersService.AssertExpectations(t)
+			mockSlackIntegrationsService.AssertExpectations(t)
 		})
 	}
 }
@@ -204,14 +245,14 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 		name          string
 		ctx           context.Context
 		integrationID string
-		mockSetup     func(*MockDashboardServices)
+		mockSetup     func(*MockSlackIntegrationsService)
 		expectedError string
 	}{
 		{
 			name:          "success - deletes integration",
 			ctx:           ctx,
 			integrationID: integrationID,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("DeleteSlackIntegration", ctx, integrationID).Return(nil)
 			},
 			expectedError: "",
@@ -220,7 +261,7 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 			name:          "error - service fails",
 			ctx:           ctx,
 			integrationID: integrationID,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("DeleteSlackIntegration", ctx, integrationID).Return(fmt.Errorf("not found"))
 			},
 			expectedError: "not found",
@@ -229,10 +270,11 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockServices := &MockDashboardServices{}
-			tt.mockSetup(mockServices)
+			mockUsersService := &MockUsersService{}
+			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
+			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockServices)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
 
 			err := handler.DeleteSlackIntegration(tt.ctx, tt.integrationID)
 
@@ -243,7 +285,8 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			mockServices.AssertExpectations(t)
+			mockUsersService.AssertExpectations(t)
+			mockSlackIntegrationsService.AssertExpectations(t)
 		})
 	}
 }
@@ -257,7 +300,7 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 		name           string
 		ctx            context.Context
 		integrationID  string
-		mockSetup      func(*MockDashboardServices)
+		mockSetup      func(*MockSlackIntegrationsService)
 		expectedResult string
 		expectedError  string
 	}{
@@ -265,7 +308,7 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			name:          "success - generates key",
 			ctx:           ctx,
 			integrationID: integrationID,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("GenerateCCAgentSecretKey", ctx, integrationID).Return(expectedSecretKey, nil)
 			},
 			expectedResult: expectedSecretKey,
@@ -275,7 +318,7 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			name:          "error - service fails",
 			ctx:           ctx,
 			integrationID: integrationID,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("GenerateCCAgentSecretKey", ctx, integrationID).Return("", fmt.Errorf("integration not found"))
 			},
 			expectedResult: "",
@@ -285,10 +328,11 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockServices := &MockDashboardServices{}
-			tt.mockSetup(mockServices)
+			mockUsersService := &MockUsersService{}
+			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
+			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockServices)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
 
 			result, err := handler.GenerateCCAgentSecretKey(tt.ctx, tt.integrationID)
 
@@ -301,7 +345,8 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 				assert.Equal(t, tt.expectedResult, result)
 			}
 
-			mockServices.AssertExpectations(t)
+			mockUsersService.AssertExpectations(t)
+			mockSlackIntegrationsService.AssertExpectations(t)
 		})
 	}
 }
@@ -334,8 +379,9 @@ func TestDashboardHTTPHandler_HandleUserAuthenticate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockServices := &MockDashboardServices{}
-			handler := NewDashboardAPIHandler(mockServices)
+			mockUsersService := &MockUsersService{}
+			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			req := httptest.NewRequest(tt.method, "/users/authenticate", nil)
@@ -356,7 +402,8 @@ func TestDashboardHTTPHandler_HandleUserAuthenticate(t *testing.T) {
 				assert.Contains(t, rr.Body.String(), tt.expectedBody)
 			}
 
-			mockServices.AssertExpectations(t)
+			mockUsersService.AssertExpectations(t)
+			mockSlackIntegrationsService.AssertExpectations(t)
 		})
 	}
 }
@@ -365,14 +412,14 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 	tests := []struct {
 		name           string
 		user           *models.User
-		mockSetup      func(*MockDashboardServices)
+		mockSetup      func(*MockSlackIntegrationsService)
 		expectedStatus int
 		validateBody   func(*testing.T, []byte)
 	}{
 		{
 			name: "success - returns integrations",
 			user: testUser,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("GetSlackIntegrationsByUserID", testUser.ID).Return([]*models.SlackIntegration{testSlackIntegration}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -387,7 +434,7 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 		{
 			name: "error - service fails",
 			user: testUser,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("GetSlackIntegrationsByUserID", testUser.ID).Return(nil, fmt.Errorf("database error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -399,10 +446,11 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockServices := &MockDashboardServices{}
-			tt.mockSetup(mockServices)
+			mockUsersService := &MockUsersService{}
+			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
+			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockServices)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			req := httptest.NewRequest("GET", "/slack/integrations", nil)
@@ -414,7 +462,8 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			tt.validateBody(t, rr.Body.Bytes())
 
-			mockServices.AssertExpectations(t)
+			mockUsersService.AssertExpectations(t)
+			mockSlackIntegrationsService.AssertExpectations(t)
 		})
 	}
 }
@@ -429,7 +478,7 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 		name           string
 		user           *models.User
 		requestBody    interface{}
-		mockSetup      func(*MockDashboardServices)
+		mockSetup      func(*MockSlackIntegrationsService)
 		expectedStatus int
 		validateBody   func(*testing.T, []byte)
 	}{
@@ -437,7 +486,7 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 			name:        "success - creates integration",
 			user:        testUser,
 			requestBody: validRequest,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("CreateSlackIntegration", "test-auth-code", "https://example.com/redirect", testUser.ID).Return(testSlackIntegration, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -455,7 +504,7 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 				SlackAuthToken: "",
 				RedirectURL:    "https://example.com/redirect",
 			},
-			mockSetup:      func(m *MockDashboardServices) {},
+			mockSetup:      func(m *MockSlackIntegrationsService) {},
 			expectedStatus: http.StatusBadRequest,
 			validateBody: func(t *testing.T, body []byte) {
 				assert.Contains(t, string(body), "slackAuthToken is required")
@@ -465,7 +514,7 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 			name:           "error - invalid json",
 			user:           testUser,
 			requestBody:    "invalid json",
-			mockSetup:      func(m *MockDashboardServices) {},
+			mockSetup:      func(m *MockSlackIntegrationsService) {},
 			expectedStatus: http.StatusBadRequest,
 			validateBody: func(t *testing.T, body []byte) {
 				assert.Contains(t, string(body), "invalid request body")
@@ -475,10 +524,11 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockServices := &MockDashboardServices{}
-			tt.mockSetup(mockServices)
+			mockUsersService := &MockUsersService{}
+			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
+			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockServices)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			var body []byte
@@ -497,7 +547,8 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			tt.validateBody(t, rr.Body.Bytes())
 
-			mockServices.AssertExpectations(t)
+			mockUsersService.AssertExpectations(t)
+			mockSlackIntegrationsService.AssertExpectations(t)
 		})
 	}
 }
@@ -509,14 +560,14 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 	tests := []struct {
 		name           string
 		integrationID  string
-		mockSetup      func(*MockDashboardServices)
+		mockSetup      func(*MockSlackIntegrationsService)
 		expectedStatus int
 		validateBody   func(*testing.T, []byte)
 	}{
 		{
 			name:          "success - deletes integration",
 			integrationID: validID,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("DeleteSlackIntegration", mock.AnythingOfType("*context.valueCtx"), validID).Return(nil)
 			},
 			expectedStatus: http.StatusNoContent,
@@ -527,7 +578,7 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 		{
 			name:           "error - invalid ID",
 			integrationID:  "invalid-id",
-			mockSetup:      func(m *MockDashboardServices) {},
+			mockSetup:      func(m *MockSlackIntegrationsService) {},
 			expectedStatus: http.StatusBadRequest,
 			validateBody: func(t *testing.T, body []byte) {
 				assert.Contains(t, string(body), "integration ID must be a valid ULID")
@@ -536,7 +587,7 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 		{
 			name:          "error - not found",
 			integrationID: validID,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("DeleteSlackIntegration", mock.AnythingOfType("*context.valueCtx"), validID).Return(fmt.Errorf("not found"))
 			},
 			expectedStatus: http.StatusNotFound,
@@ -548,10 +599,11 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockServices := &MockDashboardServices{}
-			tt.mockSetup(mockServices)
+			mockUsersService := &MockUsersService{}
+			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
+			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockServices)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			req := httptest.NewRequest("DELETE", fmt.Sprintf("/slack/integrations/%s", tt.integrationID), nil)
@@ -567,7 +619,8 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			tt.validateBody(t, rr.Body.Bytes())
 
-			mockServices.AssertExpectations(t)
+			mockUsersService.AssertExpectations(t)
+			mockSlackIntegrationsService.AssertExpectations(t)
 		})
 	}
 }
@@ -580,14 +633,14 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 	tests := []struct {
 		name           string
 		integrationID  string
-		mockSetup      func(*MockDashboardServices)
+		mockSetup      func(*MockSlackIntegrationsService)
 		expectedStatus int
 		validateBody   func(*testing.T, []byte)
 	}{
 		{
 			name:          "success - generates key",
 			integrationID: validID,
-			mockSetup: func(m *MockDashboardServices) {
+			mockSetup: func(m *MockSlackIntegrationsService) {
 				m.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), validID).Return(expectedSecretKey, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -600,7 +653,7 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 		{
 			name:           "error - invalid ID",
 			integrationID:  "invalid-id",
-			mockSetup:      func(m *MockDashboardServices) {},
+			mockSetup:      func(m *MockSlackIntegrationsService) {},
 			expectedStatus: http.StatusBadRequest,
 			validateBody: func(t *testing.T, body []byte) {
 				assert.Contains(t, string(body), "integration ID must be a valid ULID")
@@ -610,10 +663,11 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockServices := &MockDashboardServices{}
-			tt.mockSetup(mockServices)
+			mockUsersService := &MockUsersService{}
+			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
+			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockServices)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			req := httptest.NewRequest("POST", fmt.Sprintf("/slack/integrations/%s/ccagent_secret_key", tt.integrationID), nil)
@@ -629,7 +683,8 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			tt.validateBody(t, rr.Body.Bytes())
 
-			mockServices.AssertExpectations(t)
+			mockUsersService.AssertExpectations(t)
+			mockSlackIntegrationsService.AssertExpectations(t)
 		})
 	}
 }
