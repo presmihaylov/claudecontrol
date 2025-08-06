@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"ccagent/core"
 	"ccagent/core/log"
 )
 
@@ -38,7 +39,7 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return "", &ErrClaudeCommandErr{
+		return "", &core.ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
@@ -69,7 +70,7 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return "", &ErrClaudeCommandErr{
+		return "", &core.ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
@@ -103,7 +104,7 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return "", &ErrClaudeCommandErr{
+		return "", &core.ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
