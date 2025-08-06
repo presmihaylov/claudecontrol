@@ -14,10 +14,17 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/usecases"
 )
+
+type SlackMessageEvent struct {
+	Channel  string
+	User     string
+	Text     string
+	TS       string
+	ThreadTS string
+}
 
 type SlackWebhooksHandler struct {
 	signingSecret            string
@@ -182,15 +189,7 @@ func (h *SlackWebhooksHandler) handleAppMention(event map[string]any, slackInteg
 		threadTS = ""
 	}
 
-	slackEvent := models.SlackMessageEvent{
-		Channel:  channel,
-		User:     user,
-		Text:     text,
-		TS:       timestamp,
-		ThreadTS: threadTS,
-	}
-
-	return h.coreUseCase.ProcessSlackMessageEvent(slackEvent, slackIntegrationID)
+	return h.coreUseCase.ProcessSlackMessageEvent(channel, user, text, timestamp, threadTS, slackIntegrationID)
 }
 
 func (h *SlackWebhooksHandler) handleReactionAdded(event map[string]any, slackIntegrationID string) error {
