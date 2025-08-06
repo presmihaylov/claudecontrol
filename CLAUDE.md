@@ -248,6 +248,206 @@ cd ccfrontend && bun run build && bun run lint  # Build and lint frontend with B
 - **Context-Based User Access**: User ID should be accessed from the context in the service layer instead of being passed explicitly as a parameter
 - **Context First Parameter**: All functions in the service layer should take `ctx context.Context` as the first argument to ensure proper request context propagation
 
+## Service Architecture Pattern
+
+The codebase follows a standardized service architecture pattern for maintainability and consistency. **All new services must follow this pattern.**
+
+### Service Organization Structure
+```
+services/
+├── services.go              # Interface definitions only
+├── servicename/            # Individual service packages
+│   ├── servicename.go      # Service implementation
+│   └── servicename_test.go # Service tests
+└── anothersvc/
+    ├── anothersvc.go
+    └── anothersvc_test.go
+```
+
+### Interface-First Design
+1. **Define Interface in `services/services.go`**:
+```go
+// ExampleService defines the interface for example operations
+type ExampleService interface {
+    CreateExample(ctx context.Context, name string, userID string) (*models.Example, error)
+    GetExamplesByUserID(ctx context.Context, userID string) ([]*models.Example, error)
+    GetExampleByID(ctx context.Context, id string) (*models.Example, error)
+    UpdateExample(ctx context.Context, id string, updates map[string]any) (*models.Example, error)
+    DeleteExample(ctx context.Context, id string) error
+}
+```
+
+2. **Implement in Dedicated Package** (`services/examples/examples.go`):
+```go
+package examples
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "ccbackend/core"
+    "ccbackend/db"
+    "ccbackend/models"
+)
+
+type ExamplesService struct {
+    examplesRepo *db.PostgresExamplesRepository
+}
+
+func NewExamplesService(repo *db.PostgresExamplesRepository) *ExamplesService {
+    return &ExamplesService{examplesRepo: repo}
+}
+
+func (s *ExamplesService) CreateExample(ctx context.Context, name string, userID string) (*models.Example, error) {
+    log.Printf("📋 Starting to create example: %s for user: %s", name, userID)
+    
+    if name == "" {
+        return nil, fmt.Errorf("name cannot be empty")
+    }
+    if !core.IsValidULID(userID) {
+        return nil, fmt.Errorf("user ID must be a valid ULID")
+    }
+
+    example := &models.Example{
+        ID:     core.NewID("ex"),
+        Name:   name,
+        UserID: userID,
+    }
+
+    if err := s.examplesRepo.CreateExample(ctx, example); err != nil {
+        return nil, fmt.Errorf("failed to create example: %w", err)
+    }
+
+    log.Printf("📋 Completed successfully - created example with ID: %s", example.ID)
+    return example, nil
+}
+// ... implement other interface methods
+```
+
+### Creating New Services - Step by Step
+
+#### 1. Define the Interface
+Add your service interface to `services/services.go`:
+```go
+type YourNewService interface {
+    // Follow naming pattern: action + entity + context signature
+    CreateEntity(ctx context.Context, param1 string, userID string) (*models.Entity, error)
+    GetEntitiesByUserID(ctx context.Context, userID string) ([]*models.Entity, error)
+    GetEntityByID(ctx context.Context, id string) (*models.Entity, error)
+    UpdateEntity(ctx context.Context, id string, updates map[string]any) (*models.Entity, error)
+    DeleteEntity(ctx context.Context, id string) error
+}
+```
+
+#### 2. Create Service Package
+```bash
+mkdir services/yournewservice
+touch services/yournewservice/yournewservice.go
+touch services/yournewservice/yournewservice_test.go
+```
+
+#### 3. Implement Service
+In `services/yournewservice/yournewservice.go`:
+```go
+package yournewservice
+
+// Follow exact pattern from existing services
+type YourNewServiceImpl struct {
+    repo *db.PostgresYourEntityRepository
+}
+
+func NewYourNewService(repo *db.PostgresYourEntityRepository) *YourNewServiceImpl {
+    return &YourNewServiceImpl{repo: repo}
+}
+```
+
+#### 4. Update Database Layer
+Create corresponding repository in `db/yourentity.go` following the database patterns.
+
+#### 5. Wire Up in Main
+In `cmd/main.go`, add initialization:
+```go
+import yournewservice "ccbackend/services/yournewservice"
+
+// In main function:
+yourRepo := db.NewPostgresYourEntityRepository(dbConn, cfg.DatabaseSchema)
+yourService := yournewservice.NewYourNewService(yourRepo)
+```
+
+#### 6. Create Mock for Tests
+In `handlers/dashboard_mocks.go` (or create service-specific mock):
+```go
+type MockYourNewService struct {
+    mock.Mock
+}
+
+func (m *MockYourNewService) CreateEntity(ctx context.Context, param1 string, userID string) (*models.Entity, error) {
+    args := m.Called(ctx, param1, userID)
+    if args.Get(0) == nil {
+        return nil, args.Error(1)
+    }
+    return args.Get(0).(*models.Entity), args.Error(1)
+}
+// ... implement other mock methods
+```
+
+### Mandatory Service Conventions
+
+#### Function Signatures
+- **Always** `ctx context.Context` as first parameter
+- **Consistent naming**: `CreateX`, `GetXByY`, `UpdateX`, `DeleteX`  
+- **User scoping**: Include `userID string` parameter for user-scoped entities
+- **Return patterns**: `(*models.Entity, error)` or `([]*models.Entity, error)` or `error`
+
+#### Error Handling
+```go
+// Validation errors
+if param == "" {
+    return nil, fmt.Errorf("param cannot be empty")
+}
+
+// ULID validation
+if !core.IsValidULID(userID) {
+    return nil, fmt.Errorf("user ID must be a valid ULID")
+}
+
+// Database errors
+if err := s.repo.SomeOperation(ctx, ...); err != nil {
+    return nil, fmt.Errorf("failed to perform operation: %w", err)
+}
+```
+
+#### Logging Pattern
+```go
+func (s *Service) SomeOperation(ctx context.Context, param string) (*models.Entity, error) {
+    log.Printf("📋 Starting to [action description]: %s", param)
+    
+    // ... implementation ...
+    
+    log.Printf("📋 Completed successfully - [result description]: %s", result.ID)
+    return result, nil
+}
+```
+
+#### Database Integration
+- **All repository calls** must pass `ctx` as first parameter
+- **Use context-aware sqlx functions**: `QueryRowxContext`, `SelectContext`, `GetContext`, `ExecContext`
+- **Repository pattern**: Create matching repository in `db/` package
+
+### Package Naming Rules
+- **Package names**: Use singular, lowercase, no underscores (e.g., `examples`, `users`, not `user_profiles`)
+- **File names**: Match package name (e.g., `examples.go` in `examples/` package)
+- **Import aliases**: Use descriptive aliases when needed (`import examples "ccbackend/services/examples"`)
+
+### Testing Requirements
+- **Test file**: `servicename_test.go` in same package as service
+- **Real database**: Use PostgreSQL test schema, no mocking for database tests
+- **Context usage**: Pass `context.Background()` or request context in tests
+- **Cleanup**: Use `defer` functions to clean up test data
+
+This pattern ensures consistency, maintainability, and proper separation of concerns across all services.
+
 ## Test Debugging Guidelines
 - If you detect that the database is not working when you run tests, you should ask the user to run it for you
 
