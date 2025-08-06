@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -46,7 +47,7 @@ func setupTestJobsService(t *testing.T) (*JobsService, *models.SlackIntegration,
 
 	cleanup := func() {
 		// Clean up test data
-		_ = slackIntegrationsRepo.DeleteSlackIntegrationByID(testIntegration.ID, testUser.ID)
+		_ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
 		dbConn.Close()
 	}
 
@@ -272,7 +273,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	testUser := testutils.CreateTestUser(t, usersRepo)
 	testIntegration := testutils.CreateTestSlackIntegration(t, slackIntegrationsRepo, testUser.ID)
 	defer func() {
-		_ = slackIntegrationsRepo.DeleteSlackIntegrationByID(testIntegration.ID, testUser.ID)
+		_ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
 	}()
 
 	// Create both services using the same integration
@@ -946,7 +947,9 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 			testUser2 := testutils.CreateTestUser(t, usersRepo2)
 			testIntegration2 := testutils.CreateTestSlackIntegration(t, slackIntegrationsRepo2, testUser2.ID)
-			defer func() { _ = slackIntegrationsRepo2.DeleteSlackIntegrationByID(testIntegration2.ID, testUser2.ID) }()
+			defer func() {
+				_ = slackIntegrationsRepo2.DeleteSlackIntegrationByID(context.Background(), testIntegration2.ID, testUser2.ID)
+			}()
 
 			slackIntegrationID2 := testIntegration2.ID
 
