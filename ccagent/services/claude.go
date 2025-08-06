@@ -217,7 +217,7 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 	}
 
 	// Check if this is a Claude command error
-	claudeErr, isClaudeErr := clients.IsClaudeCommandErr(err)
+	claudeErr, isClaudeErr := core.IsClaudeCommandErr(err)
 	if !isClaudeErr {
 		// Not a Claude command error, return original error wrapped
 		return fmt.Errorf("%s: %w", operation, err)
