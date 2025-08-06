@@ -728,6 +728,10 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	// Get the job to find the Slack thread information
 	job, err := s.jobsService.GetJobByID(jobID, slackIntegrationID)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			log.Printf("⚠️ Job %s not found - job may have already been processed or deleted, skipping", jobID)
+			return nil
+		}
 		log.Printf("❌ Failed to get job %s: %v", jobID, err)
 		return fmt.Errorf("failed to get job: %w", err)
 	}
