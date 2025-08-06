@@ -8,14 +8,17 @@ import (
 )
 
 type AppConfig struct {
-	SlackSigningSecret string
-	SlackClientID      string
-	SlackClientSecret  string
-	Port               string
-	DatabaseURL        string
-	DatabaseSchema     string
-	ClerkSecretKey     string
-	CORSAllowedOrigins string
+	SlackSigningSecret   string
+	SlackClientID        string
+	SlackClientSecret    string
+	Port                 string
+	DatabaseURL          string
+	DatabaseSchema       string
+	ClerkSecretKey       string
+	CORSAllowedOrigins   string
+	SlackAlertWebhookURL string
+	Environment          string
+	ServerLogsURL        string
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -64,14 +67,17 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	config := &AppConfig{
-		SlackSigningSecret: slackSigningSecret,
-		SlackClientID:      slackClientID,
-		SlackClientSecret:  slackClientSecret,
-		Port:               port,
-		DatabaseURL:        databaseURL,
-		DatabaseSchema:     databaseSchema,
-		ClerkSecretKey:     clerkSecretKey,
-		CORSAllowedOrigins: corsAllowedOrigins,
+		SlackSigningSecret:   slackSigningSecret,
+		SlackClientID:        slackClientID,
+		SlackClientSecret:    slackClientSecret,
+		Port:                 port,
+		DatabaseURL:          databaseURL,
+		DatabaseSchema:       databaseSchema,
+		ClerkSecretKey:       clerkSecretKey,
+		CORSAllowedOrigins:   corsAllowedOrigins,
+		SlackAlertWebhookURL: os.Getenv("SLACK_ALERT_WEBHOOK_URL"),
+		Environment:          getEnvWithDefault("ENVIRONMENT", "dev"),
+		ServerLogsURL:        getEnvWithDefault("SERVER_LOGS_URL", ""),
 	}
 
 	return config, nil
@@ -83,4 +89,11 @@ func getEnvRequired(key string) (string, error) {
 		return "", fmt.Errorf("%s is not set", key)
 	}
 	return value, nil
+}
+
+func getEnvWithDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
