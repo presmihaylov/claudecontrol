@@ -12,12 +12,7 @@ func NewSessionService() *SessionService {
 }
 
 func (s *SessionService) GenerateSession() *models.Session {
-	sessionID, err := core.NewID("sess")
-	if err != nil {
-		// Since this function doesn't return an error, we need to handle this case
-		// Generate a fallback ID or panic. For now, we'll use a basic fallback
-		sessionID = "sess_unknown"
-	}
+	sessionID := core.NewID("sess")
 	return &models.Session{
 		ID: sessionID,
 	}

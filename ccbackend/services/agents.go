@@ -33,10 +33,7 @@ func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID str
 		return nil, fmt.Errorf("agent_id cannot be empty")
 	}
 
-	id, err := core.NewID("agent")
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate agent ID: %w", err)
-	}
+	id := core.NewID("agent")
 
 	agent := &models.ActiveAgent{
 		ID:                 id,
@@ -232,10 +229,7 @@ func (s *AgentsService) AssignAgentToJob(agentID, jobID string, slackIntegration
 		return fmt.Errorf("slack_integration_id cannot be empty")
 	}
 
-	assignmentID, err := core.NewID("assignment")
-	if err != nil {
-		return fmt.Errorf("failed to generate assignment ID: %w", err)
-	}
+	assignmentID := core.NewID("assignment")
 
 	assignment := &models.AgentJobAssignment{
 		ID:                 assignmentID,

@@ -66,10 +66,7 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirec
 	}
 
 	// Create slack integration record
-	id, err := core.NewID("si")
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate ID: %w", err)
-	}
+	id := core.NewID("si")
 
 	integration := &models.SlackIntegration{
 		ID:             id,

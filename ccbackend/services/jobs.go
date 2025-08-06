@@ -54,10 +54,7 @@ func (s *JobsService) CreateJob(slackThreadTS, slackChannelID, slackUserID, slac
 		return nil, fmt.Errorf("slack_integration_id cannot be empty")
 	}
 
-	id, err := core.NewID("j")
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate ID: %w", err)
-	}
+	id := core.NewID("j")
 
 	job := &models.Job{
 		ID:                 id,
@@ -246,10 +243,7 @@ func (s *JobsService) CreateProcessedSlackMessage(jobID string, slackChannelID, 
 		return nil, fmt.Errorf("slack_integration_id cannot be empty")
 	}
 
-	id, err := core.NewID("psm")
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate ID: %w", err)
-	}
+	id := core.NewID("psm")
 
 	message := &models.ProcessedSlackMessage{
 		ID:                 id,

@@ -116,12 +116,7 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 		return
 	}
 
-	clientID, err := core.NewID("client")
-	if err != nil {
-		log.Printf("❌ Failed to generate client ID: %v", err)
-		sock.Disconnect(true)
-		return
-	}
+	clientID := core.NewID("client")
 
 	client := &Client{
 		ID:                 clientID,
