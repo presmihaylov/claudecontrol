@@ -289,7 +289,7 @@ func (cr *CmdRunner) setupProgramLogging() (string, error) {
 func (cr *CmdRunner) startPingRoutine(ctx context.Context, socketClient *socket.Socket) {
 	log.Info("📋 Starting ping routine")
 	go func() {
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(2 * time.Minute)
 		defer ticker.Stop()
 		for {
 			select {
