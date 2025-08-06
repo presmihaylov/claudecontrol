@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"ccagent/core"
 	"ccagent/core/log"
 )
 
@@ -37,7 +38,7 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", &ErrClaudeCommandErr{
+		return "", &core.ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
@@ -67,7 +68,7 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", &ErrClaudeCommandErr{
+		return "", &core.ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
@@ -85,10 +86,7 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 		"--verbose",
 		"--output-format", "stream-json",
 		"-p", prompt,
-	}
-
-	if systemPrompt != "" {
-		args = append(args, "--append-system-prompt", systemPrompt)
+		"--append-system-prompt", systemPrompt,
 	}
 
 	log.Info("Starting new Claude session with prompt: %s", prompt)
@@ -100,7 +98,7 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", &ErrClaudeCommandErr{
+		return "", &core.ErrClaudeCommandErr{
 			Err:    err,
 			Output: string(output),
 		}
