@@ -7,19 +7,16 @@ import (
 
 	"ccbackend/clients"
 	"ccbackend/models"
-	"ccbackend/services"
 	"ccbackend/usecases"
 )
 
 type WebSocketHandler struct {
-	coreUseCase              *usecases.CoreUseCase
-	slackIntegrationsService *services.SlackIntegrationsService
+	coreUseCase *usecases.CoreUseCase
 }
 
-func NewWebSocketHandler(coreUseCase *usecases.CoreUseCase, slackIntegrationsService *services.SlackIntegrationsService) *WebSocketHandler {
+func NewWebSocketHandler(coreUseCase *usecases.CoreUseCase) *WebSocketHandler {
 	return &WebSocketHandler{
-		coreUseCase:              coreUseCase,
-		slackIntegrationsService: slackIntegrationsService,
+		coreUseCase: coreUseCase,
 	}
 }
 

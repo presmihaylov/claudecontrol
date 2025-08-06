@@ -75,7 +75,7 @@ func run() error {
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)
 
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
-	wsHandler := handlers.NewWebSocketHandler(coreUseCase, slackIntegrationsService)
+	wsHandler := handlers.NewWebSocketHandler(coreUseCase)
 	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, cfg.ClerkSecretKey)
