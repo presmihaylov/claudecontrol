@@ -406,7 +406,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji,
 	}
 
 	// Remove existing reactions
-	reactionsToRemove := []string{"eyes", "hourglass", "white_check_mark"}
+	reactionsToRemove := []string{"eyes", "hourglass", "white_check_mark", "x"}
 	for _, emoji := range reactionsToRemove {
 		if err := slackClient.RemoveReaction(emoji, slack.ItemRef{
 			Channel:   channelID,
@@ -623,6 +623,28 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 			log.Printf("⚠️ Failed to send abandonment message to Slack thread %s: %v", job.SlackThreadTS, err)
 		} else {
 			log.Printf("📤 Sent abandonment message to Slack thread %s", job.SlackThreadTS)
+		}
+
+		// Update the top-level message emoji to :x:
+		processedMessages, err := s.jobsService.GetProcessedSlackMessagesByJobID(job.ID, client.SlackIntegrationID)
+		if err != nil {
+			log.Printf("⚠️ Failed to get processed slack messages for job %s: %v", job.ID, err)
+		} else if len(processedMessages) > 0 {
+			// Find the original top-level message (first one chronologically)
+			var originalMessage *models.ProcessedSlackMessage
+			for _, msg := range processedMessages {
+				if originalMessage == nil || msg.CreatedAt.Before(originalMessage.CreatedAt) {
+					originalMessage = msg
+				}
+			}
+
+			if originalMessage != nil {
+				if err := s.updateSlackMessageReaction(originalMessage.SlackChannelID, originalMessage.SlackTS, "x", client.SlackIntegrationID); err != nil {
+					log.Printf("⚠️ Failed to update slack message reaction to :x: for abandoned job %s: %v", job.ID, err)
+				} else {
+					log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
+				}
+			}
 		}
 
 		// Delete the job
