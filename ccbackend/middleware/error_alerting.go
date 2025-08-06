@@ -32,7 +32,7 @@ func NewErrorAlertMiddleware(config SlackAlertConfig) *ErrorAlertMiddleware {
 	return &ErrorAlertMiddleware{
 		config:        config,
 		alertedErrors: make(map[string]time.Time),
-		alertCooldown: 10 * time.Minute, // Don't alert same error more than once per 10min
+		alertCooldown: 5 * time.Minute, // Don't alert on the same error if it's already alerted
 	}
 }
 
@@ -94,6 +94,7 @@ func (m *ErrorAlertMiddleware) alertOnError(err error, contextMsg string) {
 	// Check if we've alerted for this error recently
 	if lastAlert, exists := m.alertedErrors[hash]; exists {
 		if time.Since(lastAlert) < m.alertCooldown {
+			log.Printf("⚠️ Skipping alert for recent error: %s", errorMsg)
 			return // Skip alert - too recent
 		}
 	}

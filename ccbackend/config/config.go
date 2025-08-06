@@ -8,18 +8,17 @@ import (
 )
 
 type AppConfig struct {
-	SlackSigningSecret string
-	SlackClientID      string
-	SlackClientSecret  string
-	Port               string
-	DatabaseURL        string
-	DatabaseSchema     string
-	ClerkSecretKey     string
-	CORSAllowedOrigins string
-	// Optional Slack alerting
+	SlackSigningSecret   string
+	SlackClientID        string
+	SlackClientSecret    string
+	Port                 string
+	DatabaseURL          string
+	DatabaseSchema       string
+	ClerkSecretKey       string
+	CORSAllowedOrigins   string
 	SlackAlertWebhookURL string
 	Environment          string
-	LogsURL              string
+	ServerLogsURL        string
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -68,18 +67,17 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	config := &AppConfig{
-		SlackSigningSecret: slackSigningSecret,
-		SlackClientID:      slackClientID,
-		SlackClientSecret:  slackClientSecret,
-		Port:               port,
-		DatabaseURL:        databaseURL,
-		DatabaseSchema:     databaseSchema,
-		ClerkSecretKey:     clerkSecretKey,
-		CORSAllowedOrigins: corsAllowedOrigins,
-		// Optional Slack alerting
-		SlackAlertWebhookURL: os.Getenv("SLACK_ALERT_WEBHOOK_URL"), // Optional
+		SlackSigningSecret:   slackSigningSecret,
+		SlackClientID:        slackClientID,
+		SlackClientSecret:    slackClientSecret,
+		Port:                 port,
+		DatabaseURL:          databaseURL,
+		DatabaseSchema:       databaseSchema,
+		ClerkSecretKey:       clerkSecretKey,
+		CORSAllowedOrigins:   corsAllowedOrigins,
+		SlackAlertWebhookURL: os.Getenv("SLACK_ALERT_WEBHOOK_URL"),
 		Environment:          getEnvWithDefault("ENVIRONMENT", "dev"),
-		LogsURL:              getEnvWithDefault("LOGS_URL", "https://logs.example.com"),
+		ServerLogsURL:        getEnvWithDefault("SERVER_LOGS_URL", ""),
 	}
 
 	return config, nil
