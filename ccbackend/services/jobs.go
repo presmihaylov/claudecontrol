@@ -54,10 +54,8 @@ func (s *JobsService) CreateJob(slackThreadTS, slackChannelID, slackUserID, slac
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	id := core.NewID("j")
-
 	job := &models.Job{
-		ID:                 id,
+		ID:                 core.NewID("j"),
 		SlackThreadTS:      slackThreadTS,
 		SlackChannelID:     slackChannelID,
 		SlackUserID:        slackUserID,
@@ -183,7 +181,6 @@ func (s *JobsService) UpdateJobTimestamp(jobID string, slackIntegrationID string
 
 func (s *JobsService) GetIdleJobs(idleMinutes int) ([]*models.Job, error) {
 	log.Printf("📋 Starting to get idle jobs older than %d minutes across all integrations", idleMinutes)
-
 	if idleMinutes <= 0 {
 		return nil, fmt.Errorf("idle minutes must be greater than 0")
 	}
@@ -199,11 +196,9 @@ func (s *JobsService) GetIdleJobs(idleMinutes int) ([]*models.Job, error) {
 
 func (s *JobsService) DeleteJob(id string, slackIntegrationID string) error {
 	log.Printf("📋 Starting to delete job with ID: %s", id)
-
-	if id == "" {
-		return fmt.Errorf("job ID cannot be empty")
+	if !core.IsValidULID(id) {
+		return fmt.Errorf("job ID must be a valid ULID")
 	}
-
 	if !core.IsValidULID(slackIntegrationID) {
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
@@ -243,10 +238,8 @@ func (s *JobsService) CreateProcessedSlackMessage(jobID string, slackChannelID, 
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	id := core.NewID("psm")
-
 	message := &models.ProcessedSlackMessage{
-		ID:                 id,
+		ID:                 core.NewID("psm"),
 		JobID:              jobID,
 		SlackChannelID:     slackChannelID,
 		SlackTS:            slackTS,
