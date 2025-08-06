@@ -6,13 +6,13 @@ import (
 	"ccbackend/models"
 )
 
-// UsersServiceInterface defines the interface for user-related operations
-type UsersServiceInterface interface {
+// UsersService defines the interface for user-related operations
+type UsersService interface {
 	GetOrCreateUser(authProvider, authProviderID string) (*models.User, error)
 }
 
-// SlackIntegrationsServiceInterface defines the interface for Slack integration operations
-type SlackIntegrationsServiceInterface interface {
+// SlackIntegrationsService defines the interface for Slack integration operations
+type SlackIntegrationsService interface {
 	CreateSlackIntegration(slackAuthCode, redirectURL string, userID string) (*models.SlackIntegration, error)
 	GetSlackIntegrationsByUserID(userID string) ([]*models.SlackIntegration, error)
 	GetAllSlackIntegrations() ([]*models.SlackIntegration, error)

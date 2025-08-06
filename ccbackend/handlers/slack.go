@@ -22,10 +22,10 @@ import (
 type SlackWebhooksHandler struct {
 	signingSecret            string
 	coreUseCase              *usecases.CoreUseCase
-	slackIntegrationsService *services.SlackIntegrationsService
+	slackIntegrationsService services.SlackIntegrationsService
 }
 
-func NewSlackWebhooksHandler(signingSecret string, coreUseCase *usecases.CoreUseCase, slackIntegrationsService *services.SlackIntegrationsService) *SlackWebhooksHandler {
+func NewSlackWebhooksHandler(signingSecret string, coreUseCase *usecases.CoreUseCase, slackIntegrationsService services.SlackIntegrationsService) *SlackWebhooksHandler {
 	return &SlackWebhooksHandler{
 		signingSecret:            signingSecret,
 		coreUseCase:              coreUseCase,
