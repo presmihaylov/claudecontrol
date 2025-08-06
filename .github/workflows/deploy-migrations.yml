@@ -1,4 +1,4 @@
-name: Deploy Supabase Migrations
+name: Deploy to Render and Run Migrations
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy-migrations:
+  deploy-and-migrate:
     runs-on: ubuntu-latest
     
     env:
@@ -18,15 +18,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Deploy to Render
+        uses: bounceapp/render-action@0.6.0
+        id: render-deploy
+        with:
+          render-token: ${{ secrets.RENDER_API_KEY }}
+          service-id: ${{ secrets.RENDER_SERVICE_ID }}
+          wait-deploy: true
+          deploy-timeout: 600000
+
       - name: Setup Supabase CLI
+        if: success()
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
       - name: Link to Supabase project
+        if: success()
         run: supabase link --project-ref $SUPABASE_PROJECT_ID
         working-directory: ./ccbackend
 
       - name: Deploy migrations to production
+        if: success()
         run: supabase db push
         working-directory: ./ccbackend
