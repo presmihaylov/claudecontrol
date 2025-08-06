@@ -9,11 +9,11 @@ import (
 )
 
 type DashboardAPIHandler struct {
-	usersService             services.UsersServiceInterface
-	slackIntegrationsService services.SlackIntegrationsServiceInterface
+	usersService             services.UsersService
+	slackIntegrationsService services.SlackIntegrationsService
 }
 
-func NewDashboardAPIHandler(usersService services.UsersServiceInterface, slackIntegrationsService services.SlackIntegrationsServiceInterface) *DashboardAPIHandler {
+func NewDashboardAPIHandler(usersService services.UsersService, slackIntegrationsService services.SlackIntegrationsService) *DashboardAPIHandler {
 	return &DashboardAPIHandler{
 		usersService:             usersService,
 		slackIntegrationsService: slackIntegrationsService,

@@ -8,7 +8,7 @@ import (
 	"ccbackend/models"
 )
 
-// MockUsersService implements UsersServiceInterface for testing
+// MockUsersService implements UsersService for testing
 type MockUsersService struct {
 	mock.Mock
 }
@@ -18,7 +18,7 @@ func (m *MockUsersService) GetOrCreateUser(authProvider, authProviderID string) 
 	return args.Get(0).(*models.User), args.Error(1)
 }
 
-// MockSlackIntegrationsService implements SlackIntegrationsServiceInterface for testing
+// MockSlackIntegrationsService implements SlackIntegrationsService for testing
 type MockSlackIntegrationsService struct {
 	mock.Mock
 }

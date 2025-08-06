@@ -16,12 +16,12 @@ import (
 
 // ClerkAuthMiddleware handles JWT authentication using Clerk SDK
 type ClerkAuthMiddleware struct {
-	usersService *services.UsersService
+	usersService services.UsersService
 	clerkJWKS    *jwks.Client
 }
 
 // NewClerkAuthMiddleware creates a new authentication middleware instance
-func NewClerkAuthMiddleware(usersService *services.UsersService, clerkSecretKey string) *ClerkAuthMiddleware {
+func NewClerkAuthMiddleware(usersService services.UsersService, clerkSecretKey string) *ClerkAuthMiddleware {
 	// Create JWKS client for JWT verification
 	config := &clerk.ClientConfig{
 		BackendConfig: clerk.BackendConfig{
