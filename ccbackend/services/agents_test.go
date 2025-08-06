@@ -91,7 +91,7 @@ func TestAgentsService(t *testing.T) {
 			agentID := core.NewID("ccaid")
 
 			// Create a real job first
-			job, err := jobsService.CreateJob("test.thread.assigned", "C1234567890", "testuser", slackIntegrationID)
+			job, err := jobsService.CreateJob(context.Background(), "test.thread.assigned", "C1234567890", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 
 			agent, err := agentsService.UpsertActiveAgent(wsConnectionID, slackIntegrationID, agentID)
@@ -245,7 +245,7 @@ func TestAgentsService(t *testing.T) {
 			wsConnectionID := core.NewID("wsc")
 
 			// Create a real job first
-			job, err := jobsService.CreateJob("test.thread.getbyid", "C1234567890", "testuser", slackIntegrationID)
+			job, err := jobsService.CreateJob(context.Background(), "test.thread.getbyid", "C1234567890", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 
 			agentID := core.NewID("ccaid")
@@ -307,7 +307,7 @@ func TestAgentsService(t *testing.T) {
 			defer func() { _ = agentsService.DeleteActiveAgent(agent1.ID, slackIntegrationID) }()
 
 			// Create a real job first
-			job, err := jobsService.CreateJob("test.thread.available", "C1234567890", "testuser", slackIntegrationID)
+			job, err := jobsService.CreateJob(context.Background(), "test.thread.available", "C1234567890", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 
 			agentID2 := core.NewID("ccaid")
@@ -355,7 +355,7 @@ func TestAgentsService(t *testing.T) {
 
 			// Create only agents with jobs
 			// Create real jobs first
-			job1, err := jobsService.CreateJob("test.thread.busy1", "C1111111111", "testuser", slackIntegrationID)
+			job1, err := jobsService.CreateJob(context.Background(), "test.thread.busy1", "C1111111111", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 
 			agentIDBusy1 := core.NewID("ccaid")
@@ -368,7 +368,7 @@ func TestAgentsService(t *testing.T) {
 
 			defer func() { _ = agentsService.DeleteActiveAgent(agent1.ID, slackIntegrationID) }()
 
-			job2, err := jobsService.CreateJob("test.thread.busy2", "C2222222222", "testuser", slackIntegrationID)
+			job2, err := jobsService.CreateJob(context.Background(), "test.thread.busy2", "C2222222222", "testuser", slackIntegrationID)
 			require.NoError(t, err)
 			agentIDBusy2 := core.NewID("ccaid")
 			agent2, err := agentsService.UpsertActiveAgent(core.NewID("wsc"), slackIntegrationID, agentIDBusy2)

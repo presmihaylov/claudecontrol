@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -45,7 +46,7 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 		}
 
 		log.Printf("🤖 Received assistant message from client %s", client.ID)
-		if err := h.coreUseCase.ProcessAssistantMessage(client.ID, payload, client.SlackIntegrationID); err != nil {
+		if err := h.coreUseCase.ProcessAssistantMessage(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process assistant message from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process assistant message: %w", err)
 		}
@@ -58,7 +59,7 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 		}
 
 		log.Printf("⚙️ Received system message from client %s: %s", client.ID, payload.Message)
-		if err := h.coreUseCase.ProcessSystemMessage(client.ID, payload, client.SlackIntegrationID); err != nil {
+		if err := h.coreUseCase.ProcessSystemMessage(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process system message from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process system message: %w", err)
 		}
@@ -71,7 +72,7 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 		}
 
 		log.Printf("🔔 Received processing slack message notification from client %s for message: %s", client.ID, payload.SlackMessageID)
-		if err := h.coreUseCase.ProcessProcessingSlackMessage(client.ID, payload, client.SlackIntegrationID); err != nil {
+		if err := h.coreUseCase.ProcessProcessingSlackMessage(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process processing slack message notification from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process processing slack message: %w", err)
 		}
@@ -84,7 +85,7 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 		}
 
 		log.Printf("✅ Received job complete notification from client %s for job: %s, reason: %s", client.ID, payload.JobID, payload.Reason)
-		if err := h.coreUseCase.ProcessJobComplete(client.ID, payload, client.SlackIntegrationID); err != nil {
+		if err := h.coreUseCase.ProcessJobComplete(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process job complete notification from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process job complete: %w", err)
 		}
