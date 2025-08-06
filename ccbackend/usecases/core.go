@@ -124,14 +124,16 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	// Check if this is the latest message in the job and add hand emoji if waiting for next steps
 	latestMessage, err := s.jobsService.GetLatestProcessedMessageForJob(job.ID, slackIntegrationID)
 	if err != nil {
-		log.Printf("⚠️ Failed to get latest message for job %s: %v", job.ID, err)
-	} else if latestMessage != nil && latestMessage.ID == messageID {
+		return fmt.Errorf("failed to get latest message for job: %w", err)
+	}
+
+	if latestMessage != nil && latestMessage.ID == messageID {
 		// This is the latest message - agent is done processing, add hand emoji to top-level message
 		if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "hand", slackIntegrationID); err != nil {
 			log.Printf("⚠️ Failed to add hand emoji to job %s thread: %v", job.ID, err)
-		} else {
-			log.Printf("✋ Added hand emoji to job %s - agent waiting for next steps", job.ID)
+			return fmt.Errorf("failed to add hand emoji to job thread: %w", err)
 		}
+		log.Printf("✋ Added hand emoji to job %s - agent waiting for next steps", job.ID)
 	}
 
 	log.Printf("📋 Completed successfully - sent assistant message to Slack thread %s", job.SlackThreadTS)
