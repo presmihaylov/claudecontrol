@@ -13,7 +13,7 @@ const (
 	MessageTypeJobComplete               = "job_complete_v1"
 )
 
-type UnknownMessage struct {
+type BaseMessage struct {
 	ID      string `json:"id"`
 	Type    string `json:"type"`
 	Payload any    `json:"payload,omitempty"`
