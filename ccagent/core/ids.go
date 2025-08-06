@@ -18,10 +18,7 @@ func NewID(prefix string) string {
 	// Generate a new ULID with current timestamp and math/rand entropy
 	entropy := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec // Intentionally using math/rand for ULID entropy
 	ms := ulid.Timestamp(time.Now())
-	id, err := ulid.New(ms, entropy)
-	if err != nil {
-		panic(err)
-	}
+	id := ulid.MustNew(ms, entropy)
 
 	// Return formatted ID with lowercase prefix
 	return strings.ToLower(strings.TrimSpace(prefix)) + "_" + id.String()
