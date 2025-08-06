@@ -96,8 +96,8 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integra
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	if userID == "" {
-		return fmt.Errorf("user ID cannot be empty")
+	if !core.IsValidULID(userID) {
+		return fmt.Errorf("user ID must be a valid ULID")
 	}
 
 	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND user_id = $2`, r.schema)
@@ -124,8 +124,8 @@ func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx conte
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	if userID == "" {
-		return fmt.Errorf("user ID cannot be empty")
+	if !core.IsValidULID(userID) {
+		return fmt.Errorf("user ID must be a valid ULID")
 	}
 
 	if secretKey == "" {
