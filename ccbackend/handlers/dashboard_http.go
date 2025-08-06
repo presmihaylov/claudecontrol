@@ -70,7 +70,7 @@ func (h *DashboardHTTPHandler) HandleListSlackIntegrations(w http.ResponseWriter
 		return
 	}
 
-	integrations, err := h.handler.ListSlackIntegrations(user)
+	integrations, err := h.handler.ListSlackIntegrations(r.Context(), user)
 	if err != nil {
 		log.Printf("❌ Failed to get Slack integrations: %v", err)
 		http.Error(w, "failed to get slack integrations", http.StatusInternalServerError)
@@ -108,7 +108,7 @@ func (h *DashboardHTTPHandler) HandleCreateSlackIntegration(w http.ResponseWrite
 		return
 	}
 
-	integration, err := h.handler.CreateSlackIntegration(req.SlackAuthToken, req.RedirectURL, user)
+	integration, err := h.handler.CreateSlackIntegration(r.Context(), req.SlackAuthToken, req.RedirectURL, user)
 	if err != nil {
 		log.Printf("❌ Failed to create Slack integration: %v", err)
 		http.Error(w, "failed to create slack integration", http.StatusInternalServerError)

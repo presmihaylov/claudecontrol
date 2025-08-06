@@ -22,10 +22,10 @@ import (
 type SlackWebhooksHandler struct {
 	signingSecret            string
 	coreUseCase              *usecases.CoreUseCase
-	slackIntegrationsService *services.SlackIntegrationsService
+	slackIntegrationsService services.SlackIntegrationsService
 }
 
-func NewSlackWebhooksHandler(signingSecret string, coreUseCase *usecases.CoreUseCase, slackIntegrationsService *services.SlackIntegrationsService) *SlackWebhooksHandler {
+func NewSlackWebhooksHandler(signingSecret string, coreUseCase *usecases.CoreUseCase, slackIntegrationsService services.SlackIntegrationsService) *SlackWebhooksHandler {
 	return &SlackWebhooksHandler{
 		signingSecret:            signingSecret,
 		coreUseCase:              coreUseCase,
@@ -130,7 +130,7 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 	}
 
 	// Lookup slack integration by team_id
-	slackIntegration, err := h.slackIntegrationsService.GetSlackIntegrationByTeamID(teamID)
+	slackIntegration, err := h.slackIntegrationsService.GetSlackIntegrationByTeamID(r.Context(), teamID)
 	if err != nil {
 		log.Printf("❌ Failed to find slack integration for team %s: %v", teamID, err)
 		http.Error(w, "integration not found", http.StatusNotFound)

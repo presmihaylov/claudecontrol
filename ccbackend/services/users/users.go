@@ -1,6 +1,7 @@
-package services
+package users
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -16,7 +17,7 @@ func NewUsersService(repo *db.PostgresUsersRepository) *UsersService {
 	return &UsersService{usersRepo: repo}
 }
 
-func (s *UsersService) GetOrCreateUser(authProvider, authProviderID string) (*models.User, error) {
+func (s *UsersService) GetOrCreateUser(ctx context.Context, authProvider, authProviderID string) (*models.User, error) {
 	log.Printf("📋 Starting to get or create user for authProvider: %s, authProviderID: %s", authProvider, authProviderID)
 
 	if authProvider == "" {
@@ -27,7 +28,7 @@ func (s *UsersService) GetOrCreateUser(authProvider, authProviderID string) (*mo
 		return nil, fmt.Errorf("auth_provider_id cannot be empty")
 	}
 
-	user, err := s.usersRepo.GetOrCreateUser(authProvider, authProviderID)
+	user, err := s.usersRepo.GetOrCreateUser(ctx, authProvider, authProviderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get or create user: %w", err)
 	}

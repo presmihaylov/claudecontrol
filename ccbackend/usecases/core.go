@@ -21,10 +21,10 @@ type CoreUseCase struct {
 	wsClient                 *clients.WebSocketClient
 	agentsService            *services.AgentsService
 	jobsService              *services.JobsService
-	slackIntegrationsService *services.SlackIntegrationsService
+	slackIntegrationsService services.SlackIntegrationsService
 }
 
-func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.AgentsService, jobsService *services.JobsService, slackIntegrationsService *services.SlackIntegrationsService) *CoreUseCase {
+func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.AgentsService, jobsService *services.JobsService, slackIntegrationsService services.SlackIntegrationsService) *CoreUseCase {
 	return &CoreUseCase{
 		wsClient:                 wsClient,
 		agentsService:            agentsService,
@@ -34,7 +34,7 @@ func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.A
 }
 
 func (s *CoreUseCase) getSlackClientForIntegration(slackIntegrationID string) (*slack.Client, error) {
-	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(slackIntegrationID)
+	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(context.Background(), slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integration: %w", err)
 	}
@@ -685,7 +685,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 	log.Printf("📋 Starting to broadcast CheckIdleJobs to all connected agents")
 
 	// Get all slack integrations to broadcast to agents in each integration
-	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to get slack integrations: %w", err)
 	}
@@ -812,7 +812,7 @@ func (s *CoreUseCase) ProcessQueuedJobs() error {
 	log.Printf("📋 Starting to process queued jobs")
 
 	// Get all slack integrations
-	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to get slack integrations: %w", err)
 	}
@@ -923,7 +923,7 @@ func (s *CoreUseCase) CleanupInactiveAgents() error {
 	log.Printf("📋 Starting to cleanup inactive agents (>10 minutes)")
 
 	// Get all slack integrations
-	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations()
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to get slack integrations: %w", err)
 	}

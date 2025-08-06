@@ -16,12 +16,12 @@ import (
 
 // ClerkAuthMiddleware handles JWT authentication using Clerk SDK
 type ClerkAuthMiddleware struct {
-	usersService *services.UsersService
+	usersService services.UsersService
 	clerkJWKS    *jwks.Client
 }
 
 // NewClerkAuthMiddleware creates a new authentication middleware instance
-func NewClerkAuthMiddleware(usersService *services.UsersService, clerkSecretKey string) *ClerkAuthMiddleware {
+func NewClerkAuthMiddleware(usersService services.UsersService, clerkSecretKey string) *ClerkAuthMiddleware {
 	// Create JWKS client for JWT verification
 	config := &clerk.ClientConfig{
 		BackendConfig: clerk.BackendConfig{
@@ -76,7 +76,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		log.Printf("✅ JWT token verified successfully for user: %s", claims.Subject)
 
 		// Get or create user in database
-		user, err := m.usersService.GetOrCreateUser("clerk", claims.Subject)
+		user, err := m.usersService.GetOrCreateUser(r.Context(), "clerk", claims.Subject)
 		if err != nil {
 			log.Printf("❌ Failed to get or create user: %v", err)
 			m.writeErrorResponse(w, "internal server error", http.StatusInternalServerError)

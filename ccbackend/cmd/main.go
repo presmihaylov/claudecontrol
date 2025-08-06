@@ -19,6 +19,8 @@ import (
 	"ccbackend/handlers"
 	"ccbackend/middleware"
 	"ccbackend/services"
+	slackintegrations "ccbackend/services/slack_integrations"
+	"ccbackend/services/users"
 	"ccbackend/usecases"
 )
 
@@ -59,13 +61,13 @@ func run() error {
 
 	agentsService := services.NewAgentsService(agentsRepo)
 	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo)
-	usersService := services.NewUsersService(usersRepo)
+	usersService := users.NewUsersService(usersRepo)
 	slackOAuthClient := clients.NewConcreteSlackClient()
-	slackIntegrationsService := services.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
+	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
 
 	// Create API key validator for WebSocket connections
 	apiKeyValidator := func(apiKey string) (string, error) {
-		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(apiKey)
+		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(context.Background(), apiKey)
 		if err != nil {
 			return "", err
 		}
