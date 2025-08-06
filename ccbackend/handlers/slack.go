@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -144,11 +145,11 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 
 	switch eventType {
 	case "app_mention":
-		if err := h.handleAppMention(event, slackIntegration.ID); err != nil {
+		if err := h.handleAppMention(r.Context(), event, slackIntegration.ID); err != nil {
 			log.Printf("❌ Failed to handle app mention: %v", err)
 		}
 	case "reaction_added":
-		if err := h.handleReactionAdded(event, slackIntegration.ID); err != nil {
+		if err := h.handleReactionAdded(r.Context(), event, slackIntegration.ID); err != nil {
 			log.Printf("❌ Failed to handle reaction added: %v", err)
 		}
 	default:
@@ -169,7 +170,7 @@ func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
 	log.Printf("✅ All Slack webhook endpoints registered successfully")
 }
 
-func (h *SlackWebhooksHandler) handleAppMention(event map[string]any, slackIntegrationID string) error {
+func (h *SlackWebhooksHandler) handleAppMention(ctx context.Context, event map[string]any, slackIntegrationID string) error {
 	channel := event["channel"].(string)
 	user := event["user"].(string)
 	text := event["text"].(string)
@@ -190,10 +191,10 @@ func (h *SlackWebhooksHandler) handleAppMention(event map[string]any, slackInteg
 		ThreadTS: threadTS,
 	}
 
-	return h.coreUseCase.ProcessSlackMessageEvent(slackEvent, slackIntegrationID)
+	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID)
 }
 
-func (h *SlackWebhooksHandler) handleReactionAdded(event map[string]any, slackIntegrationID string) error {
+func (h *SlackWebhooksHandler) handleReactionAdded(ctx context.Context, event map[string]any, slackIntegrationID string) error {
 	reactionName := event["reaction"].(string)
 	user := event["user"].(string)
 	item := event["item"].(map[string]any)
@@ -216,5 +217,5 @@ func (h *SlackWebhooksHandler) handleReactionAdded(event map[string]any, slackIn
 
 	log.Printf("✅ Completion reaction added by %s on message %s in %s", user, ts, channel)
 
-	return h.coreUseCase.ProcessReactionAdded(user, channel, ts, slackIntegrationID)
+	return h.coreUseCase.ProcessReactionAdded(ctx, user, channel, ts, slackIntegrationID)
 }

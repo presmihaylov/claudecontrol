@@ -33,8 +33,8 @@ func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.A
 	}
 }
 
-func (s *CoreUseCase) getSlackClientForIntegration(slackIntegrationID string) (*slack.Client, error) {
-	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(context.Background(), slackIntegrationID)
+func (s *CoreUseCase) getSlackClientForIntegration(ctx context.Context, slackIntegrationID string) (*slack.Client, error) {
+	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(ctx, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integration: %w", err)
 	}
@@ -42,8 +42,8 @@ func (s *CoreUseCase) getSlackClientForIntegration(slackIntegrationID string) (*
 	return slack.New(integration.SlackAuthToken), nil
 }
 
-func (s *CoreUseCase) validateJobBelongsToAgent(agentID, jobID string, slackIntegrationID string) error {
-	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(agentID, slackIntegrationID)
+func (s *CoreUseCase) validateJobBelongsToAgent(ctx context.Context, agentID, jobID string, slackIntegrationID string) error {
+	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agentID, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get jobs for agent: %w", err)
 	}
@@ -56,11 +56,11 @@ func (s *CoreUseCase) validateJobBelongsToAgent(agentID, jobID string, slackInte
 	return fmt.Errorf("agent %s is not assigned to job %s", agentID, jobID)
 }
 
-func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.AssistantMessagePayload, slackIntegrationID string) error {
+func (s *CoreUseCase) ProcessAssistantMessage(ctx context.Context, clientID string, payload models.AssistantMessagePayload, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process assistant message from client %s", clientID)
 
 	// Get the agent by WebSocket connection ID
-	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID, slackIntegrationID)
+	agent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
 		return fmt.Errorf("failed to find agent for client: %w", err)
@@ -77,7 +77,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	}
 
 	// Validate that this agent is actually assigned to this job
-	if err := s.validateJobBelongsToAgent(agent.ID, jobID, slackIntegrationID); err != nil {
+	if err := s.validateJobBelongsToAgent(ctx, agent.ID, jobID, slackIntegrationID); err != nil {
 		return err
 	}
 
@@ -91,7 +91,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	}
 
 	// Send assistant message to Slack
-	if err := s.sendSlackMessage(slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, messageToSend); err != nil {
+	if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, messageToSend); err != nil {
 		return fmt.Errorf("❌ Failed to send assistant message to Slack: %v", err)
 	}
 
@@ -116,7 +116,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	isTopLevelMessage := updatedMessage.SlackTS == job.SlackThreadTS
 	if !isTopLevelMessage {
 		reactionEmoji := DeriveMessageReactionFromStatus(models.ProcessedSlackMessageStatusCompleted)
-		if err := s.updateSlackMessageReaction(updatedMessage.SlackChannelID, updatedMessage.SlackTS, reactionEmoji, slackIntegrationID); err != nil {
+		if err := s.updateSlackMessageReaction(ctx, updatedMessage.SlackChannelID, updatedMessage.SlackTS, reactionEmoji, slackIntegrationID); err != nil {
 			return fmt.Errorf("failed to update slack message reaction: %w", err)
 		}
 	}
@@ -129,7 +129,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 
 	if latestMessage != nil && latestMessage.ID == messageID {
 		// This is the latest message - agent is done processing, add hand emoji to top-level message
-		if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "hand", slackIntegrationID); err != nil {
+		if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "hand", slackIntegrationID); err != nil {
 			log.Printf("⚠️ Failed to add hand emoji to job %s thread: %v", job.ID, err)
 			return fmt.Errorf("failed to add hand emoji to job thread: %w", err)
 		}
@@ -140,7 +140,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 	return nil
 }
 
-func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.SystemMessagePayload, slackIntegrationID string) error {
+func (s *CoreUseCase) ProcessSystemMessage(ctx context.Context, clientID string, payload models.SystemMessagePayload, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
 
 	// Validate SlackMessageID is provided
@@ -168,7 +168,7 @@ func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.Syste
 	log.Printf("📤 Sending system message to Slack thread %s in channel %s", job.SlackThreadTS, processedMessage.SlackChannelID)
 
 	// Send system message (gear emoji will be added automatically)
-	if err := s.sendSystemMessage(slackIntegrationID, processedMessage.SlackChannelID, job.SlackThreadTS, payload.Message); err != nil {
+	if err := s.sendSystemMessage(ctx, slackIntegrationID, processedMessage.SlackChannelID, job.SlackThreadTS, payload.Message); err != nil {
 		return fmt.Errorf("❌ Failed to send system message to Slack: %v", err)
 	}
 
@@ -181,7 +181,7 @@ func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.Syste
 	return nil
 }
 
-func (s *CoreUseCase) ProcessProcessingSlackMessage(clientID string, payload models.ProcessingSlackMessagePayload, slackIntegrationID string) error {
+func (s *CoreUseCase) ProcessProcessingSlackMessage(ctx context.Context, clientID string, payload models.ProcessingSlackMessagePayload, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process processing slack message notification from client %s", clientID)
 
 	// Validate SlackMessageID is provided
@@ -200,7 +200,7 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(clientID string, payload mod
 	}
 
 	// Update the slack message reaction to show agent is now processing (eyes emoji)
-	if err := s.updateSlackMessageReaction(processedMessage.SlackChannelID, processedMessage.SlackTS, "eyes", slackIntegrationID); err != nil {
+	if err := s.updateSlackMessageReaction(ctx, processedMessage.SlackChannelID, processedMessage.SlackTS, "eyes", slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to update slack message reaction to eyes: %w", err)
 	}
 
@@ -208,7 +208,7 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(clientID string, payload mod
 	return nil
 }
 
-func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, slackIntegrationID string) error {
+func (s *CoreUseCase) ProcessSlackMessageEvent(ctx context.Context, event models.SlackMessageEvent, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process Slack message event from %s in %s: %s", event.User, event.Channel, event.Text)
 
 	// For thread replies, validate that a job exists first (don't create new jobs)
@@ -223,7 +223,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 				// Job not found for thread reply - send error message
 				log.Printf("❌ No existing job found for thread reply in %s: %v", event.Channel, err)
 				errorMessage := "Error: new jobs can only be started from top-level messages"
-				return s.sendSystemMessage(slackIntegrationID, event.Channel, event.TS, errorMessage)
+				return s.sendSystemMessage(ctx, slackIntegrationID, event.Channel, event.TS, errorMessage)
 			}
 			// Other error - propagate upstream
 			log.Printf("❌ Failed to get job for thread reply in %s: %v", event.Channel, err)
@@ -251,7 +251,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 
 	// Check if agents are available first
 	connectedClientIDs := s.wsClient.GetClientIDs()
-	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
+	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, slackIntegrationID, connectedClientIDs)
 	if err != nil {
 		log.Printf("❌ Failed to check for connected agents: %v", err)
 		return fmt.Errorf("failed to check for connected agents: %w", err)
@@ -267,7 +267,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 		clientID = "" // No agent assigned
 	} else {
 		// Agents available - assign job to agent
-		clientID, err = s.getOrAssignAgentForJob(job, threadTS, slackIntegrationID)
+		clientID, err = s.getOrAssignAgentForJob(ctx, job, threadTS, slackIntegrationID)
 		if err != nil {
 			return fmt.Errorf("failed to get or assign agent for job: %w", err)
 		}
@@ -289,12 +289,12 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 
 	// Add emoji reaction based on message status
 	reactionEmoji := DeriveMessageReactionFromStatus(messageStatus)
-	if err := s.updateSlackMessageReaction(processedMessage.SlackChannelID, processedMessage.SlackTS, reactionEmoji, slackIntegrationID); err != nil {
+	if err := s.updateSlackMessageReaction(ctx, processedMessage.SlackChannelID, processedMessage.SlackTS, reactionEmoji, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to update slack message reaction: %w", err)
 	}
 
 	// Always add eyes emoji to top-level message to show agent is processing
-	if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "eyes", slackIntegrationID); err != nil {
+	if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "eyes", slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to update top-level message reaction: %w", err)
 	}
 	log.Printf("👀 Updated top-level message with eyes emoji for job %s - agent processing message", job.ID)
@@ -308,11 +308,11 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 
 	// Send work to assigned agent
 	if isNewConversation {
-		if err := s.sendStartConversationToAgent(clientID, processedMessage); err != nil {
+		if err := s.sendStartConversationToAgent(ctx, clientID, processedMessage); err != nil {
 			return fmt.Errorf("failed to send start conversation message: %w", err)
 		}
 	} else {
-		if err := s.sendUserMessageToAgent(clientID, processedMessage); err != nil {
+		if err := s.sendUserMessageToAgent(ctx, clientID, processedMessage); err != nil {
 			return fmt.Errorf("failed to send user message: %w", err)
 		}
 	}
@@ -321,9 +321,9 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 	return nil
 }
 
-func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *models.ProcessedSlackMessage) error {
+func (s *CoreUseCase) sendStartConversationToAgent(ctx context.Context, clientID string, message *models.ProcessedSlackMessage) error {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(message.SlackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(ctx, message.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -363,9 +363,9 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 	return nil
 }
 
-func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.ProcessedSlackMessage) error {
+func (s *CoreUseCase) sendUserMessageToAgent(ctx context.Context, clientID string, message *models.ProcessedSlackMessage) error {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(message.SlackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(ctx, message.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -469,9 +469,9 @@ func getOldReactions(newEmoji string) []string {
 	return result
 }
 
-func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji, slackIntegrationID string) error {
+func (s *CoreUseCase) updateSlackMessageReaction(ctx context.Context, channelID, messageTS, newEmoji, slackIntegrationID string) error {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(ctx, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -508,9 +508,9 @@ func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji,
 	return nil
 }
 
-func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackIntegrationID string) (string, error) {
+func (s *CoreUseCase) getOrAssignAgentForJob(ctx context.Context, job *models.Job, threadTS, slackIntegrationID string) (string, error) {
 	// Check if this job is already assigned to an agent
-	existingAgent, err := s.agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
+	existingAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, slackIntegrationID)
 	if err != nil {
 		// Some error occurred
 		log.Printf("❌ Failed to check for existing agent assignment: %v", err)
@@ -519,7 +519,7 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 
 	if existingAgent == nil {
 		// Job not assigned to any agent yet - need to assign to an available agent
-		return s.assignJobToAvailableAgent(job, threadTS, slackIntegrationID)
+		return s.assignJobToAvailableAgent(ctx, job, threadTS, slackIntegrationID)
 	}
 
 	// Job is already assigned to an agent - verify it still has an active connection
@@ -536,10 +536,10 @@ func (s *CoreUseCase) getOrAssignAgentForJob(job *models.Job, threadTS, slackInt
 
 // assignJobToAvailableAgent attempts to assign a job to the least loaded available agent
 // Returns the WebSocket client ID if successful, empty string if no agents available, or error on failure
-func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slackIntegrationID string) (string, error) {
+func (s *CoreUseCase) assignJobToAvailableAgent(ctx context.Context, job *models.Job, threadTS, slackIntegrationID string) (string, error) {
 	log.Printf("📝 Job %s not yet assigned, looking for any active agent", job.ID)
 
-	clientID, assigned, err := s.tryAssignJobToAgent(job.ID, slackIntegrationID)
+	clientID, assigned, err := s.tryAssignJobToAgent(ctx, job.ID, slackIntegrationID)
 	if err != nil {
 		return "", err
 	}
@@ -558,9 +558,9 @@ func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slack
 // - clientID: WebSocket connection ID of assigned agent (empty if not assigned)
 // - wasAssigned: true if job was successfully assigned to an agent, false if no agents available
 // - error: any error that occurred during the assignment process
-func (s *CoreUseCase) tryAssignJobToAgent(jobID string, slackIntegrationID string) (string, bool, error) {
+func (s *CoreUseCase) tryAssignJobToAgent(ctx context.Context, jobID string, slackIntegrationID string) (string, bool, error) {
 	// First check if this job is already assigned to an agent
-	existingAgent, err := s.agentsService.GetAgentByJobID(jobID, slackIntegrationID)
+	existingAgent, err := s.agentsService.GetAgentByJobID(ctx, jobID, slackIntegrationID)
 	if err != nil {
 		return "", false, fmt.Errorf("failed to check for existing agent assignment: %w", err)
 	}
@@ -583,7 +583,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(jobID string, slackIntegrationID strin
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
 	// Get only agents with active connections using centralized service method
-	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
+	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, slackIntegrationID, connectedClientIDs)
 	if err != nil {
 		log.Printf("❌ Failed to get connected active agents: %v", err)
 		return "", false, fmt.Errorf("failed to get connected active agents: %w", err)
@@ -595,7 +595,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(jobID string, slackIntegrationID strin
 	}
 
 	// Sort agents by load (number of assigned jobs) to select the least loaded agent
-	sortedAgents, err := s.sortAgentsByLoad(connectedAgents, slackIntegrationID)
+	sortedAgents, err := s.sortAgentsByLoad(ctx, connectedAgents, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to sort agents by load: %v", err)
 		return "", false, fmt.Errorf("failed to sort agents by load: %w", err)
@@ -605,7 +605,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(jobID string, slackIntegrationID strin
 	log.Printf("🎯 Selected agent %s with %d active messages (least loaded)", selectedAgent.ID, sortedAgents[0].load)
 
 	// Assign the job to the selected agent (agents can now handle multiple jobs simultaneously)
-	if err := s.agentsService.AssignAgentToJob(selectedAgent.ID, jobID, slackIntegrationID); err != nil {
+	if err := s.agentsService.AssignAgentToJob(ctx, selectedAgent.ID, jobID, slackIntegrationID); err != nil {
 		log.Printf("❌ Failed to assign job %s to agent %s: %v", jobID, selectedAgent.ID, err)
 		return "", false, fmt.Errorf("failed to assign job to agent: %w", err)
 	}
@@ -619,12 +619,12 @@ type agentWithLoad struct {
 	load  int
 }
 
-func (s *CoreUseCase) sortAgentsByLoad(agents []*models.ActiveAgent, slackIntegrationID string) ([]agentWithLoad, error) {
+func (s *CoreUseCase) sortAgentsByLoad(ctx context.Context, agents []*models.ActiveAgent, slackIntegrationID string) ([]agentWithLoad, error) {
 	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
 
 	for _, agent := range agents {
 		// Get job IDs assigned to this agent
-		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, slackIntegrationID)
+		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, slackIntegrationID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
 		}
@@ -646,11 +646,11 @@ func (s *CoreUseCase) sortAgentsByLoad(agents []*models.ActiveAgent, slackIntegr
 	return agentsWithLoad, nil
 }
 
-func (s *CoreUseCase) RegisterAgent(client *clients.Client) error {
+func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
 
 	// Pass the agent ID to UpsertActiveAgent
-	_, err := s.agentsService.UpsertActiveAgent(client.ID, client.SlackIntegrationID, client.AgentID)
+	_, err := s.agentsService.UpsertActiveAgent(ctx, client.ID, client.SlackIntegrationID, client.AgentID)
 	if err != nil {
 		return fmt.Errorf("failed to register agent for client %s: %w", client.ID, err)
 	}
@@ -659,24 +659,24 @@ func (s *CoreUseCase) RegisterAgent(client *clients.Client) error {
 	return nil
 }
 
-func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
+func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to deregister agent for client %s", client.ID)
 
 	// First, get the agent to check for assigned jobs
-	agent, err := s.agentsService.GetAgentByWSConnectionID(client.ID, client.SlackIntegrationID)
+	agent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.ID, client.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to find agent for client %s: %w", client.ID, err)
 	}
 
 	// Get active jobs for agent cleanup
-	jobs, err := s.agentsService.GetActiveAgentJobAssignments(agent.ID, client.SlackIntegrationID)
+	jobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, client.SlackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to get jobs for cleanup: %v", err)
 		return fmt.Errorf("failed to get jobs for cleanup: %w", err)
 	}
 	if len(jobs) == 0 {
 		// No jobs to clean up, just delete the agent
-		if err := s.agentsService.DeleteActiveAgentByWsConnectionID(client.ID, client.SlackIntegrationID); err != nil {
+		if err := s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, client.SlackIntegrationID); err != nil {
 			return fmt.Errorf("failed to delete agent: %w", err)
 		}
 		log.Printf("📋 Completed successfully - deregistered agent for client %s", client.ID)
@@ -697,21 +697,21 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 
 		// Send abandonment message to Slack thread
 		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
-		if err := s.sendSlackMessage(client.SlackIntegrationID, job.SlackChannelID, job.SlackThreadTS, abandonmentMessage); err != nil {
+		if err := s.sendSlackMessage(ctx, client.SlackIntegrationID, job.SlackChannelID, job.SlackThreadTS, abandonmentMessage); err != nil {
 			log.Printf("❌ Failed to send abandonment message to Slack thread %s: %v", job.SlackThreadTS, err)
 			return fmt.Errorf("failed to send abandonment message to Slack: %w", err)
 		}
 		log.Printf("📤 Sent abandonment message to Slack thread %s", job.SlackThreadTS)
 
 		// Update the top-level message emoji to :x:
-		if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "x", client.SlackIntegrationID); err != nil {
+		if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "x", client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to update slack message reaction to :x: for abandoned job %s: %v", job.ID, err)
 			return fmt.Errorf("failed to update slack message reaction to :x: for abandoned job %s: %w", job.ID, err)
 		}
 		log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
 
 		// Unassign agent from job
-		if err := s.agentsService.UnassignAgentFromJob(agent.ID, jobID, client.SlackIntegrationID); err != nil {
+		if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
 			return fmt.Errorf("failed to unassign agent %s from job %s: %w", agent.ID, jobID, err)
 		}
@@ -726,7 +726,7 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 	}
 
 	// Delete the agent record
-	err = s.agentsService.DeleteActiveAgentByWsConnectionID(client.ID, client.SlackIntegrationID)
+	err = s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, client.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to deregister agent for client %s: %w", client.ID, err)
 	}
@@ -735,7 +735,7 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 	return nil
 }
 
-func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
+func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 	log.Printf("📋 Starting to broadcast CheckIdleJobs to all connected agents")
 
 	// Get all slack integrations to broadcast to agents in each integration
@@ -758,7 +758,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 		slackIntegrationID := integration.ID
 
 		// Get connected agents for this integration using centralized service method
-		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
+		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, slackIntegrationID, connectedClientIDs)
 		if err != nil {
 			broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to get connected agents for integration %s: %v", slackIntegrationID, err))
 			continue
@@ -796,7 +796,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 	return nil
 }
 
-func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobCompletePayload, slackIntegrationID string) error {
+func (s *CoreUseCase) ProcessJobComplete(ctx context.Context, clientID string, payload models.JobCompletePayload, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process job complete from client %s: JobID: %s, Reason: %s", clientID, payload.JobID, payload.Reason)
 
 	// Validate JobID is not empty
@@ -819,26 +819,26 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	}
 
 	// Get the agent by WebSocket connection ID to verify ownership
-	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID, slackIntegrationID)
+	agent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
 		return fmt.Errorf("failed to find agent for client: %w", err)
 	}
 
 	// Validate that this agent is actually assigned to this job
-	if err := s.validateJobBelongsToAgent(agent.ID, jobID, slackIntegrationID); err != nil {
+	if err := s.validateJobBelongsToAgent(ctx, agent.ID, jobID, slackIntegrationID); err != nil {
 		log.Printf("❌ Agent %s not assigned to job %s: %v", agent.ID, jobID, err)
 		return fmt.Errorf("agent not assigned to job: %w", err)
 	}
 
 	// Set white_check_mark emoji on the top-level message to indicate job completion
-	if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "white_check_mark", slackIntegrationID); err != nil {
+	if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "white_check_mark", slackIntegrationID); err != nil {
 		log.Printf("⚠️ Failed to update top-level message reaction for completed job %s: %v", jobID, err)
 		// Don't return error - this is not critical to job completion
 	}
 
 	// Unassign the agent from the job
-	if err := s.agentsService.UnassignAgentFromJob(agent.ID, jobID, slackIntegrationID); err != nil {
+	if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, slackIntegrationID); err != nil {
 		log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
 		return fmt.Errorf("failed to unassign agent from job: %w", err)
 	}
@@ -852,7 +852,7 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	log.Printf("🗑️ Deleted completed job %s", jobID)
 
 	// Send completion message to Slack thread with reason
-	if err := s.sendSystemMessage(slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, payload.Reason); err != nil {
+	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, payload.Reason); err != nil {
 		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
 		return fmt.Errorf("failed to send completion message to Slack: %w", err)
 	}
@@ -862,7 +862,7 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	return nil
 }
 
-func (s *CoreUseCase) ProcessQueuedJobs() error {
+func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 	log.Printf("📋 Starting to process queued jobs")
 
 	// Get all slack integrations
@@ -900,7 +900,7 @@ func (s *CoreUseCase) ProcessQueuedJobs() error {
 			log.Printf("🔄 Processing queued job %s", job.ID)
 
 			// Try to assign job to an available agent
-			clientID, assigned, err := s.tryAssignJobToAgent(job.ID, slackIntegrationID)
+			clientID, assigned, err := s.tryAssignJobToAgent(ctx, job.ID, slackIntegrationID)
 			if err != nil {
 				processingErrors = append(processingErrors, fmt.Sprintf("failed to assign queued job %s: %v", job.ID, err))
 				continue
@@ -930,7 +930,7 @@ func (s *CoreUseCase) ProcessQueuedJobs() error {
 				}
 
 				// Update Slack reaction to show processing (eyes emoji)
-				if err := s.updateSlackMessageReaction(updatedMessage.SlackChannelID, updatedMessage.SlackTS, "eyes", slackIntegrationID); err != nil {
+				if err := s.updateSlackMessageReaction(ctx, updatedMessage.SlackChannelID, updatedMessage.SlackTS, "eyes", slackIntegrationID); err != nil {
 					log.Printf("⚠️ Failed to update slack reaction for message %s: %v", message.ID, err)
 				}
 
@@ -943,12 +943,12 @@ func (s *CoreUseCase) ProcessQueuedJobs() error {
 
 				// Send work to assigned agent
 				if isNewConversation {
-					if err := s.sendStartConversationToAgent(clientID, updatedMessage); err != nil {
+					if err := s.sendStartConversationToAgent(ctx, clientID, updatedMessage); err != nil {
 						processingErrors = append(processingErrors, fmt.Sprintf("failed to send start conversation for message %s: %v", message.ID, err))
 						continue
 					}
 				} else {
-					if err := s.sendUserMessageToAgent(clientID, updatedMessage); err != nil {
+					if err := s.sendUserMessageToAgent(ctx, clientID, updatedMessage); err != nil {
 						processingErrors = append(processingErrors, fmt.Sprintf("failed to send user message %s: %v", message.ID, err))
 						continue
 					}
@@ -973,7 +973,7 @@ func (s *CoreUseCase) ProcessQueuedJobs() error {
 	return nil
 }
 
-func (s *CoreUseCase) CleanupInactiveAgents() error {
+func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 	log.Printf("📋 Starting to cleanup inactive agents (>10 minutes)")
 
 	// Get all slack integrations
@@ -995,7 +995,7 @@ func (s *CoreUseCase) CleanupInactiveAgents() error {
 		slackIntegrationID := integration.ID
 
 		// Get inactive agents for this integration
-		inactiveAgents, err := s.agentsService.GetInactiveAgents(slackIntegrationID, inactiveThresholdMinutes)
+		inactiveAgents, err := s.agentsService.GetInactiveAgents(ctx, slackIntegrationID, inactiveThresholdMinutes)
 		if err != nil {
 			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to get inactive agents for integration %s: %v", slackIntegrationID, err))
 			continue
@@ -1012,7 +1012,7 @@ func (s *CoreUseCase) CleanupInactiveAgents() error {
 			log.Printf("🧹 Found inactive agent %s (last active: %s) - cleaning up", agent.ID, agent.LastActiveAt.Format("2006-01-02 15:04:05"))
 
 			// Delete the inactive agent - CASCADE DELETE will automatically clean up job assignments
-			if err := s.agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
+			if err := s.agentsService.DeleteActiveAgent(ctx, agent.ID, slackIntegrationID); err != nil {
 				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to delete inactive agent %s: %v", agent.ID, err))
 				continue
 			}
@@ -1033,11 +1033,11 @@ func (s *CoreUseCase) CleanupInactiveAgents() error {
 	return nil
 }
 
-func (s *CoreUseCase) ProcessPing(client *clients.Client) error {
+func (s *CoreUseCase) ProcessPing(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to process ping from client %s", client.ID)
 
 	// Update the agent's last_active_at timestamp
-	if err := s.agentsService.UpdateAgentLastActiveAt(client.ID, client.SlackIntegrationID); err != nil {
+	if err := s.agentsService.UpdateAgentLastActiveAt(ctx, client.ID, client.SlackIntegrationID); err != nil {
 		log.Printf("❌ Failed to update agent last_active_at for client %s: %v", client.ID, err)
 		return fmt.Errorf("failed to update agent last_active_at: %w", err)
 	}
@@ -1045,7 +1045,7 @@ func (s *CoreUseCase) ProcessPing(client *clients.Client) error {
 	return nil
 }
 
-func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIntegrationID string) error {
+func (s *CoreUseCase) ProcessReactionAdded(ctx context.Context, userID, channelID, messageTS, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process reaction added by %s on message %s in channel %s", userID, messageTS, channelID)
 
 	// Find the job by thread TS and channel - the messageTS is the thread root
@@ -1065,7 +1065,7 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 	log.Printf("✅ Job completion reaction confirmed - user %s is the job creator", userID)
 
 	// Get the assigned agent for this job to unassign them
-	agent, err := s.agentsService.GetAgentByJobID(job.ID, slackIntegrationID)
+	agent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, slackIntegrationID)
 	if err != nil {
 		log.Printf("⚠️ Failed to find agent for job %s: %v", job.ID, err)
 		// Don't return error - continue with job completion
@@ -1073,7 +1073,7 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 
 	// If agent is found, unassign them from the job
 	if agent != nil {
-		if err := s.agentsService.UnassignAgentFromJob(agent.ID, job.ID, slackIntegrationID); err != nil {
+		if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, job.ID, slackIntegrationID); err != nil {
 			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, job.ID, err)
 			return fmt.Errorf("failed to unassign agent from job: %w", err)
 		}
@@ -1081,13 +1081,13 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 	}
 
 	// Update Slack reactions - remove eyes emoji and add white_check_mark
-	if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "white_check_mark", slackIntegrationID); err != nil {
+	if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "white_check_mark", slackIntegrationID); err != nil {
 		log.Printf("⚠️ Failed to update reaction for completed job %s: %v", job.ID, err)
 		// Don't return error - this is not critical
 	}
 
 	// Send completion message to Slack thread
-	if err := s.sendSystemMessage(slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, "Job manually marked as complete"); err != nil {
+	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, "Job manually marked as complete"); err != nil {
 		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
 		return fmt.Errorf("failed to send completion message to Slack: %w", err)
 	}
@@ -1104,11 +1104,11 @@ func (s *CoreUseCase) ProcessReactionAdded(userID, channelID, messageTS, slackIn
 	return nil
 }
 
-func (s *CoreUseCase) sendSlackMessage(slackIntegrationID, channelID, threadTS, message string) error {
+func (s *CoreUseCase) sendSlackMessage(ctx context.Context, slackIntegrationID, channelID, threadTS, message string) error {
 	log.Printf("📋 Starting to send message to channel %s, thread %s: %s", channelID, threadTS, message)
 
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(ctx, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -1126,12 +1126,12 @@ func (s *CoreUseCase) sendSlackMessage(slackIntegrationID, channelID, threadTS, 
 	return nil
 }
 
-func (s *CoreUseCase) sendSystemMessage(slackIntegrationID, channelID, threadTS, message string) error {
+func (s *CoreUseCase) sendSystemMessage(ctx context.Context, slackIntegrationID, channelID, threadTS, message string) error {
 	log.Printf("📋 Starting to send system message to channel %s, thread %s: %s", channelID, threadTS, message)
 
 	// Prepend gear emoji to message
 	systemMessage := ":gear: " + message
 
 	// Use the base sendSlackMessage function
-	return s.sendSlackMessage(slackIntegrationID, channelID, threadTS, systemMessage)
+	return s.sendSlackMessage(ctx, slackIntegrationID, channelID, threadTS, systemMessage)
 }
