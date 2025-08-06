@@ -345,7 +345,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 
 	// Resolve user mentions in the message text before sending to agent
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
-	startConversationMessage := models.UnknownMessage{
+	startConversationMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeStartConversation,
 		Payload: models.StartConversationPayload{
@@ -387,7 +387,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 
 	// Resolve user mentions in the message text before sending to agent
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
-	userMessage := models.UnknownMessage{
+	userMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeUserMessage,
 		Payload: models.UserMessagePayload{
@@ -715,7 +715,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 		}
 
 		log.Printf("📡 Broadcasting CheckIdleJobs to %d connected agents for integration %s", len(connectedAgents), slackIntegrationID)
-		checkIdleJobsMessage := models.UnknownMessage{
+		checkIdleJobsMessage := models.BaseMessage{
 			ID:      core.NewID("msg"),
 			Type:    models.MessageTypeCheckIdleJobs,
 			Payload: models.CheckIdleJobsPayload{},
