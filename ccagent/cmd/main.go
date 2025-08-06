@@ -28,11 +28,13 @@ import (
 )
 
 type CmdRunner struct {
-	messageHandler *handlers.MessageHandler
-	gitUseCase     *usecases.GitUseCase
-	logFilePath    string
-	agentID        string
-	reconnectChan  chan struct{}
+	messageHandler   *handlers.MessageHandler
+	gitUseCase       *usecases.GitUseCase
+	logFilePath      string
+	agentID          string
+	reconnectChan    chan struct{}
+	connectionCtx    context.Context
+	connectionCancel context.CancelFunc
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
@@ -47,12 +49,17 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	agentID := core.NewID("ccaid")
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
+	// Initialize connection context
+	connectionCtx, connectionCancel := context.WithCancel(context.Background())
+
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		messageHandler: messageHandler,
-		gitUseCase:     gitUseCase,
-		agentID:        agentID,
-		reconnectChan:  make(chan struct{}, 1),
+		messageHandler:   messageHandler,
+		gitUseCase:       gitUseCase,
+		agentID:          agentID,
+		reconnectChan:    make(chan struct{}, 1),
+		connectionCtx:    connectionCtx,
+		connectionCancel: connectionCancel,
 	}, nil
 }
 
@@ -183,16 +190,29 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 	// Connection event handlers
 	err := socketClient.On("connect", func(args ...any) {
 		log.Info("✅ Connected to Socket.IO server, socket ID: %s", socketClient.Id())
+		// Reset connection context on successful connection
+		if cr.connectionCancel != nil {
+			cr.connectionCancel()
+		}
+		cr.connectionCtx, cr.connectionCancel = context.WithCancel(context.Background())
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up connect handler: %v", err))
 
 	err = socketClient.On("connect_error", func(args ...any) {
 		log.Info("❌ Socket.IO connection error: %v", args)
+		// Cancel connection context on connection error
+		if cr.connectionCancel != nil {
+			cr.connectionCancel()
+		}
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up connect_error handler: %v", err))
 
 	err = socketClient.On("disconnect", func(args ...any) {
 		log.Info("🔌 Socket.IO disconnected: %v", args)
+		// Cancel connection context on disconnect
+		if cr.connectionCancel != nil {
+			cr.connectionCancel()
+		}
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up disconnect handler: %v", err))
 
@@ -218,7 +238,17 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 
 		log.Info("📨 Received message type: %s", msg.Type)
 		wp.Submit(func() {
-			cr.messageHandler.HandleMessage(msg, socketClient)
+			// Check if connection is still active before processing
+			select {
+			case <-cr.connectionCtx.Done():
+				log.Info("🔌 Connection lost - skipping message processing for type: %s", msg.Type)
+				return
+			default:
+				// Connection is active, proceed with processing
+			}
+
+			// Pass connection context to message handler for context-aware processing
+			cr.messageHandler.HandleMessageWithContext(cr.connectionCtx, msg, socketClient)
 		})
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up cc_message handler: %v", err))

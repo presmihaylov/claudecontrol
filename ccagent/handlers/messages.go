@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -31,9 +32,14 @@ func NewMessageHandler(claudeService *services.ClaudeService, gitUseCase *usecas
 }
 
 func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *socket.Socket) {
+	// Call the new context-aware version with background context for backward compatibility
+	mh.HandleMessageWithContext(context.Background(), msg, socketClient)
+}
+
+func (mh *MessageHandler) HandleMessageWithContext(ctx context.Context, msg models.BaseMessage, socketClient *socket.Socket) {
 	switch msg.Type {
 	case models.MessageTypeStartConversation:
-		if err := mh.handleStartConversation(msg, socketClient); err != nil {
+		if err := mh.handleStartConversationWithContext(ctx, msg, socketClient); err != nil {
 			// Extract SlackMessageID from payload for error reporting
 			var payload models.StartConversationPayload
 			slackMessageID := ""
@@ -45,7 +51,7 @@ func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *so
 			}
 		}
 	case models.MessageTypeUserMessage:
-		if err := mh.handleUserMessage(msg, socketClient); err != nil {
+		if err := mh.handleUserMessageWithContext(ctx, msg, socketClient); err != nil {
 			// Extract SlackMessageID from payload for error reporting
 			var payload models.UserMessagePayload
 			slackMessageID := ""
@@ -57,7 +63,7 @@ func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *so
 			}
 		}
 	case models.MessageTypeCheckIdleJobs:
-		if err := mh.handleCheckIdleJobs(msg, socketClient); err != nil {
+		if err := mh.handleCheckIdleJobsWithContext(ctx, msg, socketClient); err != nil {
 			log.Info("❌ Error handling CheckIdleJobs message: %v", err)
 		}
 	default:
@@ -65,7 +71,7 @@ func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *so
 	}
 }
 
-func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socketClient *socket.Socket) error {
+func (mh *MessageHandler) handleStartConversationWithContext(ctx context.Context, msg models.BaseMessage, socketClient *socket.Socket) error {
 	log.Info("📋 Starting to handle start conversation message")
 	var payload models.StartConversationPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -80,6 +86,14 @@ func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socket
 	}
 
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
+
+	// Check connection before starting Git operations
+	select {
+	case <-ctx.Done():
+		log.Info("🔌 Connection lost - stopping start conversation processing")
+		return fmt.Errorf("connection lost during start conversation processing")
+	default:
+	}
 
 	// Prepare Git environment for new conversation - FAIL if this doesn't work
 	branchName, err := mh.gitUseCase.PrepareForNewConversation(payload.Message)
@@ -117,6 +131,14 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 
 CRITICAL: Never autonomously create git commits or pull requests unless explicitly asked to do so by the user. Wait for explicit instructions before making any commits or creating PRs.
 `
+
+	// Check connection before starting Claude conversation
+	select {
+	case <-ctx.Done():
+		log.Info("🔌 Connection lost - stopping before Claude conversation")
+		return fmt.Errorf("connection lost before Claude conversation")
+	default:
+	}
 
 	claudeResult, err := mh.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions)
 	if err != nil {
@@ -193,7 +215,7 @@ CRITICAL: Never autonomously create git commits or pull requests unless explicit
 	return nil
 }
 
-func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient *socket.Socket) error {
+func (mh *MessageHandler) handleUserMessageWithContext(ctx context.Context, msg models.BaseMessage, socketClient *socket.Socket) error {
 	log.Info("📋 Starting to handle user message")
 	var payload models.UserMessagePayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -225,12 +247,28 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 	// Assert that BranchName is never empty
 	utils.AssertInvariant(jobData.BranchName != "", "BranchName must not be empty for job "+payload.JobID)
 
+	// Check connection before Git operations
+	select {
+	case <-ctx.Done():
+		log.Info("🔌 Connection lost - stopping before Git branch switch")
+		return fmt.Errorf("connection lost before Git branch switch")
+	default:
+	}
+
 	// Switch to the job's branch before continuing the conversation
 	if err := mh.gitUseCase.SwitchToJobBranch(jobData.BranchName); err != nil {
 		log.Error("❌ Failed to switch to job branch %s: %v", jobData.BranchName, err)
 		return fmt.Errorf("failed to switch to job branch %s: %w", jobData.BranchName, err)
 	}
 	log.Info("✅ Successfully switched to job branch: %s", jobData.BranchName)
+
+	// Check connection before Claude conversation
+	select {
+	case <-ctx.Done():
+		log.Info("🔌 Connection lost - stopping before Claude conversation")
+		return fmt.Errorf("connection lost before Claude conversation")
+	default:
+	}
 
 	claudeResult, err := mh.claudeService.ContinueConversation(sessionID, payload.Message)
 	if err != nil {
@@ -307,7 +345,7 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 	return nil
 }
 
-func (mh *MessageHandler) handleCheckIdleJobs(msg models.BaseMessage, socketClient *socket.Socket) error {
+func (mh *MessageHandler) handleCheckIdleJobsWithContext(ctx context.Context, msg models.BaseMessage, socketClient *socket.Socket) error {
 	log.Info("📋 Starting to handle check idle jobs message")
 	var payload models.CheckIdleJobsPayload
 	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
@@ -328,9 +366,17 @@ func (mh *MessageHandler) handleCheckIdleJobs(msg models.BaseMessage, socketClie
 
 	// Check each job for idleness
 	for jobID, jobData := range allJobData {
+		// Check connection before processing each job
+		select {
+		case <-ctx.Done():
+			log.Info("🔌 Connection lost - stopping idle job checking")
+			return fmt.Errorf("connection lost during idle job checking")
+		default:
+		}
+
 		log.Info("🔍 Checking job %s on branch %s", jobID, jobData.BranchName)
 
-		if err := mh.checkJobIdleness(jobID, jobData, socketClient); err != nil {
+		if err := mh.checkJobIdlenessWithContext(ctx, jobID, jobData, socketClient); err != nil {
 			log.Info("❌ Failed to check idleness for job %s: %v", jobID, err)
 			// Continue checking other jobs even if one fails
 			continue
@@ -341,8 +387,16 @@ func (mh *MessageHandler) handleCheckIdleJobs(msg models.BaseMessage, socketClie
 	return nil
 }
 
-func (mh *MessageHandler) checkJobIdleness(jobID string, jobData models.JobData, socketClient *socket.Socket) error {
+func (mh *MessageHandler) checkJobIdlenessWithContext(ctx context.Context, jobID string, jobData models.JobData, socketClient *socket.Socket) error {
 	log.Info("📋 Starting to check idleness for job %s", jobID)
+
+	// Check connection before Git operations
+	select {
+	case <-ctx.Done():
+		log.Info("🔌 Connection lost - stopping job idleness check for job %s", jobID)
+		return fmt.Errorf("connection lost during job idleness check")
+	default:
+	}
 
 	// Switch to the job's branch to check PR status
 	if err := mh.gitUseCase.SwitchToJobBranch(jobData.BranchName); err != nil {
@@ -352,6 +406,14 @@ func (mh *MessageHandler) checkJobIdleness(jobID string, jobData models.JobData,
 
 	var prStatus string
 	var err error
+
+	// Check connection before PR status operations
+	select {
+	case <-ctx.Done():
+		log.Info("🔌 Connection lost - stopping before PR status check for job %s", jobID)
+		return fmt.Errorf("connection lost before PR status check")
+	default:
+	}
 
 	// Use stored PR ID if available, otherwise fall back to branch-based check
 	if jobData.PullRequestID != "" {
