@@ -461,7 +461,6 @@ func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slac
 	return botReactions, nil
 }
 
-
 func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji, slackIntegrationID string) error {
 	// Get integration-specific Slack client
 	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
