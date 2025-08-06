@@ -19,13 +19,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to Render
-        uses: bounceapp/render-action@0.6.0
+        uses: JorgeLNJunior/render-deploy@v1.4.5
         id: render-deploy
         with:
-          render-token: ${{ secrets.RENDER_API_KEY }}
-          service-id: ${{ secrets.RENDER_SERVICE_ID }}
-          wait-deploy: true
-          deploy-timeout: 600000
+          service_id: ${{ secrets.RENDER_SERVICE_ID }}
+          api_key: ${{ secrets.RENDER_API_KEY }}
+          wait_deploy: true
 
       - name: Setup Supabase CLI
         if: success()
