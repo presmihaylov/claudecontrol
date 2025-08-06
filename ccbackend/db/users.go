@@ -23,7 +23,7 @@ func NewPostgresUsersRepository(db *sqlx.DB, schema string) *PostgresUsersReposi
 func (r *PostgresUsersRepository) GetOrCreateUser(authProvider, authProviderID string) (*models.User, error) {
 	// Generate ULID for new users
 	userID := core.NewID("u")
-	
+
 	query := fmt.Sprintf(`
 		INSERT INTO %s.users (id, auth_provider, auth_provider_id, created_at, updated_at) 
 		VALUES ($1, $2, $3, NOW(), NOW()) 

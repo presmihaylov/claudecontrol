@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -44,7 +43,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		// Use unique team ID to avoid constraint violations
-		teamID := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
@@ -57,7 +56,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.NotNil(t, integration)
-		assert.NotEqual(t, uuid.Nil, integration.ID)
+		assert.NotEqual(t, "", integration.ID)
 		assert.Equal(t, teamID, integration.SlackTeamID)
 		assert.Equal(t, "Test Team", integration.SlackTeamName)
 		assert.Equal(t, "xoxb-test-token-123", integration.SlackAuthToken)
@@ -93,11 +92,11 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		mockClient := clients.NewMockSlackClient()
 		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
 
-		integration, err := testService.CreateSlackIntegration("test-auth-code", "http://localhost:3000/callback", uuid.Nil)
+		integration, err := testService.CreateSlackIntegration("test-auth-code", "http://localhost:3000/callback", "")
 
 		assert.Error(t, err)
 		assert.Nil(t, integration)
-		assert.Contains(t, err.Error(), "user ID cannot be nil")
+		assert.Contains(t, err.Error(), "user ID must be a valid ULID")
 	})
 
 	t.Run("slack OAuth error is propagated", func(t *testing.T) {
@@ -197,7 +196,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByUserID(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		// Create multiple integrations for the user with unique team IDs
-		teamID1 := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID1 := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID1,
 			TeamName:    "Test Team 1",
@@ -208,7 +207,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByUserID(t *testing.T) {
 		integration1, err := testService.CreateSlackIntegration("test-auth-code-1", "http://localhost:3000/callback", testUser.ID)
 		require.NoError(t, err)
 
-		teamID2 := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID2 := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient2 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID2,
 			TeamName:    "Test Team 2",
@@ -221,7 +220,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByUserID(t *testing.T) {
 
 		// Create integration for different user to ensure isolation
 		otherUser := testutils.CreateTestUser(t, usersRepo)
-		teamID3 := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID3 := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient3 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID3,
 			TeamName:    "Test Team 3",
@@ -238,7 +237,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByUserID(t *testing.T) {
 		assert.Len(t, integrations, 2)
 
 		// Check that we got the right integrations (should be ordered by created_at DESC)
-		foundIDs := make(map[uuid.UUID]bool)
+		foundIDs := make(map[string]bool)
 		for _, integration := range integrations {
 			foundIDs[integration.ID] = true
 			assert.Equal(t, testUser.ID, integration.UserID)
@@ -267,11 +266,11 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByUserID(t *testing.T) {
 	})
 
 	t.Run("nil user ID returns error", func(t *testing.T) {
-		integrations, err := service.GetSlackIntegrationsByUserID(uuid.Nil)
+		integrations, err := service.GetSlackIntegrationsByUserID("")
 
 		assert.Error(t, err)
 		assert.Nil(t, integrations)
-		assert.Contains(t, err.Error(), "user ID cannot be nil")
+		assert.Contains(t, err.Error(), "user ID must be a valid ULID")
 	})
 }
 
@@ -283,7 +282,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		// Create an integration with unique team ID
-		teamID := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
@@ -313,7 +312,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		user2 := testutils.CreateTestUser(t, usersRepo)
 
 		// Create integration for user1 with unique team ID
-		teamID := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
@@ -350,15 +349,15 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContext(testUser)
 
-		err := service.DeleteSlackIntegration(ctx, uuid.Nil)
+		err := service.DeleteSlackIntegration(ctx, "")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "integration ID cannot be nil")
+		assert.Contains(t, err.Error(), "integration ID must be a valid ULID")
 	})
 
 	t.Run("missing user in context returns error", func(t *testing.T) {
 		ctx := context.Background() // No user in context
 
-		err := service.DeleteSlackIntegration(ctx, uuid.New())
+		err := service.DeleteSlackIntegration(ctx, core.NewID("t"))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "user not found in context")
 	})
@@ -367,7 +366,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContext(testUser)
 
-		err := service.DeleteSlackIntegration(ctx, uuid.New())
+		err := service.DeleteSlackIntegration(ctx, core.NewID("t"))
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 	})
@@ -381,7 +380,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		// Create an integration with unique team ID
-		teamID := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
@@ -427,7 +426,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		// Create an integration with unique team ID
-		teamID := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
@@ -485,7 +484,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		user2 := testutils.CreateTestUser(t, usersRepo)
 
 		// Create integration for user1 with unique team ID
-		teamID := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
@@ -525,16 +524,16 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContext(testUser)
 
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, uuid.Nil)
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, "")
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
-		assert.Contains(t, err.Error(), "integration ID cannot be nil")
+		assert.Contains(t, err.Error(), "integration ID must be a valid ULID")
 	})
 
 	t.Run("missing user in context returns error", func(t *testing.T) {
 		ctx := context.Background() // No user in context
 
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, uuid.New())
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, core.NewID("t"))
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
 		assert.Contains(t, err.Error(), "user not found in context")
@@ -544,7 +543,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContext(testUser)
 
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, uuid.New())
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, core.NewID("t"))
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
@@ -554,7 +553,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		// Create two integrations with unique team IDs
-		teamID1 := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID1 := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient1 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID1,
 			TeamName:    "Test Team 1",
@@ -565,7 +564,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		integration1, err := testService1.CreateSlackIntegration("test-auth-code-1", "http://localhost:3000/callback", testUser.ID)
 		require.NoError(t, err)
 
-		teamID2 := fmt.Sprintf("T%d", uuid.New().ID())
+		teamID2 := fmt.Sprintf("T%s", core.NewID("t"))
 		mockClient2 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID2,
 			TeamName:    "Test Team 2",

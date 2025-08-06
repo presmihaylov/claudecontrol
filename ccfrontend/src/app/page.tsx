@@ -198,15 +198,14 @@ export default function Home() {
 						<div className="text-center space-y-4">
 							<h2 className="text-xl font-semibold text-destructive">Authentication Failed</h2>
 							<p className="text-muted-foreground max-w-md">
-								Unable to authenticate with the backend server. Please try refreshing the page or contact support if the issue persists.
+								Unable to authenticate with the backend server. Please try refreshing the page or
+								contact support if the issue persists.
 							</p>
 							<div className="text-sm text-muted-foreground bg-muted p-3 rounded-md font-mono">
 								{authError}
 							</div>
 							<div className="space-x-2">
-								<Button onClick={() => window.location.reload()}>
-									Refresh Page
-								</Button>
+								<Button onClick={() => window.location.reload()}>Refresh Page</Button>
 								<Button variant="outline" onClick={() => signOut()}>
 									Sign Out
 								</Button>
