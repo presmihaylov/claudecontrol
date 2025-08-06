@@ -100,10 +100,21 @@ func run() error {
 		}
 	}).Methods("GET")
 
+	// Create wrapper functions for usecase methods that now require context
+	registerAgent := func(client *clients.Client) error {
+		return coreUseCase.RegisterAgent(context.Background(), client)
+	}
+	deregisterAgent := func(client *clients.Client) error {
+		return coreUseCase.DeregisterAgent(context.Background(), client)
+	}
+	processPing := func(client *clients.Client) error {
+		return coreUseCase.ProcessPing(context.Background(), client)
+	}
+
 	// Register WebSocket hooks for agent lifecycle
-	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(coreUseCase.RegisterAgent))
-	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(coreUseCase.DeregisterAgent))
-	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(coreUseCase.ProcessPing))
+	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(registerAgent))
+	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(deregisterAgent))
+	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(processPing))
 
 	// Register WebSocket message handler
 	wsClient.RegisterMessageHandler(alertMiddleware.WrapMessageHandler(wsHandler.HandleMessage))
@@ -112,9 +123,13 @@ func run() error {
 	cleanupTicker := time.NewTicker(1 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
-			_ = alertMiddleware.WrapBackgroundTask("ProcessQueuedJobs", coreUseCase.ProcessQueuedJobs)()
-			_ = alertMiddleware.WrapBackgroundTask("BroadcastCheckIdleJobs", coreUseCase.BroadcastCheckIdleJobs)()
-			_ = alertMiddleware.WrapBackgroundTask("CleanupInactiveAgents", coreUseCase.CleanupInactiveAgents)()
+			processQueuedJobs := func() error { return coreUseCase.ProcessQueuedJobs(context.Background()) }
+			broadcastCheckIdleJobs := func() error { return coreUseCase.BroadcastCheckIdleJobs(context.Background()) }
+			cleanupInactiveAgents := func() error { return coreUseCase.CleanupInactiveAgents(context.Background()) }
+
+			_ = alertMiddleware.WrapBackgroundTask("ProcessQueuedJobs", processQueuedJobs)()
+			_ = alertMiddleware.WrapBackgroundTask("BroadcastCheckIdleJobs", broadcastCheckIdleJobs)()
+			_ = alertMiddleware.WrapBackgroundTask("CleanupInactiveAgents", cleanupInactiveAgents)()
 		}
 	}()
 	defer cleanupTicker.Stop()

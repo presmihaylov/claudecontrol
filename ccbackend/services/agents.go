@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -18,7 +19,7 @@ func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
 	return &AgentsService{agentsRepo: repo}
 }
 
-func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID string, agentID string) (*models.ActiveAgent, error) {
+func (s *AgentsService) UpsertActiveAgent(ctx context.Context, wsConnectionID, slackIntegrationID string, agentID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to upsert active agent for wsConnectionID: %s, agentID: %s", wsConnectionID, agentID)
 
 	if !core.IsValidULID(wsConnectionID) {
@@ -40,7 +41,7 @@ func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID str
 		CCAgentID:          agentID,
 	}
 
-	if err := s.agentsRepo.UpsertActiveAgent(agent); err != nil {
+	if err := s.agentsRepo.UpsertActiveAgent(ctx, agent); err != nil {
 		return nil, fmt.Errorf("failed to upsert active agent: %w", err)
 	}
 
@@ -48,7 +49,7 @@ func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID str
 	return agent, nil
 }
 
-func (s *AgentsService) DeleteActiveAgentByWsConnectionID(wsConnectionID, slackIntegrationID string) error {
+func (s *AgentsService) DeleteActiveAgentByWsConnectionID(ctx context.Context, wsConnectionID, slackIntegrationID string) error {
 	log.Printf("📋 Starting to delete active agent by wsConnectionID: %s", wsConnectionID)
 
 	if !core.IsValidULID(wsConnectionID) {
@@ -60,13 +61,13 @@ func (s *AgentsService) DeleteActiveAgentByWsConnectionID(wsConnectionID, slackI
 	}
 
 	// First find the agent by WebSocket connection ID
-	agent, err := s.agentsRepo.GetAgentByWSConnectionID(wsConnectionID, slackIntegrationID)
+	agent, err := s.agentsRepo.GetAgentByWSConnectionID(ctx, wsConnectionID, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to find agent by ws_connection_id: %w", err)
 	}
 
 	// Then delete by agent ID
-	if err := s.agentsRepo.DeleteActiveAgent(agent.ID, slackIntegrationID); err != nil {
+	if err := s.agentsRepo.DeleteActiveAgent(ctx, agent.ID, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to delete active agent: %w", err)
 	}
 
@@ -74,7 +75,7 @@ func (s *AgentsService) DeleteActiveAgentByWsConnectionID(wsConnectionID, slackI
 	return nil
 }
 
-func (s *AgentsService) DeleteActiveAgent(id string, slackIntegrationID string) error {
+func (s *AgentsService) DeleteActiveAgent(ctx context.Context, id string, slackIntegrationID string) error {
 	log.Printf("📋 Starting to delete active agent with ID: %s", id)
 
 	if !core.IsValidULID(id) {
@@ -85,7 +86,7 @@ func (s *AgentsService) DeleteActiveAgent(id string, slackIntegrationID string) 
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	if err := s.agentsRepo.DeleteActiveAgent(id, slackIntegrationID); err != nil {
+	if err := s.agentsRepo.DeleteActiveAgent(ctx, id, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to delete active agent: %w", err)
 	}
 
@@ -93,7 +94,7 @@ func (s *AgentsService) DeleteActiveAgent(id string, slackIntegrationID string) 
 	return nil
 }
 
-func (s *AgentsService) GetAgentByID(id string, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (s *AgentsService) GetAgentByID(ctx context.Context, id string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get agent by ID: %s", id)
 
 	if !core.IsValidULID(id) {
@@ -104,7 +105,7 @@ func (s *AgentsService) GetAgentByID(id string, slackIntegrationID string) (*mod
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	agent, err := s.agentsRepo.GetAgentByID(id, slackIntegrationID)
+	agent, err := s.agentsRepo.GetAgentByID(ctx, id, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active agent: %w", err)
 	}
@@ -113,14 +114,14 @@ func (s *AgentsService) GetAgentByID(id string, slackIntegrationID string) (*mod
 	return agent, nil
 }
 
-func (s *AgentsService) GetAvailableAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
+func (s *AgentsService) GetAvailableAgents(ctx context.Context, slackIntegrationID string) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get available agents")
 
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	agents, err := s.agentsRepo.GetAvailableAgents(slackIntegrationID)
+	agents, err := s.agentsRepo.GetAvailableAgents(ctx, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available agents: %w", err)
 	}
@@ -130,7 +131,7 @@ func (s *AgentsService) GetAvailableAgents(slackIntegrationID string) ([]*models
 }
 
 // GetConnectedActiveAgents returns only agents that have active WebSocket connections
-func (s *AgentsService) GetConnectedActiveAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
+func (s *AgentsService) GetConnectedActiveAgents(ctx context.Context, slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get connected active agents")
 
 	if !core.IsValidULID(slackIntegrationID) {
@@ -138,7 +139,7 @@ func (s *AgentsService) GetConnectedActiveAgents(slackIntegrationID string, conn
 	}
 
 	// Get all active agents from database
-	allAgents, err := s.agentsRepo.GetAllActiveAgents(slackIntegrationID)
+	allAgents, err := s.agentsRepo.GetAllActiveAgents(ctx, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all active agents: %w", err)
 	}
@@ -164,7 +165,7 @@ func (s *AgentsService) GetConnectedActiveAgents(slackIntegrationID string, conn
 }
 
 // GetConnectedAvailableAgents returns only available agents that have active WebSocket connections
-func (s *AgentsService) GetConnectedAvailableAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
+func (s *AgentsService) GetConnectedAvailableAgents(ctx context.Context, slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get connected available agents")
 
 	if !core.IsValidULID(slackIntegrationID) {
@@ -172,7 +173,7 @@ func (s *AgentsService) GetConnectedAvailableAgents(slackIntegrationID string, c
 	}
 
 	// Get all available agents from database
-	availableAgents, err := s.agentsRepo.GetAvailableAgents(slackIntegrationID)
+	availableAgents, err := s.agentsRepo.GetAvailableAgents(ctx, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available agents: %w", err)
 	}
@@ -212,7 +213,7 @@ func (s *AgentsService) CheckAgentHasActiveConnection(agent *models.ActiveAgent,
 	return hasConnection
 }
 
-func (s *AgentsService) AssignAgentToJob(agentID, jobID string, slackIntegrationID string) error {
+func (s *AgentsService) AssignAgentToJob(ctx context.Context, agentID, jobID string, slackIntegrationID string) error {
 	log.Printf("📋 Starting to assign agent %s to job %s", agentID, jobID)
 	if !core.IsValidULID(agentID) {
 		return fmt.Errorf("agent ID must be a valid ULID")
@@ -231,7 +232,7 @@ func (s *AgentsService) AssignAgentToJob(agentID, jobID string, slackIntegration
 		SlackIntegrationID: slackIntegrationID,
 	}
 
-	if err := s.agentsRepo.AssignAgentToJob(assignment); err != nil {
+	if err := s.agentsRepo.AssignAgentToJob(ctx, assignment); err != nil {
 		return fmt.Errorf("failed to assign agent to job: %w", err)
 	}
 
@@ -239,7 +240,7 @@ func (s *AgentsService) AssignAgentToJob(agentID, jobID string, slackIntegration
 	return nil
 }
 
-func (s *AgentsService) UnassignAgentFromJob(agentID, jobID string, slackIntegrationID string) error {
+func (s *AgentsService) UnassignAgentFromJob(ctx context.Context, agentID, jobID string, slackIntegrationID string) error {
 	log.Printf("📋 Starting to unassign agent %s from job %s", agentID, jobID)
 
 	if !core.IsValidULID(agentID) {
@@ -254,7 +255,7 @@ func (s *AgentsService) UnassignAgentFromJob(agentID, jobID string, slackIntegra
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	if err := s.agentsRepo.UnassignAgentFromJob(agentID, jobID, slackIntegrationID); err != nil {
+	if err := s.agentsRepo.UnassignAgentFromJob(ctx, agentID, jobID, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to unassign agent from job: %w", err)
 	}
 
@@ -262,7 +263,7 @@ func (s *AgentsService) UnassignAgentFromJob(agentID, jobID string, slackIntegra
 	return nil
 }
 
-func (s *AgentsService) GetAgentByJobID(jobID string, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (s *AgentsService) GetAgentByJobID(ctx context.Context, jobID string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get agent by job ID: %s", jobID)
 	if !core.IsValidULID(jobID) {
 		return nil, fmt.Errorf("job ID must be a valid ULID")
@@ -271,7 +272,7 @@ func (s *AgentsService) GetAgentByJobID(jobID string, slackIntegrationID string)
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	agent, err := s.agentsRepo.GetAgentByJobID(jobID, slackIntegrationID)
+	agent, err := s.agentsRepo.GetAgentByJobID(ctx, jobID, slackIntegrationID)
 	if err != nil {
 		// Check if it's a not found error
 		if strings.Contains(err.Error(), "not found") {
@@ -285,7 +286,7 @@ func (s *AgentsService) GetAgentByJobID(jobID string, slackIntegrationID string)
 	return agent, nil
 }
 
-func (s *AgentsService) GetAgentByWSConnectionID(wsConnectionID, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (s *AgentsService) GetAgentByWSConnectionID(ctx context.Context, wsConnectionID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get agent by WS connection ID: %s", wsConnectionID)
 
 	if !core.IsValidULID(wsConnectionID) {
@@ -296,7 +297,7 @@ func (s *AgentsService) GetAgentByWSConnectionID(wsConnectionID, slackIntegratio
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	agent, err := s.agentsRepo.GetAgentByWSConnectionID(wsConnectionID, slackIntegrationID)
+	agent, err := s.agentsRepo.GetAgentByWSConnectionID(ctx, wsConnectionID, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get agent by WS connection ID: %w", err)
 	}
@@ -305,7 +306,7 @@ func (s *AgentsService) GetAgentByWSConnectionID(wsConnectionID, slackIntegratio
 	return agent, nil
 }
 
-func (s *AgentsService) GetActiveAgentJobAssignments(agentID string, slackIntegrationID string) ([]string, error) {
+func (s *AgentsService) GetActiveAgentJobAssignments(ctx context.Context, agentID string, slackIntegrationID string) ([]string, error) {
 	log.Printf("📋 Starting to get active job assignments for agent %s", agentID)
 
 	if !core.IsValidULID(agentID) {
@@ -316,7 +317,7 @@ func (s *AgentsService) GetActiveAgentJobAssignments(agentID string, slackIntegr
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	jobIDs, err := s.agentsRepo.GetActiveAgentJobAssignments(agentID, slackIntegrationID)
+	jobIDs, err := s.agentsRepo.GetActiveAgentJobAssignments(ctx, agentID, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active agent job assignments: %w", err)
 	}
@@ -325,7 +326,7 @@ func (s *AgentsService) GetActiveAgentJobAssignments(agentID string, slackIntegr
 	return jobIDs, nil
 }
 
-func (s *AgentsService) UpdateAgentLastActiveAt(wsConnectionID, slackIntegrationID string) error {
+func (s *AgentsService) UpdateAgentLastActiveAt(ctx context.Context, wsConnectionID, slackIntegrationID string) error {
 	log.Printf("📋 Starting to update last_active_at for agent with WS connection ID: %s", wsConnectionID)
 
 	if !core.IsValidULID(wsConnectionID) {
@@ -336,7 +337,7 @@ func (s *AgentsService) UpdateAgentLastActiveAt(wsConnectionID, slackIntegration
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	if err := s.agentsRepo.UpdateAgentLastActiveAt(wsConnectionID, slackIntegrationID); err != nil {
+	if err := s.agentsRepo.UpdateAgentLastActiveAt(ctx, wsConnectionID, slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to update agent last_active_at: %w", err)
 	}
 
@@ -344,7 +345,7 @@ func (s *AgentsService) UpdateAgentLastActiveAt(wsConnectionID, slackIntegration
 	return nil
 }
 
-func (s *AgentsService) GetInactiveAgents(slackIntegrationID string, inactiveThresholdMinutes int) ([]*models.ActiveAgent, error) {
+func (s *AgentsService) GetInactiveAgents(ctx context.Context, slackIntegrationID string, inactiveThresholdMinutes int) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get inactive agents for integration %s (threshold: %d minutes)", slackIntegrationID, inactiveThresholdMinutes)
 
 	if !core.IsValidULID(slackIntegrationID) {
@@ -355,7 +356,7 @@ func (s *AgentsService) GetInactiveAgents(slackIntegrationID string, inactiveThr
 		return nil, fmt.Errorf("inactive threshold must be positive")
 	}
 
-	agents, err := s.agentsRepo.GetInactiveAgents(slackIntegrationID, inactiveThresholdMinutes)
+	agents, err := s.agentsRepo.GetInactiveAgents(ctx, slackIntegrationID, inactiveThresholdMinutes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get inactive agents: %w", err)
 	}
