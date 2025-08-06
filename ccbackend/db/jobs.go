@@ -10,6 +10,7 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
+	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -46,7 +47,7 @@ func (r *PostgresJobsRepository) GetJobByID(id string, slackIntegrationID string
 	err := r.db.Get(job, query, id, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("job with id %s not found", id)
+			return nil, core.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}
@@ -64,7 +65,7 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(threadTS, channelID, slackI
 	err := r.db.Get(job, query, threadTS, channelID, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("job with slack_thread_ts %s and slack_channel_id %s not found", threadTS, channelID)
+			return nil, fmt.Errorf("job with slack_thread_ts %s and slack_channel_id %s: %w", threadTS, channelID, core.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get job by slack thread: %w", err)
 	}
@@ -146,7 +147,7 @@ func (r *PostgresJobsRepository) DeleteJob(id string, slackIntegrationID string)
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("job with id %s not found", id)
+		return core.ErrNotFound
 	}
 
 	return nil
@@ -170,7 +171,7 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(id string, updatedAt t
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("job with id %s not found", id)
+		return core.ErrNotFound
 	}
 
 	return nil

@@ -41,8 +41,8 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	claudeClient := clients.NewClaudeClient(permissionMode)
 	claudeService := services.NewClaudeService(claudeClient)
 	gitClient := clients.NewGitClient()
-	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService)
 	appState := models.NewAppState()
+	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService, appState)
 
 	agentID := core.NewID("a")
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
@@ -129,6 +129,13 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Git environment validation failed: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Cleanup stale ccagent branches
+	err = cmdRunner.gitUseCase.CleanupStaleBranches()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to cleanup stale branches: %v\n", err)
+		// Don't exit - this is not critical for agent operation
 	}
 
 	// Get WebSocket URL from environment variable with default fallback
@@ -279,7 +286,7 @@ func (cr *CmdRunner) setupProgramLogging() (string, error) {
 func (cr *CmdRunner) startPingRoutine(ctx context.Context, socketClient *socket.Socket) {
 	log.Info("📋 Starting ping routine")
 	go func() {
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(2 * time.Minute)
 		defer ticker.Stop()
 		for {
 			select {
@@ -384,6 +391,8 @@ You are being interacted with over Slack (the software). I want you to adjust yo
 - Use clear file paths with line numbers for easy navigation
 
 IMPORTANT: If you are editing a pull request description, never include or override the "Generated with [Claude Control](https://claudecontrol.com) from this [slack thread]" footer. The system will add this footer automatically. Do not include any "Generated with Claude Code" or similar footer text in PR descriptions.
+
+CRITICAL: Never autonomously create git commits or pull requests unless explicitly asked to do so by the user. Wait for explicit instructions before making any commits or creating PRs.
 `
 
 	claudeResult, err := cr.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions)
@@ -441,6 +450,9 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 	}
 
 	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
+
+	// Add delay to ensure git activity message comes after assistant message
+	time.Sleep(200 * time.Millisecond)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID); err != nil {
@@ -552,6 +564,9 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, socketClient *
 	}
 
 	log.Info("🤖 Sent assistant response (message ID: %s)", assistantMsg.ID)
+
+	// Add delay to ensure git activity message comes after assistant message
+	time.Sleep(200 * time.Millisecond)
 
 	// Send system message after assistant message for git activity
 	if err := cr.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID); err != nil {

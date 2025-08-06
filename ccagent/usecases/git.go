@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -9,12 +10,14 @@ import (
 
 	"ccagent/clients"
 	"ccagent/core/log"
+	"ccagent/models"
 	"ccagent/services"
 )
 
 type GitUseCase struct {
 	gitClient     *clients.GitClient
 	claudeService *services.ClaudeService
+	appState      *models.AppState
 }
 
 type AutoCommitResult struct {
@@ -26,10 +29,11 @@ type AutoCommitResult struct {
 	BranchName      string
 }
 
-func NewGitUseCase(gitClient *clients.GitClient, claudeService *services.ClaudeService) *GitUseCase {
+func NewGitUseCase(gitClient *clients.GitClient, claudeService *services.ClaudeService, appState *models.AppState) *GitUseCase {
 	return &GitUseCase{
 		gitClient:     gitClient,
 		claudeService: claudeService,
+		appState:      appState,
 	}
 }
 
@@ -507,16 +511,18 @@ Files changed:
 Actual code changes:
 %s
 
-Please generate a professional pull request description based on the actual changes shown above. Include:
-- ## Summary section with what was accomplished
-- ## Changes section with key modifications
-- Keep it concise but informative
+Generate a concise pull request description with:
+- ## Summary: High-level overview of what changed (2-3 bullet points max)
+- ## Why: Brief explanation of the motivation/reasoning behind the change
+
+Keep it professional but brief. Focus on WHAT changed at a high level and WHY the change was necessary, not detailed implementation specifics.
 
 Use proper markdown formatting.
 
 IMPORTANT: 
 - Do NOT include any "Generated with Claude Control" or similar footer text. I will add that separately.
-- Base your description on the actual commits and file changes shown above
+- Keep the summary concise - avoid listing every single file or detailed code changes
+- Focus on the business/functional purpose of the changes
 - Do NOT include any introductory text like "Here is your description"
 
 Respond with ONLY the PR body in markdown format, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
@@ -563,10 +569,16 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 		return fmt.Errorf("failed to get PR description: %w", err)
 	}
 
-	// Check if the expected footer is present
-	expectedFooter := fmt.Sprintf("Generated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
+	// Check if the expected footer pattern is present (using regex to handle different permalinks)
+	footerPattern := `---\s*\n.*Generated with \[Claude Control\]\(https://claudecontrol\.com\) from this \[slack thread\]\([^)]+\)`
 
-	if strings.Contains(currentDescription, expectedFooter) {
+	matched, err := regexp.MatchString(footerPattern, currentDescription)
+	if err != nil {
+		log.Error("❌ Failed to match footer pattern: %v", err)
+		return fmt.Errorf("failed to match footer pattern: %w", err)
+	}
+
+	if matched {
 		log.Info("✅ PR description already has correct Claude Control footer")
 		log.Info("📋 Completed successfully - footer validation passed")
 		return nil
@@ -623,6 +635,7 @@ func (g *GitUseCase) ValidateAndRestorePRDescriptionFooter(slackThreadLink strin
 	}
 
 	// Add the correct footer
+	expectedFooter := fmt.Sprintf("Generated with [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
 	restoredDescription := strings.Join(cleanedLines, "\n")
 	if restoredDescription != "" {
 		// Check if description already ends with a separator
@@ -684,4 +697,95 @@ func (g *GitUseCase) CheckPRStatusByID(prID string) (string, error) {
 
 	log.Info("📋 Completed successfully - PR status for ID %s: %s", prID, prStatus)
 	return prStatus, nil
+}
+
+func (g *GitUseCase) CleanupStaleBranches() error {
+	log.Info("📋 Starting to cleanup stale ccagent branches")
+
+	// Get all local branches
+	localBranches, err := g.gitClient.GetLocalBranches()
+	if err != nil {
+		log.Error("❌ Failed to get local branches: %v", err)
+		return fmt.Errorf("failed to get local branches: %w", err)
+	}
+
+	// Get current branch to avoid deleting it
+	currentBranch, err := g.gitClient.GetCurrentBranch()
+	if err != nil {
+		log.Error("❌ Failed to get current branch: %v", err)
+		return fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	// Get default branch to avoid deleting it
+	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	if err != nil {
+		log.Error("❌ Failed to get default branch: %v", err)
+		return fmt.Errorf("failed to get default branch: %w", err)
+	}
+
+	// Get all tracked job branches from app state
+	trackedJobs := g.appState.GetAllJobs()
+	trackedBranches := make(map[string]bool)
+	for _, jobData := range trackedJobs {
+		if jobData.BranchName != "" {
+			trackedBranches[jobData.BranchName] = true
+		}
+	}
+
+	// Filter branches for cleanup
+	var branchesToDelete []string
+	protectedBranches := []string{"main", "master", currentBranch, defaultBranch}
+
+	for _, branch := range localBranches {
+		// Only process ccagent/ branches
+		if !strings.HasPrefix(branch, "ccagent/") {
+			continue
+		}
+
+		// Skip protected branches
+		isProtected := false
+		for _, protected := range protectedBranches {
+			if branch == protected {
+				isProtected = true
+				break
+			}
+		}
+		if isProtected {
+			log.Info("⚠️ Skipping protected branch: %s", branch)
+			continue
+		}
+
+		// Skip tracked branches
+		if trackedBranches[branch] {
+			log.Info("⚠️ Skipping tracked branch: %s", branch)
+			continue
+		}
+
+		// This branch is stale - mark for deletion
+		branchesToDelete = append(branchesToDelete, branch)
+	}
+
+	if len(branchesToDelete) == 0 {
+		log.Info("✅ No stale ccagent branches found")
+		log.Info("📋 Completed successfully - no stale branches to cleanup")
+		return nil
+	}
+
+	log.Info("🧹 Found %d stale ccagent branches to delete", len(branchesToDelete))
+
+	// Delete each stale branch
+	deletedCount := 0
+	for _, branch := range branchesToDelete {
+		if err := g.gitClient.DeleteLocalBranch(branch); err != nil {
+			log.Error("❌ Failed to delete stale branch %s: %v", branch, err)
+			// Continue with other branches even if one fails
+			continue
+		}
+		deletedCount++
+		log.Info("🗑️ Deleted stale branch: %s", branch)
+	}
+
+	log.Info("✅ Successfully deleted %d out of %d stale ccagent branches", deletedCount, len(branchesToDelete))
+	log.Info("📋 Completed successfully - cleaned up stale branches")
+	return nil
 }

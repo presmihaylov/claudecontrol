@@ -113,7 +113,7 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(integra
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("slack integration not found or does not belong to user")
+		return core.ErrNotFound
 	}
 
 	return nil
@@ -148,7 +148,7 @@ func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx conte
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("slack integration not found or does not belong to user")
+		return core.ErrNotFound
 	}
 
 	return nil

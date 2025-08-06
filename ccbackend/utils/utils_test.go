@@ -97,6 +97,26 @@ func TestConvertMarkdownToSlack(t *testing.T) {
 				input:    "This is not # a heading",
 				expected: "This is not # a heading",
 			},
+			{
+				name:     "Already Slack formatted text (single asterisks)",
+				input:    "*Everything working successfully*",
+				expected: "*Everything working successfully*",
+			},
+			{
+				name:     "Mixed Slack and Markdown formatting",
+				input:    "*Already bold* and **needs conversion**",
+				expected: "*Already bold* and *needs conversion*",
+			},
+			{
+				name:     "Complex message with mixed formatting",
+				input:    "Excellent! *Everything working successfully* :white_check_mark:\n\n*Summary*\n\nI've successfully completed all the requested tasks:\n\n*:white_check_mark: **DB Layer Updates*** - Modified all database layer components",
+				expected: "Excellent! *Everything working successfully* :white_check_mark:\n\n*Summary*\n\nI've successfully completed all the requested tasks:\n\n*:white_check_mark: *DB Layer Updates** - Modified all database layer components",
+			},
+			{
+				name:     "Heading with bold markdown inside",
+				input:    "## 🧪 **GitUseCase Testing Implementation Complete**\n### **✅ Interface Extraction**\n- **GitClientInterface**: 23 methods covering all Git operations",
+				expected: "*🧪 GitUseCase Testing Implementation Complete*\n*✅ Interface Extraction*\n- *GitClientInterface*: 23 methods covering all Git operations",
+			},
 		}
 
 		for _, tt := range tests {
