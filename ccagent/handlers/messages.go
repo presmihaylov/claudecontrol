@@ -344,12 +344,6 @@ func (mh *MessageHandler) handleCheckIdleJobs(msg models.BaseMessage, socketClie
 func (mh *MessageHandler) checkJobIdleness(jobID string, jobData models.JobData, socketClient *socket.Socket) error {
 	log.Info("📋 Starting to check idleness for job %s", jobID)
 
-	// Switch to the job's branch to check PR status
-	if err := mh.gitUseCase.SwitchToJobBranch(jobData.BranchName); err != nil {
-		log.Error("❌ Failed to switch to job branch %s: %v", jobData.BranchName, err)
-		return fmt.Errorf("failed to switch to job branch %s: %w", jobData.BranchName, err)
-	}
-
 	var prStatus string
 	var err error
 

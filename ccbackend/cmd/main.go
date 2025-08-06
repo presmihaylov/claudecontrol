@@ -109,7 +109,7 @@ func run() error {
 	wsClient.RegisterMessageHandler(alertMiddleware.WrapMessageHandler(wsHandler.HandleMessage))
 
 	// Start periodic broadcast of CheckIdleJobs, cleanup of inactive agents, and processing of queued jobs
-	cleanupTicker := time.NewTicker(2 * time.Minute)
+	cleanupTicker := time.NewTicker(1 * time.Minute)
 	go func() {
 		for range cleanupTicker.C {
 			_ = alertMiddleware.WrapBackgroundTask("ProcessQueuedJobs", coreUseCase.ProcessQueuedJobs)()
