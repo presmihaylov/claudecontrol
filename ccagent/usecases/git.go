@@ -467,8 +467,11 @@ CRITICAL: Your response must contain ONLY the PR title text. Do not include:
 - Quotes around the title
 - "Here is the title:" or similar phrases
 - Any other text whatsoever
+- Do NOT execute any git or gh commands
+- Do NOT create, update, or modify any pull requests
+- Do NOT perform any actions - this is a text-only request
 
-Respond with ONLY the short title, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
+Respond with ONLY the short title text, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
 
 	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
@@ -543,8 +546,11 @@ CRITICAL: Your response must contain ONLY the PR description in markdown format.
 - Any text before or after the description
 - Any commentary about the changes
 - Any other text whatsoever
+- Do NOT execute any git or gh commands
+- Do NOT create, update, or modify any pull requests
+- Do NOT perform any actions - this is a text-only request
 
-Respond with ONLY the PR body in markdown format, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
+Respond with ONLY the PR description in markdown format, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
 
 	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
@@ -928,8 +934,11 @@ CRITICAL: Your response must contain ONLY the PR title text. Do not include:
 - "The title should be:" or similar phrases
 - Commentary about whether you updated it or not
 - Any other text whatsoever
+- Do NOT execute any git or gh commands
+- Do NOT create, update, or modify any pull requests
+- Do NOT perform any actions - this is a text-only request
 
-Respond with ONLY the title (updated or unchanged), nothing else.`, currentTitle, branchName, commitInfo, diffSummary)
+Respond with ONLY the title text (updated or unchanged), nothing else.`, currentTitle, branchName, commitInfo, diffSummary)
 
 	result, err := g.claudeService.StartNewConversation(prompt)
 	if err != nil {
@@ -1014,6 +1023,9 @@ CRITICAL: Your response must contain ONLY the PR description in markdown format.
 - Any text before or after the description
 - Any analysis of the changes
 - Any other text whatsoever
+- Do NOT execute any git or gh commands
+- Do NOT create, update, or modify any pull requests
+- Do NOT perform any actions - this is a text-only request
 
 Respond with ONLY the PR description in markdown format, nothing else.`, currentDescriptionClean, branchName, commitInfo, diffSummary)
 
