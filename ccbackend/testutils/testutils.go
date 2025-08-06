@@ -67,21 +67,17 @@ func CreateTestContext(user *models.User) context.Context {
 	return appctx.SetUser(ctx, user)
 }
 
-// CreateTestSlackIntegration creates a test slack integration for testing
-func CreateTestSlackIntegration(t *testing.T, slackIntegrationsRepo *db.PostgresSlackIntegrationsRepository, userID string) *models.SlackIntegration {
+// CreateTestSlackIntegration creates a test slack integration model for testing
+func CreateTestSlackIntegration(userID string) *models.SlackIntegration {
 	integrationID := core.NewID("si")
 	teamIDSuffix := core.NewID("team")
 	tokenSuffix := core.NewID("tok")
 
-	testIntegration := &models.SlackIntegration{
+	return &models.SlackIntegration{
 		ID:             integrationID,
 		SlackTeamID:    "test-team-" + teamIDSuffix,
 		SlackAuthToken: "xoxb-test-token-" + tokenSuffix,
 		SlackTeamName:  "Test Team",
 		UserID:         userID,
 	}
-
-	err := slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
-	require.NoError(t, err, "Failed to create test slack integration")
-	return testIntegration
 }
