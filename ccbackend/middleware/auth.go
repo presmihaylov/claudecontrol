@@ -22,7 +22,6 @@ type ClerkAuthMiddleware struct {
 
 // NewClerkAuthMiddleware creates a new authentication middleware instance
 func NewClerkAuthMiddleware(usersService services.UsersService, clerkSecretKey string) *ClerkAuthMiddleware {
-	// Create JWKS client for JWT verification
 	config := &clerk.ClientConfig{
 		BackendConfig: clerk.BackendConfig{
 			Key: clerk.String(clerkSecretKey),
@@ -40,21 +39,17 @@ func NewClerkAuthMiddleware(usersService services.UsersService, clerkSecretKey s
 func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("🔐 Authentication middleware processing request from %s", r.RemoteAddr)
-
-		// Extract bearer token from Authorization header
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			log.Printf("❌ Missing Authorization header")
 			m.writeErrorResponse(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-
 		if !strings.HasPrefix(authHeader, "Bearer ") {
 			log.Printf("❌ Invalid Authorization header format")
 			m.writeErrorResponse(w, "invalid authorization header format", http.StatusUnauthorized)
 			return
 		}
-
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		if token == "" {
 			log.Printf("❌ Empty bearer token")
@@ -74,8 +69,6 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		log.Printf("✅ JWT token verified successfully for user: %s", claims.Subject)
-
-		// Get or create user in database
 		user, err := m.usersService.GetOrCreateUser(r.Context(), "clerk", claims.Subject)
 		if err != nil {
 			log.Printf("❌ Failed to get or create user: %v", err)
@@ -84,12 +77,9 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		log.Printf("✅ User authenticated successfully: %s", user.ID)
-
-		// Add full user entity to request context
 		ctx := appctx.SetUser(r.Context(), user)
 		r = r.WithContext(ctx)
 
-		// Call the next handler
 		next(w, r)
 	}
 }
