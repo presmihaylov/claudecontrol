@@ -1,4 +1,4 @@
-package services
+package core
 
 // ClaudeParseError represents a failure to parse Claude output with error log file path
 type ClaudeParseError struct {
