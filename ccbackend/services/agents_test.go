@@ -63,8 +63,8 @@ func TestAgentsService(t *testing.T) {
 			}()
 
 			assert.NotEmpty(t, agent.ID)
-			assert.NotNil(t, agent.CcagentID)
-			assert.Equal(t, agentID, agent.CcagentID)
+			assert.NotNil(t, agent.CCAgentID)
+			assert.Equal(t, agentID, agent.CCAgentID)
 			// Verify agent has no job assignments
 			jobs, err := agentsService.GetActiveAgentJobAssignments(agent.ID, slackIntegrationID)
 			require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestAgentsService(t *testing.T) {
 			assert.Equal(t, agent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
 			assert.Equal(t, testIntegration.ID, fetchedAgent.SlackIntegrationID)
-			assert.Equal(t, agent.CcagentID, fetchedAgent.AgentID)
+			assert.Equal(t, agent.CCAgentID, fetchedAgent.AgentID)
 		})
 
 		t.Run("WithAssignedJobID", func(t *testing.T) {
@@ -160,7 +160,7 @@ func TestAgentsService(t *testing.T) {
 			// Should return the same ID (existing record was updated)
 			assert.Equal(t, originalID, agent2.ID)
 			assert.Equal(t, wsConnectionID2, agent2.WSConnectionID)
-			assert.Equal(t, agentID, agent2.CcagentID)
+			assert.Equal(t, agentID, agent2.CCAgentID)
 			assert.Equal(t, originalCreatedAt, agent2.CreatedAt)
 			assert.True(t, agent2.UpdatedAt.After(agent1.UpdatedAt))
 
@@ -170,7 +170,7 @@ func TestAgentsService(t *testing.T) {
 
 			agentCount := 0
 			for _, agent := range allAgents {
-				if agent.CcagentID == agentID {
+				if agent.CCAgentID == agentID {
 					agentCount++
 				}
 			}
@@ -194,8 +194,8 @@ func TestAgentsService(t *testing.T) {
 
 			// Should have different IDs
 			assert.NotEqual(t, agent1.ID, agent2.ID)
-			assert.Equal(t, agentID1, agent1.CcagentID)
-			assert.Equal(t, agentID2, agent2.CcagentID)
+			assert.Equal(t, agentID1, agent1.CCAgentID)
+			assert.Equal(t, agentID2, agent2.CCAgentID)
 		})
 	})
 
