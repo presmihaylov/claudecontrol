@@ -308,7 +308,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 	}
 
 	// Get job to access thread timestamp
-	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID.String())
+	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -350,7 +350,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 	}
 
 	// Get job to access thread timestamp
-	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID.String())
+	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -1022,7 +1022,7 @@ func (s *CoreUseCase) sendSlackMessage(slackIntegrationID, channelID, threadTS, 
 	log.Printf("📋 Starting to send message to channel %s, thread %s: %s", channelID, threadTS, message)
 
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
+	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
