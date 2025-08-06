@@ -273,7 +273,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	// Create shared test user and slack integration
 	testUser := testutils.CreateTestUser(t, usersRepo)
-	testIntegration := testutils.CreateTestSlackIntegration(t, slackIntegrationsRepo, testUser.ID)
+
+	testIntegration := testutils.CreateTestSlackIntegration(testUser.ID)
+	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
+	require.NoError(t, err, "Failed to create test slack integration")
 	defer func() {
 		_ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
 	}()
@@ -948,7 +951,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			slackIntegrationsRepo2 := db.NewPostgresSlackIntegrationsRepository(dbConn2, cfg.DatabaseSchema)
 
 			testUser2 := testutils.CreateTestUser(t, usersRepo2)
-			testIntegration2 := testutils.CreateTestSlackIntegration(t, slackIntegrationsRepo2, testUser2.ID)
+			testIntegration2 := testutils.CreateTestSlackIntegration(testUser2.ID)
+			err = slackIntegrationsRepo2.CreateSlackIntegration(context.Background(), testIntegration2)
+			require.NoError(t, err, "Failed to create test slack integration")
+
 			defer func() {
 				_ = slackIntegrationsRepo2.DeleteSlackIntegrationByID(context.Background(), testIntegration2.ID, testUser2.ID)
 			}()
