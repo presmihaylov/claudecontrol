@@ -345,6 +345,12 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 			prURL = ""
 		}
 
+		// Update PR title and description based on new changes
+		if err := g.updatePRTitleAndDescriptionIfNeeded(branchName, slackThreadLink); err != nil {
+			log.Error("❌ Failed to update PR title/description: %v", err)
+			// Log error but don't fail the entire operation
+		}
+
 		log.Info("📋 Completed successfully - updated existing PR")
 		return &AutoCommitResult{
 			JustCreatedPR:   false,
@@ -788,4 +794,221 @@ func (g *GitUseCase) CleanupStaleBranches() error {
 	log.Info("✅ Successfully deleted %d out of %d stale ccagent branches", deletedCount, len(branchesToDelete))
 	log.Info("📋 Completed successfully - cleaned up stale branches")
 	return nil
+}
+
+func (g *GitUseCase) updatePRTitleAndDescriptionIfNeeded(branchName, slackThreadLink string) error {
+	log.Info("📋 Starting to update PR title and description if needed for branch: %s", branchName)
+
+	// Get current PR title and description
+	currentTitle, err := g.gitClient.GetPRTitle(branchName)
+	if err != nil {
+		log.Error("❌ Failed to get current PR title: %v", err)
+		return fmt.Errorf("failed to get current PR title: %w", err)
+	}
+
+	currentDescription, err := g.gitClient.GetPRDescription(branchName)
+	if err != nil {
+		log.Error("❌ Failed to get current PR description: %v", err)
+		return fmt.Errorf("failed to get current PR description: %w", err)
+	}
+
+	// Generate updated PR title using Claude
+	updatedTitle, err := g.generateUpdatedPRTitleWithClaude(branchName, currentTitle)
+	if err != nil {
+		log.Error("❌ Failed to generate updated PR title with Claude: %v", err)
+		return fmt.Errorf("failed to generate updated PR title with Claude: %w", err)
+	}
+
+	// Generate updated PR description using Claude
+	updatedDescription, err := g.generateUpdatedPRDescriptionWithClaude(branchName, currentDescription, slackThreadLink)
+	if err != nil {
+		log.Error("❌ Failed to generate updated PR description with Claude: %v", err)
+		return fmt.Errorf("failed to generate updated PR description with Claude: %w", err)
+	}
+
+	// Update title if it has changed
+	if strings.TrimSpace(updatedTitle) != strings.TrimSpace(currentTitle) {
+		log.Info("🔄 PR title has changed, updating...")
+		if err := g.gitClient.UpdatePRTitle(branchName, updatedTitle); err != nil {
+			log.Error("❌ Failed to update PR title: %v", err)
+			return fmt.Errorf("failed to update PR title: %w", err)
+		}
+		log.Info("✅ Successfully updated PR title")
+	} else {
+		log.Info("ℹ️ PR title remains the same - no update needed")
+	}
+
+	// Update description if it has changed
+	if strings.TrimSpace(updatedDescription) != strings.TrimSpace(currentDescription) {
+		log.Info("🔄 PR description has changed, updating...")
+		if err := g.gitClient.UpdatePRDescription(branchName, updatedDescription); err != nil {
+			log.Error("❌ Failed to update PR description: %v", err)
+			return fmt.Errorf("failed to update PR description: %w", err)
+		}
+		log.Info("✅ Successfully updated PR description")
+	} else {
+		log.Info("ℹ️ PR description remains the same - no update needed")
+	}
+
+	log.Info("📋 Completed successfully - updated PR title and description if needed")
+	return nil
+}
+
+func (g *GitUseCase) generateUpdatedPRTitleWithClaude(branchName, currentTitle string) (string, error) {
+	log.Info("🤖 Asking Claude to generate updated PR title")
+
+	// Get default branch to compare against
+	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	if err != nil {
+		return "", fmt.Errorf("failed to get default branch: %w", err)
+	}
+
+	// Get recent commits since the branch was created
+	commitMessages, err := g.gitClient.GetBranchCommitMessages(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch commit messages: %w", err)
+	}
+
+	// Get diff summary
+	diffSummary, err := g.gitClient.GetBranchDiffSummary(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch diff summary: %w", err)
+	}
+
+	// Build commit info for context
+	commitInfo := "No commits found"
+	if len(commitMessages) > 0 {
+		commitInfo = fmt.Sprintf("All commits on this branch:\n%s", strings.Join(commitMessages, "\n"))
+	}
+
+	prompt := fmt.Sprintf(`I have an existing pull request with this title:
+CURRENT TITLE: "%s"
+
+The branch "%s" now has these commits and changes:
+
+%s
+
+Files changed:
+%s
+
+INSTRUCTIONS:
+- Review the current title and the latest changes made to this branch
+- ONLY update the title if the current title has become obsolete or doesn't accurately reflect the work
+- If the current title still accurately captures the main purpose, return it unchanged
+- If updating, make it additive - build upon the existing title rather than replacing it entirely
+- Maximum 40 characters (STRICT LIMIT)
+- Start with action verb (Add, Fix, Update, Improve, etc.)
+- Be concise and specific
+- Don't mention "Claude", "agent", or implementation details
+
+Examples of when to update:
+- Current: "Fix error handling" → New commits add user auth → Updated: "Fix error handling and add user auth"
+- Current: "Add basic feature" → New commits improve performance → Updated: "Add feature with performance improvements"
+
+Examples of when NOT to update:
+- Current: "Fix authentication issues" → New commits fix more auth bugs → Keep: "Fix authentication issues"
+- Current: "Add user dashboard" → New commits fix small UI bugs → Keep: "Add user dashboard"
+
+Respond with ONLY the title (updated or unchanged), nothing else.`, currentTitle, branchName, commitInfo, diffSummary)
+
+	result, err := g.claudeService.StartNewConversation(prompt)
+	if err != nil {
+		return "", fmt.Errorf("claude failed to generate updated PR title: %w", err)
+	}
+
+	return strings.TrimSpace(result.Output), nil
+}
+
+func (g *GitUseCase) generateUpdatedPRDescriptionWithClaude(branchName, currentDescription, slackThreadLink string) (string, error) {
+	log.Info("🤖 Asking Claude to generate updated PR description")
+
+	// Get default branch to compare against
+	defaultBranch, err := g.gitClient.GetDefaultBranch()
+	if err != nil {
+		return "", fmt.Errorf("failed to get default branch: %w", err)
+	}
+
+	// Get recent commits since the branch was created
+	commitMessages, err := g.gitClient.GetBranchCommitMessages(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch commit messages: %w", err)
+	}
+
+	// Get diff summary
+	diffSummary, err := g.gitClient.GetBranchDiffSummary(branchName, defaultBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch diff summary: %w", err)
+	}
+
+	// Build commit info for context
+	commitInfo := "No commits found"
+	if len(commitMessages) > 0 {
+		commitInfo = strings.Join(commitMessages, "\n- ")
+		commitInfo = "- " + commitInfo // Add bullet to first item
+	}
+
+	// Remove existing footer from current description for analysis
+	currentDescriptionClean := g.removeFooterFromDescription(currentDescription)
+
+	prompt := fmt.Sprintf(`I have an existing pull request with this description:
+
+CURRENT DESCRIPTION:
+%s
+
+The branch "%s" now has these commits and changes:
+
+All commits on this branch:
+%s
+
+Files changed:
+%s
+
+INSTRUCTIONS:
+- Review the current description and the latest changes made to this branch
+- ONLY update the description if significant new functionality has been added that warrants description updates
+- If the current description still accurately captures the work, return it unchanged (without footer)
+- If updating, make it additive - enhance the existing description rather than replacing it
+- Keep the same structure: ## Summary and ## Why sections
+- Focus on WHAT changed at a high level and WHY the change was necessary
+- Use proper markdown formatting
+- Keep it professional but brief
+- Do NOT mention implementation details
+
+Examples of when to update:
+- Current description only mentions "Fix auth bug" → New commits add complete user management → Update to include both
+- Current description is "Add dashboard" → New commits add charts and filters → Update to "Add dashboard with charts and filtering"
+
+Examples of when NOT to update:
+- Current description covers "User authentication system" → New commits just fix small auth bugs → Keep current
+- Current description mentions "Performance improvements" → New commits make minor tweaks → Keep current
+
+IMPORTANT: 
+- Do NOT include any "Generated with Claude Control" or similar footer text. I will add that separately.
+- Return only the description content in markdown format, nothing else.
+- If no update is needed, return the current description exactly as provided (minus any footer).
+
+Respond with ONLY the PR description in markdown format, nothing else.`, currentDescriptionClean, branchName, commitInfo, diffSummary)
+
+	result, err := g.claudeService.StartNewConversation(prompt)
+	if err != nil {
+		return "", fmt.Errorf("claude failed to generate updated PR description: %w", err)
+	}
+
+	// Append footer with Slack thread link
+	cleanBody := strings.TrimSpace(result.Output)
+	finalBody := cleanBody + fmt.Sprintf("\n\n---\nGenerated by [Claude Control](https://claudecontrol.com) from this [slack thread](%s)", slackThreadLink)
+
+	return finalBody, nil
+}
+
+func (g *GitUseCase) removeFooterFromDescription(description string) string {
+	// Remove the Claude Control footer to get clean description for analysis
+	footerPattern := `---\s*\n.*Generated by \[Claude Control\]\(https://claudecontrol\.com\) from this \[slack thread\]\([^)]+\)`
+
+	// Use regex to remove the footer section
+	re := regexp.MustCompile(footerPattern)
+	cleanDescription := re.ReplaceAllString(description, "")
+
+	// Clean up any trailing whitespace
+	return strings.TrimSpace(cleanDescription)
 }
