@@ -38,7 +38,15 @@ type CmdRunner struct {
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	log.Info("📋 Starting to initialize CmdRunner")
 	claudeClient := clients.NewClaudeClient(permissionMode)
-	claudeService := services.NewClaudeService(claudeClient)
+
+	// Setup default log directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
+	}
+	logDir := filepath.Join(homeDir, ".config", "ccagent", "logs")
+
+	claudeService := services.NewClaudeService(claudeClient, logDir)
 	gitClient := clients.NewGitClient()
 	appState := models.NewAppState()
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService, appState)

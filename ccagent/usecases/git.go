@@ -15,7 +15,7 @@ import (
 )
 
 type GitUseCase struct {
-	gitClient     *clients.GitClient
+	gitClient     clients.GitClient
 	claudeService *services.ClaudeService
 	appState      *models.AppState
 }
@@ -29,7 +29,7 @@ type AutoCommitResult struct {
 	BranchName      string
 }
 
-func NewGitUseCase(gitClient *clients.GitClient, claudeService *services.ClaudeService, appState *models.AppState) *GitUseCase {
+func NewGitUseCase(gitClient clients.GitClient, claudeService *services.ClaudeService, appState *models.AppState) *GitUseCase {
 	return &GitUseCase{
 		gitClient:     gitClient,
 		claudeService: claudeService,

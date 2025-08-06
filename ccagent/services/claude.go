@@ -18,30 +18,26 @@ type ClaudeResult struct {
 }
 
 type ClaudeService struct {
-	claudeClient *clients.ClaudeClient
+	claudeClient clients.ClaudeClient
+	logDir       string
 }
 
-func NewClaudeService(claudeClient *clients.ClaudeClient) *ClaudeService {
+func NewClaudeService(claudeClient clients.ClaudeClient, logDir string) *ClaudeService {
 	return &ClaudeService{
 		claudeClient: claudeClient,
+		logDir:       logDir,
 	}
 }
 
 // writeClaudeErrorLog writes Claude output to a timestamped log file and returns the filepath
 func (c *ClaudeService) writeClaudeErrorLog(rawOutput string) (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get user home directory: %w", err)
-	}
-
-	logDir := filepath.Join(homeDir, ".config", "ccagent", "logs")
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(c.logDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create log directory: %w", err)
 	}
 
 	timestamp := time.Now().Format("20060102-150405")
 	filename := fmt.Sprintf("claude-error-%s.log", timestamp)
-	filepath := filepath.Join(logDir, filename)
+	filepath := filepath.Join(c.logDir, filename)
 
 	if err := os.WriteFile(filepath, []byte(rawOutput), 0600); err != nil {
 		return "", fmt.Errorf("failed to write log file: %w", err)
