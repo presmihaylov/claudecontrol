@@ -37,7 +37,7 @@ func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID str
 		ID:                 core.NewID("ag"),
 		WSConnectionID:     wsConnectionID,
 		SlackIntegrationID: slackIntegrationID,
-		CcagentID:          agentID,
+		CCAgentID:          agentID,
 	}
 
 	if err := s.agentsRepo.UpsertActiveAgent(agent); err != nil {
@@ -226,7 +226,7 @@ func (s *AgentsService) AssignAgentToJob(agentID, jobID string, slackIntegration
 
 	assignment := &models.AgentJobAssignment{
 		ID:                 core.NewID("aji"),
-		CcagentID:          agentID,
+		CCAgentID:          agentID,
 		JobID:              jobID,
 		SlackIntegrationID: slackIntegrationID,
 	}

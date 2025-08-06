@@ -33,7 +33,7 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(agent *models.ActiveAgent) 
 			last_active_at = NOW()
 		RETURNING id, ws_connection_id, slack_integration_id, ccagent_id, created_at, updated_at, last_active_at`, r.schema)
 
-	err := r.db.QueryRowx(query, agent.ID, agent.WSConnectionID, agent.SlackIntegrationID, agent.CcagentID).StructScan(agent)
+	err := r.db.QueryRowx(query, agent.ID, agent.WSConnectionID, agent.SlackIntegrationID, agent.CCAgentID).StructScan(agent)
 	if err != nil {
 		return fmt.Errorf("failed to upsert active agent: %w", err)
 	}
@@ -158,7 +158,7 @@ func (r *PostgresAgentsRepository) AssignAgentToJob(assignment *models.AgentJobA
 		ON CONFLICT (ccagent_id, job_id) DO NOTHING
 		RETURNING id, ccagent_id, job_id, slack_integration_id, assigned_at`, r.schema)
 
-	err := r.db.QueryRowx(query, assignment.ID, assignment.CcagentID, assignment.JobID, assignment.SlackIntegrationID).StructScan(assignment)
+	err := r.db.QueryRowx(query, assignment.ID, assignment.CCAgentID, assignment.JobID, assignment.SlackIntegrationID).StructScan(assignment)
 	if err != nil {
 		// Check if it's a no rows error (conflict occurred, nothing was inserted)
 		if err == sql.ErrNoRows {
