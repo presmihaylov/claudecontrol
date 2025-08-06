@@ -101,8 +101,8 @@ func (r *PostgresAgentsRepository) GetAvailableAgents(slackIntegrationID string)
 	query := fmt.Sprintf(`
 		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.ccagent_id, a.created_at, a.updated_at, a.last_active_at 
 		FROM %s.active_agents a
-		LEFT JOIN %s.agent_job_assignments aja ON a.id = aja.ccagent_id
-		WHERE aja.ccagent_id IS NULL AND a.slack_integration_id = $1
+		LEFT JOIN %s.agent_job_assignments aja ON a.id = aja.agent_id
+		WHERE aja.agent_id IS NULL AND a.slack_integration_id = $1
 		ORDER BY a.created_at ASC`, r.schema, r.schema)
 
 	var agents []*models.ActiveAgent
@@ -134,7 +134,7 @@ func (r *PostgresAgentsRepository) GetAgentByJobID(jobID string, slackIntegratio
 	query := fmt.Sprintf(`
 		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.ccagent_id, a.created_at, a.updated_at, a.last_active_at 
 		FROM %s.active_agents a
-		JOIN %s.agent_job_assignments aja ON a.id = aja.ccagent_id
+		JOIN %s.agent_job_assignments aja ON a.id = aja.agent_id
 		WHERE aja.job_id = $1 AND aja.slack_integration_id = $2
 		LIMIT 1`, r.schema, r.schema)
 
@@ -153,12 +153,12 @@ func (r *PostgresAgentsRepository) GetAgentByJobID(jobID string, slackIntegratio
 func (r *PostgresAgentsRepository) AssignAgentToJob(assignment *models.AgentJobAssignment) error {
 	// Use ON CONFLICT DO NOTHING to handle duplicate assignments gracefully
 	query := fmt.Sprintf(`
-		INSERT INTO %s.agent_job_assignments (id, ccagent_id, job_id, slack_integration_id, assigned_at) 
+		INSERT INTO %s.agent_job_assignments (id, agent_id, job_id, slack_integration_id, assigned_at) 
 		VALUES ($1, $2, $3, $4, NOW()) 
-		ON CONFLICT (ccagent_id, job_id) DO NOTHING
-		RETURNING id, ccagent_id, job_id, slack_integration_id, assigned_at`, r.schema)
+		ON CONFLICT (agent_id, job_id) DO NOTHING
+		RETURNING id, agent_id, job_id, slack_integration_id, assigned_at`, r.schema)
 
-	err := r.db.QueryRowx(query, assignment.ID, assignment.CCAgentID, assignment.JobID, assignment.SlackIntegrationID).StructScan(assignment)
+	err := r.db.QueryRowx(query, assignment.ID, assignment.AgentID, assignment.JobID, assignment.SlackIntegrationID).StructScan(assignment)
 	if err != nil {
 		// Check if it's a no rows error (conflict occurred, nothing was inserted)
 		if err == sql.ErrNoRows {
@@ -174,7 +174,7 @@ func (r *PostgresAgentsRepository) AssignAgentToJob(assignment *models.AgentJobA
 func (r *PostgresAgentsRepository) UnassignAgentFromJob(agentID, jobID string, slackIntegrationID string) error {
 	query := fmt.Sprintf(`
 		DELETE FROM %s.agent_job_assignments 
-		WHERE ccagent_id = $1 AND job_id = $2 AND slack_integration_id = $3`, r.schema)
+		WHERE agent_id = $1 AND job_id = $2 AND slack_integration_id = $3`, r.schema)
 
 	result, err := r.db.Exec(query, agentID, jobID, slackIntegrationID)
 	if err != nil {
@@ -197,7 +197,7 @@ func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(agentID string, 
 	query := fmt.Sprintf(`
 		SELECT job_id 
 		FROM %s.agent_job_assignments
-		WHERE ccagent_id = $1 AND slack_integration_id = $2
+		WHERE agent_id = $1 AND slack_integration_id = $2
 		ORDER BY assigned_at ASC`, r.schema)
 
 	var jobIDs []string
