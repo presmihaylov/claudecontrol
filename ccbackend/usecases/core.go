@@ -433,22 +433,17 @@ func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slac
 		return nil, err
 	}
 
-	// Get message with reactions
-	msgs, _, _, err := slackClient.GetConversationReplies(&slack.GetConversationRepliesParameters{
-		ChannelID: channelID,
+	// Get reactions directly using GetReactions - much less rate limited
+	reactions, err := slackClient.GetReactions(slack.ItemRef{
+		Channel:   channelID,
 		Timestamp: messageTS,
-		Limit:     1,
-	})
+	}, slack.GetReactionsParameters{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get message: %w", err)
-	}
-
-	if len(msgs) == 0 {
-		return []string{}, nil
+		return nil, fmt.Errorf("failed to get reactions: %w", err)
 	}
 
 	var botReactions []string
-	for _, reaction := range msgs[0].Reactions {
+	for _, reaction := range reactions {
 		// Check if bot added this reaction
 		for _, user := range reaction.Users {
 			if user == botUserID {
