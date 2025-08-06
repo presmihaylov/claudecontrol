@@ -28,18 +28,16 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService *services.SessionService
-	claudeService  *services.ClaudeService
-	gitUseCase     *usecases.GitUseCase
-	appState       *models.AppState
-	logFilePath    string
-	agentID        string
-	reconnectChan  chan struct{}
+	claudeService *services.ClaudeService
+	gitUseCase    *usecases.GitUseCase
+	appState      *models.AppState
+	logFilePath   string
+	agentID       string
+	reconnectChan chan struct{}
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	log.Info("📋 Starting to initialize CmdRunner")
-	sessionService := services.NewSessionService()
 	claudeClient := clients.NewClaudeClient(permissionMode)
 	claudeService := services.NewClaudeService(claudeClient)
 	gitClient := clients.NewGitClient()
@@ -51,12 +49,11 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		sessionService: sessionService,
-		claudeService:  claudeService,
-		gitUseCase:     gitUseCase,
-		appState:       appState,
-		agentID:        agentID,
-		reconnectChan:  make(chan struct{}, 1),
+		claudeService: claudeService,
+		gitUseCase:    gitUseCase,
+		appState:      appState,
+		agentID:       agentID,
+		reconnectChan: make(chan struct{}, 1),
 	}, nil
 }
 
@@ -433,9 +430,8 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		SlackMessageID: payload.SlackMessageID,
 	}
 
-	msgID := core.NewID("msg")
 	assistantMsg := models.UnknownMessage{
-		ID:      msgID,
+		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
@@ -545,9 +541,8 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, socketClient *
 		SlackMessageID: payload.SlackMessageID,
 	}
 
-	msgID := core.NewID("msg")
 	assistantMsg := models.UnknownMessage{
-		ID:      msgID,
+		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
@@ -709,9 +704,8 @@ func (cr *CmdRunner) sendJobCompleteMessage(socketClient *socket.Socket, jobID, 
 		Reason: reason,
 	}
 
-	msgID := core.NewID("msg")
 	jobMsg := models.UnknownMessage{
-		ID:      msgID,
+		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeJobComplete,
 		Payload: payload,
 	}
@@ -731,9 +725,8 @@ func (cr *CmdRunner) sendSystemMessage(socketClient *socket.Socket, message, sla
 		SlackMessageID: slackMessageID,
 	}
 
-	msgID := core.NewID("msg")
 	sysMsg := models.UnknownMessage{
-		ID:      msgID,
+		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeSystemMessage,
 		Payload: payload,
 	}
@@ -755,9 +748,8 @@ func (cr *CmdRunner) sendErrorMessage(socketClient *socket.Socket, err error, sl
 }
 
 func (cr *CmdRunner) sendProcessingSlackMessage(socketClient *socket.Socket, slackMessageID string) error {
-	msgID := core.NewID("msg")
 	processingSlackMessageMsg := models.UnknownMessage{
-		ID:   msgID,
+		ID:   core.NewID("msg"),
 		Type: models.MessageTypeProcessingSlackMessage,
 		Payload: models.ProcessingSlackMessagePayload{
 			SlackMessageID: slackMessageID,
