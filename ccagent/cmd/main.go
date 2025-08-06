@@ -18,6 +18,7 @@ import (
 	"github.com/zishang520/socket.io-client-go/socket"
 
 	"ccagent/clients"
+	claudeclient "ccagent/clients/claude"
 	"ccagent/core"
 	"ccagent/core/log"
 	"ccagent/handlers"
@@ -37,8 +38,16 @@ type CmdRunner struct {
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	log.Info("📋 Starting to initialize CmdRunner")
-	claudeClient := clients.NewClaudeClient(permissionMode)
-	claudeService := services.NewClaudeService(claudeClient)
+
+	// Create log directory for Claude service
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
+	}
+	logDir := filepath.Join(homeDir, ".config", "ccagent", "logs")
+
+	claudeClient := claudeclient.NewClaudeClient(permissionMode)
+	claudeService := services.NewClaudeService(claudeClient, logDir)
 	gitClient := clients.NewGitClient()
 	appState := models.NewAppState()
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService, appState)
