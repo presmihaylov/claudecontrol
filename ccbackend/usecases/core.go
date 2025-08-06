@@ -462,20 +462,16 @@ func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slac
 }
 
 func getOldReactions(newEmoji string) []string {
-	switch newEmoji {
-	case "hourglass": // Message queued/waiting
-		return []string{"eyes", "white_check_mark", "x"}
-	case "eyes": // Agent actively processing
-		return []string{"hourglass", "white_check_mark", "hand", "x"}
-	case "white_check_mark": // Job completed
-		return []string{"hourglass", "eyes", "hand", "x"}
-	case "hand": // Agent waiting for next steps
-		return []string{"hourglass", "white_check_mark", "x"}
-	case "x": // Job abandoned
-		return []string{"hourglass", "eyes", "white_check_mark", "hand"}
-	default:
-		return []string{}
+	allReactions := []string{"hourglass", "eyes", "white_check_mark", "hand", "x"}
+	
+	var result []string
+	for _, reaction := range allReactions {
+		if reaction != newEmoji {
+			result = append(result, reaction)
+		}
 	}
+	
+	return result
 }
 
 func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji, slackIntegrationID string) error {
