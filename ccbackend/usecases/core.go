@@ -463,14 +463,14 @@ func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slac
 
 func getOldReactions(newEmoji string) []string {
 	allReactions := []string{"hourglass", "eyes", "white_check_mark", "hand", "x"}
-	
+
 	var result []string
 	for _, reaction := range allReactions {
 		if reaction != newEmoji {
 			result = append(result, reaction)
 		}
 	}
-	
+
 	return result
 }
 
