@@ -121,6 +121,19 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 		}
 	}
 
+	// Check if this is the latest message in the job and add hand emoji if waiting for next steps
+	latestMessage, err := s.jobsService.GetLatestProcessedMessageForJob(job.ID, slackIntegrationID)
+	if err != nil {
+		log.Printf("⚠️ Failed to get latest message for job %s: %v", job.ID, err)
+	} else if latestMessage != nil && latestMessage.ID == messageID {
+		// This is the latest message - agent is done processing, add hand emoji to top-level message
+		if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "hand", slackIntegrationID); err != nil {
+			log.Printf("⚠️ Failed to add hand emoji to job %s thread: %v", job.ID, err)
+		} else {
+			log.Printf("✋ Added hand emoji to job %s - agent waiting for next steps", job.ID)
+		}
+	}
+
 	log.Printf("📋 Completed successfully - sent assistant message to Slack thread %s", job.SlackThreadTS)
 	return nil
 }
@@ -278,6 +291,16 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 		return fmt.Errorf("failed to update slack message reaction: %w", err)
 	}
 
+	// For new messages in existing jobs, also remove hand emoji from top-level message and add eyes
+	if !isNewConversation {
+		// This is a new message in an existing job - remove hand emoji and add eyes to top-level message
+		if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "eyes", slackIntegrationID); err != nil {
+			log.Printf("⚠️ Failed to update top-level message reaction for job %s: %v", job.ID, err)
+		} else {
+			log.Printf("👀 Updated top-level message with eyes emoji for job %s - agent processing new message", job.ID)
+		}
+	}
+
 	// If message was queued, don't send to agent yet - background processor will handle it
 	if messageStatus == models.ProcessedSlackMessageStatusQueued {
 		log.Printf("📋 Message queued for background processing - job %s", job.ID)
@@ -406,7 +429,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji,
 	}
 
 	// Remove existing reactions
-	reactionsToRemove := []string{"eyes", "hourglass", "white_check_mark"}
+	reactionsToRemove := []string{"eyes", "hourglass", "white_check_mark", "hand"}
 	for _, emoji := range reactionsToRemove {
 		if err := slackClient.RemoveReaction(emoji, slack.ItemRef{
 			Channel:   channelID,
