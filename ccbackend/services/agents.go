@@ -226,7 +226,7 @@ func (s *AgentsService) AssignAgentToJob(agentID, jobID string, slackIntegration
 
 	assignment := &models.AgentJobAssignment{
 		ID:                 core.NewID("aji"),
-		CCAgentID:          agentID,
+		AgentID:            agentID,
 		JobID:              jobID,
 		SlackIntegrationID: slackIntegrationID,
 	}
