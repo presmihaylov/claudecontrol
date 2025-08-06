@@ -80,7 +80,7 @@ func TestAgentsService(t *testing.T) {
 			assert.Equal(t, agent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
 			assert.Equal(t, testIntegration.ID, fetchedAgent.SlackIntegrationID)
-			assert.Equal(t, agent.CCAgentID, fetchedAgent.AgentID)
+			assert.Equal(t, agent.CCAgentID, fetchedAgent.CCAgentID)
 		})
 
 		t.Run("WithAssignedJobID", func(t *testing.T) {
