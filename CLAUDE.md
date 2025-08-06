@@ -238,6 +238,10 @@ cd ccfrontend && bun run build && bun run lint  # Build and lint frontend with B
 
 ## Error Handling Guidelines
 - **Error Propagation**: Never log errors silently and proceed with control flow. Always propagate the error upstream unless explicitly instructed to log the error and ignore
+- **No Silent Failures**: Avoid patterns like `if err != nil { log.Printf(...); }` without returning the error. This hides failures and makes debugging difficult
+- **Proper Error Wrapping**: Use `fmt.Errorf("context: %w", err)` to wrap errors with context when propagating upstream
+- **Critical Operations**: For critical operations (database writes, external API calls, job cleanup), always return errors to the caller
+- **Log and Return**: When an error occurs, log it for debugging AND return it for proper handling: `log.Printf(...); return fmt.Errorf(...)`
 
 ## Service Layer Architecture Rules
 - **User-Scoped Entities**: All entities in the database should be scoped to a user ID. Never manage an entity without a user ID filter for security and data isolation
