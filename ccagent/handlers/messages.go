@@ -56,10 +56,6 @@ func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *so
 				log.Error("Failed to send error message: %v", sendErr)
 			}
 		}
-	case models.MessageTypeJobUnassigned:
-		if err := mh.handleJobUnassigned(msg, socketClient); err != nil {
-			log.Info("❌ Error handling JobUnassigned message: %v", err)
-		}
 	case models.MessageTypeCheckIdleJobs:
 		if err := mh.handleCheckIdleJobs(msg, socketClient); err != nil {
 			log.Info("❌ Error handling CheckIdleJobs message: %v", err)
@@ -308,19 +304,6 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 	}
 
 	log.Info("📋 Completed successfully - handled user message")
-	return nil
-}
-
-func (mh *MessageHandler) handleJobUnassigned(msg models.BaseMessage, _ *socket.Socket) error {
-	log.Info("📋 Starting to handle job unassigned message")
-	var payload models.JobUnassignedPayload
-	if err := unmarshalPayload(msg.Payload, &payload); err != nil {
-		log.Info("❌ Failed to unmarshal job unassigned payload: %v", err)
-		return fmt.Errorf("failed to unmarshal job unassigned payload: %w", err)
-	}
-
-	log.Info("🚫 Job has been unassigned from this agent")
-	log.Info("📋 Completed successfully - handled job unassigned message")
 	return nil
 }
 
