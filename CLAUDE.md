@@ -451,12 +451,6 @@ This pattern ensures consistency, maintainability, and proper separation of conc
 ## Test Debugging Guidelines
 - If you detect that the database is not working when you run tests, you should ask the user to run it for you
 
-## Pull Request Guidelines
-- **NEVER autonomously create commits or pull requests** unless explicitly asked to do so by the user
-- **When asked for PR titles/descriptions ONLY**: Provide the title or description text but DO NOT execute any git or gh commands
-- **Wait for explicit instructions**: Only create commits or PRs when the user specifically asks you to "create a PR" or "commit these changes"
-- **Text-only responses**: When generating PR titles/descriptions, return only the text content without taking any actions
-
 ## Frontend Architecture
 
 ### Authentication & Routing
