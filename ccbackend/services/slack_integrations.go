@@ -33,11 +33,9 @@ func NewSlackIntegrationsService(repo *db.PostgresSlackIntegrationsRepository, s
 
 func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirectURL string, userID string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to create Slack integration for user: %s", userID)
-
 	if slackAuthCode == "" {
 		return nil, fmt.Errorf("slack auth code cannot be empty")
 	}
-
 	if !core.IsValidULID(userID) {
 		return nil, fmt.Errorf("user ID must be a valid ULID")
 	}
@@ -56,11 +54,9 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirec
 	if teamID == "" {
 		return nil, fmt.Errorf("team ID not found in Slack OAuth response")
 	}
-
 	if teamName == "" {
 		return nil, fmt.Errorf("team name not found in Slack OAuth response")
 	}
-
 	if botAccessToken == "" {
 		return nil, fmt.Errorf("bot access token not found in Slack OAuth response")
 	}
@@ -86,7 +82,6 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(slackAuthCode, redirec
 
 func (s *SlackIntegrationsService) GetSlackIntegrationsByUserID(userID string) ([]*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get Slack integrations for user: %s", userID)
-
 	if !core.IsValidULID(userID) {
 		return nil, fmt.Errorf("user ID must be a valid ULID")
 	}
@@ -102,7 +97,6 @@ func (s *SlackIntegrationsService) GetSlackIntegrationsByUserID(userID string) (
 
 func (s *SlackIntegrationsService) GetAllSlackIntegrations() ([]*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get all Slack integrations")
-
 	integrations, err := s.slackIntegrationsRepo.GetAllSlackIntegrations()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all slack integrations: %w", err)
@@ -114,12 +108,10 @@ func (s *SlackIntegrationsService) GetAllSlackIntegrations() ([]*models.SlackInt
 
 func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, integrationID string) error {
 	log.Printf("📋 Starting to delete Slack integration: %s", integrationID)
-
 	if !core.IsValidULID(integrationID) {
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	// Get user from context
 	user, ok := appctx.GetUser(ctx)
 	if !ok {
 		return fmt.Errorf("user not found in context")
@@ -135,12 +127,10 @@ func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, i
 
 func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error) {
 	log.Printf("📋 Starting to generate CCAgent secret key for integration: %s", integrationID)
-
-	if integrationID == "" {
-		return "", fmt.Errorf("integration ID cannot be empty")
+	if !core.IsValidULID(integrationID) {
+		return "", fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	// Get user from context
 	user, ok := appctx.GetUser(ctx)
 	if !ok {
 		return "", fmt.Errorf("user not found in context")
@@ -166,7 +156,6 @@ func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context,
 
 func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(secretKey string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by secret key")
-
 	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationBySecretKey(secretKey)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by secret key: %v", err)
@@ -179,7 +168,6 @@ func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(secretKey stri
 
 func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(teamID string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by team ID: %s", teamID)
-
 	if teamID == "" {
 		return nil, fmt.Errorf("team ID cannot be empty")
 	}
@@ -196,7 +184,6 @@ func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(teamID string) (*
 
 func (s *SlackIntegrationsService) GetSlackIntegrationByID(id string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by ID: %s", id)
-
 	if !core.IsValidULID(id) {
 		return nil, fmt.Errorf("integration ID must be a valid ULID")
 	}
