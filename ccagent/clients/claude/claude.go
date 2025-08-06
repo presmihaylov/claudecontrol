@@ -9,17 +9,17 @@ import (
 	"ccagent/core/log"
 )
 
-type ClaudeClientImpl struct {
+type ClaudeClient struct {
 	permissionMode string
 }
 
-func NewClaudeClient(permissionMode string) *ClaudeClientImpl {
-	return &ClaudeClientImpl{
+func NewClaudeClient(permissionMode string) *ClaudeClient {
+	return &ClaudeClient{
 		permissionMode: permissionMode,
 	}
 }
 
-func (c *ClaudeClientImpl) ContinueSession(sessionID, prompt string) (string, error) {
+func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error) {
 	log.Info("📋 Starting to continue Claude session: %s", sessionID)
 	args := []string{
 		"--permission-mode", c.permissionMode,
@@ -50,7 +50,7 @@ func (c *ClaudeClientImpl) ContinueSession(sessionID, prompt string) (string, er
 	return result, nil
 }
 
-func (c *ClaudeClientImpl) StartNewSession(prompt string) (string, error) {
+func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 	log.Info("📋 Starting to create new Claude session")
 	args := []string{
 		"--permission-mode", c.permissionMode,
@@ -79,7 +79,7 @@ func (c *ClaudeClientImpl) StartNewSession(prompt string) (string, error) {
 	return result, nil
 }
 
-func (c *ClaudeClientImpl) StartNewSessionWithSystemPrompt(prompt, systemPrompt string) (string, error) {
+func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt string) (string, error) {
 	log.Info("📋 Starting to create new Claude session with system prompt")
 	args := []string{
 		"--permission-mode", c.permissionMode,
