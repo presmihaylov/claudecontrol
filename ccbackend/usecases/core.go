@@ -293,15 +293,11 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(event models.SlackMessageEvent, s
 		return fmt.Errorf("failed to update slack message reaction: %w", err)
 	}
 
-	// For new messages in existing jobs, also remove hand emoji from top-level message and add eyes
-	if !isNewConversation {
-		// This is a new message in an existing job - remove hand emoji and add eyes to top-level message
-		if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "eyes", slackIntegrationID); err != nil {
-			log.Printf("⚠️ Failed to update top-level message reaction for job %s: %v", job.ID, err)
-		} else {
-			log.Printf("👀 Updated top-level message with eyes emoji for job %s - agent processing new message", job.ID)
-		}
+	// Always add eyes emoji to top-level message to show agent is processing
+	if err := s.updateSlackMessageReaction(job.SlackChannelID, job.SlackThreadTS, "eyes", slackIntegrationID); err != nil {
+		return fmt.Errorf("failed to update top-level message reaction: %w", err)
 	}
+	log.Printf("👀 Updated top-level message with eyes emoji for job %s - agent processing message", job.ID)
 
 	// If message was queued, don't send to agent yet - background processor will handle it
 	if messageStatus == models.ProcessedSlackMessageStatusQueued {
