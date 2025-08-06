@@ -21,8 +21,8 @@ func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
 func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID string, agentID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to upsert active agent for wsConnectionID: %s, agentID: %s", wsConnectionID, agentID)
 
-	if wsConnectionID == "" {
-		return nil, fmt.Errorf("ws_connection_id cannot be empty")
+	if !core.IsValidULID(wsConnectionID) {
+		return nil, fmt.Errorf("ws_connection_id must be a valid ULID")
 	}
 
 	if !core.IsValidULID(slackIntegrationID) {
@@ -33,10 +33,8 @@ func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID str
 		return nil, fmt.Errorf("agent_id must be a valid ULID")
 	}
 
-	id := core.NewID("ag")
-
 	agent := &models.ActiveAgent{
-		ID:                 id,
+		ID:                 core.NewID("ag"),
 		WSConnectionID:     wsConnectionID,
 		SlackIntegrationID: slackIntegrationID,
 		AgentID:            agentID,
@@ -53,8 +51,8 @@ func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID str
 func (s *AgentsService) DeleteActiveAgentByWsConnectionID(wsConnectionID, slackIntegrationID string) error {
 	log.Printf("📋 Starting to delete active agent by wsConnectionID: %s", wsConnectionID)
 
-	if wsConnectionID == "" {
-		return fmt.Errorf("ws_connection_id cannot be empty")
+	if !core.IsValidULID(wsConnectionID) {
+		return fmt.Errorf("ws_connection_id must be a valid ULID")
 	}
 
 	if !core.IsValidULID(slackIntegrationID) {
@@ -98,12 +96,12 @@ func (s *AgentsService) DeleteActiveAgent(id string, slackIntegrationID string) 
 func (s *AgentsService) GetAgentByID(id string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get agent by ID: %s", id)
 
-	if id == "" {
-		return nil, fmt.Errorf("agent ID cannot be empty")
+	if !core.IsValidULID(id) {
+		return nil, fmt.Errorf("agent ID must be a valid ULID")
 	}
 
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
 	agent, err := s.agentsRepo.GetAgentByID(id, slackIntegrationID)
@@ -118,8 +116,8 @@ func (s *AgentsService) GetAgentByID(id string, slackIntegrationID string) (*mod
 func (s *AgentsService) GetAvailableAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get available agents")
 
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
 	agents, err := s.agentsRepo.GetAvailableAgents(slackIntegrationID)
@@ -135,8 +133,8 @@ func (s *AgentsService) GetAvailableAgents(slackIntegrationID string) ([]*models
 func (s *AgentsService) GetConnectedActiveAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get connected active agents")
 
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
 	// Get all active agents from database
@@ -169,8 +167,8 @@ func (s *AgentsService) GetConnectedActiveAgents(slackIntegrationID string, conn
 func (s *AgentsService) GetConnectedAvailableAgents(slackIntegrationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get connected available agents")
 
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
 	// Get all available agents from database
@@ -216,23 +214,18 @@ func (s *AgentsService) CheckAgentHasActiveConnection(agent *models.ActiveAgent,
 
 func (s *AgentsService) AssignAgentToJob(agentID, jobID string, slackIntegrationID string) error {
 	log.Printf("📋 Starting to assign agent %s to job %s", agentID, jobID)
-
 	if !core.IsValidULID(agentID) {
 		return fmt.Errorf("agent ID must be a valid ULID")
 	}
-
 	if !core.IsValidULID(jobID) {
 		return fmt.Errorf("job ID must be a valid ULID")
 	}
-
 	if !core.IsValidULID(slackIntegrationID) {
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	assignmentID := core.NewID("aji")
-
 	assignment := &models.AgentJobAssignment{
-		ID:                 assignmentID,
+		ID:                 core.NewID("aji"),
 		AgentID:            agentID,
 		JobID:              jobID,
 		SlackIntegrationID: slackIntegrationID,
@@ -271,13 +264,11 @@ func (s *AgentsService) UnassignAgentFromJob(agentID, jobID string, slackIntegra
 
 func (s *AgentsService) GetAgentByJobID(jobID string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get agent by job ID: %s", jobID)
-
-	if jobID == "" {
-		return nil, fmt.Errorf("job ID cannot be empty")
+	if !core.IsValidULID(jobID) {
+		return nil, fmt.Errorf("job ID must be a valid ULID")
 	}
-
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
 	agent, err := s.agentsRepo.GetAgentByJobID(jobID, slackIntegrationID)
@@ -297,12 +288,12 @@ func (s *AgentsService) GetAgentByJobID(jobID string, slackIntegrationID string)
 func (s *AgentsService) GetAgentByWSConnectionID(wsConnectionID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get agent by WS connection ID: %s", wsConnectionID)
 
-	if wsConnectionID == "" {
-		return nil, fmt.Errorf("ws_connection_id cannot be empty")
+	if !core.IsValidULID(wsConnectionID) {
+		return nil, fmt.Errorf("ws_connection_id must be a valid ULID")
 	}
 
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
 	agent, err := s.agentsRepo.GetAgentByWSConnectionID(wsConnectionID, slackIntegrationID)
@@ -317,12 +308,12 @@ func (s *AgentsService) GetAgentByWSConnectionID(wsConnectionID, slackIntegratio
 func (s *AgentsService) GetActiveAgentJobAssignments(agentID string, slackIntegrationID string) ([]string, error) {
 	log.Printf("📋 Starting to get active job assignments for agent %s", agentID)
 
-	if agentID == "" {
-		return nil, fmt.Errorf("agent ID cannot be empty")
+	if !core.IsValidULID(agentID) {
+		return nil, fmt.Errorf("agent ID must be a valid ULID")
 	}
 
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
 	jobIDs, err := s.agentsRepo.GetActiveAgentJobAssignments(agentID, slackIntegrationID)
@@ -337,8 +328,8 @@ func (s *AgentsService) GetActiveAgentJobAssignments(agentID string, slackIntegr
 func (s *AgentsService) UpdateAgentLastActiveAt(wsConnectionID, slackIntegrationID string) error {
 	log.Printf("📋 Starting to update last_active_at for agent with WS connection ID: %s", wsConnectionID)
 
-	if wsConnectionID == "" {
-		return fmt.Errorf("ws_connection_id cannot be empty")
+	if !core.IsValidULID(wsConnectionID) {
+		return fmt.Errorf("ws_connection_id must be a valid ULID")
 	}
 
 	if !core.IsValidULID(slackIntegrationID) {
@@ -356,8 +347,8 @@ func (s *AgentsService) UpdateAgentLastActiveAt(wsConnectionID, slackIntegration
 func (s *AgentsService) GetInactiveAgents(slackIntegrationID string, inactiveThresholdMinutes int) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get inactive agents for integration %s (threshold: %d minutes)", slackIntegrationID, inactiveThresholdMinutes)
 
-	if slackIntegrationID == "" {
-		return nil, fmt.Errorf("slack_integration_id cannot be empty")
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
 	if inactiveThresholdMinutes <= 0 {
