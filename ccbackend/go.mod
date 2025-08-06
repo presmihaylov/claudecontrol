@@ -13,10 +13,11 @@ require (
 	github.com/clerk/clerk-sdk-go/v2 v2.3.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/websocket v1.5.3
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/oklog/ulid/v2 v2.1.1
 	github.com/rs/cors v1.11.1
 	github.com/stretchr/testify v1.10.0
+	github.com/zishang520/socket.io/v2 v2.0.5
 )
 
 require (
@@ -26,8 +27,9 @@ require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/pprof v0.0.0-20230821062121-407c9e7a662f // indirect
 	github.com/gookit/color v1.5.4 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/onsi/ginkgo/v2 v2.12.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
@@ -41,7 +43,6 @@ require (
 	github.com/zishang520/engine.io-go-parser v1.2.3 // indirect
 	github.com/zishang520/engine.io/v2 v2.0.3 // indirect
 	github.com/zishang520/socket.io-go-parser/v2 v2.0.4 // indirect
-	github.com/zishang520/socket.io/v2 v2.0.5 // indirect
 	go.uber.org/mock v0.3.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect
