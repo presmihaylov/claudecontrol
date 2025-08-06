@@ -176,9 +176,14 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 	manager := socket.NewManager(serverURLStr, opts)
 	socketClient := manager.Socket("/", opts)
 
-	// Initialize worker pool with 1 worker for sequential processing
-	wp := workerpool.New(1)
-	defer wp.StopWait()
+	// Initialize dual worker pools
+	// Blocking worker pool: 1 worker for sequential conversation processing
+	blockingWorkerPool := workerpool.New(1)
+	defer blockingWorkerPool.StopWait()
+
+	// Instant worker pool: 5 workers for parallel PR status checking
+	instantWorkerPool := workerpool.New(5)
+	defer instantWorkerPool.StopWait()
 
 	// Connection event handlers
 	err := socketClient.On("connect", func(args ...any) {
@@ -217,9 +222,25 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 		}
 
 		log.Info("📨 Received message type: %s", msg.Type)
-		wp.Submit(func() {
-			cr.messageHandler.HandleMessage(msg, socketClient)
-		})
+
+		// Route messages to appropriate worker pool
+		switch msg.Type {
+		case models.MessageTypeStartConversation, models.MessageTypeUserMessage:
+			// Conversation messages need sequential processing
+			blockingWorkerPool.Submit(func() {
+				cr.messageHandler.HandleMessage(msg, socketClient)
+			})
+		case models.MessageTypeCheckIdleJobs:
+			// PR status checks can run in parallel without blocking conversations
+			instantWorkerPool.Submit(func() {
+				cr.messageHandler.HandleMessage(msg, socketClient)
+			})
+		default:
+			// Fallback to blocking pool for any unhandled message types
+			blockingWorkerPool.Submit(func() {
+				cr.messageHandler.HandleMessage(msg, socketClient)
+			})
+		}
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up cc_message handler: %v", err))
 
