@@ -7,7 +7,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/slack-go/slack"
 
@@ -480,8 +479,6 @@ func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji,
 	reactionsToRemove := []string{"eyes", "hourglass", "white_check_mark", "hand", "x"}
 	for _, emoji := range reactionsToRemove {
 		if slices.Contains(botReactions, emoji) {
-			// Small delay to respect rate limits
-			time.Sleep(100 * time.Millisecond)
 			if err := slackClient.RemoveReaction(emoji, slack.ItemRef{
 				Channel:   channelID,
 				Timestamp: messageTS,
@@ -493,8 +490,6 @@ func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji,
 
 	// Add new reaction if not already there
 	if newEmoji != "" && !slices.Contains(botReactions, newEmoji) {
-		// Small delay to respect rate limits
-		time.Sleep(100 * time.Millisecond)
 		if err := slackClient.AddReaction(newEmoji, slack.ItemRef{
 			Channel:   channelID,
 			Timestamp: messageTS,
