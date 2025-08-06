@@ -48,7 +48,7 @@ func LoadTestConfig() (*config.AppConfig, error) {
 // CreateTestUser creates a test user with a unique ID to avoid constraint violations
 func CreateTestUser(t *testing.T, usersRepo *db.PostgresUsersRepository) *models.User {
 	testUserID := core.NewID("u")
-	testUser, err := usersRepo.GetOrCreateUser("test", testUserID)
+	testUser, err := usersRepo.GetOrCreateUser(context.Background(), "test", testUserID)
 	require.NoError(t, err, "Failed to create test user")
 	return testUser
 }
@@ -56,7 +56,7 @@ func CreateTestUser(t *testing.T, usersRepo *db.PostgresUsersRepository) *models
 // CreateTestUserWithProvider creates a test user with a specific auth provider
 func CreateTestUserWithProvider(t *testing.T, usersRepo *db.PostgresUsersRepository, authProvider string) *models.User {
 	testUserID := core.NewID("u")
-	testUser, err := usersRepo.GetOrCreateUser(authProvider, testUserID)
+	testUser, err := usersRepo.GetOrCreateUser(context.Background(), authProvider, testUserID)
 	require.NoError(t, err, "Failed to create test user with provider %s", authProvider)
 	return testUser
 }
@@ -81,7 +81,7 @@ func CreateTestSlackIntegration(t *testing.T, slackIntegrationsRepo *db.Postgres
 		UserID:         userID,
 	}
 
-	err := slackIntegrationsRepo.CreateSlackIntegration(testIntegration)
+	err := slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 	return testIntegration
 }

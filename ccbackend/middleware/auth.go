@@ -76,7 +76,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		log.Printf("✅ JWT token verified successfully for user: %s", claims.Subject)
 
 		// Get or create user in database
-		user, err := m.usersService.GetOrCreateUser("clerk", claims.Subject)
+		user, err := m.usersService.GetOrCreateUser(r.Context(), "clerk", claims.Subject)
 		if err != nil {
 			log.Printf("❌ Failed to get or create user: %v", err)
 			m.writeErrorResponse(w, "internal server error", http.StatusInternalServerError)
