@@ -100,8 +100,8 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 		return
 	}
 
-	if agentID == "" {
-		log.Printf("❌ Rejecting Socket.IO connection: agent ID cannot be empty")
+	if !core.IsValidULID(agentID) {
+		log.Printf("❌ Rejecting Socket.IO connection: agent ID must be a valid ULID")
 		sock.Disconnect(true)
 		return
 	}
