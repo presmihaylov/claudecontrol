@@ -461,6 +461,23 @@ func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slac
 	return botReactions, nil
 }
 
+func getOldReactions(newEmoji string) []string {
+	switch newEmoji {
+	case "hourglass": // Message queued/waiting
+		return []string{"eyes", "white_check_mark", "x"}
+	case "eyes": // Agent actively processing
+		return []string{"hourglass", "white_check_mark", "hand", "x"}
+	case "white_check_mark": // Job completed
+		return []string{"hourglass", "eyes", "hand", "x"}
+	case "hand": // Agent waiting for next steps
+		return []string{"hourglass", "white_check_mark", "x"}
+	case "x": // Job abandoned
+		return []string{"hourglass", "eyes", "white_check_mark", "hand"}
+	default:
+		return []string{}
+	}
+}
+
 func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji, slackIntegrationID string) error {
 	// Get integration-specific Slack client
 	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
@@ -474,8 +491,8 @@ func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji,
 		return fmt.Errorf("failed to get bot reactions: %w", err)
 	}
 
-	// Remove only OUR reactions from the target list
-	reactionsToRemove := []string{"eyes", "hourglass", "white_check_mark", "hand", "x"}
+	// Only remove reactions that are incompatible with the new state
+	reactionsToRemove := getOldReactions(newEmoji)
 	for _, emoji := range reactionsToRemove {
 		if slices.Contains(botReactions, emoji) {
 			if err := slackClient.RemoveReaction(emoji, slack.ItemRef{
