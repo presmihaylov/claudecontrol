@@ -81,7 +81,7 @@ func CreateTestSlackIntegration(t *testing.T, slackIntegrationsRepo *db.Postgres
 		UserID:         userID,
 	}
 
-	err = slackIntegrationsRepo.CreateSlackIntegration(testIntegration)
+	err := slackIntegrationsRepo.CreateSlackIntegration(testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 	return testIntegration
 }
