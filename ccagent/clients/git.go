@@ -475,6 +475,39 @@ func (g *GitClient) UpdatePRDescription(branchName, newDescription string) error
 	return nil
 }
 
+func (g *GitClient) GetPRTitle(branchName string) (string, error) {
+	log.Info("📋 Starting to get PR title for branch: %s", branchName)
+
+	cmd := exec.Command("gh", "pr", "view", branchName, "--json", "title", "--jq", ".title")
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to get PR title for branch %s: %v\nOutput: %s", branchName, err, string(output))
+		return "", fmt.Errorf("failed to get PR title: %w\nOutput: %s", err, string(output))
+	}
+
+	title := strings.TrimSpace(string(output))
+	log.Info("✅ Successfully got PR title: %s", title)
+	log.Info("📋 Completed successfully - got PR title")
+	return title, nil
+}
+
+func (g *GitClient) UpdatePRTitle(branchName, newTitle string) error {
+	log.Info("📋 Starting to update PR title for branch: %s", branchName)
+
+	cmd := exec.Command("gh", "pr", "edit", branchName, "--title", newTitle)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Error("❌ Failed to update PR title for branch %s: %v\nOutput: %s", branchName, err, string(output))
+		return fmt.Errorf("failed to update PR title: %w\nOutput: %s", err, string(output))
+	}
+
+	log.Info("✅ Successfully updated PR title")
+	log.Info("📋 Completed successfully - updated PR title")
+	return nil
+}
+
 func (g *GitClient) GetPRState(branchName string) (string, error) {
 	log.Info("📋 Starting to get PR state for branch: %s", branchName)
 
