@@ -730,7 +730,6 @@ func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobComp
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			log.Printf("⚠️ Job %s not found - job may have already been processed or deleted, skipping", jobID)
-			log.Printf("📋 Completed successfully - job complete processing (job not found)")
 			return nil
 		}
 		log.Printf("❌ Failed to get job %s: %v", jobID, err)
