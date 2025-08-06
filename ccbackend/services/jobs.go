@@ -298,11 +298,9 @@ func (s *JobsService) GetProcessedMessagesByJobIDAndStatus(jobID string, status 
 
 func (s *JobsService) GetProcessedSlackMessageByID(id string, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
 	log.Printf("📋 Starting to get processed slack message by ID: %s", id)
-
-	if id == "" {
-		return nil, fmt.Errorf("processed slack message ID cannot be empty")
+	if !core.IsValidULID(id) {
+		return nil, fmt.Errorf("processed slack message ID must be a valid ULID")
 	}
-
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
@@ -319,11 +317,9 @@ func (s *JobsService) GetProcessedSlackMessageByID(id string, slackIntegrationID
 // TESTS_UpdateJobUpdatedAt updates the updated_at timestamp of a job for testing purposes
 func (s *JobsService) TESTS_UpdateJobUpdatedAt(id string, updatedAt time.Time, slackIntegrationID string) error {
 	log.Printf("📋 Starting to update job updated_at for testing purposes: %s to %s", id, updatedAt)
-
-	if id == "" {
-		return fmt.Errorf("job ID cannot be empty")
+	if !core.IsValidULID(id) {
+		return fmt.Errorf("job ID must be a valid ULID")
 	}
-
 	if !core.IsValidULID(slackIntegrationID) {
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
