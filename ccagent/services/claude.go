@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ccagent/clients"
+	"ccagent/core"
 	"ccagent/core/log"
 )
 
@@ -69,7 +70,7 @@ func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, erro
 			return nil, fmt.Errorf("failed to parse Claude output: %w", err)
 		}
 
-		return nil, &ClaudeParseError{
+		return nil, &core.ClaudeParseError{
 			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
 			LogFilePath: logPath,
 			OriginalErr: err,
@@ -115,7 +116,7 @@ func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPromp
 			return nil, fmt.Errorf("failed to parse Claude output: %w", err)
 		}
 
-		return nil, &ClaudeParseError{
+		return nil, &core.ClaudeParseError{
 			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
 			LogFilePath: logPath,
 			OriginalErr: err,
@@ -161,7 +162,7 @@ func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeR
 			return nil, fmt.Errorf("failed to parse Claude output: %w", err)
 		}
 
-		return nil, &ClaudeParseError{
+		return nil, &core.ClaudeParseError{
 			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
 			LogFilePath: logPath,
 			OriginalErr: err,
