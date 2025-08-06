@@ -100,16 +100,21 @@ func run() error {
 		}
 	}).Methods("GET")
 
-	// Register WebSocket hooks for agent lifecycle
-	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(func(client *clients.Client) error {
+	// Create wrapper functions for usecase methods that now require context
+	registerAgent := func(client *clients.Client) error {
 		return coreUseCase.RegisterAgent(context.Background(), client)
-	}))
-	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(func(client *clients.Client) error {
+	}
+	deregisterAgent := func(client *clients.Client) error {
 		return coreUseCase.DeregisterAgent(context.Background(), client)
-	}))
-	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(func(client *clients.Client) error {
+	}
+	processPing := func(client *clients.Client) error {
 		return coreUseCase.ProcessPing(context.Background(), client)
-	}))
+	}
+
+	// Register WebSocket hooks for agent lifecycle
+	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(registerAgent))
+	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(deregisterAgent))
+	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(processPing))
 
 	// Register WebSocket message handler
 	wsClient.RegisterMessageHandler(alertMiddleware.WrapMessageHandler(wsHandler.HandleMessage))
