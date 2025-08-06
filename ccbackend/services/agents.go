@@ -30,21 +30,21 @@ func (s *AgentsService) UpsertActiveAgent(wsConnectionID, slackIntegrationID str
 	}
 
 	if !core.IsValidULID(agentID) {
-		return nil, fmt.Errorf("agent_id must be a valid ULID")
+		return nil, fmt.Errorf("ccagent_id must be a valid ULID")
 	}
 
 	agent := &models.ActiveAgent{
 		ID:                 core.NewID("ag"),
 		WSConnectionID:     wsConnectionID,
 		SlackIntegrationID: slackIntegrationID,
-		AgentID:            agentID,
+		CCAgentID:          agentID,
 	}
 
 	if err := s.agentsRepo.UpsertActiveAgent(agent); err != nil {
 		return nil, fmt.Errorf("failed to upsert active agent: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - upserted active agent with ID: %s, agent_id: %v", agent.ID, agentID)
+	log.Printf("📋 Completed successfully - upserted active agent with ID: %s, ccagent_id: %v", agent.ID, agentID)
 	return agent, nil
 }
 

@@ -24,16 +24,16 @@ func NewPostgresAgentsRepository(db *sqlx.DB, schema string) *PostgresAgentsRepo
 
 func (r *PostgresAgentsRepository) UpsertActiveAgent(agent *models.ActiveAgent) error {
 	query := fmt.Sprintf(`
-		INSERT INTO %s.active_agents (id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at) 
+		INSERT INTO %s.active_agents (id, ws_connection_id, slack_integration_id, ccagent_id, created_at, updated_at, last_active_at) 
 		VALUES ($1, $2, $3, $4, NOW(), NOW(), NOW()) 
-		ON CONFLICT (slack_integration_id, agent_id) 
+		ON CONFLICT (slack_integration_id, ccagent_id) 
 		DO UPDATE SET 
 			ws_connection_id = EXCLUDED.ws_connection_id,
 			updated_at = NOW(),
 			last_active_at = NOW()
-		RETURNING id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at`, r.schema)
+		RETURNING id, ws_connection_id, slack_integration_id, ccagent_id, created_at, updated_at, last_active_at`, r.schema)
 
-	err := r.db.QueryRowx(query, agent.ID, agent.WSConnectionID, agent.SlackIntegrationID, agent.AgentID).StructScan(agent)
+	err := r.db.QueryRowx(query, agent.ID, agent.WSConnectionID, agent.SlackIntegrationID, agent.CCAgentID).StructScan(agent)
 	if err != nil {
 		return fmt.Errorf("failed to upsert active agent: %w", err)
 	}
@@ -63,7 +63,7 @@ func (r *PostgresAgentsRepository) DeleteActiveAgent(id string, slackIntegration
 
 func (r *PostgresAgentsRepository) GetAgentByID(id string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at 
+		SELECT id, ws_connection_id, slack_integration_id, ccagent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
 		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
 
@@ -81,7 +81,7 @@ func (r *PostgresAgentsRepository) GetAgentByID(id string, slackIntegrationID st
 
 func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(wsConnectionID, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at 
+		SELECT id, ws_connection_id, slack_integration_id, ccagent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
 		WHERE ws_connection_id = $1 AND slack_integration_id = $2`, r.schema)
 
@@ -99,7 +99,7 @@ func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(wsConnectionID, slac
 
 func (r *PostgresAgentsRepository) GetAvailableAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.agent_id, a.created_at, a.updated_at, a.last_active_at 
+		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.ccagent_id, a.created_at, a.updated_at, a.last_active_at 
 		FROM %s.active_agents a
 		LEFT JOIN %s.agent_job_assignments aja ON a.id = aja.agent_id
 		WHERE aja.agent_id IS NULL AND a.slack_integration_id = $1
@@ -116,7 +116,7 @@ func (r *PostgresAgentsRepository) GetAvailableAgents(slackIntegrationID string)
 
 func (r *PostgresAgentsRepository) GetAllActiveAgents(slackIntegrationID string) ([]*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at 
+		SELECT id, ws_connection_id, slack_integration_id, ccagent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
 		WHERE slack_integration_id = $1
 		ORDER BY created_at ASC`, r.schema)
@@ -132,7 +132,7 @@ func (r *PostgresAgentsRepository) GetAllActiveAgents(slackIntegrationID string)
 
 func (r *PostgresAgentsRepository) GetAgentByJobID(jobID string, slackIntegrationID string) (*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.agent_id, a.created_at, a.updated_at, a.last_active_at 
+		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.ccagent_id, a.created_at, a.updated_at, a.last_active_at 
 		FROM %s.active_agents a
 		JOIN %s.agent_job_assignments aja ON a.id = aja.agent_id
 		WHERE aja.job_id = $1 AND aja.slack_integration_id = $2
@@ -234,7 +234,7 @@ func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(wsConnectionID, slack
 
 func (r *PostgresAgentsRepository) GetInactiveAgents(slackIntegrationID string, inactiveThresholdMinutes int) ([]*models.ActiveAgent, error) {
 	query := fmt.Sprintf(`
-		SELECT id, ws_connection_id, slack_integration_id, agent_id, created_at, updated_at, last_active_at 
+		SELECT id, ws_connection_id, slack_integration_id, ccagent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
 		WHERE slack_integration_id = $1 AND last_active_at < NOW() - INTERVAL '%d minutes'
 		ORDER BY last_active_at ASC`, r.schema, inactiveThresholdMinutes)
