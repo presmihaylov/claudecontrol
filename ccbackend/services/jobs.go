@@ -368,3 +368,24 @@ func (s *JobsService) GetJobsWithQueuedMessages(slackIntegrationID string) ([]*m
 	log.Printf("📋 Completed successfully - found %d jobs with queued messages", len(jobs))
 	return jobs, nil
 }
+
+// GetLatestProcessedMessageForJob returns the most recent processed message for a job
+func (s *JobsService) GetLatestProcessedMessageForJob(jobID string, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
+	log.Printf("📋 Starting to get latest processed message for job: %s", jobID)
+
+	if !core.IsValidULID(jobID) {
+		return nil, fmt.Errorf("job ID must be a valid ULID")
+	}
+
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
+	}
+
+	message, err := s.processedSlackMessagesRepo.GetLatestProcessedMessageForJob(jobID, slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest processed message: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - retrieved latest processed message with ID: %s", message.ID)
+	return message, nil
+}

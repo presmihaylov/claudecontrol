@@ -164,3 +164,23 @@ func (r *PostgresProcessedSlackMessagesRepository) GetActiveMessageCountForJobs(
 
 	return count, nil
 }
+
+func (r *PostgresProcessedSlackMessagesRepository) GetLatestProcessedMessageForJob(jobID string, slackIntegrationID string) (*models.ProcessedSlackMessage, error) {
+	query := fmt.Sprintf(`
+		SELECT id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at 
+		FROM %s.processed_slack_messages 
+		WHERE job_id = $1 AND slack_integration_id = $2
+		ORDER BY created_at DESC
+		LIMIT 1`, r.schema)
+
+	message := &models.ProcessedSlackMessage{}
+	err := r.db.Get(message, query, jobID, slackIntegrationID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, core.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get latest processed message for job: %w", err)
+	}
+
+	return message, nil
+}

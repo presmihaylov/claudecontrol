@@ -44,7 +44,7 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	appState := models.NewAppState()
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService, appState)
 
-	agentID := core.NewID("a")
+	agentID := core.NewID("ccaid")
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
