@@ -30,7 +30,7 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
-	var parsedMsg models.UnknownMessage
+	var parsedMsg models.BaseMessage
 	if err := json.Unmarshal(msgBytes, &parsedMsg); err != nil {
 		log.Printf("❌ Failed to parse message from client %s: %v", client.ID, err)
 		return fmt.Errorf("failed to parse message: %w", err)
