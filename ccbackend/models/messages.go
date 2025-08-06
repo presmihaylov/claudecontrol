@@ -5,7 +5,6 @@ const (
 	MessageTypeStartConversation      = "start_conversation_v1"
 	MessageTypeUserMessage            = "user_message_v1"
 	MessageTypeAssistantMessage       = "assistant_message_v1"
-	MessageTypeJobUnassigned          = "job_unassigned_v1"
 	MessageTypeSystemMessage          = "system_message_v1"
 	MessageTypeProcessingSlackMessage = "processing_slack_message_v1"
 	MessageTypeCheckIdleJobs          = "check_idle_jobs_v1"
@@ -37,8 +36,6 @@ type AssistantMessagePayload struct {
 	Message        string `json:"message"`
 	SlackMessageID string `json:"slack_message_id"`
 }
-
-type JobUnassignedPayload struct{}
 
 type SystemMessagePayload struct {
 	Message        string `json:"message"`
