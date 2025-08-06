@@ -40,7 +40,7 @@ func run() error {
 		WebhookURL:  cfg.SlackAlertWebhookURL,
 		Environment: cfg.Environment,
 		AppName:     "ccbackend",
-		LogsURL:     cfg.LogsURL,
+		LogsURL:     cfg.ServerLogsURL,
 	})
 
 	// Initialize database connection
