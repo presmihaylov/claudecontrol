@@ -31,7 +31,9 @@ func setupTestService(t *testing.T) (*AgentsService, *JobsService, *models.Slack
 
 	// Create test user and slack integration
 	testUser := testutils.CreateTestUser(t, usersRepo)
-	testIntegration := testutils.CreateTestSlackIntegration(t, slackIntegrationsRepo, testUser.ID)
+	testIntegration := testutils.CreateTestSlackIntegration(testUser.ID)
+	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
+	require.NoError(t, err, "Failed to create test slack integration")
 
 	agentsService := NewAgentsService(agentsRepo)
 	jobsService := NewJobsService(jobsRepo, messagesRepo)
