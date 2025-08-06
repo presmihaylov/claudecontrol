@@ -44,7 +44,7 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 			return fmt.Errorf("failed to unmarshal assistant message payload: %w", err)
 		}
 
-		log.Printf("🤖 Received assistant message from client %s: %s", client.ID, payload.Message)
+		log.Printf("🤖 Received assistant message from client %s", client.ID)
 		if err := h.coreUseCase.ProcessAssistantMessage(client.ID, payload, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process assistant message from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process assistant message: %w", err)

@@ -57,7 +57,7 @@ func (s *CoreUseCase) validateJobBelongsToAgent(agentID, jobID string, slackInte
 }
 
 func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.AssistantMessagePayload, slackIntegrationID string) error {
-	log.Printf("📋 Starting to process assistant message from client %s: %s", clientID, payload.Message)
+	log.Printf("📋 Starting to process assistant message from client %s", clientID)
 
 	// Get the agent by WebSocket connection ID
 	agent, err := s.agentsService.GetAgentByWSConnectionID(clientID, slackIntegrationID)
