@@ -36,7 +36,6 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string) (string, error)
 
 	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
 		return "", &ErrClaudeCommandErr{
 			Err:    err,
@@ -67,7 +66,6 @@ func (c *ClaudeClient) StartNewSession(prompt string) (string, error) {
 
 	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
 		return "", &ErrClaudeCommandErr{
 			Err:    err,
@@ -101,7 +99,6 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 
 	log.Info("Running Claude command")
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
 		return "", &ErrClaudeCommandErr{
 			Err:    err,
