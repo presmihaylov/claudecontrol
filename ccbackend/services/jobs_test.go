@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,7 +16,7 @@ import (
 )
 
 // Helper function to check if a job is in the idle jobs list
-func jobFoundInIdleList(jobID uuid.UUID, idleJobs []*models.Job) bool {
+func jobFoundInIdleList(jobID string, idleJobs []*models.Job) bool {
 	for _, idleJob := range idleJobs {
 		if idleJob.ID == jobID {
 			return true
@@ -58,7 +57,7 @@ func TestJobsService(t *testing.T) {
 	service, testIntegration, cleanup := setupTestJobsService(t)
 	defer cleanup()
 
-	slackIntegrationID := testIntegration.ID.String()
+	slackIntegrationID := testIntegration.ID
 
 	t.Run("CreateJob", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
@@ -69,7 +68,7 @@ func TestJobsService(t *testing.T) {
 
 			require.NoError(t, err)
 
-			assert.NotEqual(t, uuid.Nil, job.ID)
+			assert.NotEmpty(t, job.ID)
 			assert.Equal(t, slackThreadTS, job.SlackThreadTS)
 			assert.Equal(t, slackChannelID, job.SlackChannelID)
 			assert.Equal(t, testIntegration.ID, job.SlackIntegrationID)
@@ -95,7 +94,7 @@ func TestJobsService(t *testing.T) {
 			_, err := service.CreateJob("test.thread.456", "C1234567890", "testuser", "")
 
 			require.Error(t, err)
-			assert.Equal(t, "slack_integration_id cannot be empty", err.Error())
+			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
 		})
 	})
 
@@ -116,21 +115,21 @@ func TestJobsService(t *testing.T) {
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			_, err := service.GetJobByID(uuid.Nil, slackIntegrationID)
+			_, err := service.GetJobByID("", slackIntegrationID)
 
 			require.Error(t, err)
-			assert.Equal(t, "job ID cannot be nil", err.Error())
+			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
 		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
-			_, err := service.GetJobByID(uuid.New(), "")
+			_, err := service.GetJobByID(core.NewID("j"), "")
 
 			require.Error(t, err)
-			assert.Equal(t, "slack_integration_id cannot be empty", err.Error())
+			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
-			id := uuid.New()
+			id := core.NewID("j")
 
 			_, err := service.GetJobByID(id, slackIntegrationID)
 			require.Error(t, err)
@@ -147,7 +146,7 @@ func TestJobsService(t *testing.T) {
 			result, err := service.GetOrCreateJobForSlackThread(slackThreadTS, slackChannelID, "testuser", slackIntegrationID)
 
 			require.NoError(t, err)
-			assert.NotEqual(t, uuid.Nil, result.Job.ID)
+			assert.NotEmpty(t, result.Job.ID)
 			assert.Equal(t, slackThreadTS, result.Job.SlackThreadTS)
 			assert.Equal(t, slackChannelID, result.Job.SlackChannelID)
 			assert.Equal(t, testIntegration.ID, result.Job.SlackIntegrationID)
@@ -204,7 +203,7 @@ func TestJobsService(t *testing.T) {
 			_, err := service.GetOrCreateJobForSlackThread("test.thread.999", "C1234567890", "testuser", "")
 
 			require.Error(t, err)
-			assert.Equal(t, "slack_integration_id cannot be empty", err.Error())
+			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
 		})
 	})
 
@@ -230,21 +229,21 @@ func TestJobsService(t *testing.T) {
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			err := service.DeleteJob(uuid.Nil, slackIntegrationID)
+			err := service.DeleteJob("", slackIntegrationID)
 
 			require.Error(t, err)
-			assert.Equal(t, "job ID cannot be nil", err.Error())
+			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
 		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
-			err := service.DeleteJob(uuid.New(), "")
+			err := service.DeleteJob(core.NewID("j"), "")
 
 			require.Error(t, err)
-			assert.Equal(t, "slack_integration_id cannot be empty", err.Error())
+			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
-			id := uuid.New()
+			id := core.NewID("j")
 
 			err := service.DeleteJob(id, slackIntegrationID)
 			require.Error(t, err)
@@ -281,11 +280,11 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	agentsService := NewAgentsService(agentsRepo)
 
 	// Use the shared integration ID
-	slackIntegrationID := testIntegration.ID.String()
+	slackIntegrationID := testIntegration.ID
 
 	t.Run("JobAssignmentWorkflow", func(t *testing.T) {
 		// Create an agent first
-		agent, err := agentsService.UpsertActiveAgent("test-ws-integration", slackIntegrationID, uuid.New())
+		agent, err := agentsService.UpsertActiveAgent(core.NewID("wsc"), slackIntegrationID, core.NewID("a"))
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
 
@@ -341,11 +340,11 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	t.Run("MultipleAgentsJobAssignment", func(t *testing.T) {
 		// Create multiple agents
-		agent1, err := agentsService.UpsertActiveAgent("test-ws-multi-1", slackIntegrationID, uuid.New())
+		agent1, err := agentsService.UpsertActiveAgent(core.NewID("wsc"), slackIntegrationID, core.NewID("a"))
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent1.ID, slackIntegrationID) }()
 
-		agent2, err := agentsService.UpsertActiveAgent("test-ws-multi-2", slackIntegrationID, uuid.New())
+		agent2, err := agentsService.UpsertActiveAgent(core.NewID("wsc"), slackIntegrationID, core.NewID("a"))
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent2.ID, slackIntegrationID) }()
 
@@ -398,7 +397,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	t.Run("GetAgentByJobID", func(t *testing.T) {
 		// Create an agent and job
-		agent, err := agentsService.UpsertActiveAgent("test-ws-job-lookup", slackIntegrationID, uuid.New())
+		agent, err := agentsService.UpsertActiveAgent(core.NewID("wsc"), slackIntegrationID, core.NewID("a"))
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
 
@@ -429,8 +428,8 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	t.Run("GetAgentByWSConnectionID", func(t *testing.T) {
 		// Create an agent
-		wsConnectionID := "test-ws-connection-lookup"
-		agent, err := agentsService.UpsertActiveAgent(wsConnectionID, slackIntegrationID, uuid.New())
+		wsConnectionID := core.NewID("wsc")
+		agent, err := agentsService.UpsertActiveAgent(wsConnectionID, slackIntegrationID, core.NewID("a"))
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
 
@@ -446,14 +445,14 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		assert.Empty(t, foundJobs)
 
 		// Test with non-existent connection ID
-		_, err = agentsService.GetAgentByWSConnectionID("non-existent-connection", slackIntegrationID)
+		_, err = agentsService.GetAgentByWSConnectionID(core.NewID("wsc"), slackIntegrationID)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Test with empty connection ID
 		_, err = agentsService.GetAgentByWSConnectionID("", slackIntegrationID)
 		require.Error(t, err)
-		assert.Equal(t, "ws_connection_id cannot be empty", err.Error())
+		assert.Contains(t, err.Error(), "ws_connection_id must be a valid ULID")
 	})
 
 	t.Run("UpdateJobTimestamp", func(t *testing.T) {
@@ -475,9 +474,9 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		assert.True(t, updatedJob.UpdatedAt.After(originalUpdatedAt), "Updated timestamp should be later than original")
 
 		// Test with invalid job ID
-		err = jobsService.UpdateJobTimestamp(uuid.Nil, slackIntegrationID)
+		err = jobsService.UpdateJobTimestamp("", slackIntegrationID)
 		require.Error(t, err)
-		assert.Equal(t, "job ID cannot be nil", err.Error())
+		assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 	})
 
 	t.Run("GetIdleJobs", func(t *testing.T) {
@@ -616,7 +615,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			message, err := jobsService.CreateProcessedSlackMessage(job.ID, slackChannelID, slackTS, textContent, slackIntegrationID, status)
 
 			require.NoError(t, err)
-			assert.NotEqual(t, uuid.Nil, message.ID)
+			assert.NotEmpty(t, message.ID)
 			assert.Equal(t, job.ID, message.JobID)
 			assert.Equal(t, slackChannelID, message.SlackChannelID)
 			assert.Equal(t, slackTS, message.SlackTS)
@@ -627,10 +626,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		})
 
 		t.Run("NilJobID", func(t *testing.T) {
-			_, err := jobsService.CreateProcessedSlackMessage(uuid.Nil, "C1234567890", "1234567890.123456", "Hello world", slackIntegrationID, models.ProcessedSlackMessageStatusQueued)
+			_, err := jobsService.CreateProcessedSlackMessage("", "C1234567890", "1234567890.123456", "Hello world", slackIntegrationID, models.ProcessedSlackMessageStatusQueued)
 
 			require.Error(t, err)
-			assert.Equal(t, "job ID cannot be nil", err.Error())
+			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
 		t.Run("EmptySlackChannelID", func(t *testing.T) {
@@ -686,14 +685,14 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		})
 
 		t.Run("NilID", func(t *testing.T) {
-			_, err := jobsService.UpdateProcessedSlackMessage(uuid.Nil, models.ProcessedSlackMessageStatusCompleted, slackIntegrationID)
+			_, err := jobsService.UpdateProcessedSlackMessage("", models.ProcessedSlackMessageStatusCompleted, slackIntegrationID)
 
 			require.Error(t, err)
-			assert.Equal(t, "processed slack message ID cannot be nil", err.Error())
+			assert.Contains(t, err.Error(), "processed slack message ID cannot be empty")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
-			id := uuid.New()
+			id := core.NewID("j")
 
 			_, err := jobsService.UpdateProcessedSlackMessage(id, models.ProcessedSlackMessageStatusCompleted, slackIntegrationID)
 			require.Error(t, err)
@@ -703,7 +702,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	t.Run("DeleteJobWithAgentAssignment", func(t *testing.T) {
 		// Create an agent and job
-		agent, err := agentsService.UpsertActiveAgent("test-ws-delete-job", slackIntegrationID, uuid.New())
+		agent, err := agentsService.UpsertActiveAgent(core.NewID("wsc"), slackIntegrationID, core.NewID("a"))
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(agent.ID, slackIntegrationID) }()
 
@@ -930,7 +929,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
 			_, err := jobsService.GetJobsWithQueuedMessages("")
 			require.Error(t, err)
-			assert.Equal(t, "slack_integration_id cannot be empty", err.Error())
+			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
 		})
 
 		t.Run("JobFromDifferentIntegration", func(t *testing.T) {
@@ -949,7 +948,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			testIntegration2 := testutils.CreateTestSlackIntegration(t, slackIntegrationsRepo2, testUser2.ID)
 			defer func() { _ = slackIntegrationsRepo2.DeleteSlackIntegrationByID(testIntegration2.ID, testUser2.ID) }()
 
-			slackIntegrationID2 := testIntegration2.ID.String()
+			slackIntegrationID2 := testIntegration2.ID
 
 			// Create a job with queued message in the second integration
 			job, err := jobsService.CreateJob("other.integration.thread", "C7777777777", "testuser", slackIntegrationID2)
