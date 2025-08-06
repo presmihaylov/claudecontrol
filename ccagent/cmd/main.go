@@ -177,9 +177,9 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 	socketClient := manager.Socket("/", opts)
 
 	// Initialize dual worker pools
-	// Normal worker pool: 1 worker for sequential conversation processing
-	normalWorkerPool := workerpool.New(1)
-	defer normalWorkerPool.StopWait()
+	// Blocking worker pool: 1 worker for sequential conversation processing
+	blockingWorkerPool := workerpool.New(1)
+	defer blockingWorkerPool.StopWait()
 
 	// Instant worker pool: 5 workers for parallel PR status checking
 	instantWorkerPool := workerpool.New(5)
@@ -227,7 +227,7 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 		switch msg.Type {
 		case models.MessageTypeStartConversation, models.MessageTypeUserMessage:
 			// Conversation messages need sequential processing
-			normalWorkerPool.Submit(func() {
+			blockingWorkerPool.Submit(func() {
 				cr.messageHandler.HandleMessage(msg, socketClient)
 			})
 		case models.MessageTypeCheckIdleJobs:
@@ -236,8 +236,8 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 				cr.messageHandler.HandleMessage(msg, socketClient)
 			})
 		default:
-			// Fallback to normal pool for any unhandled message types
-			normalWorkerPool.Submit(func() {
+			// Fallback to blocking pool for any unhandled message types
+			blockingWorkerPool.Submit(func() {
 				cr.messageHandler.HandleMessage(msg, socketClient)
 			})
 		}
