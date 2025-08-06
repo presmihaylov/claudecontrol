@@ -8,64 +8,30 @@ import (
 
 func TestNewID(t *testing.T) {
 	tests := []struct {
-		name    string
-		prefix  string
-		wantErr bool
-		errMsg  string
+		name   string
+		prefix string
 	}{
 		{
-			name:    "valid prefix",
-			prefix:  "u",
-			wantErr: false,
+			name:   "valid prefix",
+			prefix: "u",
 		},
 		{
-			name:    "valid multi-character prefix",
-			prefix:  "si",
-			wantErr: false,
+			name:   "valid multi-character prefix",
+			prefix: "si",
 		},
 		{
-			name:    "uppercase prefix gets lowercased",
-			prefix:  "USER",
-			wantErr: false,
+			name:   "uppercase prefix gets lowercased",
+			prefix: "USER",
 		},
 		{
-			name:    "prefix with spaces gets trimmed",
-			prefix:  "  job  ",
-			wantErr: false,
-		},
-		{
-			name:    "empty prefix returns error",
-			prefix:  "",
-			wantErr: true,
-			errMsg:  "prefix cannot be empty",
-		},
-		{
-			name:    "whitespace-only prefix returns error",
-			prefix:  "   ",
-			wantErr: true,
-			errMsg:  "prefix cannot be empty",
+			name:   "prefix with spaces gets trimmed",
+			prefix: "  job  ",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewID(tt.prefix)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("NewID() expected error but got none")
-					return
-				}
-				if !strings.Contains(err.Error(), tt.errMsg) {
-					t.Errorf("NewID() error = %v, want error containing %v", err, tt.errMsg)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("NewID() unexpected error = %v", err)
-				return
-			}
+			got := NewID(tt.prefix)
 
 			// Check the format: prefix_ULID
 			expectedPrefix := strings.ToLower(strings.TrimSpace(tt.prefix)) + "_"
@@ -94,16 +60,41 @@ func TestNewID(t *testing.T) {
 	}
 }
 
+func TestNewIDPanic(t *testing.T) {
+	tests := []struct {
+		name   string
+		prefix string
+	}{
+		{
+			name:   "empty prefix panics",
+			prefix: "",
+		},
+		{
+			name:   "whitespace-only prefix panics",
+			prefix: "   ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Errorf("NewID() expected panic but got none")
+				}
+			}()
+
+			NewID(tt.prefix)
+		})
+	}
+}
+
 func TestNewIDUniqueness(t *testing.T) {
 	prefix := "test"
 	ids := make(map[string]bool)
 	numTests := 1000
 
 	for i := 0; i < numTests; i++ {
-		id, err := NewID(prefix)
-		if err != nil {
-			t.Fatalf("NewID() unexpected error = %v", err)
-		}
+		id := NewID(prefix)
 
 		if ids[id] {
 			t.Errorf("NewID() generated duplicate ID: %v", id)

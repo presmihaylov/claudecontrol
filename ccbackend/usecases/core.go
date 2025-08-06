@@ -323,10 +323,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 	// Resolve user mentions in the message text before sending to agent
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
 
-	msgID, err := core.NewID("msg")
-	if err != nil {
-		return fmt.Errorf("failed to generate message ID: %w", err)
-	}
+	msgID := core.NewID("msg")
 
 	startConversationMessage := models.UnknownMessage{
 		ID:   msgID,
@@ -364,10 +361,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 	// Resolve user mentions in the message text before sending to agent
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
 
-	msgID, err := core.NewID("msg")
-	if err != nil {
-		return fmt.Errorf("failed to generate message ID: %w", err)
-	}
+	msgID := core.NewID("msg")
 
 	userMessage := models.UnknownMessage{
 		ID:   msgID,
@@ -703,11 +697,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 		log.Printf("📡 Broadcasting CheckIdleJobs to %d connected agents for integration %s", len(connectedAgents), slackIntegrationID)
 
 		// Send CheckIdleJobs message to each connected agent
-		msgID, err := core.NewID("msg")
-		if err != nil {
-			broadcastErrors = append(broadcastErrors, fmt.Sprintf("failed to generate message ID for integration %s: %v", slackIntegrationID, err))
-			continue
-		}
+		msgID := core.NewID("msg")
 
 		checkIdleJobsMessage := models.UnknownMessage{
 			ID:      msgID,

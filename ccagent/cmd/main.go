@@ -46,10 +46,7 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService)
 	appState := models.NewAppState()
 
-	agentID, err := core.NewID("a")
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate agent ID: %w", err)
-	}
+	agentID := core.NewID("a")
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
@@ -436,10 +433,7 @@ IMPORTANT: If you are editing a pull request description, never include or overr
 		SlackMessageID: payload.SlackMessageID,
 	}
 
-	msgID, err := core.NewID("msg")
-	if err != nil {
-		return fmt.Errorf("failed to generate message ID: %w", err)
-	}
+	msgID := core.NewID("msg")
 	assistantMsg := models.UnknownMessage{
 		ID:      msgID,
 		Type:    models.MessageTypeAssistantMessage,
@@ -551,10 +545,7 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, socketClient *
 		SlackMessageID: payload.SlackMessageID,
 	}
 
-	msgID, err := core.NewID("msg")
-	if err != nil {
-		return fmt.Errorf("failed to generate message ID: %w", err)
-	}
+	msgID := core.NewID("msg")
 	assistantMsg := models.UnknownMessage{
 		ID:      msgID,
 		Type:    models.MessageTypeAssistantMessage,
@@ -718,10 +709,7 @@ func (cr *CmdRunner) sendJobCompleteMessage(socketClient *socket.Socket, jobID, 
 		Reason: reason,
 	}
 
-	msgID, err := core.NewID("msg")
-	if err != nil {
-		return fmt.Errorf("failed to generate message ID: %w", err)
-	}
+	msgID := core.NewID("msg")
 	jobMsg := models.UnknownMessage{
 		ID:      msgID,
 		Type:    models.MessageTypeJobComplete,
@@ -743,10 +731,7 @@ func (cr *CmdRunner) sendSystemMessage(socketClient *socket.Socket, message, sla
 		SlackMessageID: slackMessageID,
 	}
 
-	msgID, err := core.NewID("msg")
-	if err != nil {
-		return fmt.Errorf("failed to generate message ID: %w", err)
-	}
+	msgID := core.NewID("msg")
 	sysMsg := models.UnknownMessage{
 		ID:      msgID,
 		Type:    models.MessageTypeSystemMessage,
@@ -770,10 +755,7 @@ func (cr *CmdRunner) sendErrorMessage(socketClient *socket.Socket, err error, sl
 }
 
 func (cr *CmdRunner) sendProcessingSlackMessage(socketClient *socket.Socket, slackMessageID string) error {
-	msgID, err := core.NewID("msg")
-	if err != nil {
-		return fmt.Errorf("failed to generate message ID: %w", err)
-	}
+	msgID := core.NewID("msg")
 	processingSlackMessageMsg := models.UnknownMessage{
 		ID:   msgID,
 		Type: models.MessageTypeProcessingSlackMessage,
