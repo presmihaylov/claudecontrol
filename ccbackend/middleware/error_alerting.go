@@ -170,7 +170,6 @@ func (m *ErrorAlertMiddleware) sendSlackAlert(errorMsg, contextMsg string) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Printf("❌ Failed to send Slack alert: %v", err)
