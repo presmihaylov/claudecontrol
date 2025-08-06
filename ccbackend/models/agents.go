@@ -9,9 +9,9 @@ type ActiveAgent struct {
 	WSConnectionID     string    `json:"ws_connection_id" db:"ws_connection_id"`
 	SlackIntegrationID string    `json:"slack_integration_id" db:"slack_integration_id"`
 	CCAgentID          string    `json:"ccagent_id" db:"ccagent_id"`
+	LastActiveAt       time.Time `json:"last_active_at" db:"last_active_at"`
 	CreatedAt          time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at" db:"updated_at"`
-	LastActiveAt       time.Time `json:"last_active_at" db:"last_active_at"`
 }
 
 type AgentJobAssignment struct {
