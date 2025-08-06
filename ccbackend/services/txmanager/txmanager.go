@@ -1,0 +1,140 @@
+package txmanager
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/jmoiron/sqlx"
+
+	"ccbackend/services"
+)
+
+// contextKey type for storing transaction in context
+type contextKey string
+
+const txContextKey contextKey = "database_transaction"
+
+// DefaultTransactionManager implements the TransactionManager interface
+type DefaultTransactionManager struct {
+	db *sqlx.DB
+}
+
+// NewTransactionManager creates a new transaction manager
+func NewTransactionManager(db *sqlx.DB) services.TransactionManager {
+	return &DefaultTransactionManager{db: db}
+}
+
+// WithTransaction executes the provided function within a database transaction
+func (tm *DefaultTransactionManager) WithTransaction(ctx context.Context, fn func(context.Context) error) error {
+	log.Printf("📋 Starting transaction")
+	
+	// Support nested transactions - if already in tx, just execute function
+	if _, ok := TransactionFromContext(ctx); ok {
+		log.Printf("📋 Already in transaction, executing function directly")
+		return fn(ctx)
+	}
+
+	// Begin new transaction
+	tx, err := tm.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	// Panic protection with defer
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("📋 Transaction panic detected, rolling back: %v", r)
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				log.Printf("📋 Failed to rollback after panic: %v", rollbackErr)
+			}
+			panic(r) // Re-panic to maintain normal panic behavior
+		}
+	}()
+
+	// Create context with transaction
+	txCtx := WithTransaction(ctx, tx)
+	
+	// Execute function with transaction context
+	if err := fn(txCtx); err != nil {
+		log.Printf("📋 Transaction function returned error, rolling back: %v", err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("transaction failed: %w, rollback failed: %v", err, rollbackErr)
+		}
+		return err
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Printf("📋 Transaction completed successfully")
+	return nil
+}
+
+// BeginTransaction starts a new transaction and returns context with the transaction
+func (tm *DefaultTransactionManager) BeginTransaction(ctx context.Context) (context.Context, error) {
+	log.Printf("📋 Starting manual transaction")
+	
+	tx, err := tm.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	return WithTransaction(ctx, tx), nil
+}
+
+// CommitTransaction commits the transaction stored in the context
+func (tm *DefaultTransactionManager) CommitTransaction(ctx context.Context) error {
+	log.Printf("📋 Committing manual transaction")
+	
+	tx, ok := TransactionFromContext(ctx)
+	if !ok {
+		return fmt.Errorf("no transaction found in context")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Printf("📋 Manual transaction committed successfully")
+	return nil
+}
+
+// RollbackTransaction rolls back the transaction stored in the context
+func (tm *DefaultTransactionManager) RollbackTransaction(ctx context.Context) error {
+	log.Printf("📋 Rolling back manual transaction")
+	
+	tx, ok := TransactionFromContext(ctx)
+	if !ok {
+		return fmt.Errorf("no transaction found in context")
+	}
+
+	if err := tx.Rollback(); err != nil {
+		return fmt.Errorf("failed to rollback transaction: %w", err)
+	}
+
+	log.Printf("📋 Manual transaction rolled back successfully")
+	return nil
+}
+
+// WithTransaction stores a transaction in the context
+func WithTransaction(ctx context.Context, tx *sqlx.Tx) context.Context {
+	return context.WithValue(ctx, txContextKey, tx)
+}
+
+// TransactionFromContext extracts a transaction from the context
+func TransactionFromContext(ctx context.Context) (*sqlx.Tx, bool) {
+	tx, ok := ctx.Value(txContextKey).(*sqlx.Tx)
+	return tx, ok
+}
+
+// GetQueryable returns transaction if available in context, otherwise returns db
+// This is the key function that repositories will use to get the correct queryable
+func GetQueryable(ctx context.Context, db *sqlx.DB) services.Queryable {
+	if tx, ok := TransactionFromContext(ctx); ok {
+		return tx // Return transaction if available
+	}
+	return db // Return regular DB connection
+}
