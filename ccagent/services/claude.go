@@ -170,7 +170,6 @@ func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeR
 	}
 
 	actualSessionID := c.extractSessionID(messages)
-
 	output, err := c.extractClaudeResult(messages)
 	if err != nil {
 		log.Error("Failed to extract Claude result: %v", err)
@@ -178,7 +177,6 @@ func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeR
 	}
 
 	log.Info("📋 Claude response extracted successfully, session: %s, output length: %d", actualSessionID, len(output))
-
 	result := &ClaudeResult{
 		Output:    output,
 		SessionID: actualSessionID,
