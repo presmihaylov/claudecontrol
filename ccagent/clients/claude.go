@@ -88,10 +88,7 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 		"--verbose",
 		"--output-format", "stream-json",
 		"-p", prompt,
-	}
-
-	if systemPrompt != "" {
-		args = append(args, "--append-system-prompt", systemPrompt)
+		"--append-system-prompt", systemPrompt,
 	}
 
 	log.Info("Starting new Claude session with prompt: %s", prompt)
