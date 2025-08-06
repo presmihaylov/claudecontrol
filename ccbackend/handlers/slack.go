@@ -144,11 +144,11 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 
 	switch eventType {
 	case "app_mention":
-		if err := h.handleAppMention(event, slackIntegration.ID.String()); err != nil {
+		if err := h.handleAppMention(event, slackIntegration.ID); err != nil {
 			log.Printf("❌ Failed to handle app mention: %v", err)
 		}
 	case "reaction_added":
-		if err := h.handleReactionAdded(event, slackIntegration.ID.String()); err != nil {
+		if err := h.handleReactionAdded(event, slackIntegration.ID); err != nil {
 			log.Printf("❌ Failed to handle reaction added: %v", err)
 		}
 	default:

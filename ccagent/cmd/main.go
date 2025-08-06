@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/gammazero/workerpool"
-	"github.com/google/uuid"
 	"github.com/jessevdk/go-flags"
 	"github.com/zishang520/engine.io-client-go/transports"
 	"github.com/zishang520/engine.io/v2/types"
 	"github.com/zishang520/socket.io-client-go/socket"
 
 	"ccagent/clients"
+	"ccagent/core"
 	"ccagent/core/log"
 	"ccagent/models"
 	"ccagent/services"
@@ -28,35 +28,32 @@ import (
 )
 
 type CmdRunner struct {
-	sessionService *services.SessionService
-	claudeService  *services.ClaudeService
-	gitUseCase     *usecases.GitUseCase
-	appState       *models.AppState
-	logFilePath    string
-	agentID        uuid.UUID
-	reconnectChan  chan struct{}
+	claudeService *services.ClaudeService
+	gitUseCase    *usecases.GitUseCase
+	appState      *models.AppState
+	logFilePath   string
+	agentID       string
+	reconnectChan chan struct{}
 }
 
 func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	log.Info("📋 Starting to initialize CmdRunner")
-	sessionService := services.NewSessionService()
 	claudeClient := clients.NewClaudeClient(permissionMode)
 	claudeService := services.NewClaudeService(claudeClient)
 	gitClient := clients.NewGitClient()
 	appState := models.NewAppState()
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService, appState)
 
-	agentID := uuid.New()
+	agentID := core.NewID("a")
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
 	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
 	return &CmdRunner{
-		sessionService: sessionService,
-		claudeService:  claudeService,
-		gitUseCase:     gitUseCase,
-		appState:       appState,
-		agentID:        agentID,
-		reconnectChan:  make(chan struct{}, 1),
+		claudeService: claudeService,
+		gitUseCase:    gitUseCase,
+		appState:      appState,
+		agentID:       agentID,
+		reconnectChan: make(chan struct{}, 1),
 	}, nil
 }
 
@@ -174,7 +171,7 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 	// Set authentication headers
 	opts.SetExtraHeaders(map[string][]string{
 		"X-CCAGENT-API-KEY": {apiKey},
-		"X-CCAGENT-ID":      {cr.agentID.String()},
+		"X-CCAGENT-ID":      {cr.agentID},
 	})
 
 	manager := socket.NewManager(serverURLStr, opts)
@@ -443,7 +440,7 @@ CRITICAL: Never autonomously create git commits or pull requests unless explicit
 	}
 
 	assistantMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
+		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
@@ -557,7 +554,7 @@ func (cr *CmdRunner) handleUserMessage(msg models.UnknownMessage, socketClient *
 	}
 
 	assistantMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
+		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeAssistantMessage,
 		Payload: assistantPayload,
 	}
@@ -723,7 +720,7 @@ func (cr *CmdRunner) sendJobCompleteMessage(socketClient *socket.Socket, jobID, 
 	}
 
 	jobMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
+		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeJobComplete,
 		Payload: payload,
 	}
@@ -744,7 +741,7 @@ func (cr *CmdRunner) sendSystemMessage(socketClient *socket.Socket, message, sla
 	}
 
 	sysMsg := models.UnknownMessage{
-		ID:      uuid.New().String(),
+		ID:      core.NewID("msg"),
 		Type:    models.MessageTypeSystemMessage,
 		Payload: payload,
 	}
@@ -767,7 +764,7 @@ func (cr *CmdRunner) sendErrorMessage(socketClient *socket.Socket, err error, sl
 
 func (cr *CmdRunner) sendProcessingSlackMessage(socketClient *socket.Socket, slackMessageID string) error {
 	processingSlackMessageMsg := models.UnknownMessage{
-		ID:   uuid.New().String(),
+		ID:   core.NewID("msg"),
 		Type: models.MessageTypeProcessingSlackMessage,
 		Payload: models.ProcessingSlackMessagePayload{
 			SlackMessageID: slackMessageID,

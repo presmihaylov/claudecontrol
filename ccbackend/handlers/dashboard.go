@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
 	"ccbackend/appctx"
+	"ccbackend/core"
 	"ccbackend/middleware"
 	"ccbackend/models"
 	"ccbackend/models/api"
@@ -180,18 +180,13 @@ func (h *DashboardAPIHandler) handleDeleteSlackIntegration(w http.ResponseWriter
 	// Extract integration ID from URL path parameters
 	vars := mux.Vars(r)
 	integrationIDStr, ok := vars["id"]
-	if !ok || integrationIDStr == "" {
-		log.Printf("❌ Missing integration ID in URL path")
-		http.Error(w, "integration ID is required", http.StatusBadRequest)
+	if !ok || !core.IsValidULID(integrationIDStr) {
+		log.Printf("❌ Missing or invalid integration ID in URL path")
+		http.Error(w, "integration ID must be a valid ULID", http.StatusBadRequest)
 		return
 	}
 
-	integrationID, err := uuid.Parse(integrationIDStr)
-	if err != nil {
-		log.Printf("❌ Invalid integration ID format: %v", err)
-		http.Error(w, "invalid integration ID format", http.StatusBadRequest)
-		return
-	}
+	integrationID := integrationIDStr
 
 	// Delete the integration (service will get user from context)
 	if err := h.slackIntegrationsService.DeleteSlackIntegration(r.Context(), integrationID); err != nil {
@@ -216,18 +211,13 @@ func (h *DashboardAPIHandler) handleGenerateCCAgentSecretKey(w http.ResponseWrit
 	// Extract integration ID from URL path parameters
 	vars := mux.Vars(r)
 	integrationIDStr, ok := vars["id"]
-	if !ok || integrationIDStr == "" {
-		log.Printf("❌ Missing integration ID in URL path")
-		http.Error(w, "integration ID is required", http.StatusBadRequest)
+	if !ok || !core.IsValidULID(integrationIDStr) {
+		log.Printf("❌ Missing or invalid integration ID in URL path")
+		http.Error(w, "integration ID must be a valid ULID", http.StatusBadRequest)
 		return
 	}
 
-	integrationID, err := uuid.Parse(integrationIDStr)
-	if err != nil {
-		log.Printf("❌ Invalid integration ID format: %v", err)
-		http.Error(w, "invalid integration ID format", http.StatusBadRequest)
-		return
-	}
+	integrationID := integrationIDStr
 
 	// Generate the secret key (service will get user from context)
 	secretKey, err := h.slackIntegrationsService.GenerateCCAgentSecretKey(r.Context(), integrationID)

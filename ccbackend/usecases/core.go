@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/slack-go/slack"
 
 	"ccbackend/clients"
@@ -34,7 +33,7 @@ func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.A
 	}
 }
 
-func (s *CoreUseCase) getSlackClientForIntegration(slackIntegrationID uuid.UUID) (*slack.Client, error) {
+func (s *CoreUseCase) getSlackClientForIntegration(slackIntegrationID string) (*slack.Client, error) {
 	integration, err := s.slackIntegrationsService.GetSlackIntegrationByID(slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integration: %w", err)
@@ -43,7 +42,7 @@ func (s *CoreUseCase) getSlackClientForIntegration(slackIntegrationID uuid.UUID)
 	return slack.New(integration.SlackAuthToken), nil
 }
 
-func (s *CoreUseCase) validateJobBelongsToAgent(agentID, jobID uuid.UUID, slackIntegrationID string) error {
+func (s *CoreUseCase) validateJobBelongsToAgent(agentID, jobID string, slackIntegrationID string) error {
 	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(agentID, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get jobs for agent: %w", err)
@@ -69,9 +68,8 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 
 	// Get the specific job from the payload to find the Slack thread information
 	utils.AssertInvariant(payload.JobID != "", "JobID is empty in AssistantMessage payload")
-	utils.AssertInvariant(uuid.Validate(payload.JobID) == nil, "JobID is not in UUID format")
 
-	jobID := uuid.MustParse(payload.JobID)
+	jobID := payload.JobID
 	job, err := s.jobsService.GetJobByID(jobID, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to get job %s: %v", jobID, err)
@@ -104,9 +102,8 @@ func (s *CoreUseCase) ProcessAssistantMessage(clientID string, payload models.As
 
 	// Update the ProcessedSlackMessage status to COMPLETED
 	utils.AssertInvariant(payload.SlackMessageID != "", "SlackMessageID is empty")
-	utils.AssertInvariant(uuid.Validate(payload.SlackMessageID) == nil, "SlackMessageID is not in UUID format")
 
-	messageID := uuid.MustParse(payload.SlackMessageID)
+	messageID := payload.SlackMessageID
 
 	updatedMessage, err := s.jobsService.UpdateProcessedSlackMessage(messageID, models.ProcessedSlackMessageStatusCompleted, slackIntegrationID)
 	if err != nil {
@@ -137,8 +134,7 @@ func (s *CoreUseCase) ProcessSystemMessage(clientID string, payload models.Syste
 		return nil
 	}
 
-	utils.AssertInvariant(uuid.Validate(payload.SlackMessageID) == nil, "SlackMessageID is not in UUID format")
-	messageID := uuid.MustParse(payload.SlackMessageID)
+	messageID := payload.SlackMessageID
 
 	// Get the ProcessedSlackMessage to find the correct channel and thread
 	processedMessage, err := s.jobsService.GetProcessedSlackMessageByID(messageID, slackIntegrationID)
@@ -179,8 +175,7 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(clientID string, payload mod
 		return fmt.Errorf("SlackMessageID is required")
 	}
 
-	utils.AssertInvariant(uuid.Validate(payload.SlackMessageID) == nil, "SlackMessageID is not in UUID format")
-	messageID := uuid.MustParse(payload.SlackMessageID)
+	messageID := payload.SlackMessageID
 
 	// Get the ProcessedSlackMessage to find the correct channel and update emoji
 	processedMessage, err := s.jobsService.GetProcessedSlackMessageByID(messageID, slackIntegrationID)
@@ -313,7 +308,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 	}
 
 	// Get job to access thread timestamp
-	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID.String())
+	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -329,14 +324,13 @@ func (s *CoreUseCase) sendStartConversationToAgent(clientID string, message *mod
 
 	// Resolve user mentions in the message text before sending to agent
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
-
 	startConversationMessage := models.UnknownMessage{
-		ID:   uuid.New().String(),
+		ID:   core.NewID("msg"),
 		Type: models.MessageTypeStartConversation,
 		Payload: models.StartConversationPayload{
-			JobID:            message.JobID.String(),
+			JobID:            message.JobID,
 			Message:          resolvedText,
-			SlackMessageID:   message.ID.String(),
+			SlackMessageID:   message.ID,
 			SlackMessageLink: permalink,
 		},
 	}
@@ -356,7 +350,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 	}
 
 	// Get job to access thread timestamp
-	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID.String())
+	job, err := s.jobsService.GetJobByID(message.JobID, message.SlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -372,14 +366,13 @@ func (s *CoreUseCase) sendUserMessageToAgent(clientID string, message *models.Pr
 
 	// Resolve user mentions in the message text before sending to agent
 	resolvedText := utils.ResolveMentionsInSlackMessage(context.Background(), message.TextContent, slackClient)
-
 	userMessage := models.UnknownMessage{
-		ID:   uuid.New().String(),
+		ID:   core.NewID("msg"),
 		Type: models.MessageTypeUserMessage,
 		Payload: models.UserMessagePayload{
-			JobID:            message.JobID.String(),
+			JobID:            message.JobID,
 			Message:          resolvedText,
-			SlackMessageID:   message.ID.String(),
+			SlackMessageID:   message.ID,
 			SlackMessageLink: permalink,
 		},
 	}
@@ -407,7 +400,7 @@ func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) 
 
 func (s *CoreUseCase) updateSlackMessageReaction(channelID, messageTS, newEmoji, slackIntegrationID string) error {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
+	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
@@ -492,7 +485,7 @@ func (s *CoreUseCase) assignJobToAvailableAgent(job *models.Job, threadTS, slack
 // - clientID: WebSocket connection ID of assigned agent (empty if not assigned)
 // - wasAssigned: true if job was successfully assigned to an agent, false if no agents available
 // - error: any error that occurred during the assignment process
-func (s *CoreUseCase) tryAssignJobToAgent(jobID uuid.UUID, slackIntegrationID string) (string, bool, error) {
+func (s *CoreUseCase) tryAssignJobToAgent(jobID string, slackIntegrationID string) (string, bool, error) {
 	// First check if this job is already assigned to an agent
 	existingAgent, err := s.agentsService.GetAgentByJobID(jobID, slackIntegrationID)
 	if err != nil {
@@ -625,7 +618,6 @@ func (s *CoreUseCase) DeregisterAgent(client *clients.Client) error {
 	if err != nil {
 		log.Printf("❌ Failed to get job %s for cleanup: %v", jobs[0], err)
 	} else {
-		// Send abandonment message to Slack thread (using sendSlackMessage for custom emoji)
 		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
 		if err := s.sendSlackMessage(client.SlackIntegrationID, job.SlackChannelID, job.SlackThreadTS, abandonmentMessage); err != nil {
 			log.Printf("⚠️ Failed to send abandonment message to Slack thread %s: %v", job.SlackThreadTS, err)
@@ -681,7 +673,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
 	for _, integration := range integrations {
-		slackIntegrationID := integration.ID.String()
+		slackIntegrationID := integration.ID
 
 		// Get connected agents for this integration using centralized service method
 		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(slackIntegrationID, connectedClientIDs)
@@ -695,10 +687,8 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 		}
 
 		log.Printf("📡 Broadcasting CheckIdleJobs to %d connected agents for integration %s", len(connectedAgents), slackIntegrationID)
-
-		// Send CheckIdleJobs message to each connected agent
 		checkIdleJobsMessage := models.UnknownMessage{
-			ID:      uuid.New().String(),
+			ID:      core.NewID("msg"),
 			Type:    models.MessageTypeCheckIdleJobs,
 			Payload: models.CheckIdleJobsPayload{},
 		}
@@ -727,12 +717,13 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs() error {
 func (s *CoreUseCase) ProcessJobComplete(clientID string, payload models.JobCompletePayload, slackIntegrationID string) error {
 	log.Printf("📋 Starting to process job complete from client %s: JobID: %s, Reason: %s", clientID, payload.JobID, payload.Reason)
 
-	// Validate JobID format
-	jobID, err := uuid.Parse(payload.JobID)
-	if err != nil {
-		log.Printf("❌ Invalid JobID format from client %s: %v", clientID, err)
-		return fmt.Errorf("invalid JobID format: %w", err)
+	// Validate JobID is not empty
+	if payload.JobID == "" {
+		log.Printf("❌ Empty JobID from client %s", clientID)
+		return fmt.Errorf("JobID cannot be empty")
 	}
+
+	jobID := payload.JobID
 
 	// Get the job to find the Slack thread information
 	job, err := s.jobsService.GetJobByID(jobID, slackIntegrationID)
@@ -803,7 +794,7 @@ func (s *CoreUseCase) ProcessQueuedJobs() error {
 	var processingErrors []string
 
 	for _, integration := range integrations {
-		slackIntegrationID := integration.ID.String()
+		slackIntegrationID := integration.ID
 
 		// Get jobs with queued messages for this integration
 		queuedJobs, err := s.jobsService.GetJobsWithQueuedMessages(slackIntegrationID)
@@ -915,7 +906,7 @@ func (s *CoreUseCase) CleanupInactiveAgents() error {
 	inactiveThresholdMinutes := 10 // 10 minutes
 
 	for _, integration := range integrations {
-		slackIntegrationID := integration.ID.String()
+		slackIntegrationID := integration.ID
 
 		// Get inactive agents for this integration
 		inactiveAgents, err := s.agentsService.GetInactiveAgents(slackIntegrationID, inactiveThresholdMinutes)
@@ -1031,7 +1022,7 @@ func (s *CoreUseCase) sendSlackMessage(slackIntegrationID, channelID, threadTS, 
 	log.Printf("📋 Starting to send message to channel %s, thread %s: %s", channelID, threadTS, message)
 
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(uuid.MustParse(slackIntegrationID))
+	slackClient, err := s.getSlackClientForIntegration(slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}

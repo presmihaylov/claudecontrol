@@ -69,7 +69,7 @@ func run() error {
 		if err != nil {
 			return "", err
 		}
-		return integration.ID.String(), nil
+		return integration.ID, nil
 	}
 
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)

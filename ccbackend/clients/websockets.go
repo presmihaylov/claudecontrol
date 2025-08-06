@@ -1,13 +1,13 @@
 package clients
 
 import (
+	"ccbackend/core"
 	"ccbackend/utils"
 	"fmt"
 	"log"
 	"strings"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/zishang520/socket.io/v2/socket"
 )
@@ -21,7 +21,7 @@ type Client struct {
 	ID                 string
 	Socket             *socket.Socket
 	SlackIntegrationID string
-	AgentID            uuid.UUID
+	AgentID            string
 }
 
 type MessageHandlerFunc func(client *Client, msg any)
@@ -93,16 +93,15 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 		return
 	}
 
-	agentIDStr, exists := getSocketIOHeader(headers, "X-CCAGENT-ID")
+	agentID, exists := getSocketIOHeader(headers, "X-CCAGENT-ID")
 	if !exists {
 		log.Printf("❌ No X-CCAGENT-ID provided, rejecting connection")
 		sock.Disconnect(true)
 		return
 	}
 
-	agentID, err := uuid.Parse(agentIDStr)
-	if err != nil {
-		log.Printf("❌ Rejecting Socket.IO connection: invalid agent ID format (must be UUID): %s", agentIDStr)
+	if !core.IsValidULID(agentID) {
+		log.Printf("❌ Rejecting Socket.IO connection: agent ID must be a valid ULID")
 		sock.Disconnect(true)
 		return
 	}
@@ -116,7 +115,7 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 	}
 
 	client := &Client{
-		ID:                 uuid.New().String(),
+		ID:                 core.NewID("cl"),
 		Socket:             sock,
 		SlackIntegrationID: slackIntegrationID,
 		AgentID:            agentID,

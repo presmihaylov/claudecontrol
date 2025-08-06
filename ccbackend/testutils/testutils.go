@@ -6,12 +6,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 
 	"ccbackend/appctx"
 	"ccbackend/config"
+	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
 )
@@ -47,7 +47,7 @@ func LoadTestConfig() (*config.AppConfig, error) {
 
 // CreateTestUser creates a test user with a unique ID to avoid constraint violations
 func CreateTestUser(t *testing.T, usersRepo *db.PostgresUsersRepository) *models.User {
-	testUserID := uuid.New().String()
+	testUserID := core.NewID("u")
 	testUser, err := usersRepo.GetOrCreateUser("test", testUserID)
 	require.NoError(t, err, "Failed to create test user")
 	return testUser
@@ -55,7 +55,7 @@ func CreateTestUser(t *testing.T, usersRepo *db.PostgresUsersRepository) *models
 
 // CreateTestUserWithProvider creates a test user with a specific auth provider
 func CreateTestUserWithProvider(t *testing.T, usersRepo *db.PostgresUsersRepository, authProvider string) *models.User {
-	testUserID := uuid.New().String()
+	testUserID := core.NewID("u")
 	testUser, err := usersRepo.GetOrCreateUser(authProvider, testUserID)
 	require.NoError(t, err, "Failed to create test user with provider %s", authProvider)
 	return testUser
@@ -68,11 +68,15 @@ func CreateTestContext(user *models.User) context.Context {
 }
 
 // CreateTestSlackIntegration creates a test slack integration for testing
-func CreateTestSlackIntegration(t *testing.T, slackIntegrationsRepo *db.PostgresSlackIntegrationsRepository, userID uuid.UUID) *models.SlackIntegration {
+func CreateTestSlackIntegration(t *testing.T, slackIntegrationsRepo *db.PostgresSlackIntegrationsRepository, userID string) *models.SlackIntegration {
+	integrationID := core.NewID("si")
+	teamIDSuffix := core.NewID("team")
+	tokenSuffix := core.NewID("tok")
+
 	testIntegration := &models.SlackIntegration{
-		ID:             uuid.New(),
-		SlackTeamID:    "test-team-" + uuid.New().String(),
-		SlackAuthToken: "xoxb-test-token-" + uuid.New().String(),
+		ID:             integrationID,
+		SlackTeamID:    "test-team-" + teamIDSuffix,
+		SlackAuthToken: "xoxb-test-token-" + tokenSuffix,
 		SlackTeamName:  "Test Team",
 		UserID:         userID,
 	}
