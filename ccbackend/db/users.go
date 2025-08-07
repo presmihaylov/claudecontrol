@@ -9,6 +9,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"ccbackend/core"
+	dbtx "ccbackend/db/tx"
 	"ccbackend/models"
 )
 
@@ -22,6 +23,8 @@ func NewPostgresUsersRepository(db *sqlx.DB, schema string) *PostgresUsersReposi
 }
 
 func (r *PostgresUsersRepository) GetOrCreateUser(ctx context.Context, authProvider, authProviderID string) (*models.User, error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+
 	// Generate ULID for new users
 	userID := core.NewID("u")
 
@@ -33,7 +36,7 @@ func (r *PostgresUsersRepository) GetOrCreateUser(ctx context.Context, authProvi
 		RETURNING id, auth_provider, auth_provider_id, created_at, updated_at`, r.schema)
 
 	user := &models.User{}
-	err := r.db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID).StructScan(user)
+	err := db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID).StructScan(user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get or create user: %w", err)
 	}
