@@ -1,6 +1,7 @@
-package clients
+package slack
 
 import (
+	"ccbackend/clients"
 	"context"
 	"fmt"
 	"net/http"
@@ -9,22 +10,22 @@ import (
 // MockSlackClient implements SlackClient interface for testing
 type MockSlackClient struct {
 	// OAuth operations
-	MockGetOAuthV2Response func(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error)
+	MockGetOAuthV2Response func(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*clients.OAuthV2Response, error)
 
 	// Bot operations
-	MockAuthTest     func() (*SlackAuthTestResponse, error)
-	MockGetPermalink func(params *SlackPermalinkParameters) (string, error)
+	MockAuthTest     func() (*clients.SlackAuthTestResponse, error)
+	MockGetPermalink func(params *clients.SlackPermalinkParameters) (string, error)
 
 	// User operations
-	MockGetUserInfoContext func(ctx context.Context, userID string) (*SlackUser, error)
+	MockGetUserInfoContext func(ctx context.Context, userID string) (*clients.SlackUser, error)
 
 	// Message operations
-	MockPostMessage func(channelID string, options ...SlackMessageOption) (*SlackPostMessageResponse, error)
+	MockPostMessage func(channelID string, options ...clients.SlackMessageOption) (*clients.SlackPostMessageResponse, error)
 
 	// Reaction operations
-	MockGetReactions   func(item SlackItemRef, params SlackGetReactionsParameters) ([]SlackItemReaction, error)
-	MockAddReaction    func(name string, item SlackItemRef) error
-	MockRemoveReaction func(name string, item SlackItemRef) error
+	MockGetReactions   func(item clients.SlackItemRef, params clients.SlackGetReactionsParameters) ([]clients.SlackItemReaction, error)
+	MockAddReaction    func(name string, item clients.SlackItemRef) error
+	MockRemoveReaction func(name string, item clients.SlackItemRef) error
 }
 
 // NewMockSlackClient creates a new mock Slack client
@@ -33,13 +34,13 @@ func NewMockSlackClient() *MockSlackClient {
 }
 
 // GetOAuthV2Response implements SlackClient interface for testing
-func (m *MockSlackClient) GetOAuthV2Response(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error) {
+func (m *MockSlackClient) GetOAuthV2Response(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*clients.OAuthV2Response, error) {
 	if m.MockGetOAuthV2Response != nil {
 		return m.MockGetOAuthV2Response(httpClient, clientID, clientSecret, code, redirectURL)
 	}
 
 	// Default mock response for testing
-	return &OAuthV2Response{
+	return &clients.OAuthV2Response{
 		TeamID:      "T123456789",
 		TeamName:    "Test Team",
 		AccessToken: "xoxb-test-token-123",
@@ -47,20 +48,20 @@ func (m *MockSlackClient) GetOAuthV2Response(httpClient *http.Client, clientID, 
 }
 
 // AuthTest implements SlackClient interface for testing
-func (m *MockSlackClient) AuthTest() (*SlackAuthTestResponse, error) {
+func (m *MockSlackClient) AuthTest() (*clients.SlackAuthTestResponse, error) {
 	if m.MockAuthTest != nil {
 		return m.MockAuthTest()
 	}
 
 	// Default mock response
-	return &SlackAuthTestResponse{
+	return &clients.SlackAuthTestResponse{
 		UserID: "U123456789",
 		TeamID: "T123456789",
 	}, nil
 }
 
 // GetPermalink implements SlackClient interface for testing
-func (m *MockSlackClient) GetPermalink(params *SlackPermalinkParameters) (string, error) {
+func (m *MockSlackClient) GetPermalink(params *clients.SlackPermalinkParameters) (string, error) {
 	if m.MockGetPermalink != nil {
 		return m.MockGetPermalink(params)
 	}
@@ -70,16 +71,16 @@ func (m *MockSlackClient) GetPermalink(params *SlackPermalinkParameters) (string
 }
 
 // GetUserInfoContext implements SlackClient interface for testing
-func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, userID string) (*SlackUser, error) {
+func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, userID string) (*clients.SlackUser, error) {
 	if m.MockGetUserInfoContext != nil {
 		return m.MockGetUserInfoContext(ctx, userID)
 	}
 
 	// Default mock response
-	return &SlackUser{
+	return &clients.SlackUser{
 		ID:   userID,
 		Name: "testuser",
-		Profile: SlackUserProfile{
+		Profile: clients.SlackUserProfile{
 			DisplayName: "Test User",
 			RealName:    "Test User",
 		},
@@ -87,30 +88,30 @@ func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, userID string)
 }
 
 // PostMessage implements SlackClient interface for testing
-func (m *MockSlackClient) PostMessage(channelID string, options ...SlackMessageOption) (*SlackPostMessageResponse, error) {
+func (m *MockSlackClient) PostMessage(channelID string, options ...clients.SlackMessageOption) (*clients.SlackPostMessageResponse, error) {
 	if m.MockPostMessage != nil {
 		return m.MockPostMessage(channelID, options...)
 	}
 
 	// Default mock response
-	return &SlackPostMessageResponse{
+	return &clients.SlackPostMessageResponse{
 		Channel:   channelID,
 		Timestamp: "1234567890.123456",
 	}, nil
 }
 
 // GetReactions implements SlackClient interface for testing
-func (m *MockSlackClient) GetReactions(item SlackItemRef, params SlackGetReactionsParameters) ([]SlackItemReaction, error) {
+func (m *MockSlackClient) GetReactions(item clients.SlackItemRef, params clients.SlackGetReactionsParameters) ([]clients.SlackItemReaction, error) {
 	if m.MockGetReactions != nil {
 		return m.MockGetReactions(item, params)
 	}
 
 	// Default mock response - no reactions
-	return []SlackItemReaction{}, nil
+	return []clients.SlackItemReaction{}, nil
 }
 
 // AddReaction implements SlackClient interface for testing
-func (m *MockSlackClient) AddReaction(name string, item SlackItemRef) error {
+func (m *MockSlackClient) AddReaction(name string, item clients.SlackItemRef) error {
 	if m.MockAddReaction != nil {
 		return m.MockAddReaction(name, item)
 	}
@@ -120,7 +121,7 @@ func (m *MockSlackClient) AddReaction(name string, item SlackItemRef) error {
 }
 
 // RemoveReaction implements SlackClient interface for testing
-func (m *MockSlackClient) RemoveReaction(name string, item SlackItemRef) error {
+func (m *MockSlackClient) RemoveReaction(name string, item clients.SlackItemRef) error {
 	if m.MockRemoveReaction != nil {
 		return m.MockRemoveReaction(name, item)
 	}
@@ -130,8 +131,8 @@ func (m *MockSlackClient) RemoveReaction(name string, item SlackItemRef) error {
 }
 
 // WithOAuthV2Response sets up mock to return specific response
-func (m *MockSlackClient) WithOAuthV2Response(response *OAuthV2Response) *MockSlackClient {
-	m.MockGetOAuthV2Response = func(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error) {
+func (m *MockSlackClient) WithOAuthV2Response(response *clients.OAuthV2Response) *MockSlackClient {
+	m.MockGetOAuthV2Response = func(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*clients.OAuthV2Response, error) {
 		return response, nil
 	}
 	return m
@@ -139,7 +140,7 @@ func (m *MockSlackClient) WithOAuthV2Response(response *OAuthV2Response) *MockSl
 
 // WithOAuthV2Error sets up mock to return specific error
 func (m *MockSlackClient) WithOAuthV2Error(err error) *MockSlackClient {
-	m.MockGetOAuthV2Response = func(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error) {
+	m.MockGetOAuthV2Response = func(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*clients.OAuthV2Response, error) {
 		return nil, err
 	}
 	return m
@@ -147,7 +148,7 @@ func (m *MockSlackClient) WithOAuthV2Error(err error) *MockSlackClient {
 
 // WithOAuthV2Validation sets up mock with parameter validation
 func (m *MockSlackClient) WithOAuthV2Validation() *MockSlackClient {
-	m.MockGetOAuthV2Response = func(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error) {
+	m.MockGetOAuthV2Response = func(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*clients.OAuthV2Response, error) {
 		if clientID == "" {
 			return nil, fmt.Errorf("client ID is required")
 		}
@@ -158,7 +159,7 @@ func (m *MockSlackClient) WithOAuthV2Validation() *MockSlackClient {
 			return nil, fmt.Errorf("authorization code is required")
 		}
 
-		return &OAuthV2Response{
+		return &clients.OAuthV2Response{
 			TeamID:      "T123456789",
 			TeamName:    "Test Team",
 			AccessToken: "xoxb-test-token-123",
