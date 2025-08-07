@@ -1141,16 +1141,18 @@ func (s *CoreUseCase) ProcessReactionAdded(ctx context.Context, userID, channelI
 	maybeAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for job %s: %v", job.ID, err)
-    return fmt.Errorf("failed to get agent by job id: %w", err)
+		return fmt.Errorf("failed to get agent by job id: %w", err)
 	}
 
 	if err := s.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
 		// If agent is found, unassign them from the job
-    if maybeAgent.IsPresent() {
-      if err := s.agentsService.UnassignAgentFromJob(txCtx, maybeAgent.OrEmpty().ID, job.ID, slackIntegrationID); err != nil {
+		if maybeAgent.IsPresent() {
+			agent := maybeAgent.MustGet()
+			if err := s.agentsService.UnassignAgentFromJob(txCtx, agent.ID, job.ID, slackIntegrationID); err != nil {
 				log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, job.ID, err)
 				return fmt.Errorf("failed to unassign agent from job: %w", err)
 			}
+
 			log.Printf("✅ Unassigned agent %s from manually completed job %s", agent.ID, job.ID)
 		}
 

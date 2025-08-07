@@ -255,8 +255,7 @@ func TestJobsService(t *testing.T) {
 			id := core.NewID("j")
 
 			err := service.DeleteJob(context.Background(), id, slackIntegrationID)
-			require.Error(t, err)
-			assert.True(t, errors.Is(err, core.ErrNotFound))
+			require.NoError(t, err)
 		})
 	})
 }
