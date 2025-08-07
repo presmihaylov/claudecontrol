@@ -11,11 +11,11 @@ require github.com/lib/pq v1.10.9
 
 require (
 	github.com/clerk/clerk-sdk-go/v2 v2.3.1
-	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/rs/cors v1.11.1
+	github.com/samber/mo v1.14.0
 	github.com/stretchr/testify v1.10.0
 	github.com/zishang520/socket.io/v2 v2.0.5
 )
@@ -36,7 +36,6 @@ require (
 	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/quic-go/quic-go v0.40.0 // indirect
 	github.com/quic-go/webtransport-go v0.6.0 // indirect
-	github.com/samber/mo v1.14.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect

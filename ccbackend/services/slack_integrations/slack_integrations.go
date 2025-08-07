@@ -119,9 +119,8 @@ func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, i
 	if err != nil {
 		return fmt.Errorf("failed to delete slack integration: %w", err)
 	}
-
 	if !deleted {
-		return fmt.Errorf("slack integration not found")
+		return core.ErrNotFound
 	}
 
 	log.Printf("📋 Completed successfully - deleted Slack integration: %s", integrationID)
@@ -153,9 +152,8 @@ func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context,
 	if err != nil {
 		return "", fmt.Errorf("failed to store CCAgent secret key: %w", err)
 	}
-
 	if !updated {
-		return "", fmt.Errorf("slack integration not found")
+		return "", core.ErrNotFound
 	}
 
 	log.Printf("📋 Completed successfully - generated CCAgent secret key for integration: %s", integrationID)

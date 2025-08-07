@@ -12,7 +12,6 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
-	"ccbackend/core"
 	dbtx "ccbackend/db/tx"
 	"ccbackend/models"
 )
@@ -42,7 +41,7 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 }
 
 func (r *PostgresJobsRepository) GetJobByID(ctx context.Context, id string, slackIntegrationID string) (mo.Option[*models.Job], error) {
-  db := dbtx.GetTransactional(ctx, r.db)
+	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
 		SELECT id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at 
 		FROM %s.jobs 
@@ -61,7 +60,7 @@ func (r *PostgresJobsRepository) GetJobByID(ctx context.Context, id string, slac
 }
 
 func (r *PostgresJobsRepository) GetJobBySlackThread(ctx context.Context, threadTS, channelID, slackIntegrationID string) (mo.Option[*models.Job], error) {
-  db := dbtx.GetTransactional(ctx, r.db)
+	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
 		SELECT id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at 
 		FROM %s.jobs 
@@ -161,7 +160,7 @@ func (r *PostgresJobsRepository) DeleteJob(ctx context.Context, id string, slack
 
 // TESTS_UpdateJobUpdatedAt updates the updated_at timestamp of a job for testing purposes
 func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(ctx context.Context, id string, updatedAt time.Time, slackIntegrationID string) (bool, error) {
-  db := dbtx.GetTransactional(ctx, r.db)
+	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
 		UPDATE %s.jobs 
 		SET updated_at = $2 
