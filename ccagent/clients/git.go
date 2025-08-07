@@ -19,8 +19,8 @@ func NewGitClient() *GitClient {
 	return &GitClient{}
 }
 
-// isTimeoutError checks if an error is a timeout error that should be retried
-func isTimeoutError(err error, output string) bool {
+// isRecoverableGHError checks if an error is a recoverable GitHub API error that should be retried
+func isRecoverableGHError(err error, output string) bool {
 	if err == nil {
 		return false
 	}
@@ -28,7 +28,7 @@ func isTimeoutError(err error, output string) bool {
 	errStr := strings.ToLower(err.Error())
 	outputStr := strings.ToLower(output)
 
-	timeoutPatterns := []string{
+	recoverablePatterns := []string{
 		"timeout",
 		"i/o timeout",
 		"connection timeout",
@@ -36,7 +36,7 @@ func isTimeoutError(err error, output string) bool {
 		"context deadline exceeded",
 	}
 
-	for _, pattern := range timeoutPatterns {
+	for _, pattern := range recoverablePatterns {
 		if strings.Contains(errStr, pattern) || strings.Contains(outputStr, pattern) {
 			return true
 		}
@@ -45,7 +45,7 @@ func isTimeoutError(err error, output string) bool {
 	return false
 }
 
-// executeWithRetry executes a GitHub CLI command with exponential backoff for timeout errors
+// executeWithRetry executes a GitHub CLI command with exponential backoff for recoverable errors
 func (g *GitClient) executeWithRetry(cmd *exec.Cmd, operationName string) ([]byte, error) {
 	var output []byte
 	var err error
@@ -59,14 +59,14 @@ func (g *GitClient) executeWithRetry(cmd *exec.Cmd, operationName string) ([]byt
 	retryOperation := func() error {
 		output, err = cmd.CombinedOutput()
 
-		if err != nil && isTimeoutError(err, string(output)) {
-			log.Info("⏳ GitHub API timeout detected for %s, retrying...", operationName)
+		if err != nil && isRecoverableGHError(err, string(output)) {
+			log.Info("⏳ GitHub API recoverable error detected for %s, retrying...", operationName)
 			// Reset command for retry
 			cmd = exec.Command(cmd.Args[0], cmd.Args[1:]...)
 			return err // This will trigger a retry
 		}
 
-		return nil // Success or non-timeout error, stop retrying
+		return nil // Success or non-recoverable error, stop retrying
 	}
 
 	retryErr := backoff.Retry(retryOperation, retryBackoff)
