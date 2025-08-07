@@ -22,6 +22,14 @@ func NewSlackClient(authToken string) clients.SlackClient {
 	}
 }
 
+// NewSlackOAuthClient creates a new Slack client for OAuth operations only
+// This can be used when you don't have an auth token yet
+func NewSlackOAuthClient() clients.SlackOAuthClient {
+	return &SlackClientImpl{
+		Client: slack.New(""), // Empty token for OAuth-only operations
+	}
+}
+
 // GetOAuthV2Response exchanges an OAuth authorization code for access tokens
 func (c *SlackClientImpl) GetOAuthV2Response(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*clients.OAuthV2Response, error) {
 	slackResponse, err := slack.GetOAuthV2Response(httpClient, clientID, clientSecret, code, redirectURL)

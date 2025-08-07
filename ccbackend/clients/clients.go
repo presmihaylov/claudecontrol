@@ -7,6 +7,13 @@ import (
 	"ccbackend/models"
 )
 
+// OAuthV2Response represents our custom OAuth response with only needed fields
+type OAuthV2Response struct {
+	TeamID      string
+	TeamName    string
+	AccessToken string
+}
+
 // SlackOAuthClient defines the interface for Slack OAuth operations
 type SlackOAuthClient interface {
 	GetOAuthV2Response(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error)

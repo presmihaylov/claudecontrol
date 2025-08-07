@@ -15,6 +15,7 @@ import (
 	"github.com/rs/cors"
 
 	"ccbackend/clients"
+	slackclient "ccbackend/clients/slack"
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/handlers"
@@ -67,7 +68,7 @@ func run() error {
 	agentsService := services.NewAgentsService(agentsRepo)
 	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 	usersService := users.NewUsersService(usersRepo)
-	slackOAuthClient := clients.NewConcreteSlackClient()
+	slackOAuthClient := slackclient.NewSlackOAuthClient()
 	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
 
 	// Create API key validator for WebSocket connections
