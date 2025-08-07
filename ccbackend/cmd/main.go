@@ -16,6 +16,7 @@ import (
 
 	"ccbackend/clients"
 	slackclient "ccbackend/clients/slack"
+	socketioclient "ccbackend/clients/socketio"
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/handlers"
@@ -90,7 +91,7 @@ func run() error {
 		return integration.ID, nil
 	}
 
-	wsClient := clients.NewSocketIOClient(apiKeyValidator)
+	wsClient := socketioclient.NewSocketIOClient(apiKeyValidator)
 
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, txManager)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
@@ -132,8 +133,13 @@ func run() error {
 	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(deregisterAgent))
 	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(processPing))
 
-	// Register WebSocket message handler
-	wsClient.RegisterMessageHandler(alertMiddleware.WrapMessageHandler(wsHandler.HandleMessage))
+	// Register WebSocket message handler (middleware consumes errors internally)
+	wrappedHandler := alertMiddleware.WrapMessageHandler(wsHandler.HandleMessage)
+	messageHandlerAdapter := func(client *clients.Client, msg any) error {
+		wrappedHandler(client, msg)
+		return nil // Middleware handles errors internally
+	}
+	wsClient.RegisterMessageHandler(messageHandlerAdapter)
 
 	// Start periodic broadcast of CheckIdleJobs, cleanup of inactive agents, and processing of queued jobs
 	cleanupTicker := time.NewTicker(1 * time.Minute)
