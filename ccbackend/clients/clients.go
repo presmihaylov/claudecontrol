@@ -30,9 +30,10 @@ type SlackClient interface {
 
 	// User operations
 	GetUserInfoContext(ctx context.Context, userID string) (*SlackUser, error)
+	ResolveMentionsInMessage(ctx context.Context, message string) string
 
 	// Message operations
-	PostMessage(channelID string, options ...SlackMessageOption) (*SlackPostMessageResponse, error)
+	PostMessage(channelID string, params SlackMessageParams) (*SlackPostMessageResponse, error)
 
 	// Reaction operations
 	GetReactions(item SlackItemRef, params SlackGetReactionsParameters) ([]SlackItemReaction, error)
