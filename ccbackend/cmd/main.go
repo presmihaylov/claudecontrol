@@ -89,7 +89,7 @@ func run() error {
 		return integration.ID, nil
 	}
 
-	wsClient := clients.NewWebSocketClient(apiKeyValidator)
+	wsClient := clients.NewSocketIOClient(apiKeyValidator)
 
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, txManager)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase)

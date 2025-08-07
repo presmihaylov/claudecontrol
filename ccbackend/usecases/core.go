@@ -19,7 +19,7 @@ import (
 )
 
 type CoreUseCase struct {
-	wsClient                 *clients.WebSocketClient
+	wsClient                 *clients.SocketIOClient
 	agentsService            *services.AgentsService
 	jobsService              *services.JobsService
 	slackIntegrationsService services.SlackIntegrationsService
@@ -27,7 +27,7 @@ type CoreUseCase struct {
 }
 
 func NewCoreUseCase(
-	wsClient *clients.WebSocketClient,
+	wsClient *clients.SocketIOClient,
 	agentsService *services.AgentsService,
 	jobsService *services.JobsService,
 	slackIntegrationsService services.SlackIntegrationsService,
