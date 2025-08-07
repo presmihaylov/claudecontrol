@@ -44,9 +44,9 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("🔐 Authentication middleware processing request from %s", r.RemoteAddr)
 
-		// Check if we're in testing mode
-		if os.Getenv("TESTING_MODE") == "true" {
-			log.Printf("🧪 Testing mode enabled - skipping Clerk validation")
+		// Check if we're in testing environment
+		if os.Getenv("ENVIRONMENT") == "test" {
+			log.Printf("🧪 Test environment detected - skipping Clerk validation")
 			testUser := &models.User{
 				ID:             core.NewID("u"),
 				AuthProvider:   "test",

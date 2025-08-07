@@ -131,34 +131,23 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 	usersService := NewUsersService(usersRepo)
 
-	// Use a mock Clerk user ID for testing
-	mockClerkUserID := "user_test_12345"
+	// Create test user using testutils
+	testUser := testutils.CreateTestUserWithProvider(t, usersRepo, "test")
+	defer testutils.CleanupTestUser(t, dbConn, cfg.DatabaseSchema, testUser.ID)()
 
-	// Test GetOrCreateUser with mock data
-	user, err := usersService.GetOrCreateUser(context.Background(), "clerk", mockClerkUserID)
+	// Test GetOrCreateUser with test user
+	user, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID)
 	require.NoError(t, err)
 	assert.NotNil(t, user)
-	assert.Equal(t, "clerk", user.AuthProvider)
-	assert.Equal(t, mockClerkUserID, user.AuthProviderID)
-	assert.NotEmpty(t, user.ID)
+	assert.Equal(t, testUser.AuthProvider, user.AuthProvider)
+	assert.Equal(t, testUser.AuthProviderID, user.AuthProviderID)
+	assert.Equal(t, testUser.ID, user.ID)
 
 	// Test that calling GetOrCreateUser again returns the same user
-	user2, err := usersService.GetOrCreateUser(context.Background(), "clerk", mockClerkUserID)
+	user2, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID)
 	require.NoError(t, err)
 	assert.Equal(t, user.ID, user2.ID)
 	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
-
-	// Cleanup - delete the test user from database
-	defer func() {
-		// Clean up test data from database
-		query := "DELETE FROM " + cfg.DatabaseSchema + ".users WHERE auth_provider_id = $1"
-		_, err := dbConn.Exec(query, mockClerkUserID)
-		if err != nil {
-			t.Logf("⚠️ Failed to cleanup test user from database: %v", err)
-		} else {
-			t.Logf("🧹 Cleaned up test user from database: %s", mockClerkUserID)
-		}
-	}()
 }
 
 func TestUsersService_GetOrCreateUser_ValidationErrors(t *testing.T) {

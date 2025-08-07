@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 
@@ -80,5 +81,18 @@ func CreateTestSlackIntegration(userID string) *models.SlackIntegration {
 		SlackAuthToken: "xoxb-test-token-" + tokenSuffix,
 		SlackTeamName:  "Test Team",
 		UserID:         userID,
+	}
+}
+
+// CleanupTestUser creates a cleanup function that deletes a test user from the database
+func CleanupTestUser(t *testing.T, dbConn *sqlx.DB, databaseSchema string, userID string) func() {
+	return func() {
+		query := "DELETE FROM " + databaseSchema + ".users WHERE id = $1"
+		_, err := dbConn.Exec(query, userID)
+		if err != nil {
+			t.Logf("⚠️ Failed to cleanup test user from database: %v", err)
+		} else {
+			t.Logf("🧹 Cleaned up test user from database: %s", userID)
+		}
 	}
 }

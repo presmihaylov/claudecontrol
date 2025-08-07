@@ -59,6 +59,7 @@ jobs:
         echo "CLERK_SECRET_KEY=${{ secrets.CLERK_TEST_SECRET_KEY }}" >> .env.test
         echo "CORS_ALLOWED_ORIGINS=*" >> .env.test
         echo "PORT=8080" >> .env.test
+        echo "ENVIRONMENT=test" >> .env.test
         echo "Created .env.test file:"
         cat .env.test
     - name: Download Go modules
