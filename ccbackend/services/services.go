@@ -24,3 +24,14 @@ type SlackIntegrationsService interface {
 	GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (mo.Option[*models.SlackIntegration], error)
 	GetSlackIntegrationByID(ctx context.Context, id string) (mo.Option[*models.SlackIntegration], error)
 }
+
+// TransactionManager handles database transactions via context
+type TransactionManager interface {
+	// Execute function within a transaction (recommended approach)
+	WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
+
+	// Manual transaction control (for complex scenarios)
+	BeginTransaction(ctx context.Context) (context.Context, error)
+	CommitTransaction(ctx context.Context) error
+	RollbackTransaction(ctx context.Context) error
+}

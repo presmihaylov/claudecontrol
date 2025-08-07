@@ -117,6 +117,51 @@ func TestConvertMarkdownToSlack(t *testing.T) {
 				input:    "## 🧪 **GitUseCase Testing Implementation Complete**\n### **✅ Interface Extraction**\n- **GitClientInterface**: 23 methods covering all Git operations",
 				expected: "*🧪 GitUseCase Testing Implementation Complete*\n*✅ Interface Extraction*\n- *GitClientInterface*: 23 methods covering all Git operations",
 			},
+			{
+				name:     "Simple markdown link",
+				input:    "Check out [GitHub](https://github.com)",
+				expected: "Check out <https://github.com|GitHub>",
+			},
+			{
+				name:     "Multiple markdown links",
+				input:    "Visit [GitHub](https://github.com) and [Google](https://google.com)",
+				expected: "Visit <https://github.com|GitHub> and <https://google.com|Google>",
+			},
+			{
+				name:     "Markdown link with bold text",
+				input:    "**Important**: Check [GitHub](https://github.com)",
+				expected: "*Important*: Check <https://github.com|GitHub>",
+			},
+			{
+				name:     "Bold text around markdown link",
+				input:    "This is **[GitHub](https://github.com)** repository",
+				expected: "This is *<https://github.com|GitHub>* repository",
+			},
+			{
+				name:     "Complex case with numbered list, bold, and links",
+				input:    "**1. [github.com/IBM/fp-go](http://github.com/IBM/fp-go)** - Full functional programming library",
+				expected: "*1. <http://github.com/IBM/fp-go|github.com/IBM/fp-go>* - Full functional programming library",
+			},
+			{
+				name:     "Link in heading",
+				input:    "# Check [GitHub](https://github.com)",
+				expected: "*Check <https://github.com|GitHub>*",
+			},
+			{
+				name:     "Multiple links with bold and headings",
+				input:    "## **Third-Party Libraries**\n**1. [github.com/IBM/fp-go](http://github.com/IBM/fp-go)** - Full functional programming library\n**2. [github.com/samber/mo](http://github.com/samber/mo)** - Modern functional utilities",
+				expected: "*Third-Party Libraries*\n*1. <http://github.com/IBM/fp-go|github.com/IBM/fp-go>* - Full functional programming library\n*2. <http://github.com/samber/mo|github.com/samber/mo>* - Modern functional utilities",
+			},
+			{
+				name:     "Link with special characters in text",
+				input:    "Visit [My Site (Beta)!](https://example.com)",
+				expected: "Visit <https://example.com|My Site (Beta)!>",
+			},
+			{
+				name:     "Link with no protocol",
+				input:    "Check [example.com](example.com)",
+				expected: "Check <example.com|example.com>",
+			},
 		}
 
 		for _, tt := range tests {
