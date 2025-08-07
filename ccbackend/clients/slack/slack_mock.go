@@ -17,10 +17,11 @@ type MockSlackClient struct {
 	MockGetPermalink func(params *clients.SlackPermalinkParameters) (string, error)
 
 	// User operations
-	MockGetUserInfoContext func(ctx context.Context, userID string) (*clients.SlackUser, error)
+	MockGetUserInfoContext       func(ctx context.Context, userID string) (*clients.SlackUser, error)
+	MockResolveMentionsInMessage func(ctx context.Context, message string) string
 
 	// Message operations
-	MockPostMessage func(channelID string, options ...clients.SlackMessageOption) (*clients.SlackPostMessageResponse, error)
+	MockPostMessage func(channelID string, params clients.SlackMessageParams) (*clients.SlackPostMessageResponse, error)
 
 	// Reaction operations
 	MockGetReactions   func(item clients.SlackItemRef, params clients.SlackGetReactionsParameters) ([]clients.SlackItemReaction, error)
@@ -93,10 +94,10 @@ func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, userID string)
 // PostMessage implements SlackClient interface for testing
 func (m *MockSlackClient) PostMessage(
 	channelID string,
-	options ...clients.SlackMessageOption,
+	params clients.SlackMessageParams,
 ) (*clients.SlackPostMessageResponse, error) {
 	if m.MockPostMessage != nil {
-		return m.MockPostMessage(channelID, options...)
+		return m.MockPostMessage(channelID, params)
 	}
 
 	// Default mock response
@@ -175,4 +176,14 @@ func (m *MockSlackClient) WithOAuthV2Validation() *MockSlackClient {
 		}, nil
 	}
 	return m
+}
+
+// ResolveMentionsInMessage implements SlackClient interface for testing
+func (m *MockSlackClient) ResolveMentionsInMessage(ctx context.Context, message string) string {
+	if m.MockResolveMentionsInMessage != nil {
+		return m.MockResolveMentionsInMessage(ctx, message)
+	}
+
+	// Default mock behavior - return message unchanged
+	return message
 }
