@@ -20,18 +20,18 @@ import (
 	"ccbackend/usecases"
 )
 
-type SlackWebhooksHandler struct {
+type SlackEventsHandler struct {
 	signingSecret            string
 	coreUseCase              *usecases.CoreUseCase
 	slackIntegrationsService services.SlackIntegrationsService
 }
 
-func NewSlackWebhooksHandler(
+func NewSlackEventsHandler(
 	signingSecret string,
 	coreUseCase *usecases.CoreUseCase,
 	slackIntegrationsService services.SlackIntegrationsService,
-) *SlackWebhooksHandler {
-	return &SlackWebhooksHandler{
+) *SlackEventsHandler {
+	return &SlackEventsHandler{
 		signingSecret:            signingSecret,
 		coreUseCase:              coreUseCase,
 		slackIntegrationsService: slackIntegrationsService,
@@ -39,7 +39,7 @@ func NewSlackWebhooksHandler(
 }
 
 // verifySlackSignature verifies the authenticity of a Slack webhook request
-func (h *SlackWebhooksHandler) verifySlackSignature(r *http.Request, body []byte) error {
+func (h *SlackEventsHandler) verifySlackSignature(r *http.Request, body []byte) error {
 	// Extract headers
 	timestamp := r.Header.Get("X-Slack-Request-Timestamp")
 	signature := r.Header.Get("X-Slack-Signature")
@@ -74,7 +74,7 @@ func (h *SlackWebhooksHandler) verifySlackSignature(r *http.Request, body []byte
 	return nil
 }
 
-func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Request) {
+func (h *SlackEventsHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Request) {
 	log.Printf("📨 Slack event received from %s", r.RemoteAddr)
 
 	// Read raw body for signature verification
@@ -171,7 +171,7 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
+func (h *SlackEventsHandler) SetupEndpoints(router *mux.Router) {
 	log.Printf("🚀 Registering Slack webhook endpoints")
 
 	router.HandleFunc("/slack/events", h.HandleSlackEvent).Methods("POST")
@@ -180,7 +180,7 @@ func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
 	log.Printf("✅ All Slack webhook endpoints registered successfully")
 }
 
-func (h *SlackWebhooksHandler) handleAppMention(
+func (h *SlackEventsHandler) handleAppMention(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
@@ -208,7 +208,7 @@ func (h *SlackWebhooksHandler) handleAppMention(
 	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID)
 }
 
-func (h *SlackWebhooksHandler) handleReactionAdded(
+func (h *SlackEventsHandler) handleReactionAdded(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,

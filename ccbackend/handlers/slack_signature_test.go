@@ -14,7 +14,7 @@ import (
 
 func TestVerifySlackSignature(t *testing.T) {
 	signingSecret := "test_signing_secret"
-	handler := &SlackWebhooksHandler{
+	handler := &SlackEventsHandler{
 		signingSecret: signingSecret,
 	}
 

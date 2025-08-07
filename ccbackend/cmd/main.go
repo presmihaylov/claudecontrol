@@ -93,7 +93,7 @@ func run() error {
 
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, txManager)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase)
-	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
+	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
 	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, cfg.ClerkSecretKey)
