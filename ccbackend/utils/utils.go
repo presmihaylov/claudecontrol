@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"regexp"
-
-	"github.com/slack-go/slack"
 )
 
 func AssertInvariant(condition bool, message string) {
@@ -43,9 +41,22 @@ func ConvertMarkdownToSlack(message string) string {
 	return result
 }
 
+// SlackUser represents a Slack user (local copy to avoid import cycles)
+type SlackUser struct {
+	ID      string
+	Name    string
+	Profile SlackUserProfile
+}
+
+// SlackUserProfile represents a Slack user's profile information (local copy to avoid import cycles)
+type SlackUserProfile struct {
+	DisplayName string
+	RealName    string
+}
+
 // SlackUserInfoClient interface for getting user information from Slack
 type SlackUserInfoClient interface {
-	GetUserInfoContext(ctx context.Context, user string) (*slack.User, error)
+	GetUserInfoContext(ctx context.Context, user string) (*SlackUser, error)
 }
 
 // ResolveMentionsInSlackMessage resolves user mentions like <@U123456> to display names
@@ -105,7 +116,7 @@ func ResolveMentionsInSlackMessage(ctx context.Context, message string, slackCli
 }
 
 // getUserDisplayName extracts the best available display name from a Slack user object
-func getUserDisplayName(user *slack.User) string {
+func getUserDisplayName(user *SlackUser) string {
 	// Priority: DisplayName > RealName > Name > ID
 	if user.Profile.DisplayName != "" {
 		return user.Profile.DisplayName

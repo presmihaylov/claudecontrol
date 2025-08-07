@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"ccbackend/clients"
+	"ccbackend/clients/slack"
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/testutils"
@@ -25,7 +26,7 @@ func setupSlackIntegrationsTest(t *testing.T) (*SlackIntegrationsService, *db.Po
 	repo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 
-	mockClient := clients.NewMockSlackClient()
+	mockClient := slack.NewMockSlackClient()
 	service := NewSlackIntegrationsService(repo, mockClient, "test-client-id", "test-client-secret")
 
 	cleanup := func() {
@@ -44,7 +45,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 
 		// Use unique team ID to avoid constraint violations
 		teamID := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
 			AccessToken: "xoxb-test-token-123",
@@ -75,7 +76,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 	})
 
 	t.Run("empty auth code returns error", func(t *testing.T) {
-		mockClient := clients.NewMockSlackClient()
+		mockClient := slack.NewMockSlackClient()
 		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
 
 		// Use a real user ID even though this test should fail before DB operations
@@ -89,7 +90,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 	})
 
 	t.Run("nil user ID returns error", func(t *testing.T) {
-		mockClient := clients.NewMockSlackClient()
+		mockClient := slack.NewMockSlackClient()
 		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
 
 		integration, err := testService.CreateSlackIntegration(context.Background(), "test-auth-code", "http://localhost:3000/callback", "")
@@ -100,7 +101,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 	})
 
 	t.Run("slack OAuth error is propagated", func(t *testing.T) {
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Error(fmt.Errorf("invalid authorization code"))
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Error(fmt.Errorf("invalid authorization code"))
 		testService := NewSlackIntegrationsService(service.slackIntegrationsRepo, mockClient, "test-client-id", "test-client-secret")
 
 		testUser := testutils.CreateTestUser(t, usersRepo)
@@ -114,7 +115,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 	})
 
 	t.Run("missing team ID in OAuth response returns error", func(t *testing.T) {
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      "", // Empty team ID
 			TeamName:    "Test Team",
 			AccessToken: "xoxb-test-token-123",
@@ -131,7 +132,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 	})
 
 	t.Run("missing team name in OAuth response returns error", func(t *testing.T) {
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      "T123456789",
 			TeamName:    "", // Empty team name
 			AccessToken: "xoxb-test-token-123",
@@ -148,7 +149,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 	})
 
 	t.Run("missing access token in OAuth response returns error", func(t *testing.T) {
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      "T123456789",
 			TeamName:    "Test Team",
 			AccessToken: "", // Empty access token
@@ -171,7 +172,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 
 		// Use invalid schema to trigger database error
 		invalidRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, "nonexistent_schema")
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      "T123456789",
 			TeamName:    "Test Team",
 			AccessToken: "xoxb-test-token-123",
@@ -197,7 +198,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByUserID(t *testing.T) {
 
 		// Create multiple integrations for the user with unique team IDs
 		teamID1 := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID1,
 			TeamName:    "Test Team 1",
 			AccessToken: "xoxb-test-token-123",
@@ -208,7 +209,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByUserID(t *testing.T) {
 		require.NoError(t, err)
 
 		teamID2 := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient2 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient2 := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID2,
 			TeamName:    "Test Team 2",
 			AccessToken: "xoxb-test-token-456",
@@ -221,7 +222,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByUserID(t *testing.T) {
 		// Create integration for different user to ensure isolation
 		otherUser := testutils.CreateTestUser(t, usersRepo)
 		teamID3 := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient3 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient3 := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID3,
 			TeamName:    "Test Team 3",
 			AccessToken: "xoxb-test-token-789",
@@ -283,7 +284,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 
 		// Create an integration with unique team ID
 		teamID := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
 			AccessToken: "xoxb-test-token-123",
@@ -313,7 +314,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 
 		// Create integration for user1 with unique team ID
 		teamID := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
 			AccessToken: "xoxb-test-token-123",
@@ -381,7 +382,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 
 		// Create an integration with unique team ID
 		teamID := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
 			AccessToken: "xoxb-test-token-123",
@@ -427,7 +428,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 
 		// Create an integration with unique team ID
 		teamID := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
 			AccessToken: "xoxb-test-token-123",
@@ -485,7 +486,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 
 		// Create integration for user1 with unique team ID
 		teamID := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID,
 			TeamName:    "Test Team",
 			AccessToken: "xoxb-test-token-123",
@@ -554,7 +555,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 
 		// Create two integrations with unique team IDs
 		teamID1 := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient1 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient1 := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID1,
 			TeamName:    "Test Team 1",
 			AccessToken: "xoxb-test-token-123",
@@ -565,7 +566,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		require.NoError(t, err)
 
 		teamID2 := fmt.Sprintf("T%s", core.NewID("t"))
-		mockClient2 := clients.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
+		mockClient2 := slack.NewMockSlackClient().WithOAuthV2Response(&clients.OAuthV2Response{
 			TeamID:      teamID2,
 			TeamName:    "Test Team 2",
 			AccessToken: "xoxb-test-token-456",

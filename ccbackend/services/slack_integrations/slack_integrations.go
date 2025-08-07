@@ -19,12 +19,12 @@ import (
 
 type SlackIntegrationsService struct {
 	slackIntegrationsRepo *db.PostgresSlackIntegrationsRepository
-	slackClient           clients.SlackClient
+	slackClient           clients.SlackOAuthClient
 	slackClientID         string
 	slackClientSecret     string
 }
 
-func NewSlackIntegrationsService(repo *db.PostgresSlackIntegrationsRepository, slackClient clients.SlackClient, slackClientID, slackClientSecret string) *SlackIntegrationsService {
+func NewSlackIntegrationsService(repo *db.PostgresSlackIntegrationsRepository, slackClient clients.SlackOAuthClient, slackClientID, slackClientSecret string) *SlackIntegrationsService {
 	return &SlackIntegrationsService{
 		slackIntegrationsRepo: repo,
 		slackClient:           slackClient,
