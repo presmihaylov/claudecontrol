@@ -637,12 +637,8 @@ func (s *CoreUseCase) sortAgentsByLoad(ctx context.Context, agents []*models.Act
 		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: jobCount})
 	}
 
-	// Sort by load (ascending - least loaded first), with agent ID as tie-breaker for deterministic selection
+	// Sort by load (ascending - least loaded first)
 	sort.Slice(agentsWithLoad, func(i, j int) bool {
-		if agentsWithLoad[i].load == agentsWithLoad[j].load {
-			// When loads are equal, use agent ID for deterministic tie-breaking
-			return agentsWithLoad[i].agent.ID < agentsWithLoad[j].agent.ID
-		}
 		return agentsWithLoad[i].load < agentsWithLoad[j].load
 	})
 
