@@ -13,6 +13,7 @@ import (
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
+	agents "ccbackend/services/agents"
 	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
 )
@@ -344,7 +345,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	// Create both services using the same integration
 	txManager := txmanager.NewTransactionManager(dbConn)
 	jobsService := NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
-	agentsService := NewAgentsService(agentsRepo)
+	agentsService := agents.NewAgentsService(agentsRepo)
 
 	// Use the shared integration ID
 	slackIntegrationID := testIntegration.ID

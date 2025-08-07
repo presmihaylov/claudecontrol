@@ -21,6 +21,7 @@ import (
 	"ccbackend/handlers"
 	"ccbackend/middleware"
 	"ccbackend/services"
+	agents "ccbackend/services/agents"
 	slackintegrations "ccbackend/services/slack_integrations"
 	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
@@ -65,7 +66,7 @@ func run() error {
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
 
-	agentsService := services.NewAgentsService(agentsRepo)
+	agentsService := agents.NewAgentsService(agentsRepo)
 	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 	usersService := users.NewUsersService(usersRepo)
 	slackOAuthClient := slackclient.NewSlackOAuthClient()

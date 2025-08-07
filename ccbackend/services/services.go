@@ -29,6 +29,48 @@ type SlackIntegrationsService interface {
 	GetSlackIntegrationByID(ctx context.Context, id string) (mo.Option[*models.SlackIntegration], error)
 }
 
+// AgentsService defines the interface for agent-related operations
+type AgentsService interface {
+	UpsertActiveAgent(
+		ctx context.Context,
+		wsConnectionID, slackIntegrationID string,
+		agentID string,
+	) (*models.ActiveAgent, error)
+	DeleteActiveAgentByWsConnectionID(ctx context.Context, wsConnectionID, slackIntegrationID string) error
+	DeleteActiveAgent(ctx context.Context, id string, slackIntegrationID string) error
+	GetAgentByID(ctx context.Context, id string, slackIntegrationID string) (mo.Option[*models.ActiveAgent], error)
+	GetAvailableAgents(ctx context.Context, slackIntegrationID string) ([]*models.ActiveAgent, error)
+	GetConnectedActiveAgents(
+		ctx context.Context,
+		slackIntegrationID string,
+		connectedClientIDs []string,
+	) ([]*models.ActiveAgent, error)
+	GetConnectedAvailableAgents(
+		ctx context.Context,
+		slackIntegrationID string,
+		connectedClientIDs []string,
+	) ([]*models.ActiveAgent, error)
+	CheckAgentHasActiveConnection(agent *models.ActiveAgent, connectedClientIDs []string) bool
+	AssignAgentToJob(ctx context.Context, agentID, jobID string, slackIntegrationID string) error
+	UnassignAgentFromJob(ctx context.Context, agentID, jobID string, slackIntegrationID string) error
+	GetAgentByJobID(
+		ctx context.Context,
+		jobID string,
+		slackIntegrationID string,
+	) (mo.Option[*models.ActiveAgent], error)
+	GetAgentByWSConnectionID(
+		ctx context.Context,
+		wsConnectionID, slackIntegrationID string,
+	) (mo.Option[*models.ActiveAgent], error)
+	GetActiveAgentJobAssignments(ctx context.Context, agentID string, slackIntegrationID string) ([]string, error)
+	UpdateAgentLastActiveAt(ctx context.Context, wsConnectionID, slackIntegrationID string) error
+	GetInactiveAgents(
+		ctx context.Context,
+		slackIntegrationID string,
+		inactiveThresholdMinutes int,
+	) ([]*models.ActiveAgent, error)
+}
+
 // TransactionManager handles database transactions via context
 type TransactionManager interface {
 	// Execute function within a transaction (recommended approach)
