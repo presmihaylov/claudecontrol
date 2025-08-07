@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-
-	"ccbackend/models"
 )
 
 // MockSlackClient implements SlackClient interface for testing
@@ -14,19 +12,19 @@ type MockSlackClient struct {
 	MockGetOAuthV2Response func(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error)
 
 	// Bot operations
-	MockAuthTest     func() (*models.SlackAuthTestResponse, error)
-	MockGetPermalink func(params *models.SlackPermalinkParameters) (string, error)
+	MockAuthTest     func() (*SlackAuthTestResponse, error)
+	MockGetPermalink func(params *SlackPermalinkParameters) (string, error)
 
 	// User operations
-	MockGetUserInfoContext func(ctx context.Context, userID string) (*models.SlackUser, error)
+	MockGetUserInfoContext func(ctx context.Context, userID string) (*SlackUser, error)
 
 	// Message operations
-	MockPostMessage func(channelID string, options ...models.SlackMessageOption) (*models.SlackPostMessageResponse, error)
+	MockPostMessage func(channelID string, options ...SlackMessageOption) (*SlackPostMessageResponse, error)
 
 	// Reaction operations
-	MockGetReactions   func(item models.SlackItemRef, params models.SlackGetReactionsParameters) ([]models.SlackItemReaction, error)
-	MockAddReaction    func(name string, item models.SlackItemRef) error
-	MockRemoveReaction func(name string, item models.SlackItemRef) error
+	MockGetReactions   func(item SlackItemRef, params SlackGetReactionsParameters) ([]SlackItemReaction, error)
+	MockAddReaction    func(name string, item SlackItemRef) error
+	MockRemoveReaction func(name string, item SlackItemRef) error
 }
 
 // NewMockSlackClient creates a new mock Slack client
@@ -49,20 +47,20 @@ func (m *MockSlackClient) GetOAuthV2Response(httpClient *http.Client, clientID, 
 }
 
 // AuthTest implements SlackClient interface for testing
-func (m *MockSlackClient) AuthTest() (*models.SlackAuthTestResponse, error) {
+func (m *MockSlackClient) AuthTest() (*SlackAuthTestResponse, error) {
 	if m.MockAuthTest != nil {
 		return m.MockAuthTest()
 	}
 
 	// Default mock response
-	return &models.SlackAuthTestResponse{
+	return &SlackAuthTestResponse{
 		UserID: "U123456789",
 		TeamID: "T123456789",
 	}, nil
 }
 
 // GetPermalink implements SlackClient interface for testing
-func (m *MockSlackClient) GetPermalink(params *models.SlackPermalinkParameters) (string, error) {
+func (m *MockSlackClient) GetPermalink(params *SlackPermalinkParameters) (string, error) {
 	if m.MockGetPermalink != nil {
 		return m.MockGetPermalink(params)
 	}
@@ -72,16 +70,16 @@ func (m *MockSlackClient) GetPermalink(params *models.SlackPermalinkParameters) 
 }
 
 // GetUserInfoContext implements SlackClient interface for testing
-func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, userID string) (*models.SlackUser, error) {
+func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, userID string) (*SlackUser, error) {
 	if m.MockGetUserInfoContext != nil {
 		return m.MockGetUserInfoContext(ctx, userID)
 	}
 
 	// Default mock response
-	return &models.SlackUser{
+	return &SlackUser{
 		ID:   userID,
 		Name: "testuser",
-		Profile: models.SlackUserProfile{
+		Profile: SlackUserProfile{
 			DisplayName: "Test User",
 			RealName:    "Test User",
 		},
@@ -89,30 +87,30 @@ func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, userID string)
 }
 
 // PostMessage implements SlackClient interface for testing
-func (m *MockSlackClient) PostMessage(channelID string, options ...models.SlackMessageOption) (*models.SlackPostMessageResponse, error) {
+func (m *MockSlackClient) PostMessage(channelID string, options ...SlackMessageOption) (*SlackPostMessageResponse, error) {
 	if m.MockPostMessage != nil {
 		return m.MockPostMessage(channelID, options...)
 	}
 
 	// Default mock response
-	return &models.SlackPostMessageResponse{
+	return &SlackPostMessageResponse{
 		Channel:   channelID,
 		Timestamp: "1234567890.123456",
 	}, nil
 }
 
 // GetReactions implements SlackClient interface for testing
-func (m *MockSlackClient) GetReactions(item models.SlackItemRef, params models.SlackGetReactionsParameters) ([]models.SlackItemReaction, error) {
+func (m *MockSlackClient) GetReactions(item SlackItemRef, params SlackGetReactionsParameters) ([]SlackItemReaction, error) {
 	if m.MockGetReactions != nil {
 		return m.MockGetReactions(item, params)
 	}
 
 	// Default mock response - no reactions
-	return []models.SlackItemReaction{}, nil
+	return []SlackItemReaction{}, nil
 }
 
 // AddReaction implements SlackClient interface for testing
-func (m *MockSlackClient) AddReaction(name string, item models.SlackItemRef) error {
+func (m *MockSlackClient) AddReaction(name string, item SlackItemRef) error {
 	if m.MockAddReaction != nil {
 		return m.MockAddReaction(name, item)
 	}
@@ -122,7 +120,7 @@ func (m *MockSlackClient) AddReaction(name string, item models.SlackItemRef) err
 }
 
 // RemoveReaction implements SlackClient interface for testing
-func (m *MockSlackClient) RemoveReaction(name string, item models.SlackItemRef) error {
+func (m *MockSlackClient) RemoveReaction(name string, item SlackItemRef) error {
 	if m.MockRemoveReaction != nil {
 		return m.MockRemoveReaction(name, item)
 	}

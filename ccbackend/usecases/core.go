@@ -16,6 +16,28 @@ import (
 	"ccbackend/utils"
 )
 
+// slackClientAdapter adapts clients.SlackClient to utils.SlackUserInfoClient to avoid import cycles
+type slackClientAdapter struct {
+	client clients.SlackClient
+}
+
+func (a *slackClientAdapter) GetUserInfoContext(ctx context.Context, userID string) (*utils.SlackUser, error) {
+	clientUser, err := a.client.GetUserInfoContext(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert from clients.SlackUser to utils.SlackUser
+	return &utils.SlackUser{
+		ID:   clientUser.ID,
+		Name: clientUser.Name,
+		Profile: utils.SlackUserProfile{
+			DisplayName: clientUser.Profile.DisplayName,
+			RealName:    clientUser.Profile.RealName,
+		},
+	}, nil
+}
+
 type CoreUseCase struct {
 	wsClient                 *clients.WebSocketClient
 	agentsService            *services.AgentsService
@@ -369,7 +391,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(ctx context.Context, clientID
 	job := maybeJob.MustGet()
 
 	// Generate permalink for the thread's first message
-	permalink, err := slackClient.GetPermalink(&models.SlackPermalinkParameters{
+	permalink, err := slackClient.GetPermalink(&clients.SlackPermalinkParameters{
 		Channel: message.SlackChannelID,
 		TS:      job.SlackThreadTS,
 	})
@@ -378,7 +400,8 @@ func (s *CoreUseCase) sendStartConversationToAgent(ctx context.Context, clientID
 	}
 
 	// Resolve user mentions in the message text before sending to agent
-	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, slackClient)
+	adapter := &slackClientAdapter{client: slackClient}
+	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, adapter)
 	startConversationMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeStartConversation,
@@ -415,7 +438,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(ctx context.Context, clientID strin
 	job := maybeJob.MustGet()
 
 	// Generate permalink for the thread's first message
-	permalink, err := slackClient.GetPermalink(&models.SlackPermalinkParameters{
+	permalink, err := slackClient.GetPermalink(&clients.SlackPermalinkParameters{
 		Channel: message.SlackChannelID,
 		TS:      job.SlackThreadTS,
 	})
@@ -424,7 +447,8 @@ func (s *CoreUseCase) sendUserMessageToAgent(ctx context.Context, clientID strin
 	}
 
 	// Resolve user mentions in the message text before sending to agent
-	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, slackClient)
+	adapter := &slackClientAdapter{client: slackClient}
+	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, adapter)
 	userMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeUserMessage,
@@ -472,10 +496,10 @@ func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slac
 	}
 
 	// Get reactions directly using GetReactions - much less rate limited
-	reactions, err := slackClient.GetReactions(models.SlackItemRef{
+	reactions, err := slackClient.GetReactions(clients.SlackItemRef{
 		Channel:   channelID,
 		Timestamp: messageTS,
-	}, models.SlackGetReactionsParameters{})
+	}, clients.SlackGetReactionsParameters{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reactions: %w", err)
 	}
@@ -521,7 +545,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(ctx context.Context, channelID,
 	reactionsToRemove := getOldReactions(newEmoji)
 	for _, emoji := range reactionsToRemove {
 		if slices.Contains(botReactions, emoji) {
-			if err := slackClient.RemoveReaction(emoji, models.SlackItemRef{
+			if err := slackClient.RemoveReaction(emoji, clients.SlackItemRef{
 				Channel:   channelID,
 				Timestamp: messageTS,
 			}); err != nil {
@@ -532,7 +556,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(ctx context.Context, channelID,
 
 	// Add new reaction if not already there
 	if newEmoji != "" && !slices.Contains(botReactions, newEmoji) {
-		if err := slackClient.AddReaction(newEmoji, models.SlackItemRef{
+		if err := slackClient.AddReaction(newEmoji, clients.SlackItemRef{
 			Channel:   channelID,
 			Timestamp: messageTS,
 		}); err != nil {
@@ -1192,8 +1216,8 @@ func (s *CoreUseCase) sendSlackMessage(ctx context.Context, slackIntegrationID, 
 
 	// Send message to Slack
 	_, err = slackClient.PostMessage(channelID,
-		models.SlackMsgOptionTextHelper(utils.ConvertMarkdownToSlack(message), false),
-		models.SlackMsgOptionTSHelper(threadTS),
+		clients.SlackMsgOptionTextHelper(utils.ConvertMarkdownToSlack(message), false),
+		clients.SlackMsgOptionTSHelper(threadTS),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to send message to Slack: %w", err)

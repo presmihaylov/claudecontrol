@@ -7,7 +7,6 @@ import (
 	"github.com/slack-go/slack"
 
 	"ccbackend/clients"
-	"ccbackend/models"
 )
 
 // SlackClient implements the clients.SlackClient interface using the slack-go/slack SDK
@@ -46,20 +45,20 @@ func (c *SlackClient) GetOAuthV2Response(httpClient *http.Client, clientID, clie
 }
 
 // AuthTest verifies the bot token and returns information about the bot
-func (c *SlackClient) AuthTest() (*models.SlackAuthTestResponse, error) {
+func (c *SlackClient) AuthTest() (*clients.SlackAuthTestResponse, error) {
 	response, err := c.Client.AuthTest()
 	if err != nil {
 		return nil, err
 	}
 
-	return &models.SlackAuthTestResponse{
+	return &clients.SlackAuthTestResponse{
 		UserID: response.UserID,
 		TeamID: response.TeamID,
 	}, nil
 }
 
 // GetPermalink gets a permalink URL for a message
-func (c *SlackClient) GetPermalink(params *models.SlackPermalinkParameters) (string, error) {
+func (c *SlackClient) GetPermalink(params *clients.SlackPermalinkParameters) (string, error) {
 	sdkParams := &slack.PermalinkParameters{
 		Channel: params.Channel,
 		Ts:      params.TS,
@@ -68,16 +67,16 @@ func (c *SlackClient) GetPermalink(params *models.SlackPermalinkParameters) (str
 }
 
 // GetUserInfoContext gets information about a Slack user
-func (c *SlackClient) GetUserInfoContext(ctx context.Context, userID string) (*models.SlackUser, error) {
+func (c *SlackClient) GetUserInfoContext(ctx context.Context, userID string) (*clients.SlackUser, error) {
 	user, err := c.Client.GetUserInfoContext(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &models.SlackUser{
+	return &clients.SlackUser{
 		ID:   user.ID,
 		Name: user.Name,
-		Profile: models.SlackUserProfile{
+		Profile: clients.SlackUserProfile{
 			DisplayName: user.Profile.DisplayName,
 			RealName:    user.Profile.RealName,
 		},
@@ -85,9 +84,9 @@ func (c *SlackClient) GetUserInfoContext(ctx context.Context, userID string) (*m
 }
 
 // PostMessage sends a message to a Slack channel
-func (c *SlackClient) PostMessage(channelID string, options ...models.SlackMessageOption) (*models.SlackPostMessageResponse, error) {
+func (c *SlackClient) PostMessage(channelID string, options ...clients.SlackMessageOption) (*clients.SlackPostMessageResponse, error) {
 	// Convert our custom options to SDK options
-	var config models.SlackMessageConfig
+	var config clients.SlackMessageConfig
 	for _, opt := range options {
 		opt.Apply(&config)
 	}
@@ -105,14 +104,14 @@ func (c *SlackClient) PostMessage(channelID string, options ...models.SlackMessa
 		return nil, err
 	}
 
-	return &models.SlackPostMessageResponse{
+	return &clients.SlackPostMessageResponse{
 		Channel:   channel,
 		Timestamp: timestamp,
 	}, nil
 }
 
 // GetReactions gets the reactions on a message
-func (c *SlackClient) GetReactions(item models.SlackItemRef, params models.SlackGetReactionsParameters) ([]models.SlackItemReaction, error) {
+func (c *SlackClient) GetReactions(item clients.SlackItemRef, params clients.SlackGetReactionsParameters) ([]clients.SlackItemReaction, error) {
 	sdkItem := slack.ItemRef{
 		Channel:   item.Channel,
 		Timestamp: item.Timestamp,
@@ -125,9 +124,9 @@ func (c *SlackClient) GetReactions(item models.SlackItemRef, params models.Slack
 	}
 
 	// Convert SDK reactions to our custom reactions
-	var customReactions []models.SlackItemReaction
+	var customReactions []clients.SlackItemReaction
 	for _, reaction := range reactions {
-		customReactions = append(customReactions, models.SlackItemReaction{
+		customReactions = append(customReactions, clients.SlackItemReaction{
 			Name:  reaction.Name,
 			Users: reaction.Users,
 		})
@@ -137,7 +136,7 @@ func (c *SlackClient) GetReactions(item models.SlackItemRef, params models.Slack
 }
 
 // AddReaction adds a reaction to a message
-func (c *SlackClient) AddReaction(name string, item models.SlackItemRef) error {
+func (c *SlackClient) AddReaction(name string, item clients.SlackItemRef) error {
 	sdkItem := slack.ItemRef{
 		Channel:   item.Channel,
 		Timestamp: item.Timestamp,
@@ -146,7 +145,7 @@ func (c *SlackClient) AddReaction(name string, item models.SlackItemRef) error {
 }
 
 // RemoveReaction removes a reaction from a message
-func (c *SlackClient) RemoveReaction(name string, item models.SlackItemRef) error {
+func (c *SlackClient) RemoveReaction(name string, item clients.SlackItemRef) error {
 	sdkItem := slack.ItemRef{
 		Channel:   item.Channel,
 		Timestamp: item.Timestamp,
