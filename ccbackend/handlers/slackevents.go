@@ -225,12 +225,6 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	user := event["user"].(string)
 	item := event["item"].(map[string]any)
 
-	// Only handle white check mark, check mark, or white tick reactions
-	if reactionName != "white_check_mark" && reactionName != "heavy_check_mark" && reactionName != "white_tick" {
-		log.Printf("⏭️ Ignoring reaction: %s (not a completion emoji)", reactionName)
-		return nil
-	}
-
 	// Extract item details
 	itemType := item["type"].(string)
 	if itemType != "message" {
@@ -241,7 +235,7 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	channel := item["channel"].(string)
 	ts := item["ts"].(string)
 
-	log.Printf("✅ Completion reaction added by %s on message %s in %s", user, ts, channel)
+	log.Printf("📨 Reaction %s added by %s on message %s in %s", reactionName, user, ts, channel)
 
-	return h.coreUseCase.ProcessReactionAdded(ctx, user, channel, ts, slackIntegrationID)
+	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID)
 }
