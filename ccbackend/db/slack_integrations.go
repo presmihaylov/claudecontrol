@@ -2,10 +2,12 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/samber/mo"
 
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
@@ -91,45 +93,25 @@ func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations(ctx contex
 	return integrations, nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(ctx context.Context, integrationID, userID string) error {
-	if !core.IsValidULID(integrationID) {
-		return fmt.Errorf("integration ID must be a valid ULID")
-	}
-
-	if !core.IsValidULID(userID) {
-		return fmt.Errorf("user ID must be a valid ULID")
-	}
-
+func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(ctx context.Context, integrationID, userID string) (bool, error) {
 	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND user_id = $2`, r.schema)
 
 	result, err := r.db.ExecContext(ctx, query, integrationID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to delete slack integration: %w", err)
+		return false, fmt.Errorf("failed to delete slack integration: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get affected rows: %w", err)
+		return false, fmt.Errorf("failed to get affected rows: %w", err)
 	}
 
-	if rowsAffected == 0 {
-		return core.ErrNotFound
-	}
-
-	return nil
+	return rowsAffected > 0, nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx context.Context, integrationID string, userID string, secretKey string) error {
-	if !core.IsValidULID(integrationID) {
-		return fmt.Errorf("integration ID must be a valid ULID")
-	}
-
-	if !core.IsValidULID(userID) {
-		return fmt.Errorf("user ID must be a valid ULID")
-	}
-
+func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx context.Context, integrationID string, userID string, secretKey string) (bool, error) {
 	if secretKey == "" {
-		return fmt.Errorf("secret key cannot be empty")
+		return false, fmt.Errorf("secret key cannot be empty")
 	}
 
 	query := fmt.Sprintf(`
@@ -139,24 +121,20 @@ func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(ctx conte
 
 	result, err := r.db.ExecContext(ctx, query, secretKey, integrationID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to update slack integration with secret key: %w", err)
+		return false, fmt.Errorf("failed to update slack integration with secret key: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get affected rows: %w", err)
+		return false, fmt.Errorf("failed to get affected rows: %w", err)
 	}
 
-	if rowsAffected == 0 {
-		return core.ErrNotFound
-	}
-
-	return nil
+	return rowsAffected > 0, nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (*models.SlackIntegration, error) {
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (mo.Option[*models.SlackIntegration], error) {
 	if secretKey == "" {
-		return nil, fmt.Errorf("secret key cannot be empty")
+		return mo.None[*models.SlackIntegration](), fmt.Errorf("secret key cannot be empty")
 	}
 
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
@@ -168,15 +146,18 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(ctx
 	var integration models.SlackIntegration
 	err := r.db.GetContext(ctx, &integration, query, secretKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get slack integration by secret key: %w", err)
+		if err == sql.ErrNoRows {
+			return mo.None[*models.SlackIntegration](), nil
+		}
+		return mo.None[*models.SlackIntegration](), fmt.Errorf("failed to get slack integration by secret key: %w", err)
 	}
 
-	return &integration, nil
+	return mo.Some(&integration), nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (*models.SlackIntegration, error) {
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (mo.Option[*models.SlackIntegration], error) {
 	if teamID == "" {
-		return nil, fmt.Errorf("team ID cannot be empty")
+		return mo.None[*models.SlackIntegration](), fmt.Errorf("team ID cannot be empty")
 	}
 
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
@@ -188,17 +169,16 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(ctx co
 	var integration models.SlackIntegration
 	err := r.db.GetContext(ctx, &integration, query, teamID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get slack integration by team ID: %w", err)
+		if err == sql.ErrNoRows {
+			return mo.None[*models.SlackIntegration](), nil
+		}
+		return mo.None[*models.SlackIntegration](), fmt.Errorf("failed to get slack integration by team ID: %w", err)
 	}
 
-	return &integration, nil
+	return mo.Some(&integration), nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(ctx context.Context, id string) (*models.SlackIntegration, error) {
-	if !core.IsValidULID(id) {
-		return nil, fmt.Errorf("integration ID must be a valid ULID")
-	}
-
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(ctx context.Context, id string) (mo.Option[*models.SlackIntegration], error) {
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 
@@ -208,8 +188,11 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByID(ctx contex
 	var integration models.SlackIntegration
 	err := r.db.GetContext(ctx, &integration, query, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get slack integration by ID: %w", err)
+		if err == sql.ErrNoRows {
+			return mo.None[*models.SlackIntegration](), nil
+		}
+		return mo.None[*models.SlackIntegration](), fmt.Errorf("failed to get slack integration by ID: %w", err)
 	}
 
-	return &integration, nil
+	return mo.Some(&integration), nil
 }

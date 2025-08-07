@@ -79,10 +79,10 @@ func TestTransactionManager_WithTransaction_Success(t *testing.T) {
 	require.NotNil(t, createdJob)
 
 	// Job should exist in database after transaction commit
-	retrievedJob, err := jobsRepo.GetJobByID(ctx, createdJob.ID, testIntegration.ID)
+	maybeJob, err := jobsRepo.GetJobByID(ctx, createdJob.ID, testIntegration.ID)
 	require.NoError(t, err)
-	assert.Equal(t, createdJob.ID, retrievedJob.ID)
-	assert.Equal(t, createdJob.SlackThreadTS, retrievedJob.SlackThreadTS)
+	assert.Equal(t, createdJob.ID, maybeJob.OrEmpty().ID)
+	assert.Equal(t, createdJob.SlackThreadTS, maybeJob.OrEmpty().SlackThreadTS)
 
 	// Clean up
 	jobsRepo.DeleteJob(ctx, createdJob.ID, testIntegration.ID)
@@ -122,8 +122,9 @@ func TestTransactionManager_WithTransaction_Rollback_OnError(t *testing.T) {
 	assert.Contains(t, err.Error(), "intentional error to trigger rollback")
 
 	// Job should NOT exist in database after rollback
-	_, err = jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID)
-	require.Error(t, err, "Job should not exist after rollback")
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID)
+	require.NoError(t, err)
+	require.True(t, maybeJob1.IsAbsent(), "Job1 should not exist after rollback")
 }
 
 func TestTransactionManager_WithTransaction_Rollback_OnPanic(t *testing.T) {
@@ -165,8 +166,9 @@ func TestTransactionManager_WithTransaction_Rollback_OnPanic(t *testing.T) {
 	}()
 
 	// Job should NOT exist in database after panic rollback
-	_, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID)
-	require.Error(t, err, "Job should not exist after panic rollback")
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID)
+	require.NoError(t, err)
+	require.True(t, maybeJob1.IsAbsent(), "Job1 should not exist after rollback")
 }
 
 func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testing.T) {
@@ -225,13 +227,13 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 	require.NoError(t, err)
 
 	// Both jobs should exist after commit
-	job1, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID)
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "test-thread-1", job1.SlackThreadTS)
+	assert.Equal(t, "test-thread-1", maybeJob1.OrEmpty().SlackThreadTS)
 
-	job2, err := jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID)
+	maybeJob2, err := jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "test-thread-2", job2.SlackThreadTS)
+	assert.Equal(t, "test-thread-2", maybeJob2.OrEmpty().SlackThreadTS)
 
 	// Clean up
 	jobsRepo.DeleteJob(ctx, job1ID, testIntegration.ID)
@@ -285,11 +287,13 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRo
 	assert.Contains(t, err.Error(), "rollback both operations")
 
 	// Neither job should exist after rollback
-	_, err = jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID)
-	require.Error(t, err, "Job1 should not exist after rollback")
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID)
+	require.NoError(t, err)
+	require.True(t, maybeJob1.IsAbsent(), "Job1 should not exist after rollback")
 
-	_, err = jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID)
-	require.Error(t, err, "Job2 should not exist after rollback")
+	maybeJob2, err := jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID)
+	require.NoError(t, err)
+	require.True(t, maybeJob2.IsAbsent(), "Job2 should not exist after rollback")
 }
 
 func TestTransactionManager_NestedTransactions(t *testing.T) {
@@ -333,9 +337,9 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Job should exist after both transactions
-	job, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID)
+	maybeJob, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "test-nested-thread", job.SlackThreadTS)
+	assert.Equal(t, "test-nested-thread", maybeJob.OrEmpty().SlackThreadTS)
 
 	// Clean up
 	jobsRepo.DeleteJob(ctx, jobID, testIntegration.ID)
@@ -368,9 +372,9 @@ func TestTransactionManager_ManualTransaction_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Job should exist after commit
-	retrievedJob, err := jobsRepo.GetJobByID(ctx, job.ID, testIntegration.ID)
+	maybeRetrievedJob, err := jobsRepo.GetJobByID(ctx, job.ID, testIntegration.ID)
 	require.NoError(t, err)
-	assert.Equal(t, job.SlackThreadTS, retrievedJob.SlackThreadTS)
+	assert.Equal(t, job.SlackThreadTS, maybeRetrievedJob.OrEmpty().SlackThreadTS)
 
 	// Clean up
 	jobsRepo.DeleteJob(ctx, job.ID, testIntegration.ID)
@@ -403,8 +407,9 @@ func TestTransactionManager_ManualTransaction_Rollback(t *testing.T) {
 	require.NoError(t, err)
 
 	// Job should NOT exist after rollback
-	_, err = jobsRepo.GetJobByID(ctx, job.ID, testIntegration.ID)
-	require.Error(t, err, "Job should not exist after rollback")
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, job.ID, testIntegration.ID)
+	require.NoError(t, err)
+	require.True(t, maybeJob1.IsAbsent(), "Job1 should not exist after rollback")
 }
 
 // Test context propagation functions
