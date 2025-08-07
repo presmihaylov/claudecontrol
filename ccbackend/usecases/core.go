@@ -108,8 +108,8 @@ func (s *CoreUseCase) ProcessAssistantMessage(ctx context.Context, clientID stri
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 	if !maybeJob.IsPresent() {
-		log.Printf("❌ Job %s not found", jobID)
-		return fmt.Errorf("job not found: %s", jobID)
+		log.Printf("⚠️ Job %s not found - already completed manually or by another agent, skipping assistant message", jobID)
+		return nil
 	}
 	job := maybeJob.MustGet()
 
@@ -195,8 +195,8 @@ func (s *CoreUseCase) ProcessSystemMessage(ctx context.Context, clientID string,
 		return fmt.Errorf("failed to get processed slack message: %w", err)
 	}
 	if !maybeProcessedMsg.IsPresent() {
-		log.Printf("❌ No processed slack message found with ID %s", messageID)
-		return fmt.Errorf("processed slack message not found: %s", messageID)
+		log.Printf("⚠️ Processed slack message %s not found - job may have been completed manually, skipping system message", messageID)
+		return nil
 	}
 	processedMessage := maybeProcessedMsg.MustGet()
 
@@ -207,8 +207,8 @@ func (s *CoreUseCase) ProcessSystemMessage(ctx context.Context, clientID string,
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 	if !maybeJob.IsPresent() {
-		log.Printf("❌ Job %s not found", processedMessage.JobID)
-		return fmt.Errorf("job not found: %s", processedMessage.JobID)
+		log.Printf("⚠️ Job %s not found - already completed manually or by another agent, skipping system message", processedMessage.JobID)
+		return nil
 	}
 	job := maybeJob.MustGet()
 
@@ -246,8 +246,8 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(ctx context.Context, clientI
 		return fmt.Errorf("failed to get processed slack message: %w", err)
 	}
 	if !maybeProcessedMsg.IsPresent() {
-		log.Printf("❌ No processed slack message found with ID %s", messageID)
-		return fmt.Errorf("processed slack message not found: %s", messageID)
+		log.Printf("⚠️ Processed slack message %s not found - job may have been completed manually, skipping processing message", messageID)
+		return nil
 	}
 	processedMessage := maybeProcessedMsg.MustGet()
 
@@ -889,7 +889,7 @@ func (s *CoreUseCase) ProcessJobComplete(ctx context.Context, clientID string, p
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 	if !maybeJob.IsPresent() {
-		log.Printf("⚠️ Job %s not found - job may have already been processed or deleted, skipping", jobID)
+		log.Printf("⚠️ Job %s not found - already completed manually or by another agent, skipping", jobID)
 		return nil
 	}
 	job := maybeJob.MustGet()
