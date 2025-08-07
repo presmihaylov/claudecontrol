@@ -34,7 +34,10 @@ func NewMockSlackClient() *MockSlackClient {
 }
 
 // GetOAuthV2Response implements SlackClient interface for testing
-func (m *MockSlackClient) GetOAuthV2Response(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*clients.OAuthV2Response, error) {
+func (m *MockSlackClient) GetOAuthV2Response(
+	httpClient *http.Client,
+	clientID, clientSecret, code, redirectURL string,
+) (*clients.OAuthV2Response, error) {
 	if m.MockGetOAuthV2Response != nil {
 		return m.MockGetOAuthV2Response(httpClient, clientID, clientSecret, code, redirectURL)
 	}
@@ -88,7 +91,10 @@ func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, userID string)
 }
 
 // PostMessage implements SlackClient interface for testing
-func (m *MockSlackClient) PostMessage(channelID string, options ...clients.SlackMessageOption) (*clients.SlackPostMessageResponse, error) {
+func (m *MockSlackClient) PostMessage(
+	channelID string,
+	options ...clients.SlackMessageOption,
+) (*clients.SlackPostMessageResponse, error) {
 	if m.MockPostMessage != nil {
 		return m.MockPostMessage(channelID, options...)
 	}
@@ -101,7 +107,10 @@ func (m *MockSlackClient) PostMessage(channelID string, options ...clients.Slack
 }
 
 // GetReactions implements SlackClient interface for testing
-func (m *MockSlackClient) GetReactions(item clients.SlackItemRef, params clients.SlackGetReactionsParameters) ([]clients.SlackItemReaction, error) {
+func (m *MockSlackClient) GetReactions(
+	item clients.SlackItemRef,
+	params clients.SlackGetReactionsParameters,
+) ([]clients.SlackItemReaction, error) {
 	if m.MockGetReactions != nil {
 		return m.MockGetReactions(item, params)
 	}

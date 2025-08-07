@@ -18,7 +18,11 @@ func NewUsersService(repo *db.PostgresUsersRepository) *UsersService {
 }
 
 func (s *UsersService) GetOrCreateUser(ctx context.Context, authProvider, authProviderID string) (*models.User, error) {
-	log.Printf("📋 Starting to get or create user for authProvider: %s, authProviderID: %s", authProvider, authProviderID)
+	log.Printf(
+		"📋 Starting to get or create user for authProvider: %s, authProviderID: %s",
+		authProvider,
+		authProviderID,
+	)
 
 	if authProvider == "" {
 		return nil, fmt.Errorf("auth_provider cannot be empty")

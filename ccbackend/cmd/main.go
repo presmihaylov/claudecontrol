@@ -69,7 +69,12 @@ func run() error {
 	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 	usersService := users.NewUsersService(usersRepo)
 	slackOAuthClient := slackclient.NewSlackOAuthClient()
-	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
+	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(
+		slackIntegrationsRepo,
+		slackOAuthClient,
+		cfg.SlackClientID,
+		cfg.SlackClientSecret,
+	)
 
 	// Create API key validator for WebSocket connections
 	apiKeyValidator := func(apiKey string) (string, error) {

@@ -15,8 +15,6 @@ linters-settings:
       - shadow
   misspell:
     locale: US
-  lll:
-    line-length: 140
 
 linters:
   disable-all: true
@@ -52,7 +50,6 @@ issues:
         - mnd
         - gocritic
         - gosec
-        - lll
         - noctx
         - dupl
         - goconst
@@ -63,9 +60,6 @@ issues:
     - text: "duplicate of"
       linters:
         - dupl
-    - text: "exceeds the maximum"
-      linters:
-        - lll
     - text: "has .* occurrences, make it a constant"
       linters:
         - goconst
