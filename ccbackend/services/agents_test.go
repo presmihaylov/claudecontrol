@@ -43,7 +43,7 @@ func setupTestService(t *testing.T) (*AgentsService, *JobsService, *models.Slack
 
 	cleanup := func() {
 		// Clean up test data
-		_ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
+		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
 		dbConn.Close()
 	}
 
@@ -81,8 +81,10 @@ func TestAgentsService(t *testing.T) {
 			assert.False(t, agent.UpdatedAt.IsZero())
 
 			// Verify agent exists in database
-			fetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			maybeFetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, maybeFetchedAgent.IsPresent())
+			fetchedAgent := maybeFetchedAgent.MustGet()
 			assert.Equal(t, agent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
 			assert.Equal(t, testIntegration.ID, fetchedAgent.SlackIntegrationID)
@@ -119,8 +121,10 @@ func TestAgentsService(t *testing.T) {
 			assert.Equal(t, job.ID, jobs[0])
 
 			// Verify agent exists in database with correct job ID
-			fetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			maybeFetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, maybeFetchedAgent.IsPresent())
+			fetchedAgent := maybeFetchedAgent.MustGet()
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
 			assert.Equal(t, testIntegration.ID, fetchedAgent.SlackIntegrationID)
 			// Verify fetched agent has the assigned job
@@ -216,8 +220,9 @@ func TestAgentsService(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify agent no longer exists
-			_, err = agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
-			assert.Error(t, err)
+			maybeAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			require.NoError(t, err)
+			assert.False(t, maybeAgent.IsPresent())
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
@@ -264,8 +269,10 @@ func TestAgentsService(t *testing.T) {
 				_ = agentsService.DeleteActiveAgent(context.Background(), createdAgent.ID, slackIntegrationID)
 			}()
 
-			fetchedAgent, err := agentsService.GetAgentByID(context.Background(), createdAgent.ID, slackIntegrationID)
+			maybeFetchedAgent, err := agentsService.GetAgentByID(context.Background(), createdAgent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, maybeFetchedAgent.IsPresent())
+			fetchedAgent := maybeFetchedAgent.MustGet()
 
 			assert.Equal(t, createdAgent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
@@ -295,9 +302,9 @@ func TestAgentsService(t *testing.T) {
 		t.Run("NotFound", func(t *testing.T) {
 			id := core.NewID("ccaid")
 
-			_, err := agentsService.GetAgentByID(context.Background(), id, slackIntegrationID)
-			require.Error(t, err)
-			assert.True(t, errors.Is(err, core.ErrNotFound))
+			maybeAgent, err := agentsService.GetAgentByID(context.Background(), id, slackIntegrationID)
+			require.NoError(t, err)
+			assert.False(t, maybeAgent.IsPresent())
 		})
 	})
 
@@ -407,8 +414,10 @@ func TestAgentsService(t *testing.T) {
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, slackIntegrationID) }()
 
 			// Get initial last_active_at timestamp
-			initialAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			maybeInitialAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, maybeInitialAgent.IsPresent())
+			initialAgent := maybeInitialAgent.MustGet()
 			initialLastActive := initialAgent.LastActiveAt
 
 			// Wait a bit to ensure timestamp difference
@@ -419,8 +428,10 @@ func TestAgentsService(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify the timestamp was updated
-			updatedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			maybeUpdatedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, maybeUpdatedAgent.IsPresent())
+			updatedAgent := maybeUpdatedAgent.MustGet()
 			assert.True(t, updatedAgent.LastActiveAt.After(initialLastActive),
 				"last_active_at should be updated to a more recent time")
 		})

@@ -131,12 +131,18 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 	}
 
 	// Lookup slack integration by team_id
-	slackIntegration, err := h.slackIntegrationsService.GetSlackIntegrationByTeamID(r.Context(), teamID)
+	maybeSlackInt, err := h.slackIntegrationsService.GetSlackIntegrationByTeamID(r.Context(), teamID)
 	if err != nil {
 		log.Printf("❌ Failed to find slack integration for team %s: %v", teamID, err)
+		http.Error(w, "integration lookup failed", http.StatusInternalServerError)
+		return
+	}
+	if !maybeSlackInt.IsPresent() {
+		log.Printf("❌ Slack integration not found for team %s", teamID)
 		http.Error(w, "integration not found", http.StatusNotFound)
 		return
 	}
+	slackIntegration := maybeSlackInt.MustGet()
 
 	log.Printf("🔑 Found slack integration for team %s (ID: %s)", teamID, slackIntegration.ID)
 

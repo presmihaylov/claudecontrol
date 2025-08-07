@@ -19,9 +19,10 @@ import (
 // LoadTestConfig loads configuration for tests from environment variables
 func LoadTestConfig() (*config.AppConfig, error) {
 	// Try to load environment variables from various possible locations
-	_ = godotenv.Load("../.env.test") // From services/ directory
-	_ = godotenv.Load(".env.test")    // From root directory
-	_ = godotenv.Load()               // Default .env file
+	_ = godotenv.Load("../../.env.test")
+	_ = godotenv.Load("../.env.test")
+	_ = godotenv.Load(".env.test")
+	_ = godotenv.Load()
 
 	databaseURL := os.Getenv("DB_URL")
 	if databaseURL == "" {

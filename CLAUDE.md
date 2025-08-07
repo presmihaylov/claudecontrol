@@ -168,6 +168,8 @@ CCAGENT_WS_API_URL=<websocket_server_url>  # Optional, defaults to production
 - Repository pattern with `PostgresAgentsRepository`
 - Struct tags: `db:"column_name"` for automatic field mapping
 - Error handling: Distinguishes between "not found" and database errors
+- **Option Types**: Uses `mo.Option[*Model]` for Get operations that may return no results
+- **Validation Rule**: Repository layer focuses on data access only - **validation should be handled at the service layer, not repository layer**
 
 ### Current Database Schema
 The database uses a multi-table design with user-scoped entities:
@@ -192,6 +194,7 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 - **Validation Errors**: "cannot be nil" for invalid inputs
 - **Not Found Errors**: "not found" in error message for missing records
 - **Wrapped Errors**: Service layer wraps database errors with context
+- **Option Types**: Uses `mo.Option[*Model]` for Get operations that may return no results
 
 ### Logging Standards
 - **Function Entry/Exit Logging**: All service layer functions must include structured logging
@@ -434,6 +437,7 @@ func (s *Service) SomeOperation(ctx context.Context, param string) (*models.Enti
 - **All repository calls** must pass `ctx` as first parameter
 - **Use context-aware sqlx functions**: `QueryRowxContext`, `SelectContext`, `GetContext`, `ExecContext`
 - **Repository pattern**: Create matching repository in `db/` package
+- **Layer Separation**: Service layer handles all validation (ULID format, required fields, business rules) - repository layer focuses purely on database operations
 
 ### Package Naming Rules
 - **Package names**: Use singular, lowercase, no underscores (e.g., `examples`, `users`, not `user_profiles`)

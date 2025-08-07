@@ -15,6 +15,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/rs/cors v1.11.1
+	github.com/samber/mo v1.14.0
 	github.com/stretchr/testify v1.10.0
 	github.com/zishang520/socket.io/v2 v2.0.5
 )
