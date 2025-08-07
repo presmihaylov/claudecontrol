@@ -11,6 +11,7 @@ import (
 	"github.com/slack-go/slack"
 
 	"ccbackend/clients"
+	slackclient "ccbackend/clients/slack"
 	"ccbackend/core"
 	"ccbackend/models"
 	"ccbackend/services"
@@ -35,7 +36,7 @@ func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.A
 	}
 }
 
-func (s *CoreUseCase) getSlackClientForIntegration(ctx context.Context, slackIntegrationID string) (*slack.Client, error) {
+func (s *CoreUseCase) getSlackClientForIntegration(ctx context.Context, slackIntegrationID string) (clients.SlackClient, error) {
 	maybeSlackInt, err := s.slackIntegrationsService.GetSlackIntegrationByID(ctx, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integration: %w", err)
@@ -45,7 +46,7 @@ func (s *CoreUseCase) getSlackClientForIntegration(ctx context.Context, slackInt
 	}
 	integration := maybeSlackInt.MustGet()
 
-	return slack.New(integration.SlackAuthToken), nil
+	return slackclient.NewSlackClient(integration.SlackAuthToken), nil
 }
 
 func (s *CoreUseCase) validateJobBelongsToAgent(ctx context.Context, agentID, jobID string, slackIntegrationID string) error {
@@ -458,7 +459,7 @@ func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) 
 	}
 }
 
-func (s *CoreUseCase) getBotUserID(slackClient *slack.Client) (string, error) {
+func (s *CoreUseCase) getBotUserID(slackClient clients.SlackClient) (string, error) {
 	authTest, err := slackClient.AuthTest()
 	if err != nil {
 		return "", fmt.Errorf("failed to get bot user ID: %w", err)
@@ -466,7 +467,7 @@ func (s *CoreUseCase) getBotUserID(slackClient *slack.Client) (string, error) {
 	return authTest.UserID, nil
 }
 
-func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slackClient *slack.Client) ([]string, error) {
+func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slackClient clients.SlackClient) ([]string, error) {
 	botUserID, err := s.getBotUserID(slackClient)
 	if err != nil {
 		return nil, err

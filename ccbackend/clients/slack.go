@@ -13,16 +13,11 @@ type OAuthV2Response struct {
 	AccessToken string
 }
 
-// SlackClient defines the interface for Slack API operations
-type SlackClient interface {
-	// GetOAuthV2Response exchanges an OAuth authorization code for access tokens
-	GetOAuthV2Response(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error)
-}
-
 // ConcreteSlackClient implements SlackClient using the slack-go/slack SDK
+// This is a legacy OAuth-only client. Use clients/slack.NewSlackClient for full functionality.
 type ConcreteSlackClient struct{}
 
-// NewConcreteSlackClient creates a new concrete Slack client
+// NewConcreteSlackClient creates a new concrete Slack client for OAuth operations only
 func NewConcreteSlackClient() *ConcreteSlackClient {
 	return &ConcreteSlackClient{}
 }
