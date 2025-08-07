@@ -194,6 +194,7 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 - **Validation Errors**: "cannot be nil" for invalid inputs
 - **Not Found Errors**: "not found" in error message for missing records
 - **Wrapped Errors**: Service layer wraps database errors with context
+- **Option Types**: Uses `mo.Option[*Model]` for Get operations that may return no results
 
 ### Logging Standards
 - **Function Entry/Exit Logging**: All service layer functions must include structured logging
