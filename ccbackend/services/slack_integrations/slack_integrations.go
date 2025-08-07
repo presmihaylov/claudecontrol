@@ -113,8 +113,13 @@ func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, i
 		return fmt.Errorf("user not found in context")
 	}
 
-	if err := s.slackIntegrationsRepo.DeleteSlackIntegrationByID(ctx, integrationID, user.ID); err != nil {
+	deleted, err := s.slackIntegrationsRepo.DeleteSlackIntegrationByID(ctx, integrationID, user.ID)
+	if err != nil {
 		return fmt.Errorf("failed to delete slack integration: %w", err)
+	}
+
+	if !deleted {
+		return fmt.Errorf("slack integration not found")
 	}
 
 	log.Printf("📋 Completed successfully - deleted Slack integration: %s", integrationID)
@@ -142,8 +147,13 @@ func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context,
 	secretKey := base64.URLEncoding.EncodeToString(secretBytes)
 
 	// Store the secret key in the database
-	if err := s.slackIntegrationsRepo.GenerateCCAgentSecretKey(ctx, integrationID, user.ID, secretKey); err != nil {
+	updated, err := s.slackIntegrationsRepo.GenerateCCAgentSecretKey(ctx, integrationID, user.ID, secretKey)
+	if err != nil {
 		return "", fmt.Errorf("failed to store CCAgent secret key: %w", err)
+	}
+
+	if !updated {
+		return "", fmt.Errorf("slack integration not found")
 	}
 
 	log.Printf("📋 Completed successfully - generated CCAgent secret key for integration: %s", integrationID)
@@ -152,12 +162,17 @@ func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context,
 
 func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get slack integration by secret key")
-	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationBySecretKey(ctx, secretKey)
+	integrationOpt, err := s.slackIntegrationsRepo.GetSlackIntegrationBySecretKey(ctx, secretKey)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by secret key: %v", err)
 		return nil, fmt.Errorf("failed to get slack integration by secret key: %w", err)
 	}
 
+	if !integrationOpt.IsPresent() {
+		return nil, fmt.Errorf("slack integration not found")
+	}
+
+	integration := integrationOpt.MustGet()
 	log.Printf("📋 Completed successfully - found slack integration for team: %s", integration.SlackTeamName)
 	return integration, nil
 }
@@ -168,12 +183,17 @@ func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(ctx context.Conte
 		return nil, fmt.Errorf("team ID cannot be empty")
 	}
 
-	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByTeamID(ctx, teamID)
+	integrationOpt, err := s.slackIntegrationsRepo.GetSlackIntegrationByTeamID(ctx, teamID)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by team ID: %v", err)
 		return nil, fmt.Errorf("failed to get slack integration by team ID: %w", err)
 	}
 
+	if !integrationOpt.IsPresent() {
+		return nil, fmt.Errorf("slack integration not found")
+	}
+
+	integration := integrationOpt.MustGet()
 	log.Printf("📋 Completed successfully - found slack integration for team: %s", integration.SlackTeamName)
 	return integration, nil
 }
@@ -184,12 +204,17 @@ func (s *SlackIntegrationsService) GetSlackIntegrationByID(ctx context.Context, 
 		return nil, fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	integration, err := s.slackIntegrationsRepo.GetSlackIntegrationByID(ctx, id)
+	integrationOpt, err := s.slackIntegrationsRepo.GetSlackIntegrationByID(ctx, id)
 	if err != nil {
 		log.Printf("❌ Failed to get slack integration by ID: %v", err)
 		return nil, fmt.Errorf("failed to get slack integration by ID: %w", err)
 	}
 
+	if !integrationOpt.IsPresent() {
+		return nil, fmt.Errorf("slack integration not found")
+	}
+
+	integration := integrationOpt.MustGet()
 	log.Printf("📋 Completed successfully - found slack integration for team: %s", integration.SlackTeamName)
 	return integration, nil
 }

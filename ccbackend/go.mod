@@ -36,6 +36,7 @@ require (
 	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/quic-go/quic-go v0.40.0 // indirect
 	github.com/quic-go/webtransport-go v0.6.0 // indirect
+	github.com/samber/mo v1.14.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect

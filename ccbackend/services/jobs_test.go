@@ -49,7 +49,7 @@ func setupTestJobsService(t *testing.T) (*JobsService, *models.SlackIntegration,
 
 	cleanup := func() {
 		// Clean up test data
-		_ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
+		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
 		dbConn.Close()
 	}
 
@@ -278,7 +278,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 	defer func() {
-		_ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
+		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
 	}()
 
 	// Create both services using the same integration
@@ -763,11 +763,11 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify all messages exist
-		_, err = jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(context.Background(), message1.ID, slackIntegrationID)
+		_, err = jobsService.GetProcessedSlackMessageByID(context.Background(), message1.ID, slackIntegrationID)
 		require.NoError(t, err)
-		_, err = jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(context.Background(), message2.ID, slackIntegrationID)
+		_, err = jobsService.GetProcessedSlackMessageByID(context.Background(), message2.ID, slackIntegrationID)
 		require.NoError(t, err)
-		_, err = jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(context.Background(), message3.ID, slackIntegrationID)
+		_, err = jobsService.GetProcessedSlackMessageByID(context.Background(), message3.ID, slackIntegrationID)
 		require.NoError(t, err)
 
 		// Delete the job
@@ -780,15 +780,15 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Verify all processed slack messages are also deleted (cascade)
-		_, err = jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(context.Background(), message1.ID, slackIntegrationID)
+		_, err = jobsService.GetProcessedSlackMessageByID(context.Background(), message1.ID, slackIntegrationID)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 
-		_, err = jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(context.Background(), message2.ID, slackIntegrationID)
+		_, err = jobsService.GetProcessedSlackMessageByID(context.Background(), message2.ID, slackIntegrationID)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 
-		_, err = jobsService.processedSlackMessagesRepo.GetProcessedSlackMessageByID(context.Background(), message3.ID, slackIntegrationID)
+		_, err = jobsService.GetProcessedSlackMessageByID(context.Background(), message3.ID, slackIntegrationID)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 	})
@@ -956,7 +956,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			require.NoError(t, err, "Failed to create test slack integration")
 
 			defer func() {
-				_ = slackIntegrationsRepo2.DeleteSlackIntegrationByID(context.Background(), testIntegration2.ID, testUser2.ID)
+				_, _ = slackIntegrationsRepo2.DeleteSlackIntegrationByID(context.Background(), testIntegration2.ID, testUser2.ID)
 			}()
 
 			slackIntegrationID2 := testIntegration2.ID
