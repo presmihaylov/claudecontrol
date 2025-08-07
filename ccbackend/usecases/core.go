@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/samber/mo"
+
 	"ccbackend/clients"
 	slackclient "ccbackend/clients/slack"
 	"ccbackend/core"
@@ -1362,10 +1364,13 @@ func (s *CoreUseCase) sendSlackMessage(
 	}
 
 	// Send message to Slack
-	_, err = slackClient.PostMessage(channelID, clients.SlackMessageParams{
-		Text:     utils.ConvertMarkdownToSlack(message),
-		ThreadTS: threadTS,
-	})
+	params := clients.SlackMessageParams{
+		Text: utils.ConvertMarkdownToSlack(message),
+	}
+	if threadTS != "" {
+		params.ThreadTS = mo.Some(threadTS)
+	}
+	_, err = slackClient.PostMessage(channelID, params)
 	if err != nil {
 		return fmt.Errorf("failed to send message to Slack: %w", err)
 	}
