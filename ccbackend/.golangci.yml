@@ -16,7 +16,7 @@ linters-settings:
   misspell:
     locale: US
   lll:
-    line-length: 140
+    line-length: 180
 
 linters:
   disable-all: true
@@ -44,6 +44,7 @@ linters:
     - unconvert
     - unused
     - whitespace
+    - lll
 
 issues:
   exclude-rules:
