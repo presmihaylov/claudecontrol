@@ -124,7 +124,8 @@ CCAGENT_WS_API_URL=<websocket_server_url>  # Optional, defaults to production
 - WebSocket clients stored as `[]Client` where `Client.ClientConn` is the connection
 - Thread-safe operations with `sync.RWMutex` for client management
 - JSON message protocol for WebSocket communication
-- **Prefer `slices.Contains`**: Use `slices.Contains(slice, value)` instead of manual loops when checking for membership in a slice
+- **Prefer `slices.Contains`**: Use `slices.Contains(slice, value)` instead of manual loops when
+  checking for membership in a slice
 
 ## Module Dependencies
 
@@ -170,7 +171,8 @@ CCAGENT_WS_API_URL=<websocket_server_url>  # Optional, defaults to production
 - Struct tags: `db:"column_name"` for automatic field mapping
 - Error handling: Distinguishes between "not found" and database errors
 - **Option Types**: Uses `mo.Option[*Model]` for Get operations that may return no results
-- **Validation Rule**: Repository layer focuses on data access only - **validation should be handled at the service layer, not repository layer**
+- **Validation Rule**: Repository layer focuses on data access only - **validation should be
+  handled at the service layer, not repository layer**
 
 ### Current Database Schema
 The database uses a multi-table design with user-scoped entities:
@@ -230,7 +232,9 @@ cd ccagent && make lint-fix  # REQUIRED: Fix linting issues automatically
 cd ccfrontend && bun run build && bun run lint  # Build and lint frontend with Biome
 ```
 
-**CRITICAL**: `make lint-fix` must ALWAYS be run in both ccbackend and ccagent after making any code changes. This automatically fixes formatting, imports, and other linting issues to maintain code quality standards.
+**CRITICAL**: `make lint-fix` must ALWAYS be run in both ccbackend and ccagent after making any
+code changes. This automatically fixes formatting, imports, and other linting issues to maintain
+code quality standards.
 
 ### Database Migrations
 - **Apply Pending Migrations**: `supabase migration up` to apply only new migrations
@@ -240,23 +244,33 @@ cd ccfrontend && bun run build && bun run lint  # Build and lint frontend with B
 ```
 
 ## Slack Message Handling Guidelines
-- **Slack Message Conversion**: Anytime you send a message to slack coming from the ccagent, you should ensure it goes through the `utils.ConvertMarkdownToSlack` function
+- **Slack Message Conversion**: Anytime you send a message to slack coming from the ccagent,
+  you should ensure it goes through the `utils.ConvertMarkdownToSlack` function
 
 ## Error Handling Guidelines
-- **Error Propagation**: Never log errors silently and proceed with control flow. Always propagate the error upstream unless explicitly instructed to log the error and ignore
-- **No Silent Failures**: Avoid patterns like `if err != nil { log.Printf(...); }` without returning the error. This hides failures and makes debugging difficult
-- **Proper Error Wrapping**: Use `fmt.Errorf("context: %w", err)` to wrap errors with context when propagating upstream
-- **Critical Operations**: For critical operations (database writes, external API calls, job cleanup), always return errors to the caller
-- **Log and Return**: When an error occurs, log it for debugging AND return it for proper handling: `log.Printf(...); return fmt.Errorf(...)`
+- **Error Propagation**: Never log errors silently and proceed with control flow. Always
+  propagate the error upstream unless explicitly instructed to log the error and ignore
+- **No Silent Failures**: Avoid patterns like `if err != nil { log.Printf(...); }` without
+  returning the error. This hides failures and makes debugging difficult
+- **Proper Error Wrapping**: Use `fmt.Errorf("context: %w", err)` to wrap errors with context
+  when propagating upstream
+- **Critical Operations**: For critical operations (database writes, external API calls, job
+  cleanup), always return errors to the caller
+- **Log and Return**: When an error occurs, log it for debugging AND return it for proper
+  handling: `log.Printf(...); return fmt.Errorf(...)`
 
 ## Service Layer Architecture Rules
-- **User-Scoped Entities**: All entities in the database should be scoped to a user ID. Never manage an entity without a user ID filter for security and data isolation
-- **Context-Based User Access**: User ID should be accessed from the context in the service layer instead of being passed explicitly as a parameter
-- **Context First Parameter**: All functions in the service layer should take `ctx context.Context` as the first argument to ensure proper request context propagation
+- **User-Scoped Entities**: All entities in the database should be scoped to a user ID.
+  Never manage an entity without a user ID filter for security and data isolation
+- **Context-Based User Access**: User ID should be accessed from the context in the service
+  layer instead of being passed explicitly as a parameter
+- **Context First Parameter**: All functions in the service layer should take
+  `ctx context.Context` as the first argument to ensure proper request context propagation
 
 ## Service Architecture Pattern
 
-The codebase follows a standardized service architecture pattern for maintainability and consistency. **All new services must follow this pattern.**
+The codebase follows a standardized service architecture pattern for maintainability and
+consistency. **All new services must follow this pattern.**
 
 ### Service Organization Structure
 ```
@@ -440,7 +454,8 @@ func (s *Service) SomeOperation(ctx context.Context, param string) (*models.Enti
 - **All repository calls** must pass `ctx` as first parameter
 - **Use context-aware sqlx functions**: `QueryRowxContext`, `SelectContext`, `GetContext`, `ExecContext`
 - **Repository pattern**: Create matching repository in `db/` package
-- **Layer Separation**: Service layer handles all validation (ULID format, required fields, business rules) - repository layer focuses purely on database operations
+- **Layer Separation**: Service layer handles all validation (ULID format, required fields,
+  business rules) - repository layer focuses purely on database operations
 
 ### Package Naming Rules
 - **Package names**: Use singular, lowercase, no underscores (e.g., `examples`, `users`, not `user_profiles`)
