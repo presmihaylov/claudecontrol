@@ -321,7 +321,6 @@ func NewExamplesService(repo *db.PostgresExamplesRepository) *ExamplesService {
 
 func (s *ExamplesService) CreateExample(ctx context.Context, name string, userID string) (*models.Example, error) {
     log.Printf("📋 Starting to create example: %s for user: %s", name, userID)
-    
     if name == "" {
         return nil, fmt.Errorf("name cannot be empty")
     }
@@ -422,12 +421,10 @@ func (m *MockYourNewService) CreateEntity(ctx context.Context, param1 string, us
 
 #### Error Handling
 ```go
-// Validation errors
+// Validation errors - no whitespace between validations
 if param == "" {
     return nil, fmt.Errorf("param cannot be empty")
 }
-
-// ULID validation
 if !core.IsValidULID(userID) {
     return nil, fmt.Errorf("user ID must be a valid ULID")
 }
