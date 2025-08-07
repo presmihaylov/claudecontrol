@@ -1,5 +1,7 @@
 package clients
 
+import "github.com/samber/mo"
+
 // SlackAuthTestResponse represents the response from Slack's auth.test API
 type SlackAuthTestResponse struct {
 	UserID string
@@ -50,9 +52,6 @@ type SlackItemReaction struct {
 
 // SlackMessageParams holds parameters for sending Slack messages
 type SlackMessageParams struct {
-	Text        string
-	ThreadTS    string
-	AsUser      bool
-	UnfurlLinks bool
-	UnfurlMedia bool
+	Text     string
+	ThreadTS mo.Option[string]
 }
