@@ -13,7 +13,10 @@ type DashboardAPIHandler struct {
 	slackIntegrationsService services.SlackIntegrationsService
 }
 
-func NewDashboardAPIHandler(usersService services.UsersService, slackIntegrationsService services.SlackIntegrationsService) *DashboardAPIHandler {
+func NewDashboardAPIHandler(
+	usersService services.UsersService,
+	slackIntegrationsService services.SlackIntegrationsService,
+) *DashboardAPIHandler {
 	return &DashboardAPIHandler{
 		usersService:             usersService,
 		slackIntegrationsService: slackIntegrationsService,
@@ -21,7 +24,10 @@ func NewDashboardAPIHandler(usersService services.UsersService, slackIntegration
 }
 
 // ListSlackIntegrations returns all Slack integrations for a user
-func (h *DashboardAPIHandler) ListSlackIntegrations(ctx context.Context, user *models.User) ([]*models.SlackIntegration, error) {
+func (h *DashboardAPIHandler) ListSlackIntegrations(
+	ctx context.Context,
+	user *models.User,
+) ([]*models.SlackIntegration, error) {
 	log.Printf("📋 Listing Slack integrations for user: %s", user.ID)
 
 	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByUserID(ctx, user.ID)
@@ -35,7 +41,11 @@ func (h *DashboardAPIHandler) ListSlackIntegrations(ctx context.Context, user *m
 }
 
 // CreateSlackIntegration creates a new Slack integration for a user
-func (h *DashboardAPIHandler) CreateSlackIntegration(ctx context.Context, slackAuthToken, redirectURL string, user *models.User) (*models.SlackIntegration, error) {
+func (h *DashboardAPIHandler) CreateSlackIntegration(
+	ctx context.Context,
+	slackAuthToken, redirectURL string,
+	user *models.User,
+) (*models.SlackIntegration, error) {
 	log.Printf("➕ Creating Slack integration for user: %s", user.ID)
 
 	// Create Slack integration using the authenticated user ID

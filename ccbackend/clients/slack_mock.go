@@ -17,7 +17,10 @@ func NewMockSlackClient() *MockSlackClient {
 }
 
 // GetOAuthV2Response implements SlackClient interface for testing
-func (m *MockSlackClient) GetOAuthV2Response(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error) {
+func (m *MockSlackClient) GetOAuthV2Response(
+	httpClient *http.Client,
+	clientID, clientSecret, code, redirectURL string,
+) (*OAuthV2Response, error) {
 	if m.MockGetOAuthV2Response != nil {
 		return m.MockGetOAuthV2Response(httpClient, clientID, clientSecret, code, redirectURL)
 	}

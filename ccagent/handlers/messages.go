@@ -22,7 +22,11 @@ type MessageHandler struct {
 	appState      *models.AppState
 }
 
-func NewMessageHandler(claudeService *services.ClaudeService, gitUseCase *usecases.GitUseCase, appState *models.AppState) *MessageHandler {
+func NewMessageHandler(
+	claudeService *services.ClaudeService,
+	gitUseCase *usecases.GitUseCase,
+	appState *models.AppState,
+) *MessageHandler {
 	return &MessageHandler{
 		claudeService: claudeService,
 		gitUseCase:    gitUseCase,
@@ -121,7 +125,11 @@ CRITICAL: Never autonomously create git commits or pull requests unless explicit
 	claudeResult, err := mh.claudeService.StartNewConversationWithSystemPrompt(payload.Message, behaviourInstructions)
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
-		systemErr := mh.sendSystemMessage(socketClient, fmt.Sprintf("ccagent encountered error: %v", err), payload.SlackMessageID)
+		systemErr := mh.sendSystemMessage(
+			socketClient,
+			fmt.Sprintf("ccagent encountered error: %v", err),
+			payload.SlackMessageID,
+		)
 		if systemErr != nil {
 			log.Error("❌ Failed to send system message for Claude error: %v", systemErr)
 		}
@@ -235,7 +243,11 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 	claudeResult, err := mh.claudeService.ContinueConversation(sessionID, payload.Message)
 	if err != nil {
 		log.Info("❌ Error continuing Claude session: %v", err)
-		systemErr := mh.sendSystemMessage(socketClient, fmt.Sprintf("ccagent encountered error: %v", err), payload.SlackMessageID)
+		systemErr := mh.sendSystemMessage(
+			socketClient,
+			fmt.Sprintf("ccagent encountered error: %v", err),
+			payload.SlackMessageID,
+		)
 		if systemErr != nil {
 			log.Error("❌ Failed to send system message for Claude error: %v", systemErr)
 		}
@@ -498,7 +510,11 @@ func extractPRNumber(prURL string) string {
 	return ""
 }
 
-func (mh *MessageHandler) sendGitActivitySystemMessage(socketClient *socket.Socket, commitResult *usecases.AutoCommitResult, slackMessageID string) error {
+func (mh *MessageHandler) sendGitActivitySystemMessage(
+	socketClient *socket.Socket,
+	commitResult *usecases.AutoCommitResult,
+	slackMessageID string,
+) error {
 	if commitResult == nil {
 		return nil
 	}

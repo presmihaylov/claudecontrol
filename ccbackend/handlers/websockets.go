@@ -71,7 +71,11 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 			return fmt.Errorf("failed to unmarshal processing slack message payload: %w", err)
 		}
 
-		log.Printf("🔔 Received processing slack message notification from client %s for message: %s", client.ID, payload.SlackMessageID)
+		log.Printf(
+			"🔔 Received processing slack message notification from client %s for message: %s",
+			client.ID,
+			payload.SlackMessageID,
+		)
 		if err := h.coreUseCase.ProcessProcessingSlackMessage(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process processing slack message notification from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process processing slack message: %w", err)
@@ -84,7 +88,12 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 			return fmt.Errorf("failed to unmarshal job complete payload: %w", err)
 		}
 
-		log.Printf("✅ Received job complete notification from client %s for job: %s, reason: %s", client.ID, payload.JobID, payload.Reason)
+		log.Printf(
+			"✅ Received job complete notification from client %s for job: %s, reason: %s",
+			client.ID,
+			payload.JobID,
+			payload.Reason,
+		)
 		if err := h.coreUseCase.ProcessJobComplete(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process job complete notification from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process job complete: %w", err)

@@ -197,10 +197,12 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	router.HandleFunc("/slack/integrations", authMiddleware.WithAuth(h.HandleCreateSlackIntegration)).Methods("POST")
 	log.Printf("✅ POST /slack/integrations endpoint registered")
 
-	router.HandleFunc("/slack/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteSlackIntegration)).Methods("DELETE")
+	router.HandleFunc("/slack/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteSlackIntegration)).
+		Methods("DELETE")
 	log.Printf("✅ DELETE /slack/integrations/{id} endpoint registered")
 
-	router.HandleFunc("/slack/integrations/{id}/ccagent_secret_key", authMiddleware.WithAuth(h.HandleGenerateCCAgentSecretKey)).Methods("POST")
+	router.HandleFunc("/slack/integrations/{id}/ccagent_secret_key", authMiddleware.WithAuth(h.HandleGenerateCCAgentSecretKey)).
+		Methods("POST")
 	log.Printf("✅ POST /slack/integrations/{id}/ccagent_secret_key endpoint registered")
 
 	log.Printf("✅ All dashboard API endpoints registered successfully")
