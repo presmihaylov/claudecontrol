@@ -55,11 +55,17 @@ type SocketIOClientInterface interface {
 	SendMessage(clientID string, msg any) error
 
 	// Event handlers
-	RegisterMessageHandler(handler func(client any, msg any))
-	RegisterConnectionHook(hook func(client any) error)
-	RegisterDisconnectionHook(hook func(client any) error)
-	RegisterPingHook(hook func(client any) error)
+	RegisterMessageHandler(handler MessageHandlerFunc)
+	RegisterConnectionHook(hook ConnectionHookFunc)
+	RegisterDisconnectionHook(hook ConnectionHookFunc)
+	RegisterPingHook(hook PingHandlerFunc)
 }
+
+// Hook and handler function types
+type MessageHandlerFunc func(client *Client, msg any)
+type ConnectionHookFunc func(client *Client) error
+type PingHandlerFunc func(client *Client) error
+type APIKeyValidatorFunc func(apiKey string) (string, error)
 
 // Client represents a connected WebSocket client
 type Client struct {

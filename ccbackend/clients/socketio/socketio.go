@@ -18,33 +18,28 @@ type Message struct {
 	Payload any    `json:"payload,omitempty"`
 }
 
-type MessageHandlerFunc func(client *clients.Client, msg any)
-type ConnectionHookFunc func(client *clients.Client) error
-type PingHandlerFunc func(client *clients.Client) error
-type APIKeyValidatorFunc func(apiKey string) (string, error)
-
 type SocketIOClient struct {
 	server             *socket.Server
 	clients            []*clients.Client
 	clientsBySocketID  map[string]*clients.Client
 	mutex              sync.RWMutex
-	messageHandlers    []MessageHandlerFunc
-	connectionHooks    []ConnectionHookFunc
-	disconnectionHooks []ConnectionHookFunc
-	pingHooks          []PingHandlerFunc
-	apiKeyValidator    APIKeyValidatorFunc
+	messageHandlers    []clients.MessageHandlerFunc
+	connectionHooks    []clients.ConnectionHookFunc
+	disconnectionHooks []clients.ConnectionHookFunc
+	pingHooks          []clients.PingHandlerFunc
+	apiKeyValidator    clients.APIKeyValidatorFunc
 }
 
-func NewSocketIOClient(apiKeyValidator APIKeyValidatorFunc) *SocketIOClient {
+func NewSocketIOClient(apiKeyValidator clients.APIKeyValidatorFunc) *SocketIOClient {
 	server := socket.NewServer(nil, nil)
 	wsClient := &SocketIOClient{
 		server:             server,
 		clients:            make([]*clients.Client, 0),
 		clientsBySocketID:  make(map[string]*clients.Client),
-		messageHandlers:    make([]MessageHandlerFunc, 0),
-		connectionHooks:    make([]ConnectionHookFunc, 0),
-		disconnectionHooks: make([]ConnectionHookFunc, 0),
-		pingHooks:          make([]PingHandlerFunc, 0),
+		messageHandlers:    make([]clients.MessageHandlerFunc, 0),
+		connectionHooks:    make([]clients.ConnectionHookFunc, 0),
+		disconnectionHooks: make([]clients.ConnectionHookFunc, 0),
+		pingHooks:          make([]clients.PingHandlerFunc, 0),
 		apiKeyValidator:    apiKeyValidator,
 	}
 
@@ -221,48 +216,32 @@ func (ws *SocketIOClient) SendMessage(clientID string, msg any) error {
 	return nil
 }
 
-// Interface methods with generic signatures
-func (ws *SocketIOClient) RegisterMessageHandler(handler func(client any, msg any)) {
+// Interface methods with proper type signatures
+func (ws *SocketIOClient) RegisterMessageHandler(handler clients.MessageHandlerFunc) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
-	// Convert the generic handler to our internal type
-	adaptedHandler := func(client *clients.Client, msg any) {
-		handler(client, msg)
-	}
-	ws.messageHandlers = append(ws.messageHandlers, adaptedHandler)
+	ws.messageHandlers = append(ws.messageHandlers, handler)
 	log.Printf("📝 Message handler registered. Total handlers: %d", len(ws.messageHandlers))
 }
 
-func (ws *SocketIOClient) RegisterConnectionHook(hook func(client any) error) {
+func (ws *SocketIOClient) RegisterConnectionHook(hook clients.ConnectionHookFunc) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
-	// Convert the generic hook to our internal type
-	adaptedHook := func(client *clients.Client) error {
-		return hook(client)
-	}
-	ws.connectionHooks = append(ws.connectionHooks, adaptedHook)
+	ws.connectionHooks = append(ws.connectionHooks, hook)
 	log.Printf("🔗 Connection hook registered. Total connection hooks: %d", len(ws.connectionHooks))
 }
 
-func (ws *SocketIOClient) RegisterDisconnectionHook(hook func(client any) error) {
+func (ws *SocketIOClient) RegisterDisconnectionHook(hook clients.ConnectionHookFunc) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
-	// Convert the generic hook to our internal type
-	adaptedHook := func(client *clients.Client) error {
-		return hook(client)
-	}
-	ws.disconnectionHooks = append(ws.disconnectionHooks, adaptedHook)
+	ws.disconnectionHooks = append(ws.disconnectionHooks, hook)
 	log.Printf("🔌 Disconnection hook registered. Total disconnection hooks: %d", len(ws.disconnectionHooks))
 }
 
-func (ws *SocketIOClient) RegisterPingHook(hook func(client any) error) {
+func (ws *SocketIOClient) RegisterPingHook(hook clients.PingHandlerFunc) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
-	// Convert the generic hook to our internal type
-	adaptedHook := func(client *clients.Client) error {
-		return hook(client)
-	}
-	ws.pingHooks = append(ws.pingHooks, adaptedHook)
+	ws.pingHooks = append(ws.pingHooks, hook)
 	log.Printf("💓 Ping hook registered. Total ping hooks: %d", len(ws.pingHooks))
 }
 

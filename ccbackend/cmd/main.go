@@ -118,22 +118,18 @@ func run() error {
 	}).Methods("GET")
 
 	// Create wrapper functions for usecase methods that now require context
-	registerAgent := func(clientAny any) error {
-		client := clientAny.(*clients.Client)
+	registerAgent := func(client *clients.Client) error {
 		return coreUseCase.RegisterAgent(context.Background(), client)
 	}
-	deregisterAgent := func(clientAny any) error {
-		client := clientAny.(*clients.Client)
+	deregisterAgent := func(client *clients.Client) error {
 		return coreUseCase.DeregisterAgent(context.Background(), client)
 	}
-	processPing := func(clientAny any) error {
-		client := clientAny.(*clients.Client)
+	processPing := func(client *clients.Client) error {
 		return coreUseCase.ProcessPing(context.Background(), client)
 	}
 
 	// Create wrapper function for message handler
-	handleMessage := func(clientAny any, msg any) {
-		client := clientAny.(*clients.Client)
+	handleMessage := func(client *clients.Client, msg any) {
 		if err := wsHandler.HandleMessage(client, msg); err != nil {
 			log.Printf("❌ Message handler error: %v", err)
 		}
