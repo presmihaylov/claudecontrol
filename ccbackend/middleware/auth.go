@@ -50,7 +50,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 			testUser := &models.User{
 				ID:             core.NewID("u"),
 				AuthProvider:   "test",
-				AuthProviderID: "test-user-123",
+				AuthProviderID: core.NewID("testuser"),
 				CreatedAt:      time.Now(),
 				UpdatedAt:      time.Now(),
 			}
