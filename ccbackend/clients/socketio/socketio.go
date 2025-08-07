@@ -18,7 +18,7 @@ type Message struct {
 	Payload any    `json:"payload,omitempty"`
 }
 
-type SocketIOClient struct {
+type Server struct {
 	server             *socket.Server
 	clients            []*clients.Client
 	clientsBySocketID  map[string]*clients.Client
@@ -30,9 +30,9 @@ type SocketIOClient struct {
 	apiKeyValidator    clients.APIKeyValidatorFunc
 }
 
-func NewSocketIOClient(apiKeyValidator clients.APIKeyValidatorFunc) *SocketIOClient {
+func NewSocketIOClient(apiKeyValidator clients.APIKeyValidatorFunc) *Server {
 	server := socket.NewServer(nil, nil)
-	wsClient := &SocketIOClient{
+	wsClient := &Server{
 		server:             server,
 		clients:            make([]*clients.Client, 0),
 		clientsBySocketID:  make(map[string]*clients.Client),
@@ -53,7 +53,7 @@ func NewSocketIOClient(apiKeyValidator clients.APIKeyValidatorFunc) *SocketIOCli
 	return wsClient
 }
 
-func (ws *SocketIOClient) RegisterWithRouter(router *mux.Router) {
+func (ws *Server) RegisterWithRouter(router *mux.Router) {
 	log.Printf("🚀 Registering Socket.IO server on /socket.io/ endpoint")
 	router.PathPrefix("/socket.io/").Handler(ws.server.ServeHandler(nil))
 	log.Printf("✅ Socket.IO server registered on /socket.io/")
@@ -71,7 +71,7 @@ func getSocketIOHeader(headers map[string][]string, headerName string) (string, 
 	return "", false
 }
 
-func (ws *SocketIOClient) handleSocketIOConnection(sock *socket.Socket) {
+func (ws *Server) handleSocketIOConnection(sock *socket.Socket) {
 	log.Printf("🔗 New Socket.IO connection attempt, socket ID: %s", sock.Id())
 
 	headers := sock.Handshake().Headers
@@ -146,7 +146,7 @@ func (ws *SocketIOClient) handleSocketIOConnection(sock *socket.Socket) {
 	log.Printf("👂 Message listener setup complete for client %s", client.ID)
 }
 
-func (ws *SocketIOClient) addClient(client *clients.Client) {
+func (ws *Server) addClient(client *clients.Client) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	ws.clients = append(ws.clients, client)
@@ -154,7 +154,7 @@ func (ws *SocketIOClient) addClient(client *clients.Client) {
 	log.Printf("📊 Client %s added to active connections. Total clients: %d", client.ID, len(ws.clients))
 }
 
-func (ws *SocketIOClient) removeClient(clientID string) {
+func (ws *Server) removeClient(clientID string) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	for i, client := range ws.clients {
@@ -169,7 +169,7 @@ func (ws *SocketIOClient) removeClient(clientID string) {
 	log.Printf("⚠️ Attempted to remove client %s but not found in active connections", clientID)
 }
 
-func (ws *SocketIOClient) GetClientIDs() []string {
+func (ws *Server) GetClientIDs() []string {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	clientIDs := make([]string, len(ws.clients))
@@ -180,7 +180,7 @@ func (ws *SocketIOClient) GetClientIDs() []string {
 	return clientIDs
 }
 
-func (ws *SocketIOClient) getClientByID(clientID string) *clients.Client {
+func (ws *Server) getClientByID(clientID string) *clients.Client {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	for _, client := range ws.clients {
@@ -193,11 +193,11 @@ func (ws *SocketIOClient) getClientByID(clientID string) *clients.Client {
 	return nil
 }
 
-func (ws *SocketIOClient) GetClientByID(clientID string) any {
+func (ws *Server) GetClientByID(clientID string) any {
 	return ws.getClientByID(clientID)
 }
 
-func (ws *SocketIOClient) SendMessage(clientID string, msg any) error {
+func (ws *Server) SendMessage(clientID string, msg any) error {
 	log.Printf("📤 Attempting to send message to client %s", clientID)
 	client := ws.getClientByID(clientID)
 	if client == nil {
@@ -217,35 +217,35 @@ func (ws *SocketIOClient) SendMessage(clientID string, msg any) error {
 }
 
 // Interface methods with proper type signatures
-func (ws *SocketIOClient) RegisterMessageHandler(handler clients.MessageHandlerFunc) {
+func (ws *Server) RegisterMessageHandler(handler clients.MessageHandlerFunc) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	ws.messageHandlers = append(ws.messageHandlers, handler)
 	log.Printf("📝 Message handler registered. Total handlers: %d", len(ws.messageHandlers))
 }
 
-func (ws *SocketIOClient) RegisterConnectionHook(hook clients.ConnectionHookFunc) {
+func (ws *Server) RegisterConnectionHook(hook clients.ConnectionHookFunc) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	ws.connectionHooks = append(ws.connectionHooks, hook)
 	log.Printf("🔗 Connection hook registered. Total connection hooks: %d", len(ws.connectionHooks))
 }
 
-func (ws *SocketIOClient) RegisterDisconnectionHook(hook clients.ConnectionHookFunc) {
+func (ws *Server) RegisterDisconnectionHook(hook clients.ConnectionHookFunc) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	ws.disconnectionHooks = append(ws.disconnectionHooks, hook)
 	log.Printf("🔌 Disconnection hook registered. Total disconnection hooks: %d", len(ws.disconnectionHooks))
 }
 
-func (ws *SocketIOClient) RegisterPingHook(hook clients.PingHandlerFunc) {
+func (ws *Server) RegisterPingHook(hook clients.PingHandlerFunc) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	ws.pingHooks = append(ws.pingHooks, hook)
 	log.Printf("💓 Ping hook registered. Total ping hooks: %d", len(ws.pingHooks))
 }
 
-func (ws *SocketIOClient) invokeMessageHandlers(client *clients.Client, msg any) {
+func (ws *Server) invokeMessageHandlers(client *clients.Client, msg any) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	log.Printf("🔄 Invoking %d message handlers for client %s", len(ws.messageHandlers), client.ID)
@@ -256,7 +256,7 @@ func (ws *SocketIOClient) invokeMessageHandlers(client *clients.Client, msg any)
 	log.Printf("✅ All message handlers completed for client %s", client.ID)
 }
 
-func (ws *SocketIOClient) invokeConnectionHooks(client *clients.Client) {
+func (ws *Server) invokeConnectionHooks(client *clients.Client) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	log.Printf("🔗 Invoking %d connection hooks for client %s", len(ws.connectionHooks), client.ID)
@@ -269,7 +269,7 @@ func (ws *SocketIOClient) invokeConnectionHooks(client *clients.Client) {
 	log.Printf("✅ All connection hooks completed for client %s", client.ID)
 }
 
-func (ws *SocketIOClient) invokeDisconnectionHooks(client *clients.Client) {
+func (ws *Server) invokeDisconnectionHooks(client *clients.Client) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	log.Printf("🔌 Invoking %d disconnection hooks for client %s", len(ws.disconnectionHooks), client.ID)
@@ -282,7 +282,7 @@ func (ws *SocketIOClient) invokeDisconnectionHooks(client *clients.Client) {
 	log.Printf("✅ All disconnection hooks completed for client %s", client.ID)
 }
 
-func (ws *SocketIOClient) invokePingHooks(client *clients.Client) {
+func (ws *Server) invokePingHooks(client *clients.Client) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	log.Printf("💓 Invoking %d ping hooks for client %s", len(ws.pingHooks), client.ID)

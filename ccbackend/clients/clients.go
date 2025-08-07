@@ -44,8 +44,8 @@ type SlackClient interface {
 	RemoveReaction(name string, item SlackItemRef) error
 }
 
-// SocketIOClientInterface defines the interface for Socket.IO client operations
-type SocketIOClientInterface interface {
+// SocketIOClient defines the interface for Socket.IO client operations
+type SocketIOClient interface {
 	// Router registration
 	RegisterWithRouter(router *mux.Router)
 
