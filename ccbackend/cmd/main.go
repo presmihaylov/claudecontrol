@@ -16,6 +16,7 @@ import (
 
 	"ccbackend/clients"
 	slackclient "ccbackend/clients/slack"
+	socketioclient "ccbackend/clients/socketio"
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/handlers"
@@ -90,7 +91,7 @@ func run() error {
 		return integration.ID, nil
 	}
 
-	wsClient := clients.NewSocketIOClient(apiKeyValidator)
+	wsClient := socketioclient.NewSocketIOClient(apiKeyValidator)
 
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, txManager)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
@@ -117,23 +118,54 @@ func run() error {
 	}).Methods("GET")
 
 	// Create wrapper functions for usecase methods that now require context
-	registerAgent := func(client *clients.Client) error {
-		return coreUseCase.RegisterAgent(context.Background(), client)
+	registerAgent := func(clientAny any) error {
+		client := clientAny.(*socketioclient.Client)
+		clientInterface := &clients.Client{
+			ID:                 client.ID,
+			SlackIntegrationID: client.SlackIntegrationID,
+			AgentID:            client.AgentID,
+		}
+		return coreUseCase.RegisterAgent(context.Background(), clientInterface)
 	}
-	deregisterAgent := func(client *clients.Client) error {
-		return coreUseCase.DeregisterAgent(context.Background(), client)
+	deregisterAgent := func(clientAny any) error {
+		client := clientAny.(*socketioclient.Client)
+		clientInterface := &clients.Client{
+			ID:                 client.ID,
+			SlackIntegrationID: client.SlackIntegrationID,
+			AgentID:            client.AgentID,
+		}
+		return coreUseCase.DeregisterAgent(context.Background(), clientInterface)
 	}
-	processPing := func(client *clients.Client) error {
-		return coreUseCase.ProcessPing(context.Background(), client)
+	processPing := func(clientAny any) error {
+		client := clientAny.(*socketioclient.Client)
+		clientInterface := &clients.Client{
+			ID:                 client.ID,
+			SlackIntegrationID: client.SlackIntegrationID,
+			AgentID:            client.AgentID,
+		}
+		return coreUseCase.ProcessPing(context.Background(), clientInterface)
+	}
+
+	// Create wrapper function for message handler
+	handleMessage := func(clientAny any, msg any) {
+		client := clientAny.(*socketioclient.Client)
+		clientInterface := &clients.Client{
+			ID:                 client.ID,
+			SlackIntegrationID: client.SlackIntegrationID,
+			AgentID:            client.AgentID,
+		}
+		if err := wsHandler.HandleMessage(clientInterface, msg); err != nil {
+			log.Printf("❌ Message handler error: %v", err)
+		}
 	}
 
 	// Register WebSocket hooks for agent lifecycle
-	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(registerAgent))
-	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(deregisterAgent))
-	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(processPing))
+	wsClient.RegisterConnectionHook(registerAgent)
+	wsClient.RegisterDisconnectionHook(deregisterAgent)
+	wsClient.RegisterPingHook(processPing)
 
 	// Register WebSocket message handler
-	wsClient.RegisterMessageHandler(alertMiddleware.WrapMessageHandler(wsHandler.HandleMessage))
+	wsClient.RegisterMessageHandler(handleMessage)
 
 	// Start periodic broadcast of CheckIdleJobs, cleanup of inactive agents, and processing of queued jobs
 	cleanupTicker := time.NewTicker(1 * time.Minute)

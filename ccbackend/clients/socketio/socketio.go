@@ -1,4 +1,4 @@
-package clients
+package socketio
 
 import (
 	"ccbackend/core"
@@ -29,7 +29,7 @@ type ConnectionHookFunc func(client *Client) error
 type PingHandlerFunc func(client *Client) error
 type APIKeyValidatorFunc func(apiKey string) (string, error)
 
-type SocketIOClient struct {
+type SocketIOClientImpl struct {
 	server             *socket.Server
 	clients            []*Client
 	clientsBySocketID  map[string]*Client
@@ -41,9 +41,9 @@ type SocketIOClient struct {
 	apiKeyValidator    APIKeyValidatorFunc
 }
 
-func NewSocketIOClient(apiKeyValidator APIKeyValidatorFunc) *SocketIOClient {
+func NewSocketIOClient(apiKeyValidator APIKeyValidatorFunc) *SocketIOClientImpl {
 	server := socket.NewServer(nil, nil)
-	wsClient := &SocketIOClient{
+	wsClient := &SocketIOClientImpl{
 		server:             server,
 		clients:            make([]*Client, 0),
 		clientsBySocketID:  make(map[string]*Client),
@@ -64,7 +64,7 @@ func NewSocketIOClient(apiKeyValidator APIKeyValidatorFunc) *SocketIOClient {
 	return wsClient
 }
 
-func (ws *SocketIOClient) RegisterWithRouter(router *mux.Router) {
+func (ws *SocketIOClientImpl) RegisterWithRouter(router *mux.Router) {
 	log.Printf("🚀 Registering Socket.IO server on /socket.io/ endpoint")
 	router.PathPrefix("/socket.io/").Handler(ws.server.ServeHandler(nil))
 	log.Printf("✅ Socket.IO server registered on /socket.io/")
@@ -82,7 +82,7 @@ func getSocketIOHeader(headers map[string][]string, headerName string) (string, 
 	return "", false
 }
 
-func (ws *SocketIOClient) handleSocketIOConnection(sock *socket.Socket) {
+func (ws *SocketIOClientImpl) handleSocketIOConnection(sock *socket.Socket) {
 	log.Printf("🔗 New Socket.IO connection attempt, socket ID: %s", sock.Id())
 
 	headers := sock.Handshake().Headers
@@ -157,7 +157,7 @@ func (ws *SocketIOClient) handleSocketIOConnection(sock *socket.Socket) {
 	log.Printf("👂 Message listener setup complete for client %s", client.ID)
 }
 
-func (ws *SocketIOClient) addClient(client *Client) {
+func (ws *SocketIOClientImpl) addClient(client *Client) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	ws.clients = append(ws.clients, client)
@@ -165,7 +165,7 @@ func (ws *SocketIOClient) addClient(client *Client) {
 	log.Printf("📊 Client %s added to active connections. Total clients: %d", client.ID, len(ws.clients))
 }
 
-func (ws *SocketIOClient) removeClient(clientID string) {
+func (ws *SocketIOClientImpl) removeClient(clientID string) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 	for i, client := range ws.clients {
@@ -180,7 +180,7 @@ func (ws *SocketIOClient) removeClient(clientID string) {
 	log.Printf("⚠️ Attempted to remove client %s but not found in active connections", clientID)
 }
 
-func (ws *SocketIOClient) GetClientIDs() []string {
+func (ws *SocketIOClientImpl) GetClientIDs() []string {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	clientIDs := make([]string, len(ws.clients))
@@ -191,7 +191,7 @@ func (ws *SocketIOClient) GetClientIDs() []string {
 	return clientIDs
 }
 
-func (ws *SocketIOClient) getClientByID(clientID string) *Client {
+func (ws *SocketIOClientImpl) getClientByID(clientID string) *Client {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	for _, client := range ws.clients {
@@ -204,11 +204,11 @@ func (ws *SocketIOClient) getClientByID(clientID string) *Client {
 	return nil
 }
 
-func (ws *SocketIOClient) GetClientByID(clientID string) *Client {
+func (ws *SocketIOClientImpl) GetClientByID(clientID string) any {
 	return ws.getClientByID(clientID)
 }
 
-func (ws *SocketIOClient) SendMessage(clientID string, msg any) error {
+func (ws *SocketIOClientImpl) SendMessage(clientID string, msg any) error {
 	log.Printf("📤 Attempting to send message to client %s", clientID)
 	client := ws.getClientByID(clientID)
 	if client == nil {
@@ -227,35 +227,52 @@ func (ws *SocketIOClient) SendMessage(clientID string, msg any) error {
 	return nil
 }
 
-func (ws *SocketIOClient) RegisterMessageHandler(handler MessageHandlerFunc) {
+// Interface methods with generic signatures
+func (ws *SocketIOClientImpl) RegisterMessageHandler(handler func(client any, msg any)) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
-	ws.messageHandlers = append(ws.messageHandlers, handler)
+	// Convert the generic handler to our internal type
+	adaptedHandler := func(client *Client, msg any) {
+		handler(client, msg)
+	}
+	ws.messageHandlers = append(ws.messageHandlers, adaptedHandler)
 	log.Printf("📝 Message handler registered. Total handlers: %d", len(ws.messageHandlers))
 }
 
-func (ws *SocketIOClient) RegisterConnectionHook(hook ConnectionHookFunc) {
+func (ws *SocketIOClientImpl) RegisterConnectionHook(hook func(client any) error) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
-	ws.connectionHooks = append(ws.connectionHooks, hook)
+	// Convert the generic hook to our internal type
+	adaptedHook := func(client *Client) error {
+		return hook(client)
+	}
+	ws.connectionHooks = append(ws.connectionHooks, adaptedHook)
 	log.Printf("🔗 Connection hook registered. Total connection hooks: %d", len(ws.connectionHooks))
 }
 
-func (ws *SocketIOClient) RegisterDisconnectionHook(hook ConnectionHookFunc) {
+func (ws *SocketIOClientImpl) RegisterDisconnectionHook(hook func(client any) error) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
-	ws.disconnectionHooks = append(ws.disconnectionHooks, hook)
+	// Convert the generic hook to our internal type
+	adaptedHook := func(client *Client) error {
+		return hook(client)
+	}
+	ws.disconnectionHooks = append(ws.disconnectionHooks, adaptedHook)
 	log.Printf("🔌 Disconnection hook registered. Total disconnection hooks: %d", len(ws.disconnectionHooks))
 }
 
-func (ws *SocketIOClient) RegisterPingHook(hook PingHandlerFunc) {
+func (ws *SocketIOClientImpl) RegisterPingHook(hook func(client any) error) {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
-	ws.pingHooks = append(ws.pingHooks, hook)
+	// Convert the generic hook to our internal type
+	adaptedHook := func(client *Client) error {
+		return hook(client)
+	}
+	ws.pingHooks = append(ws.pingHooks, adaptedHook)
 	log.Printf("💓 Ping hook registered. Total ping hooks: %d", len(ws.pingHooks))
 }
 
-func (ws *SocketIOClient) invokeMessageHandlers(client *Client, msg any) {
+func (ws *SocketIOClientImpl) invokeMessageHandlers(client *Client, msg any) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	log.Printf("🔄 Invoking %d message handlers for client %s", len(ws.messageHandlers), client.ID)
@@ -266,7 +283,7 @@ func (ws *SocketIOClient) invokeMessageHandlers(client *Client, msg any) {
 	log.Printf("✅ All message handlers completed for client %s", client.ID)
 }
 
-func (ws *SocketIOClient) invokeConnectionHooks(client *Client) {
+func (ws *SocketIOClientImpl) invokeConnectionHooks(client *Client) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	log.Printf("🔗 Invoking %d connection hooks for client %s", len(ws.connectionHooks), client.ID)
@@ -279,7 +296,7 @@ func (ws *SocketIOClient) invokeConnectionHooks(client *Client) {
 	log.Printf("✅ All connection hooks completed for client %s", client.ID)
 }
 
-func (ws *SocketIOClient) invokeDisconnectionHooks(client *Client) {
+func (ws *SocketIOClientImpl) invokeDisconnectionHooks(client *Client) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	log.Printf("🔌 Invoking %d disconnection hooks for client %s", len(ws.disconnectionHooks), client.ID)
@@ -292,7 +309,7 @@ func (ws *SocketIOClient) invokeDisconnectionHooks(client *Client) {
 	log.Printf("✅ All disconnection hooks completed for client %s", client.ID)
 }
 
-func (ws *SocketIOClient) invokePingHooks(client *Client) {
+func (ws *SocketIOClientImpl) invokePingHooks(client *Client) {
 	ws.mutex.RLock()
 	defer ws.mutex.RUnlock()
 	log.Printf("💓 Invoking %d ping hooks for client %s", len(ws.pingHooks), client.ID)

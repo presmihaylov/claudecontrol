@@ -3,6 +3,8 @@ package clients
 import (
 	"context"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 // OAuthV2Response represents our custom OAuth response with only needed fields
@@ -39,4 +41,28 @@ type SlackClient interface {
 	GetReactions(item SlackItemRef, params SlackGetReactionsParameters) ([]SlackItemReaction, error)
 	AddReaction(name string, item SlackItemRef) error
 	RemoveReaction(name string, item SlackItemRef) error
+}
+
+// SocketIOClient defines the interface for Socket.IO client operations
+type SocketIOClient interface {
+	// Router registration
+	RegisterWithRouter(router *mux.Router)
+
+	// Client management
+	GetClientIDs() []string
+	GetClientByID(clientID string) any // Returns *socketio.Client but we use any for interface
+	SendMessage(clientID string, msg any) error
+
+	// Event handlers
+	RegisterMessageHandler(handler func(client any, msg any))
+	RegisterConnectionHook(hook func(client any) error)
+	RegisterDisconnectionHook(hook func(client any) error)
+	RegisterPingHook(hook func(client any) error)
+}
+
+// Client represents a connected WebSocket client (matches socketio.Client structure)
+type Client struct {
+	ID                 string
+	SlackIntegrationID string
+	AgentID            string
 }
