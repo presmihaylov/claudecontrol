@@ -134,6 +134,15 @@ func (h *SlackEventsHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Extract channel information from the event for logging
+	event := body["event"].(map[string]any)
+	channelID := ""
+	if channel, ok := event["channel"].(string); ok {
+		channelID = channel
+	}
+
+	log.Printf("📨 Slack event details - Team: %s, Channel: %s", teamID, channelID)
+
 	// Lookup slack integration by team_id
 	maybeSlackInt, err := h.slackIntegrationsService.GetSlackIntegrationByTeamID(r.Context(), teamID)
 	if err != nil {
@@ -150,7 +159,6 @@ func (h *SlackEventsHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Req
 
 	log.Printf("🔑 Found slack integration for team %s (ID: %s)", teamID, slackIntegration.ID)
 
-	event := body["event"].(map[string]any)
 	eventType := event["type"].(string)
 
 	switch eventType {
