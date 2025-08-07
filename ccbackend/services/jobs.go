@@ -218,12 +218,12 @@ func (s *JobsService) DeleteJob(ctx context.Context, id string, slackIntegration
 	}
 
 	// Perform database operations within transaction
-	if err := s.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := s.processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(txCtx, id, slackIntegrationID); err != nil {
+	if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+		if err := s.processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(ctx, id, slackIntegrationID); err != nil {
 			return fmt.Errorf("failed to delete processed slack messages for job: %w", err)
 		}
 
-		if _, err := s.jobsRepo.DeleteJob(txCtx, id, slackIntegrationID); err != nil {
+		if _, err := s.jobsRepo.DeleteJob(ctx, id, slackIntegrationID); err != nil {
 			return fmt.Errorf("failed to delete job: %w", err)
 		}
 
