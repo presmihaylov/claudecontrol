@@ -603,7 +603,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(ctx context.Context, jobID string, sla
 	}
 
 	selectedAgent := sortedAgents[0].agent
-	log.Printf("🎯 Selected agent %s with %d active messages (least loaded)", selectedAgent.ID, sortedAgents[0].load)
+	log.Printf("🎯 Selected agent %s with %d active jobs (least loaded)", selectedAgent.ID, sortedAgents[0].load)
 
 	// Assign the job to the selected agent (agents can now handle multiple jobs simultaneously)
 	if err := s.agentsService.AssignAgentToJob(ctx, selectedAgent.ID, jobID, slackIntegrationID); err != nil {
@@ -630,17 +630,19 @@ func (s *CoreUseCase) sortAgentsByLoad(ctx context.Context, agents []*models.Act
 			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
 		}
 
-		// Get count of active messages (IN_PROGRESS or QUEUED) for these jobs
-		activeMessageCount, err := s.jobsService.GetActiveMessageCountForJobs(ctx, jobIDs, slackIntegrationID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get active message count for agent %s: %w", agent.ID, err)
-		}
+		// Use job count as load metric for better load balancing
+		// This prevents the race condition where agents appear available immediately after completing messages
+		jobCount := len(jobIDs)
 
-		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: activeMessageCount})
+		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: jobCount})
 	}
 
-	// Sort by load (ascending - least loaded first)
+	// Sort by load (ascending - least loaded first), with agent ID as tie-breaker for deterministic selection
 	sort.Slice(agentsWithLoad, func(i, j int) bool {
+		if agentsWithLoad[i].load == agentsWithLoad[j].load {
+			// When loads are equal, use agent ID for deterministic tie-breaking
+			return agentsWithLoad[i].agent.ID < agentsWithLoad[j].agent.ID
+		}
 		return agentsWithLoad[i].load < agentsWithLoad[j].load
 	})
 
