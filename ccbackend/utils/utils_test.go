@@ -5,9 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"ccbackend/models"
 )
 
 func TestConvertMarkdownToSlack(t *testing.T) {
@@ -209,12 +210,12 @@ type MockSlackClient struct {
 	mock.Mock
 }
 
-func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, user string) (*slack.User, error) {
+func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, user string) (*models.SlackUser, error) {
 	args := m.Called(ctx, user)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*slack.User), args.Error(1)
+	return args.Get(0).(*models.SlackUser), args.Error(1)
 }
 
 func TestResolveMentionsInSlackMessage(t *testing.T) {
@@ -232,9 +233,9 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 		mockClient := &MockSlackClient{}
 
 		// Setup mock user response
-		mockUser := &slack.User{
+		mockUser := &models.SlackUser{
 			ID: "U123456",
-			Profile: slack.UserProfile{
+			Profile: models.SlackUserProfile{
 				DisplayName: "John Doe",
 				RealName:    "John Smith Doe",
 			},
@@ -253,15 +254,15 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 		mockClient := &MockSlackClient{}
 
 		// Setup mock user responses
-		mockUser1 := &slack.User{
+		mockUser1 := &models.SlackUser{
 			ID: "U123456",
-			Profile: slack.UserProfile{
+			Profile: models.SlackUserProfile{
 				DisplayName: "John Doe",
 			},
 		}
-		mockUser2 := &slack.User{
+		mockUser2 := &models.SlackUser{
 			ID: "U789012",
-			Profile: slack.UserProfile{
+			Profile: models.SlackUserProfile{
 				RealName: "Jane Smith",
 			},
 		}
@@ -280,9 +281,9 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 		mockClient := &MockSlackClient{}
 
 		// Setup mock user response - should only be called once due to caching
-		mockUser := &slack.User{
+		mockUser := &models.SlackUser{
 			ID: "U123456",
-			Profile: slack.UserProfile{
+			Profile: models.SlackUserProfile{
 				DisplayName: "John Doe",
 			},
 		}
@@ -315,9 +316,9 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 		mockClient := &MockSlackClient{}
 
 		// Setup mock bot user response
-		mockUser := &slack.User{
+		mockUser := &models.SlackUser{
 			ID: "W123456",
-			Profile: slack.UserProfile{
+			Profile: models.SlackUserProfile{
 				DisplayName: "Bot Name",
 			},
 		}
@@ -334,10 +335,10 @@ func TestResolveMentionsInSlackMessage(t *testing.T) {
 
 func TestGetUserDisplayName(t *testing.T) {
 	t.Run("DisplayNameAvailable", func(t *testing.T) {
-		user := &slack.User{
+		user := &models.SlackUser{
 			ID:   "U123",
 			Name: "john.doe",
-			Profile: slack.UserProfile{
+			Profile: models.SlackUserProfile{
 				DisplayName: "John Doe",
 				RealName:    "John Smith Doe",
 			},
@@ -348,10 +349,10 @@ func TestGetUserDisplayName(t *testing.T) {
 	})
 
 	t.Run("OnlyRealNameAvailable", func(t *testing.T) {
-		user := &slack.User{
+		user := &models.SlackUser{
 			ID:   "U123",
 			Name: "john.doe",
-			Profile: slack.UserProfile{
+			Profile: models.SlackUserProfile{
 				RealName: "John Smith Doe",
 			},
 		}
@@ -361,7 +362,7 @@ func TestGetUserDisplayName(t *testing.T) {
 	})
 
 	t.Run("OnlyUsernameAvailable", func(t *testing.T) {
-		user := &slack.User{
+		user := &models.SlackUser{
 			ID:   "U123",
 			Name: "john.doe",
 		}
@@ -371,7 +372,7 @@ func TestGetUserDisplayName(t *testing.T) {
 	})
 
 	t.Run("OnlyUserIDAvailable", func(t *testing.T) {
-		user := &slack.User{
+		user := &models.SlackUser{
 			ID: "U123",
 		}
 

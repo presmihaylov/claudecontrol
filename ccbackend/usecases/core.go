@@ -8,8 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/slack-go/slack"
-
 	"ccbackend/clients"
 	slackclient "ccbackend/clients/slack"
 	"ccbackend/core"
@@ -371,9 +369,9 @@ func (s *CoreUseCase) sendStartConversationToAgent(ctx context.Context, clientID
 	job := maybeJob.MustGet()
 
 	// Generate permalink for the thread's first message
-	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
+	permalink, err := slackClient.GetPermalink(&models.SlackPermalinkParameters{
 		Channel: message.SlackChannelID,
-		Ts:      job.SlackThreadTS,
+		TS:      job.SlackThreadTS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
@@ -417,9 +415,9 @@ func (s *CoreUseCase) sendUserMessageToAgent(ctx context.Context, clientID strin
 	job := maybeJob.MustGet()
 
 	// Generate permalink for the thread's first message
-	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
+	permalink, err := slackClient.GetPermalink(&models.SlackPermalinkParameters{
 		Channel: message.SlackChannelID,
-		Ts:      job.SlackThreadTS,
+		TS:      job.SlackThreadTS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
@@ -474,10 +472,10 @@ func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slac
 	}
 
 	// Get reactions directly using GetReactions - much less rate limited
-	reactions, err := slackClient.GetReactions(slack.ItemRef{
+	reactions, err := slackClient.GetReactions(models.SlackItemRef{
 		Channel:   channelID,
 		Timestamp: messageTS,
-	}, slack.GetReactionsParameters{})
+	}, models.SlackGetReactionsParameters{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reactions: %w", err)
 	}
@@ -523,7 +521,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(ctx context.Context, channelID,
 	reactionsToRemove := getOldReactions(newEmoji)
 	for _, emoji := range reactionsToRemove {
 		if slices.Contains(botReactions, emoji) {
-			if err := slackClient.RemoveReaction(emoji, slack.ItemRef{
+			if err := slackClient.RemoveReaction(emoji, models.SlackItemRef{
 				Channel:   channelID,
 				Timestamp: messageTS,
 			}); err != nil {
@@ -534,7 +532,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(ctx context.Context, channelID,
 
 	// Add new reaction if not already there
 	if newEmoji != "" && !slices.Contains(botReactions, newEmoji) {
-		if err := slackClient.AddReaction(newEmoji, slack.ItemRef{
+		if err := slackClient.AddReaction(newEmoji, models.SlackItemRef{
 			Channel:   channelID,
 			Timestamp: messageTS,
 		}); err != nil {
@@ -1194,8 +1192,8 @@ func (s *CoreUseCase) sendSlackMessage(ctx context.Context, slackIntegrationID, 
 
 	// Send message to Slack
 	_, _, err = slackClient.PostMessage(channelID,
-		slack.MsgOptionText(utils.ConvertMarkdownToSlack(message), false),
-		slack.MsgOptionTS(threadTS),
+		models.SlackMsgOptionTextHelper(utils.ConvertMarkdownToSlack(message), false),
+		models.SlackMsgOptionTSHelper(threadTS),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to send message to Slack: %w", err)

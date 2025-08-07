@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/slack-go/slack"
+	"ccbackend/models"
 )
 
 // SlackOAuthClient defines the interface for Slack OAuth operations
@@ -17,17 +17,17 @@ type SlackClient interface {
 	SlackOAuthClient
 
 	// Bot operations
-	AuthTest() (*slack.AuthTestResponse, error)
-	GetPermalink(params *slack.PermalinkParameters) (string, error)
+	AuthTest() (*models.SlackAuthTestResponse, error)
+	GetPermalink(params *models.SlackPermalinkParameters) (string, error)
 
 	// User operations
-	GetUserInfoContext(ctx context.Context, userID string) (*slack.User, error)
+	GetUserInfoContext(ctx context.Context, userID string) (*models.SlackUser, error)
 
 	// Message operations
-	PostMessage(channelID string, options ...slack.MsgOption) (string, string, error)
+	PostMessage(channelID string, options ...models.SlackMessageOption) (string, string, error)
 
 	// Reaction operations
-	GetReactions(item slack.ItemRef, params slack.GetReactionsParameters) ([]slack.ItemReaction, error)
-	AddReaction(name string, item slack.ItemRef) error
-	RemoveReaction(name string, item slack.ItemRef) error
+	GetReactions(item models.SlackItemRef, params models.SlackGetReactionsParameters) ([]models.SlackItemReaction, error)
+	AddReaction(name string, item models.SlackItemRef) error
+	RemoveReaction(name string, item models.SlackItemRef) error
 }
