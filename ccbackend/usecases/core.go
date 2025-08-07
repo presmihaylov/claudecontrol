@@ -482,11 +482,8 @@ func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slac
 	var botReactions []string
 	for _, reaction := range reactions {
 		// Check if bot added this reaction
-		for _, user := range reaction.Users {
-			if user == botUserID {
-				botReactions = append(botReactions, reaction.Name)
-				break
-			}
+		if slices.Contains(reaction.Users, botUserID) {
+			botReactions = append(botReactions, reaction.Name)
 		}
 	}
 
