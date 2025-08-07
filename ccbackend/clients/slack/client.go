@@ -7,7 +7,6 @@ import (
 	"github.com/slack-go/slack"
 
 	"ccbackend/clients"
-	slackutils "ccbackend/utils/slack"
 )
 
 // SlackClient implements the clients.SlackClient interface using the slack-go/slack SDK
@@ -159,5 +158,5 @@ func (c *SlackClient) RemoveReaction(name string, item clients.SlackItemRef) err
 // ResolveMentionsInMessage resolves user mentions like <@U123456> to display names
 // in incoming Slack messages before forwarding them to ccagent
 func (c *SlackClient) ResolveMentionsInMessage(ctx context.Context, message string) string {
-	return slackutils.ResolveMentionsInMessage(ctx, c, message)
+	return ResolveMentionsInMessage(ctx, c, message)
 }

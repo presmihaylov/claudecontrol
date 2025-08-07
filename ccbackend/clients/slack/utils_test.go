@@ -3,7 +3,6 @@ package slack
 import (
 	"context"
 	"errors"
-	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,77 +10,24 @@ import (
 	"ccbackend/clients"
 )
 
-// testSlackClient implements clients.SlackClient for testing
-type testSlackClient struct {
-	getUserInfoFunc func(ctx context.Context, userID string) (*clients.SlackUser, error)
-}
-
-func (t *testSlackClient) GetOAuthV2Response(
-	httpClient *http.Client,
-	clientID, clientSecret, code, redirectURL string,
-) (*clients.OAuthV2Response, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (t *testSlackClient) AuthTest() (*clients.SlackAuthTestResponse, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (t *testSlackClient) GetPermalink(params *clients.SlackPermalinkParameters) (string, error) {
-	return "", errors.New("not implemented")
-}
-
-func (t *testSlackClient) GetUserInfoContext(ctx context.Context, userID string) (*clients.SlackUser, error) {
-	if t.getUserInfoFunc != nil {
-		return t.getUserInfoFunc(ctx, userID)
-	}
-	return nil, errors.New("not implemented")
-}
-
-func (t *testSlackClient) PostMessage(
-	channelID string,
-	params clients.SlackMessageParams,
-) (*clients.SlackPostMessageResponse, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (t *testSlackClient) GetReactions(
-	item clients.SlackItemRef,
-	params clients.SlackGetReactionsParameters,
-) ([]clients.SlackItemReaction, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (t *testSlackClient) AddReaction(name string, item clients.SlackItemRef) error {
-	return errors.New("not implemented")
-}
-
-func (t *testSlackClient) RemoveReaction(name string, item clients.SlackItemRef) error {
-	return errors.New("not implemented")
-}
-
-func (t *testSlackClient) ResolveMentionsInMessage(ctx context.Context, message string) string {
-	return message
-}
-
 func TestResolveMentionsInMessage(t *testing.T) {
 	tests := []struct {
 		name            string
 		message         string
-		mockSetup       func(*testSlackClient)
+		mockSetup       func(*MockSlackClient)
 		expectedMessage string
 	}{
 		{
 			name:            "no mentions in message",
 			message:         "Hello world! This is a regular message.",
-			mockSetup:       func(mock *testSlackClient) {},
+			mockSetup:       func(mock *MockSlackClient) {},
 			expectedMessage: "Hello world! This is a regular message.",
 		},
 		{
 			name:    "single user mention resolved successfully",
 			message: "Hello <@U123456>! How are you?",
-			mockSetup: func(mock *testSlackClient) {
-				mock.getUserInfoFunc = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
+			mockSetup: func(mock *MockSlackClient) {
+				mock.MockGetUserInfoContext = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
 					if userID == "U123456" {
 						return &clients.SlackUser{
 							ID:   "U123456",
@@ -100,8 +46,8 @@ func TestResolveMentionsInMessage(t *testing.T) {
 		{
 			name:    "multiple user mentions resolved successfully",
 			message: "Hello <@U123456> and <@U789012>! How are you both?",
-			mockSetup: func(mock *testSlackClient) {
-				mock.getUserInfoFunc = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
+			mockSetup: func(mock *MockSlackClient) {
+				mock.MockGetUserInfoContext = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
 					if userID == "U123456" {
 						return &clients.SlackUser{
 							ID:   "U123456",
@@ -130,9 +76,9 @@ func TestResolveMentionsInMessage(t *testing.T) {
 		{
 			name:    "duplicate user mentions resolved only once",
 			message: "Hello <@U123456>! <@U123456>, are you there?",
-			mockSetup: func(mock *testSlackClient) {
+			mockSetup: func(mock *MockSlackClient) {
 				callCount := 0
-				mock.getUserInfoFunc = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
+				mock.MockGetUserInfoContext = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
 					callCount++
 					if userID == "U123456" {
 						return &clients.SlackUser{
@@ -152,8 +98,8 @@ func TestResolveMentionsInMessage(t *testing.T) {
 		{
 			name:    "user mention API call fails - keeps original format",
 			message: "Hello <@U999999>! How are you?",
-			mockSetup: func(mock *testSlackClient) {
-				mock.getUserInfoFunc = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
+			mockSetup: func(mock *MockSlackClient) {
+				mock.MockGetUserInfoContext = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
 					return nil, errors.New("API error")
 				}
 			},
@@ -162,8 +108,8 @@ func TestResolveMentionsInMessage(t *testing.T) {
 		{
 			name:    "user with only RealName (no DisplayName)",
 			message: "Hello <@U123456>!",
-			mockSetup: func(mock *testSlackClient) {
-				mock.getUserInfoFunc = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
+			mockSetup: func(mock *MockSlackClient) {
+				mock.MockGetUserInfoContext = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
 					if userID == "U123456" {
 						return &clients.SlackUser{
 							ID:   "U123456",
@@ -182,8 +128,8 @@ func TestResolveMentionsInMessage(t *testing.T) {
 		{
 			name:    "user with only Name (no DisplayName or RealName)",
 			message: "Hello <@U123456>!",
-			mockSetup: func(mock *testSlackClient) {
-				mock.getUserInfoFunc = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
+			mockSetup: func(mock *MockSlackClient) {
+				mock.MockGetUserInfoContext = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
 					if userID == "U123456" {
 						return &clients.SlackUser{
 							ID:   "U123456",
@@ -202,8 +148,8 @@ func TestResolveMentionsInMessage(t *testing.T) {
 		{
 			name:    "user with only ID (no other names)",
 			message: "Hello <@U123456>!",
-			mockSetup: func(mock *testSlackClient) {
-				mock.getUserInfoFunc = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
+			mockSetup: func(mock *MockSlackClient) {
+				mock.MockGetUserInfoContext = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
 					if userID == "U123456" {
 						return &clients.SlackUser{
 							ID:   "U123456",
@@ -222,8 +168,8 @@ func TestResolveMentionsInMessage(t *testing.T) {
 		{
 			name:    "workspace user mention (starts with W)",
 			message: "Hello <@W123456>!",
-			mockSetup: func(mock *testSlackClient) {
-				mock.getUserInfoFunc = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
+			mockSetup: func(mock *MockSlackClient) {
+				mock.MockGetUserInfoContext = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
 					if userID == "W123456" {
 						return &clients.SlackUser{
 							ID:   "W123456",
@@ -242,8 +188,8 @@ func TestResolveMentionsInMessage(t *testing.T) {
 		{
 			name:    "mixed success and failure mentions",
 			message: "Hello <@U123456> and <@U999999>!",
-			mockSetup: func(mock *testSlackClient) {
-				mock.getUserInfoFunc = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
+			mockSetup: func(mock *MockSlackClient) {
+				mock.MockGetUserInfoContext = func(ctx context.Context, userID string) (*clients.SlackUser, error) {
 					if userID == "U123456" {
 						return &clients.SlackUser{
 							ID:   "U123456",
@@ -265,7 +211,7 @@ func TestResolveMentionsInMessage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create mock Slack client
-			mockClient := &testSlackClient{}
+			mockClient := NewMockSlackClient()
 			tt.mockSetup(mockClient)
 
 			// Call the function under test
