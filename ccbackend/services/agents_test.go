@@ -35,8 +35,8 @@ func setupTestService(t *testing.T) (*AgentsService, *JobsService, *models.Slack
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 
-	// Initialize mock transaction manager for tests
-	txManager := &MockTransactionManager{}
+	// Initialize real transaction manager for tests
+	txManager := &TestTransactionManager{db: dbConn}
 
 	agentsService := NewAgentsService(agentsRepo)
 	jobsService := NewJobsService(jobsRepo, messagesRepo, txManager)
