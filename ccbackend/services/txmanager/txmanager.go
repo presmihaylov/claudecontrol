@@ -8,21 +8,20 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	dbtx "ccbackend/db/tx"
-	"ccbackend/services"
 )
 
-// DefaultTransactionManager implements the TransactionManager interface
-type DefaultTransactionManager struct {
+// TransactionManager implements the TransactionManager interface
+type TransactionManager struct {
 	db *sqlx.DB
 }
 
 // NewTransactionManager creates a new transaction manager
-func NewTransactionManager(db *sqlx.DB) services.TransactionManager {
-	return &DefaultTransactionManager{db: db}
+func NewTransactionManager(db *sqlx.DB) *TransactionManager {
+	return &TransactionManager{db: db}
 }
 
 // WithTransaction executes the provided function within a database transaction
-func (tm *DefaultTransactionManager) WithTransaction(ctx context.Context, fn func(context.Context) error) error {
+func (tm *TransactionManager) WithTransaction(ctx context.Context, fn func(context.Context) error) error {
 	log.Printf("📋 Starting transaction")
 
 	// Support nested transactions - if already in tx, just execute function
@@ -70,7 +69,7 @@ func (tm *DefaultTransactionManager) WithTransaction(ctx context.Context, fn fun
 }
 
 // BeginTransaction starts a new transaction and returns context with the transaction
-func (tm *DefaultTransactionManager) BeginTransaction(ctx context.Context) (context.Context, error) {
+func (tm *TransactionManager) BeginTransaction(ctx context.Context) (context.Context, error) {
 	log.Printf("📋 Starting manual transaction")
 
 	tx, err := tm.db.BeginTxx(ctx, nil)
@@ -82,7 +81,7 @@ func (tm *DefaultTransactionManager) BeginTransaction(ctx context.Context) (cont
 }
 
 // CommitTransaction commits the transaction stored in the context
-func (tm *DefaultTransactionManager) CommitTransaction(ctx context.Context) error {
+func (tm *TransactionManager) CommitTransaction(ctx context.Context) error {
 	log.Printf("📋 Committing manual transaction")
 
 	tx, ok := dbtx.TransactionFromContext(ctx)
@@ -99,7 +98,7 @@ func (tm *DefaultTransactionManager) CommitTransaction(ctx context.Context) erro
 }
 
 // RollbackTransaction rolls back the transaction stored in the context
-func (tm *DefaultTransactionManager) RollbackTransaction(ctx context.Context) error {
+func (tm *TransactionManager) RollbackTransaction(ctx context.Context) error {
 	log.Printf("📋 Rolling back manual transaction")
 
 	tx, ok := dbtx.TransactionFromContext(ctx)
