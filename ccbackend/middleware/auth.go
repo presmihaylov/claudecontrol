@@ -4,13 +4,17 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/jwks"
 	"github.com/clerk/clerk-sdk-go/v2/jwt"
 
 	"ccbackend/appctx"
+	"ccbackend/core"
+	"ccbackend/models"
 	"ccbackend/services"
 )
 
@@ -39,6 +43,26 @@ func NewClerkAuthMiddleware(usersService services.UsersService, clerkSecretKey s
 func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("🔐 Authentication middleware processing request from %s", r.RemoteAddr)
+
+		// Check if we're in testing mode
+		if os.Getenv("TESTING_MODE") == "true" {
+			log.Printf("🧪 Testing mode enabled - skipping Clerk validation")
+			testUser := &models.User{
+				ID:             core.NewID("u"),
+				AuthProvider:   "test",
+				AuthProviderID: "test-user-123",
+				CreatedAt:      time.Now(),
+				UpdatedAt:      time.Now(),
+			}
+
+			log.Printf("✅ Test user created: %s", testUser.ID)
+			ctx := appctx.SetUser(r.Context(), testUser)
+			r = r.WithContext(ctx)
+
+			next(w, r)
+			return
+		}
+
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			log.Printf("❌ Missing Authorization header")
