@@ -124,6 +124,7 @@ CCAGENT_WS_API_URL=<websocket_server_url>  # Optional, defaults to production
 - WebSocket clients stored as `[]Client` where `Client.ClientConn` is the connection
 - Thread-safe operations with `sync.RWMutex` for client management
 - JSON message protocol for WebSocket communication
+- **Prefer `slices.Contains`**: Use `slices.Contains(slice, value)` instead of manual loops when checking for membership in a slice
 
 ## Module Dependencies
 
