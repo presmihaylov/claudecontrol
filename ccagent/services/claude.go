@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -185,9 +186,16 @@ func (c *ClaudeService) extractSessionID(messages []ClaudeMessage) string {
 func (c *ClaudeService) extractClaudeResult(messages []ClaudeMessage) (string, error) {
 	for i := len(messages) - 1; i >= 0; i-- {
 		if assistantMsg, ok := messages[i].(AssistantMessage); ok {
-			for _, content := range assistantMsg.Message.Content {
-				if content.Type == "text" {
-					return content.Text, nil
+			for _, contentRaw := range assistantMsg.Message.Content {
+				// Parse the content to check if it's a text content item
+				var contentItem struct {
+					Type string `json:"type"`
+					Text string `json:"text,omitempty"`
+				}
+				if err := json.Unmarshal(contentRaw, &contentItem); err == nil {
+					if contentItem.Type == "text" && contentItem.Text != "" {
+						return contentItem.Text, nil
+					}
 				}
 			}
 		}
@@ -221,10 +229,17 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 	// Try to extract the assistant message using existing logic
 	for i := len(messages) - 1; i >= 0; i-- {
 		if assistantMsg, ok := messages[i].(AssistantMessage); ok {
-			for _, content := range assistantMsg.Message.Content {
-				if content.Type == "text" {
-					log.Info("✅ Successfully extracted Claude message from error: %s", content.Text)
-					return fmt.Errorf("%s: %s", operation, content.Text)
+			for _, contentRaw := range assistantMsg.Message.Content {
+				// Parse the content to check if it's a text content item
+				var contentItem struct {
+					Type string `json:"type"`
+					Text string `json:"text,omitempty"`
+				}
+				if err := json.Unmarshal(contentRaw, &contentItem); err == nil {
+					if contentItem.Type == "text" && contentItem.Text != "" {
+						log.Info("✅ Successfully extracted Claude message from error: %s", contentItem.Text)
+						return fmt.Errorf("%s: %s", operation, contentItem.Text)
+					}
 				}
 			}
 		}

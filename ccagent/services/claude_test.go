@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -342,18 +343,12 @@ func TestClaudeService_extractClaudeResult(t *testing.T) {
 				AssistantMessage{
 					Type: "assistant",
 					Message: struct {
-						ID      string `json:"id"`
-						Type    string `json:"type"`
-						Content []struct {
-							Type string `json:"type"`
-							Text string `json:"text"`
-						} `json:"content"`
+						ID      string            `json:"id"`
+						Type    string            `json:"type"`
+						Content []json.RawMessage `json:"content"`
 					}{
-						Content: []struct {
-							Type string `json:"type"`
-							Text string `json:"text"`
-						}{
-							{Type: "text", Text: "Hello world"},
+						Content: []json.RawMessage{
+							json.RawMessage(`{"type": "text", "text": "Hello world"}`),
 						},
 					},
 				},
