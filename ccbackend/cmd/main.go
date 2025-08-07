@@ -128,22 +128,13 @@ func run() error {
 		return coreUseCase.ProcessPing(context.Background(), client)
 	}
 
-	// Create wrapper function for message handler
-	handleMessage := func(client *clients.Client, msg any) error {
-		if err := wsHandler.HandleMessage(client, msg); err != nil {
-			log.Printf("❌ Message handler error: %v", err)
-			return err
-		}
-		return nil
-	}
-
 	// Register WebSocket hooks for agent lifecycle
 	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(registerAgent))
 	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(deregisterAgent))
 	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(processPing))
 
 	// Register WebSocket message handler (middleware consumes errors internally)
-	wrappedHandler := alertMiddleware.WrapMessageHandler(handleMessage)
+	wrappedHandler := alertMiddleware.WrapMessageHandler(wsHandler.HandleMessage)
 	messageHandlerAdapter := func(client *clients.Client, msg any) error {
 		wrappedHandler(client, msg)
 		return nil // Middleware handles errors internally
