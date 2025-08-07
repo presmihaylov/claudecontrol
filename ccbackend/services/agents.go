@@ -62,14 +62,14 @@ func (s *AgentsService) DeleteActiveAgentByWsConnectionID(ctx context.Context, w
 	}
 
 	// First find the agent by WebSocket connection ID
-	agentOpt, err := s.agentsRepo.GetAgentByWSConnectionID(ctx, wsConnectionID, slackIntegrationID)
+	maybeAgent, err := s.agentsRepo.GetAgentByWSConnectionID(ctx, wsConnectionID, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to find agent by ws_connection_id: %w", err)
 	}
-	if !agentOpt.IsPresent() {
+	if !maybeAgent.IsPresent() {
 		return core.ErrNotFound
 	}
-	agent := agentOpt.MustGet()
+	agent := maybeAgent.MustGet()
 
 	// Then delete by agent ID
 	deleted, err := s.agentsRepo.DeleteActiveAgent(ctx, agent.ID, slackIntegrationID)
@@ -118,15 +118,15 @@ func (s *AgentsService) GetAgentByID(ctx context.Context, id string, slackIntegr
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	agentOpt, err := s.agentsRepo.GetAgentByID(ctx, id, slackIntegrationID)
+	maybeAgent, err := s.agentsRepo.GetAgentByID(ctx, id, slackIntegrationID)
 	if err != nil {
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("failed to get active agent: %w", err)
 	}
-	if !agentOpt.IsPresent() {
+	if !maybeAgent.IsPresent() {
 		log.Printf("📋 Completed successfully - agent not found")
 		return mo.None[*models.ActiveAgent](), nil
 	}
-	agent := agentOpt.MustGet()
+	agent := maybeAgent.MustGet()
 
 	log.Printf("📋 Completed successfully - retrieved agent with ID: %s", agent.ID)
 	return mo.Some(agent), nil
@@ -294,15 +294,15 @@ func (s *AgentsService) GetAgentByJobID(ctx context.Context, jobID string, slack
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	agentOpt, err := s.agentsRepo.GetAgentByJobID(ctx, jobID, slackIntegrationID)
+	maybeAgent, err := s.agentsRepo.GetAgentByJobID(ctx, jobID, slackIntegrationID)
 	if err != nil {
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("failed to get agent by job ID: %w", err)
 	}
-	if !agentOpt.IsPresent() {
+	if !maybeAgent.IsPresent() {
 		log.Printf("📋 Completed successfully - agent not found for job %s", jobID)
 		return mo.None[*models.ActiveAgent](), nil
 	}
-	agent := agentOpt.MustGet()
+	agent := maybeAgent.MustGet()
 
 	log.Printf("📋 Completed successfully - retrieved agent %s for job %s", agent.ID, jobID)
 	return mo.Some(agent), nil
@@ -319,15 +319,15 @@ func (s *AgentsService) GetAgentByWSConnectionID(ctx context.Context, wsConnecti
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	agentOpt, err := s.agentsRepo.GetAgentByWSConnectionID(ctx, wsConnectionID, slackIntegrationID)
+	maybeAgent, err := s.agentsRepo.GetAgentByWSConnectionID(ctx, wsConnectionID, slackIntegrationID)
 	if err != nil {
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("failed to get agent by WS connection ID: %w", err)
 	}
-	if !agentOpt.IsPresent() {
+	if !maybeAgent.IsPresent() {
 		log.Printf("📋 Completed successfully - agent not found for WS connection")
 		return mo.None[*models.ActiveAgent](), nil
 	}
-	agent := agentOpt.MustGet()
+	agent := maybeAgent.MustGet()
 
 	log.Printf("📋 Completed successfully - retrieved agent %s for WS connection %s", agent.ID, wsConnectionID)
 	return mo.Some(agent), nil

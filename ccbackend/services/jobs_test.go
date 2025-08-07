@@ -108,10 +108,10 @@ func TestJobsService(t *testing.T) {
 			require.NoError(t, err)
 
 			// Fetch it by ID
-			fetchedJobOpt, err := service.GetJobByID(context.Background(), createdJob.ID, slackIntegrationID)
+			maybeFetchedJob, err := service.GetJobByID(context.Background(), createdJob.ID, slackIntegrationID)
 			require.NoError(t, err)
-			require.True(t, fetchedJobOpt.IsPresent())
-			fetchedJob := fetchedJobOpt.MustGet()
+			require.True(t, maybeFetchedJob.IsPresent())
+			fetchedJob := maybeFetchedJob.MustGet()
 
 			assert.Equal(t, createdJob.ID, fetchedJob.ID)
 			assert.Equal(t, createdJob.SlackThreadTS, fetchedJob.SlackThreadTS)
@@ -136,9 +136,9 @@ func TestJobsService(t *testing.T) {
 		t.Run("NotFound", func(t *testing.T) {
 			id := core.NewID("j")
 
-			jobOpt, err := service.GetJobByID(context.Background(), id, slackIntegrationID)
+			maybeJob, err := service.GetJobByID(context.Background(), id, slackIntegrationID)
 			require.NoError(t, err)
-			assert.False(t, jobOpt.IsPresent())
+			assert.False(t, maybeJob.IsPresent())
 		})
 	})
 
@@ -219,10 +219,10 @@ func TestJobsService(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify job exists
-			fetchedJobOpt, err := service.GetJobByID(context.Background(), job.ID, slackIntegrationID)
+			maybeFetchedJob, err := service.GetJobByID(context.Background(), job.ID, slackIntegrationID)
 			require.NoError(t, err)
-			require.True(t, fetchedJobOpt.IsPresent())
-			fetchedJob := fetchedJobOpt.MustGet()
+			require.True(t, maybeFetchedJob.IsPresent())
+			fetchedJob := maybeFetchedJob.MustGet()
 			assert.Equal(t, job.ID, fetchedJob.ID)
 
 			// Delete the job
@@ -230,9 +230,9 @@ func TestJobsService(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify job no longer exists
-			jobOpt, err := service.GetJobByID(context.Background(), job.ID, slackIntegrationID)
+			maybeJob, err := service.GetJobByID(context.Background(), job.ID, slackIntegrationID)
 			require.NoError(t, err)
-			assert.False(t, jobOpt.IsPresent())
+			assert.False(t, maybeJob.IsPresent())
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
@@ -307,10 +307,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify agent has the job assigned
-		updatedAgentOpt, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+		maybeUpdatedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 		require.NoError(t, err)
-		require.True(t, updatedAgentOpt.IsPresent())
-		updatedAgent := updatedAgentOpt.MustGet()
+		require.True(t, maybeUpdatedAgent.IsPresent())
+		updatedAgent := maybeUpdatedAgent.MustGet()
 
 		// Verify agent has the assigned job
 		jobs, err := agentsService.GetActiveAgentJobAssignments(context.Background(), updatedAgent.ID, slackIntegrationID)
@@ -375,10 +375,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify both agents have their respective jobs
-		updatedAgent1Opt, err := agentsService.GetAgentByID(context.Background(), agent1.ID, slackIntegrationID)
+		maybeUpdatedAgent1, err := agentsService.GetAgentByID(context.Background(), agent1.ID, slackIntegrationID)
 		require.NoError(t, err)
-		require.True(t, updatedAgent1Opt.IsPresent())
-		updatedAgent1 := updatedAgent1Opt.MustGet()
+		require.True(t, maybeUpdatedAgent1.IsPresent())
+		updatedAgent1 := maybeUpdatedAgent1.MustGet()
 
 		// Verify agent1 has the assigned job
 		jobs1, err := agentsService.GetActiveAgentJobAssignments(context.Background(), updatedAgent1.ID, slackIntegrationID)
@@ -386,10 +386,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		assert.Len(t, jobs1, 1)
 		assert.Equal(t, job1.ID, jobs1[0])
 
-		updatedAgent2Opt, err := agentsService.GetAgentByID(context.Background(), agent2.ID, slackIntegrationID)
+		maybeUpdatedAgent2, err := agentsService.GetAgentByID(context.Background(), agent2.ID, slackIntegrationID)
 		require.NoError(t, err)
-		require.True(t, updatedAgent2Opt.IsPresent())
-		updatedAgent2 := updatedAgent2Opt.MustGet()
+		require.True(t, maybeUpdatedAgent2.IsPresent())
+		updatedAgent2 := maybeUpdatedAgent2.MustGet()
 
 		// Verify agent2 has the assigned job
 		jobs2, err := agentsService.GetActiveAgentJobAssignments(context.Background(), updatedAgent2.ID, slackIntegrationID)
@@ -421,19 +421,19 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Initially no agent should be assigned to this job
-		foundAgentOpt, err := agentsService.GetAgentByJobID(context.Background(), job.ID, slackIntegrationID)
+		maybeFoundAgent, err := agentsService.GetAgentByJobID(context.Background(), job.ID, slackIntegrationID)
 		require.NoError(t, err)
-		assert.False(t, foundAgentOpt.IsPresent())
+		assert.False(t, maybeFoundAgent.IsPresent())
 
 		// Assign job to agent
 		err = agentsService.AssignAgentToJob(context.Background(), agent.ID, job.ID, slackIntegrationID)
 		require.NoError(t, err)
 
 		// Now we should be able to find the agent by job ID
-		foundAgentOpt, err = agentsService.GetAgentByJobID(context.Background(), job.ID, slackIntegrationID)
+		maybeFoundAgent, err = agentsService.GetAgentByJobID(context.Background(), job.ID, slackIntegrationID)
 		require.NoError(t, err)
-		require.True(t, foundAgentOpt.IsPresent())
-		foundAgent := foundAgentOpt.MustGet()
+		require.True(t, maybeFoundAgent.IsPresent())
+		foundAgent := maybeFoundAgent.MustGet()
 		assert.Equal(t, agent.ID, foundAgent.ID)
 		assert.Equal(t, agent.WSConnectionID, foundAgent.WSConnectionID)
 
@@ -452,10 +452,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, slackIntegrationID) }()
 
 		// Find agent by WebSocket connection ID
-		foundAgentOpt, err := agentsService.GetAgentByWSConnectionID(context.Background(), wsConnectionID, slackIntegrationID)
+		maybeFoundAgent, err := agentsService.GetAgentByWSConnectionID(context.Background(), wsConnectionID, slackIntegrationID)
 		require.NoError(t, err)
-		require.True(t, foundAgentOpt.IsPresent())
-		foundAgent := foundAgentOpt.MustGet()
+		require.True(t, maybeFoundAgent.IsPresent())
+		foundAgent := maybeFoundAgent.MustGet()
 		assert.Equal(t, agent.ID, foundAgent.ID)
 		assert.Equal(t, wsConnectionID, foundAgent.WSConnectionID)
 
@@ -465,9 +465,9 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		assert.Empty(t, foundJobs)
 
 		// Test with non-existent connection ID
-		agentOpt, err := agentsService.GetAgentByWSConnectionID(context.Background(), core.NewID("wsc"), slackIntegrationID)
+		maybeAgent, err := agentsService.GetAgentByWSConnectionID(context.Background(), core.NewID("wsc"), slackIntegrationID)
 		require.NoError(t, err)
-		assert.False(t, agentOpt.IsPresent())
+		assert.False(t, maybeAgent.IsPresent())
 
 		// Test with empty connection ID
 		_, err = agentsService.GetAgentByWSConnectionID(context.Background(), "", slackIntegrationID)
@@ -487,10 +487,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Get the job again to verify timestamp changed
-		updatedJobOpt, err := jobsService.GetJobByID(context.Background(), job.ID, slackIntegrationID)
+		maybeUpdatedJob, err := jobsService.GetJobByID(context.Background(), job.ID, slackIntegrationID)
 		require.NoError(t, err)
-		require.True(t, updatedJobOpt.IsPresent())
-		updatedJob := updatedJobOpt.MustGet()
+		require.True(t, maybeUpdatedJob.IsPresent())
+		updatedJob := maybeUpdatedJob.MustGet()
 
 		// The updated_at should be later than the original
 		assert.True(t, updatedJob.UpdatedAt.After(originalUpdatedAt), "Updated timestamp should be later than original")
@@ -736,10 +736,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify assignment
-		assignedAgentOpt, err := agentsService.GetAgentByJobID(context.Background(), job.ID, slackIntegrationID)
+		maybeAssignedAgent, err := agentsService.GetAgentByJobID(context.Background(), job.ID, slackIntegrationID)
 		require.NoError(t, err)
-		require.True(t, assignedAgentOpt.IsPresent())
-		assignedAgent := assignedAgentOpt.MustGet()
+		require.True(t, maybeAssignedAgent.IsPresent())
+		assignedAgent := maybeAssignedAgent.MustGet()
 		assert.Equal(t, agent.ID, assignedAgent.ID)
 
 		// Unassign agent (simulating cleanup process)
@@ -751,15 +751,15 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify job is deleted
-		jobOpt, err := jobsService.GetJobByID(context.Background(), job.ID, slackIntegrationID)
+		maybeJob, err := jobsService.GetJobByID(context.Background(), job.ID, slackIntegrationID)
 		require.NoError(t, err)
-		assert.False(t, jobOpt.IsPresent())
+		assert.False(t, maybeJob.IsPresent())
 
 		// Verify agent still exists but has no job assigned
-		remainingAgentOpt, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+		maybeRemainingAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 		require.NoError(t, err)
-		require.True(t, remainingAgentOpt.IsPresent())
-		remainingAgent := remainingAgentOpt.MustGet()
+		require.True(t, maybeRemainingAgent.IsPresent())
+		remainingAgent := maybeRemainingAgent.MustGet()
 
 		// Verify agent has no job assignments
 		remainingJobs, err := agentsService.GetActiveAgentJobAssignments(context.Background(), remainingAgent.ID, slackIntegrationID)
@@ -795,22 +795,22 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify job is deleted
-		jobOpt, err := jobsService.GetJobByID(context.Background(), job.ID, slackIntegrationID)
+		maybeJob, err := jobsService.GetJobByID(context.Background(), job.ID, slackIntegrationID)
 		require.NoError(t, err)
-		assert.False(t, jobOpt.IsPresent())
+		assert.False(t, maybeJob.IsPresent())
 
 		// Verify all processed slack messages are also deleted (cascade)
-		messageOpt1, err := jobsService.GetProcessedSlackMessageByID(context.Background(), message1.ID, slackIntegrationID)
+		maybeMessage1, err := jobsService.GetProcessedSlackMessageByID(context.Background(), message1.ID, slackIntegrationID)
 		require.NoError(t, err)
-		assert.False(t, messageOpt1.IsPresent())
+		assert.False(t, maybeMessage1.IsPresent())
 
-		messageOpt2, err := jobsService.GetProcessedSlackMessageByID(context.Background(), message2.ID, slackIntegrationID)
+		maybeMessage2, err := jobsService.GetProcessedSlackMessageByID(context.Background(), message2.ID, slackIntegrationID)
 		require.NoError(t, err)
-		assert.False(t, messageOpt2.IsPresent())
+		assert.False(t, maybeMessage2.IsPresent())
 
-		messageOpt3, err := jobsService.GetProcessedSlackMessageByID(context.Background(), message3.ID, slackIntegrationID)
+		maybeMessage3, err := jobsService.GetProcessedSlackMessageByID(context.Background(), message3.ID, slackIntegrationID)
 		require.NoError(t, err)
-		assert.False(t, messageOpt3.IsPresent())
+		assert.False(t, maybeMessage3.IsPresent())
 	})
 
 	t.Run("ProcessedSlackMessageStatusTransitions", func(t *testing.T) {
