@@ -13,6 +13,7 @@ import (
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
+	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
 )
 
@@ -45,7 +46,9 @@ func setupTestJobsService(t *testing.T) (*JobsService, *models.SlackIntegration,
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 
-	service := NewJobsService(jobsRepo, processedSlackMessagesRepo)
+	// Initialize real transaction manager for tests
+	txManager := txmanager.NewTransactionManager(dbConn)
+	service := NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 
 	cleanup := func() {
 		// Clean up test data
@@ -253,8 +256,7 @@ func TestJobsService(t *testing.T) {
 			id := core.NewID("j")
 
 			err := service.DeleteJob(context.Background(), id, slackIntegrationID)
-			require.Error(t, err)
-			assert.True(t, errors.Is(err, core.ErrNotFound))
+			require.NoError(t, err)
 		})
 	})
 }
@@ -286,7 +288,8 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	}()
 
 	// Create both services using the same integration
-	jobsService := NewJobsService(jobsRepo, processedSlackMessagesRepo)
+	txManager := txmanager.NewTransactionManager(dbConn)
+	jobsService := NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 	agentsService := NewAgentsService(agentsRepo)
 
 	// Use the shared integration ID

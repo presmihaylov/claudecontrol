@@ -21,6 +21,7 @@ import (
 	"ccbackend/middleware"
 	"ccbackend/services"
 	slackintegrations "ccbackend/services/slack_integrations"
+	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
 	"ccbackend/usecases"
 )
@@ -60,8 +61,11 @@ func run() error {
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 
+	// Initialize transaction manager
+	txManager := txmanager.NewTransactionManager(dbConn)
+
 	agentsService := services.NewAgentsService(agentsRepo)
-	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo)
+	jobsService := services.NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 	usersService := users.NewUsersService(usersRepo)
 	slackOAuthClient := clients.NewConcreteSlackClient()
 	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(slackIntegrationsRepo, slackOAuthClient, cfg.SlackClientID, cfg.SlackClientSecret)
@@ -81,7 +85,7 @@ func run() error {
 
 	wsClient := clients.NewWebSocketClient(apiKeyValidator)
 
-	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService)
+	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, txManager)
 	wsHandler := handlers.NewWebSocketHandler(coreUseCase)
 	slackHandler := handlers.NewSlackWebhooksHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
