@@ -14,7 +14,10 @@ type OAuthV2Response struct {
 
 // SlackOAuthClient defines the interface for Slack OAuth operations
 type SlackOAuthClient interface {
-	GetOAuthV2Response(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*OAuthV2Response, error)
+	GetOAuthV2Response(
+		httpClient *http.Client,
+		clientID, clientSecret, code, redirectURL string,
+	) (*OAuthV2Response, error)
 }
 
 // SlackClient defines the interface for Slack API operations

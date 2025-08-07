@@ -33,7 +33,9 @@ func DomainSlackIntegrationToAPISlackIntegration(domainIntegration *models.Slack
 }
 
 // DomainSlackIntegrationsToAPISlackIntegrations converts a slice of domain SlackIntegration models to API SlackIntegrationModel slice
-func DomainSlackIntegrationsToAPISlackIntegrations(domainIntegrations []*models.SlackIntegration) []*SlackIntegrationModel {
+func DomainSlackIntegrationsToAPISlackIntegrations(
+	domainIntegrations []*models.SlackIntegration,
+) []*SlackIntegrationModel {
 	if domainIntegrations == nil {
 		return nil
 	}
