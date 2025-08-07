@@ -100,7 +100,12 @@ func TestMapClaudeOutputToMessages(t *testing.T) {
 
 			for i, expectedType := range tt.expectedTypes {
 				if i >= len(messages) {
-					t.Errorf("Expected message %d with type %s, but only got %d messages", i, expectedType, len(messages))
+					t.Errorf(
+						"Expected message %d with type %s, but only got %d messages",
+						i,
+						expectedType,
+						len(messages),
+					)
 					continue
 				}
 
@@ -163,7 +168,10 @@ func TestAssistantMessageParsing(t *testing.T) {
 	}
 
 	if assistantMsg.GetSessionID() != "c069b138-4f6c-406b-b79a-1e940179378d" {
-		t.Errorf("GetSessionID() expected 'c069b138-4f6c-406b-b79a-1e940179378d', got '%s'", assistantMsg.GetSessionID())
+		t.Errorf(
+			"GetSessionID() expected 'c069b138-4f6c-406b-b79a-1e940179378d', got '%s'",
+			assistantMsg.GetSessionID(),
+		)
 	}
 }
 

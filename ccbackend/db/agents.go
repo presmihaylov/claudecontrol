@@ -45,7 +45,15 @@ func NewPostgresAgentsRepository(db *sqlx.DB, schema string) *PostgresAgentsRepo
 }
 
 func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent *models.ActiveAgent) error {
-	insertColumns := []string{"id", "ws_connection_id", "slack_integration_id", "ccagent_id", "created_at", "updated_at", "last_active_at"}
+	insertColumns := []string{
+		"id",
+		"ws_connection_id",
+		"slack_integration_id",
+		"ccagent_id",
+		"created_at",
+		"updated_at",
+		"last_active_at",
+	}
 	columnsStr := strings.Join(insertColumns, ", ")
 	returningStr := strings.Join(activeAgentsColumns, ", ")
 
@@ -59,7 +67,8 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent 
 			last_active_at = NOW()
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, agent.ID, agent.WSConnectionID, agent.SlackIntegrationID, agent.CCAgentID).StructScan(agent)
+	err := r.db.QueryRowxContext(ctx, query, agent.ID, agent.WSConnectionID, agent.SlackIntegrationID, agent.CCAgentID).
+		StructScan(agent)
 	if err != nil {
 		return fmt.Errorf("failed to upsert active agent: %w", err)
 	}
@@ -67,7 +76,11 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent 
 	return nil
 }
 
-func (r *PostgresAgentsRepository) DeleteActiveAgent(ctx context.Context, id string, slackIntegrationID string) (bool, error) {
+func (r *PostgresAgentsRepository) DeleteActiveAgent(
+	ctx context.Context,
+	id string,
+	slackIntegrationID string,
+) (bool, error) {
 	query := fmt.Sprintf("DELETE FROM %s.active_agents WHERE id = $1 AND slack_integration_id = $2", r.schema)
 
 	result, err := r.db.ExecContext(ctx, query, id, slackIntegrationID)
@@ -83,7 +96,11 @@ func (r *PostgresAgentsRepository) DeleteActiveAgent(ctx context.Context, id str
 	return rowsAffected > 0, nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByID(ctx context.Context, id string, slackIntegrationID string) (mo.Option[*models.ActiveAgent], error) {
+func (r *PostgresAgentsRepository) GetAgentByID(
+	ctx context.Context,
+	id string,
+	slackIntegrationID string,
+) (mo.Option[*models.ActiveAgent], error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 
@@ -102,7 +119,10 @@ func (r *PostgresAgentsRepository) GetAgentByID(ctx context.Context, id string, 
 	return mo.Some(agent), nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(ctx context.Context, wsConnectionID, slackIntegrationID string) (mo.Option[*models.ActiveAgent], error) {
+func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(
+	ctx context.Context,
+	wsConnectionID, slackIntegrationID string,
+) (mo.Option[*models.ActiveAgent], error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 
@@ -121,7 +141,10 @@ func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(ctx context.Context,
 	return mo.Some(agent), nil
 }
 
-func (r *PostgresAgentsRepository) GetAvailableAgents(ctx context.Context, slackIntegrationID string) ([]*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAvailableAgents(
+	ctx context.Context,
+	slackIntegrationID string,
+) ([]*models.ActiveAgent, error) {
 	// Build column list with a. prefix for table alias
 	var aliasedColumns []string
 	for _, col := range activeAgentsColumns {
@@ -145,7 +168,10 @@ func (r *PostgresAgentsRepository) GetAvailableAgents(ctx context.Context, slack
 	return agents, nil
 }
 
-func (r *PostgresAgentsRepository) GetAllActiveAgents(ctx context.Context, slackIntegrationID string) ([]*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAllActiveAgents(
+	ctx context.Context,
+	slackIntegrationID string,
+) ([]*models.ActiveAgent, error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 
@@ -162,7 +188,11 @@ func (r *PostgresAgentsRepository) GetAllActiveAgents(ctx context.Context, slack
 	return agents, nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByJobID(ctx context.Context, jobID string, slackIntegrationID string) (mo.Option[*models.ActiveAgent], error) {
+func (r *PostgresAgentsRepository) GetAgentByJobID(
+	ctx context.Context,
+	jobID string,
+	slackIntegrationID string,
+) (mo.Option[*models.ActiveAgent], error) {
 	// Build column list with a. prefix for table alias
 	var aliasedColumns []string
 	for _, col := range activeAgentsColumns {
@@ -201,7 +231,8 @@ func (r *PostgresAgentsRepository) AssignAgentToJob(ctx context.Context, assignm
 		ON CONFLICT (agent_id, job_id) DO NOTHING
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, assignment.ID, assignment.AgentID, assignment.JobID, assignment.SlackIntegrationID).StructScan(assignment)
+	err := r.db.QueryRowxContext(ctx, query, assignment.ID, assignment.AgentID, assignment.JobID, assignment.SlackIntegrationID).
+		StructScan(assignment)
 	if err != nil {
 		// Check if it's a no rows error (conflict occurred, nothing was inserted)
 		if err == sql.ErrNoRows {
@@ -214,7 +245,11 @@ func (r *PostgresAgentsRepository) AssignAgentToJob(ctx context.Context, assignm
 	return nil
 }
 
-func (r *PostgresAgentsRepository) UnassignAgentFromJob(ctx context.Context, agentID, jobID string, slackIntegrationID string) (bool, error) {
+func (r *PostgresAgentsRepository) UnassignAgentFromJob(
+	ctx context.Context,
+	agentID, jobID string,
+	slackIntegrationID string,
+) (bool, error) {
 	query := fmt.Sprintf(`
 		DELETE FROM %s.agent_job_assignments 
 		WHERE agent_id = $1 AND job_id = $2 AND slack_integration_id = $3`, r.schema)
@@ -232,7 +267,11 @@ func (r *PostgresAgentsRepository) UnassignAgentFromJob(ctx context.Context, age
 	return rowsAffected > 0, nil
 }
 
-func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(ctx context.Context, agentID string, slackIntegrationID string) ([]string, error) {
+func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(
+	ctx context.Context,
+	agentID string,
+	slackIntegrationID string,
+) ([]string, error) {
 	query := fmt.Sprintf(`
 		SELECT job_id 
 		FROM %s.agent_job_assignments
@@ -248,7 +287,10 @@ func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(ctx context.Cont
 	return jobIDs, nil
 }
 
-func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(ctx context.Context, wsConnectionID, slackIntegrationID string) (bool, error) {
+func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(
+	ctx context.Context,
+	wsConnectionID, slackIntegrationID string,
+) (bool, error) {
 	query := fmt.Sprintf(`
 		UPDATE %s.active_agents 
 		SET last_active_at = NOW() 
@@ -267,7 +309,11 @@ func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(ctx context.Context, 
 	return rowsAffected > 0, nil
 }
 
-func (r *PostgresAgentsRepository) GetInactiveAgents(ctx context.Context, slackIntegrationID string, inactiveThresholdMinutes int) ([]*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetInactiveAgents(
+	ctx context.Context,
+	slackIntegrationID string,
+	inactiveThresholdMinutes int,
+) ([]*models.ActiveAgent, error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 

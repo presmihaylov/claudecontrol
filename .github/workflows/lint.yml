@@ -24,8 +24,16 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
+    
+    - name: Install golines
+      run: go install github.com/segmentio/golines@latest
         
-    - name: Install golangci-lint
+    - name: Run golines check
+      run: |
+        cd ccbackend
+        golines --max-len=120 --dry-run .
+        
+    - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
         version: latest
@@ -41,8 +49,19 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
+    
+    - name: Install golines and goimports
+      run: |
+        go install github.com/segmentio/golines@latest
+        go install golang.org/x/tools/cmd/goimports@latest
         
-    - name: Install golangci-lint
+    - name: Run golines and goimports check
+      run: |
+        cd ccagent
+        goimports -d .
+        golines --max-len=120 --dry-run .
+        
+    - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
         version: latest

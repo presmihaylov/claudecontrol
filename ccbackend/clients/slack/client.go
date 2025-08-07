@@ -30,7 +30,10 @@ func NewSlackOAuthClient() clients.SlackOAuthClient {
 }
 
 // GetOAuthV2Response exchanges an OAuth authorization code for access tokens
-func (c *SlackClient) GetOAuthV2Response(httpClient *http.Client, clientID, clientSecret, code, redirectURL string) (*clients.OAuthV2Response, error) {
+func (c *SlackClient) GetOAuthV2Response(
+	httpClient *http.Client,
+	clientID, clientSecret, code, redirectURL string,
+) (*clients.OAuthV2Response, error) {
 	slackResponse, err := slack.GetOAuthV2Response(httpClient, clientID, clientSecret, code, redirectURL)
 	if err != nil {
 		return nil, err
@@ -84,7 +87,10 @@ func (c *SlackClient) GetUserInfoContext(ctx context.Context, userID string) (*c
 }
 
 // PostMessage sends a message to a Slack channel
-func (c *SlackClient) PostMessage(channelID string, options ...clients.SlackMessageOption) (*clients.SlackPostMessageResponse, error) {
+func (c *SlackClient) PostMessage(
+	channelID string,
+	options ...clients.SlackMessageOption,
+) (*clients.SlackPostMessageResponse, error) {
 	// Convert our custom options to SDK options
 	var config clients.SlackMessageConfig
 	for _, opt := range options {
@@ -111,7 +117,10 @@ func (c *SlackClient) PostMessage(channelID string, options ...clients.SlackMess
 }
 
 // GetReactions gets the reactions on a message
-func (c *SlackClient) GetReactions(item clients.SlackItemRef, params clients.SlackGetReactionsParameters) ([]clients.SlackItemReaction, error) {
+func (c *SlackClient) GetReactions(
+	item clients.SlackItemRef,
+	params clients.SlackGetReactionsParameters,
+) ([]clients.SlackItemReaction, error) {
 	sdkItem := slack.ItemRef{
 		Channel:   item.Channel,
 		Timestamp: item.Timestamp,

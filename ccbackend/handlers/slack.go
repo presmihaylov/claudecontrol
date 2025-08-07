@@ -26,7 +26,11 @@ type SlackWebhooksHandler struct {
 	slackIntegrationsService services.SlackIntegrationsService
 }
 
-func NewSlackWebhooksHandler(signingSecret string, coreUseCase *usecases.CoreUseCase, slackIntegrationsService services.SlackIntegrationsService) *SlackWebhooksHandler {
+func NewSlackWebhooksHandler(
+	signingSecret string,
+	coreUseCase *usecases.CoreUseCase,
+	slackIntegrationsService services.SlackIntegrationsService,
+) *SlackWebhooksHandler {
 	return &SlackWebhooksHandler{
 		signingSecret:            signingSecret,
 		coreUseCase:              coreUseCase,
@@ -176,7 +180,11 @@ func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
 	log.Printf("✅ All Slack webhook endpoints registered successfully")
 }
 
-func (h *SlackWebhooksHandler) handleAppMention(ctx context.Context, event map[string]any, slackIntegrationID string) error {
+func (h *SlackWebhooksHandler) handleAppMention(
+	ctx context.Context,
+	event map[string]any,
+	slackIntegrationID string,
+) error {
 	channel := event["channel"].(string)
 	user := event["user"].(string)
 	text := event["text"].(string)
@@ -200,7 +208,11 @@ func (h *SlackWebhooksHandler) handleAppMention(ctx context.Context, event map[s
 	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID)
 }
 
-func (h *SlackWebhooksHandler) handleReactionAdded(ctx context.Context, event map[string]any, slackIntegrationID string) error {
+func (h *SlackWebhooksHandler) handleReactionAdded(
+	ctx context.Context,
+	event map[string]any,
+	slackIntegrationID string,
+) error {
 	reactionName := event["reaction"].(string)
 	user := event["user"].(string)
 	item := event["item"].(map[string]any)
