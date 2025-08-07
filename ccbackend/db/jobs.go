@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -21,16 +22,31 @@ type PostgresJobsRepository struct {
 	schema string
 }
 
+// Column names for jobs table
+var jobsColumns = []string{
+	"id",
+	"slack_thread_ts",
+	"slack_channel_id",
+	"slack_user_id",
+	"slack_integration_id",
+	"created_at",
+	"updated_at",
+}
+
 func NewPostgresJobsRepository(db *sqlx.DB, schema string) *PostgresJobsRepository {
 	return &PostgresJobsRepository{db: db, schema: schema}
 }
 
 func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job) error {
 	db := dbtx.GetTransactional(ctx, r.db)
+	insertColumns := []string{"id", "slack_thread_ts", "slack_channel_id", "slack_user_id", "slack_integration_id", "created_at", "updated_at"}
+	columnsStr := strings.Join(insertColumns, ", ")
+	returningStr := strings.Join(jobsColumns, ", ")
+
 	query := fmt.Sprintf(`
-		INSERT INTO %s.jobs (id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at) 
+		INSERT INTO %s.jobs (%s) 
 		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
-		RETURNING id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at`, r.schema)
+		RETURNING %s`, r.schema, columnsStr, returningStr)
 
 	err := db.QueryRowxContext(ctx, query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackUserID, job.SlackIntegrationID).StructScan(job)
 	if err != nil {
@@ -42,10 +58,11 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 
 func (r *PostgresJobsRepository) GetJobByID(ctx context.Context, id string, slackIntegrationID string) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
+	columnsStr := strings.Join(jobsColumns, ", ")
 	query := fmt.Sprintf(`
-		SELECT id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at 
+		SELECT %s 
 		FROM %s.jobs 
-		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
+		WHERE id = $1 AND slack_integration_id = $2`, columnsStr, r.schema)
 
 	job := &models.Job{}
 	err := db.GetContext(ctx, job, query, id, slackIntegrationID)
@@ -61,10 +78,11 @@ func (r *PostgresJobsRepository) GetJobByID(ctx context.Context, id string, slac
 
 func (r *PostgresJobsRepository) GetJobBySlackThread(ctx context.Context, threadTS, channelID, slackIntegrationID string) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
+	columnsStr := strings.Join(jobsColumns, ", ")
 	query := fmt.Sprintf(`
-		SELECT id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at 
+		SELECT %s 
 		FROM %s.jobs 
-		WHERE slack_thread_ts = $1 AND slack_channel_id = $2 AND slack_integration_id = $3`, r.schema)
+		WHERE slack_thread_ts = $1 AND slack_channel_id = $2 AND slack_integration_id = $3`, columnsStr, r.schema)
 
 	job := &models.Job{}
 	err := db.GetContext(ctx, job, query, threadTS, channelID, slackIntegrationID)
@@ -80,11 +98,12 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(ctx context.Context, thread
 
 func (r *PostgresJobsRepository) UpdateJob(ctx context.Context, job *models.Job) error {
 	db := dbtx.GetTransactional(ctx, r.db)
+	returningStr := strings.Join(jobsColumns, ", ")
 	query := fmt.Sprintf(`
 		UPDATE %s.jobs 
 		SET slack_thread_ts = $2, slack_channel_id = $3, slack_user_id = $4, updated_at = NOW() 
 		WHERE id = $1 AND slack_integration_id = $5
-		RETURNING id, slack_thread_ts, slack_channel_id, slack_user_id, slack_integration_id, created_at, updated_at`, r.schema)
+		RETURNING %s`, r.schema, returningStr)
 
 	err := db.QueryRowxContext(ctx, query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackUserID, job.SlackIntegrationID).StructScan(job)
 	if err != nil {
@@ -111,8 +130,15 @@ func (r *PostgresJobsRepository) UpdateJobTimestamp(ctx context.Context, jobID s
 
 func (r *PostgresJobsRepository) GetIdleJobs(ctx context.Context, idleMinutes int) ([]*models.Job, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
+	// Build column list with j. prefix for table alias
+	var aliasedColumns []string
+	for _, col := range jobsColumns {
+		aliasedColumns = append(aliasedColumns, "j."+col)
+	}
+	columnsStr := strings.Join(aliasedColumns, ", ")
+
 	query := fmt.Sprintf(`
-		SELECT j.id, j.slack_thread_ts, j.slack_channel_id, j.slack_user_id, j.slack_integration_id, j.created_at, j.updated_at 
+		SELECT %s 
 		FROM %s.jobs j
 		WHERE NOT EXISTS (
 			-- No messages that are not COMPLETED
@@ -128,7 +154,7 @@ func (r *PostgresJobsRepository) GetIdleJobs(ctx context.Context, idleMinutes in
 			-- Or last COMPLETED message is older than threshold
 			(SELECT MAX(psm.updated_at) FROM %s.processed_slack_messages psm 
 			 WHERE psm.job_id = j.id AND psm.status = 'COMPLETED') < NOW() - INTERVAL '%d minutes'
-		)`, r.schema, r.schema, r.schema, idleMinutes, r.schema, idleMinutes)
+		)`, columnsStr, r.schema, r.schema, r.schema, idleMinutes, r.schema, idleMinutes)
 
 	var jobs []*models.Job
 	err := db.SelectContext(ctx, &jobs, query)
@@ -182,13 +208,20 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(ctx context.Context, i
 // GetJobsWithQueuedMessages returns jobs that have at least one message in QUEUED status
 func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(ctx context.Context, slackIntegrationID string) ([]*models.Job, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
+	// Build column list with j. prefix for table alias
+	var aliasedColumns []string
+	for _, col := range jobsColumns {
+		aliasedColumns = append(aliasedColumns, "j."+col)
+	}
+	columnsStr := strings.Join(aliasedColumns, ", ")
+
 	query := fmt.Sprintf(`
-		SELECT DISTINCT j.id, j.slack_thread_ts, j.slack_channel_id, j.slack_user_id, j.slack_integration_id, j.created_at, j.updated_at 
+		SELECT DISTINCT %s 
 		FROM %s.jobs j
 		INNER JOIN %s.processed_slack_messages psm ON j.id = psm.job_id
 		WHERE j.slack_integration_id = $1 
 		AND psm.status = 'QUEUED'
-		ORDER BY j.created_at ASC`, r.schema, r.schema)
+		ORDER BY j.created_at ASC`, columnsStr, r.schema, r.schema)
 
 	var jobs []*models.Job
 	err := db.SelectContext(ctx, &jobs, query, slackIntegrationID)

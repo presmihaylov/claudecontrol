@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -18,15 +19,32 @@ type PostgresProcessedSlackMessagesRepository struct {
 	schema string
 }
 
+// Column names for processed_slack_messages table
+var processedSlackMessagesColumns = []string{
+	"id",
+	"job_id",
+	"slack_channel_id",
+	"slack_ts",
+	"text_content",
+	"status",
+	"slack_integration_id",
+	"created_at",
+	"updated_at",
+}
+
 func NewPostgresProcessedSlackMessagesRepository(db *sqlx.DB, schema string) *PostgresProcessedSlackMessagesRepository {
 	return &PostgresProcessedSlackMessagesRepository{db: db, schema: schema}
 }
 
 func (r *PostgresProcessedSlackMessagesRepository) CreateProcessedSlackMessage(ctx context.Context, message *models.ProcessedSlackMessage) error {
+	insertColumns := []string{"id", "job_id", "slack_channel_id", "slack_ts", "text_content", "status", "slack_integration_id", "created_at", "updated_at"}
+	columnsStr := strings.Join(insertColumns, ", ")
+	returningStr := strings.Join(processedSlackMessagesColumns, ", ")
+
 	query := fmt.Sprintf(`
-		INSERT INTO %s.processed_slack_messages (id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at) 
+		INSERT INTO %s.processed_slack_messages (%s) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
-		RETURNING id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at`, r.schema)
+		RETURNING %s`, r.schema, columnsStr, returningStr)
 
 	err := r.db.QueryRowxContext(ctx, query, message.ID, message.JobID, message.SlackChannelID, message.SlackTS, message.TextContent, message.Status, message.SlackIntegrationID).StructScan(message)
 	if err != nil {
@@ -37,10 +55,11 @@ func (r *PostgresProcessedSlackMessagesRepository) CreateProcessedSlackMessage(c
 }
 
 func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(ctx context.Context, id string, slackIntegrationID string) (mo.Option[*models.ProcessedSlackMessage], error) {
+	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
 	query := fmt.Sprintf(`
-		SELECT id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at 
+		SELECT %s 
 		FROM %s.processed_slack_messages 
-		WHERE id = $1 AND slack_integration_id = $2`, r.schema)
+		WHERE id = $1 AND slack_integration_id = $2`, columnsStr, r.schema)
 
 	message := &models.ProcessedSlackMessage{}
 	err := r.db.GetContext(ctx, message, query, id, slackIntegrationID)
@@ -55,11 +74,12 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 }
 
 func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageStatus(ctx context.Context, id string, status models.ProcessedSlackMessageStatus, slackIntegrationID string) (mo.Option[*models.ProcessedSlackMessage], error) {
+	returningStr := strings.Join(processedSlackMessagesColumns, ", ")
 	query := fmt.Sprintf(`
 		UPDATE %s.processed_slack_messages 
 		SET status = $2, updated_at = NOW() 
 		WHERE id = $1 AND slack_integration_id = $3
-		RETURNING id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at`, r.schema)
+		RETURNING %s`, r.schema, returningStr)
 
 	message := &models.ProcessedSlackMessage{}
 	err := r.db.QueryRowxContext(ctx, query, id, status, slackIntegrationID).StructScan(message)
@@ -74,10 +94,11 @@ func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageSt
 }
 
 func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessagesByJobID(ctx context.Context, jobID string, slackIntegrationID string) ([]*models.ProcessedSlackMessage, error) {
+	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
 	query := fmt.Sprintf(`
-		SELECT id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at 
+		SELECT %s 
 		FROM %s.processed_slack_messages 
-		WHERE job_id = $1 AND slack_integration_id = $2`, r.schema)
+		WHERE job_id = $1 AND slack_integration_id = $2`, columnsStr, r.schema)
 
 	var messages []*models.ProcessedSlackMessage
 	err := r.db.SelectContext(ctx, &messages, query, jobID, slackIntegrationID)
@@ -102,11 +123,12 @@ func (r *PostgresProcessedSlackMessagesRepository) DeleteProcessedSlackMessagesB
 }
 
 func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByJobIDAndStatus(ctx context.Context, jobID string, status models.ProcessedSlackMessageStatus, slackIntegrationID string) ([]*models.ProcessedSlackMessage, error) {
+	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
 	query := fmt.Sprintf(`
-		SELECT id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at 
+		SELECT %s 
 		FROM %s.processed_slack_messages 
 		WHERE job_id = $1 AND status = $2 AND slack_integration_id = $3
-		ORDER BY slack_ts ASC`, r.schema)
+		ORDER BY slack_ts ASC`, columnsStr, r.schema)
 
 	var messages []*models.ProcessedSlackMessage
 	err := r.db.SelectContext(ctx, &messages, query, jobID, status, slackIntegrationID)
@@ -163,12 +185,13 @@ func (r *PostgresProcessedSlackMessagesRepository) GetActiveMessageCountForJobs(
 }
 
 func (r *PostgresProcessedSlackMessagesRepository) GetLatestProcessedMessageForJob(ctx context.Context, jobID string, slackIntegrationID string) (mo.Option[*models.ProcessedSlackMessage], error) {
+	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
 	query := fmt.Sprintf(`
-		SELECT id, job_id, slack_channel_id, slack_ts, text_content, status, slack_integration_id, created_at, updated_at 
+		SELECT %s 
 		FROM %s.processed_slack_messages 
 		WHERE job_id = $1 AND slack_integration_id = $2
 		ORDER BY created_at DESC
-		LIMIT 1`, r.schema)
+		LIMIT 1`, columnsStr, r.schema)
 
 	message := &models.ProcessedSlackMessage{}
 	err := r.db.GetContext(ctx, message, query, jobID, slackIntegrationID)
