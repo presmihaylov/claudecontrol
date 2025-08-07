@@ -17,9 +17,7 @@ import (
 	"ccbackend/testutils"
 )
 
-func setupTransactionTest(
-	t *testing.T,
-) (services.TransactionManager, *db.PostgresJobsRepository, *models.SlackIntegration, func()) {
+func setupTransactionTest(t *testing.T) (services.TransactionManager, *db.PostgresJobsRepository, *models.SlackIntegration, func()) {
 	cfg, err := testutils.LoadTestConfig()
 	require.NoError(t, err)
 

@@ -271,11 +271,7 @@ func (g *GitClient) IsGitRepositoryRoot() error {
 
 	if gitRoot != currentDir {
 		log.Error("❌ Not at Git repository root. Current: %s, Git root: %s", currentDir, gitRoot)
-		return fmt.Errorf(
-			"ccagent must be run from the Git repository root directory. Current: %s, Git root: %s",
-			currentDir,
-			gitRoot,
-		)
+		return fmt.Errorf("ccagent must be run from the Git repository root directory. Current: %s, Git root: %s", currentDir, gitRoot)
 	}
 
 	log.Info("✅ Current directory is the Git repository root")
@@ -720,26 +716,17 @@ func (g *GitClient) parseRemoteAccessError(err error, output, remoteURL string) 
 
 	// Check for timeout first
 	if strings.Contains(err.Error(), "context deadline exceeded") {
-		return fmt.Errorf(
-			"remote repository access timed out after 10 seconds for %s. Check your network connection",
-			remoteURL,
-		)
+		return fmt.Errorf("remote repository access timed out after 10 seconds for %s. Check your network connection", remoteURL)
 	}
 
 	// SSH credential issues
 	if strings.Contains(outputStr, "permission denied (publickey)") {
-		return fmt.Errorf(
-			"SSH key authentication failed for %s. Please ensure your SSH key is added to your Git provider and loaded in ssh-agent (or use a key without passphrase)",
-			remoteURL,
-		)
+		return fmt.Errorf("SSH key authentication failed for %s. Please ensure your SSH key is added to your Git provider and loaded in ssh-agent (or use a key without passphrase)", remoteURL)
 	}
 
 	// SSH passphrase/key loading issues
 	if strings.Contains(outputStr, "enter passphrase") || strings.Contains(outputStr, "bad passphrase") {
-		return fmt.Errorf(
-			"SSH key requires passphrase for %s. Please add your key to ssh-agent with 'ssh-add ~/.ssh/id_rsa' or use a key without passphrase",
-			remoteURL,
-		)
+		return fmt.Errorf("SSH key requires passphrase for %s. Please add your key to ssh-agent with 'ssh-add ~/.ssh/id_rsa' or use a key without passphrase", remoteURL)
 	}
 
 	if strings.Contains(outputStr, "could not read from remote repository") {
@@ -747,10 +734,7 @@ func (g *GitClient) parseRemoteAccessError(err error, output, remoteURL string) 
 	}
 
 	if strings.Contains(outputStr, "host key verification failed") {
-		return fmt.Errorf(
-			"SSH host key verification failed for %s. Run 'ssh-keyscan' to add the host key or disable StrictHostKeyChecking",
-			remoteURL,
-		)
+		return fmt.Errorf("SSH host key verification failed for %s. Run 'ssh-keyscan' to add the host key or disable StrictHostKeyChecking", remoteURL)
 	}
 
 	// HTTPS credential issues

@@ -17,9 +17,9 @@ test-verbose:
 	go test -count=1 ./... -v
 
 lint:
-	golines --max-len=120 --dry-run .
+	golines --max-len=180 --dry-run .
 	golangci-lint run
 
 lint-fix:
-	golines --max-len=120 --write-output .
+	golines --max-len=180 --write-output .
 	golangci-lint run --fix

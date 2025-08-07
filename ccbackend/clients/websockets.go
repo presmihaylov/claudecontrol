@@ -149,10 +149,7 @@ func (ws *WebSocketClient) handleSocketIOConnection(sock *socket.Socket) {
 		ws.invokeDisconnectionHooks(client)
 		ws.removeClient(client.ID)
 	})
-	utils.AssertInvariant(
-		err == nil,
-		fmt.Sprintf("Failed to set up disconnection handler for client %s: %v", client.ID, err),
-	)
+	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up disconnection handler for client %s: %v", client.ID, err))
 
 	log.Printf("👂 Message listener setup complete for client %s", client.ID)
 }

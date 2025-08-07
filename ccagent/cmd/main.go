@@ -115,10 +115,7 @@ func main() {
 	permissionMode := "acceptEdits"
 	if opts.BypassPermissions {
 		permissionMode = "bypassPermissions"
-		fmt.Fprintf(
-			os.Stderr,
-			"Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n",
-		)
+		fmt.Fprintf(os.Stderr, "Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n")
 	}
 
 	cmdRunner, err := NewCmdRunner(permissionMode)
@@ -157,11 +154,7 @@ func main() {
 
 	// Set up deferred cleanup
 	defer func() {
-		fmt.Fprintf(
-			os.Stderr,
-			"\n📝 App execution finished, logs for this session are stored in %s\n",
-			cmdRunner.logFilePath,
-		)
+		fmt.Fprintf(os.Stderr, "\n📝 App execution finished, logs for this session are stored in %s\n", cmdRunner.logFilePath)
 	}()
 
 	// Start Socket.IO client

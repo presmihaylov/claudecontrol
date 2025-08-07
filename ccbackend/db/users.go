@@ -32,10 +32,7 @@ func NewPostgresUsersRepository(db *sqlx.DB, schema string) *PostgresUsersReposi
 	return &PostgresUsersRepository{db: db, schema: schema}
 }
 
-func (r *PostgresUsersRepository) GetOrCreateUser(
-	ctx context.Context,
-	authProvider, authProviderID string,
-) (*models.User, error) {
+func (r *PostgresUsersRepository) GetOrCreateUser(ctx context.Context, authProvider, authProviderID string) (*models.User, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 
 	// Generate ULID for new users

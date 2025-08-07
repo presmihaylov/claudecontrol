@@ -24,14 +24,13 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
-    
-    - name: Install golines
-      run: go install github.com/segmentio/golines@latest
         
-    - name: Run lint
-      run: |
-        cd ccbackend
-        make lint
+    - name: Install golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        working-directory: ccbackend
+        args: --timeout=5m
 
   lint-ccagent:
     runs-on: ubuntu-latest
@@ -42,13 +41,10 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
-    
-    - name: Install golines and goimports
-      run: |
-        go install github.com/segmentio/golines@latest
-        go install golang.org/x/tools/cmd/goimports@latest
         
-    - name: Run lint
-      run: |
-        cd ccagent
-        make lint
+    - name: Install golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        working-directory: ccagent
+        args: --timeout=5m

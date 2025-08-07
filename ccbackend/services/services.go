@@ -15,11 +15,7 @@ type UsersService interface {
 
 // SlackIntegrationsService defines the interface for Slack integration operations
 type SlackIntegrationsService interface {
-	CreateSlackIntegration(
-		ctx context.Context,
-		slackAuthCode, redirectURL string,
-		userID string,
-	) (*models.SlackIntegration, error)
+	CreateSlackIntegration(ctx context.Context, slackAuthCode, redirectURL string, userID string) (*models.SlackIntegration, error)
 	GetSlackIntegrationsByUserID(ctx context.Context, userID string) ([]*models.SlackIntegration, error)
 	GetAllSlackIntegrations(ctx context.Context) ([]*models.SlackIntegration, error)
 	DeleteSlackIntegration(ctx context.Context, integrationID string) error
