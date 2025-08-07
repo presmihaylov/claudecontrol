@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 
+	"github.com/samber/mo"
+
 	"ccbackend/models"
 )
 
@@ -18,9 +20,9 @@ type SlackIntegrationsService interface {
 	GetAllSlackIntegrations(ctx context.Context) ([]*models.SlackIntegration, error)
 	DeleteSlackIntegration(ctx context.Context, integrationID string) error
 	GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error)
-	GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (*models.SlackIntegration, error)
-	GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (*models.SlackIntegration, error)
-	GetSlackIntegrationByID(ctx context.Context, id string) (*models.SlackIntegration, error)
+	GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (mo.Option[*models.SlackIntegration], error)
+	GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (mo.Option[*models.SlackIntegration], error)
+	GetSlackIntegrationByID(ctx context.Context, id string) (mo.Option[*models.SlackIntegration], error)
 }
 
 // TransactionManager handles database transactions via context

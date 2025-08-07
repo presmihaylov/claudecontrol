@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/mock"
 
 	"ccbackend/models"
@@ -57,26 +58,26 @@ func (m *MockSlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Cont
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockSlackIntegrationsService) GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (*models.SlackIntegration, error) {
+func (m *MockSlackIntegrationsService) GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (mo.Option[*models.SlackIntegration], error) {
 	args := m.Called(ctx, secretKey)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return mo.None[*models.SlackIntegration](), args.Error(1)
 	}
-	return args.Get(0).(*models.SlackIntegration), args.Error(1)
+	return args.Get(0).(mo.Option[*models.SlackIntegration]), args.Error(1)
 }
 
-func (m *MockSlackIntegrationsService) GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (*models.SlackIntegration, error) {
+func (m *MockSlackIntegrationsService) GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (mo.Option[*models.SlackIntegration], error) {
 	args := m.Called(ctx, teamID)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return mo.None[*models.SlackIntegration](), args.Error(1)
 	}
-	return args.Get(0).(*models.SlackIntegration), args.Error(1)
+	return args.Get(0).(mo.Option[*models.SlackIntegration]), args.Error(1)
 }
 
-func (m *MockSlackIntegrationsService) GetSlackIntegrationByID(ctx context.Context, id string) (*models.SlackIntegration, error) {
+func (m *MockSlackIntegrationsService) GetSlackIntegrationByID(ctx context.Context, id string) (mo.Option[*models.SlackIntegration], error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return mo.None[*models.SlackIntegration](), args.Error(1)
 	}
-	return args.Get(0).(*models.SlackIntegration), args.Error(1)
+	return args.Get(0).(mo.Option[*models.SlackIntegration]), args.Error(1)
 }

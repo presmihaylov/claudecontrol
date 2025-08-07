@@ -6,11 +6,11 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/samber/mo"
 
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
-	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -42,27 +42,23 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent 
 	return nil
 }
 
-func (r *PostgresAgentsRepository) DeleteActiveAgent(ctx context.Context, id string, slackIntegrationID string) error {
+func (r *PostgresAgentsRepository) DeleteActiveAgent(ctx context.Context, id string, slackIntegrationID string) (bool, error) {
 	query := fmt.Sprintf("DELETE FROM %s.active_agents WHERE id = $1 AND slack_integration_id = $2", r.schema)
 
 	result, err := r.db.ExecContext(ctx, query, id, slackIntegrationID)
 	if err != nil {
-		return fmt.Errorf("failed to delete active agent: %w", err)
+		return false, fmt.Errorf("failed to delete active agent: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
+		return false, fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
-	if rowsAffected == 0 {
-		return core.ErrNotFound
-	}
-
-	return nil
+	return rowsAffected > 0, nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByID(ctx context.Context, id string, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAgentByID(ctx context.Context, id string, slackIntegrationID string) (mo.Option[*models.ActiveAgent], error) {
 	query := fmt.Sprintf(`
 		SELECT id, ws_connection_id, slack_integration_id, ccagent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
@@ -72,15 +68,15 @@ func (r *PostgresAgentsRepository) GetAgentByID(ctx context.Context, id string, 
 	err := r.db.GetContext(ctx, agent, query, id, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, core.ErrNotFound
+			return mo.None[*models.ActiveAgent](), nil
 		}
-		return nil, fmt.Errorf("failed to get active agent: %w", err)
+		return mo.None[*models.ActiveAgent](), fmt.Errorf("failed to get active agent: %w", err)
 	}
 
-	return agent, nil
+	return mo.Some(agent), nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(ctx context.Context, wsConnectionID, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(ctx context.Context, wsConnectionID, slackIntegrationID string) (mo.Option[*models.ActiveAgent], error) {
 	query := fmt.Sprintf(`
 		SELECT id, ws_connection_id, slack_integration_id, ccagent_id, created_at, updated_at, last_active_at 
 		FROM %s.active_agents 
@@ -90,12 +86,12 @@ func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(ctx context.Context,
 	err := r.db.GetContext(ctx, agent, query, wsConnectionID, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, core.ErrNotFound
+			return mo.None[*models.ActiveAgent](), nil
 		}
-		return nil, fmt.Errorf("failed to get active agent: %w", err)
+		return mo.None[*models.ActiveAgent](), fmt.Errorf("failed to get active agent: %w", err)
 	}
 
-	return agent, nil
+	return mo.Some(agent), nil
 }
 
 func (r *PostgresAgentsRepository) GetAvailableAgents(ctx context.Context, slackIntegrationID string) ([]*models.ActiveAgent, error) {
@@ -131,7 +127,7 @@ func (r *PostgresAgentsRepository) GetAllActiveAgents(ctx context.Context, slack
 	return agents, nil
 }
 
-func (r *PostgresAgentsRepository) GetAgentByJobID(ctx context.Context, jobID string, slackIntegrationID string) (*models.ActiveAgent, error) {
+func (r *PostgresAgentsRepository) GetAgentByJobID(ctx context.Context, jobID string, slackIntegrationID string) (mo.Option[*models.ActiveAgent], error) {
 	query := fmt.Sprintf(`
 		SELECT a.id, a.ws_connection_id, a.slack_integration_id, a.ccagent_id, a.created_at, a.updated_at, a.last_active_at 
 		FROM %s.active_agents a
@@ -143,12 +139,12 @@ func (r *PostgresAgentsRepository) GetAgentByJobID(ctx context.Context, jobID st
 	err := r.db.GetContext(ctx, agent, query, jobID, slackIntegrationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, core.ErrNotFound
+			return mo.None[*models.ActiveAgent](), nil
 		}
-		return nil, fmt.Errorf("failed to get active agent by job ID: %w", err)
+		return mo.None[*models.ActiveAgent](), fmt.Errorf("failed to get active agent by job ID: %w", err)
 	}
 
-	return agent, nil
+	return mo.Some(agent), nil
 }
 
 func (r *PostgresAgentsRepository) AssignAgentToJob(ctx context.Context, assignment *models.AgentJobAssignment) error {
@@ -172,26 +168,22 @@ func (r *PostgresAgentsRepository) AssignAgentToJob(ctx context.Context, assignm
 	return nil
 }
 
-func (r *PostgresAgentsRepository) UnassignAgentFromJob(ctx context.Context, agentID, jobID string, slackIntegrationID string) error {
+func (r *PostgresAgentsRepository) UnassignAgentFromJob(ctx context.Context, agentID, jobID string, slackIntegrationID string) (bool, error) {
 	query := fmt.Sprintf(`
 		DELETE FROM %s.agent_job_assignments 
 		WHERE agent_id = $1 AND job_id = $2 AND slack_integration_id = $3`, r.schema)
 
 	result, err := r.db.ExecContext(ctx, query, agentID, jobID, slackIntegrationID)
 	if err != nil {
-		return fmt.Errorf("failed to unassign agent from job: %w", err)
+		return false, fmt.Errorf("failed to unassign agent from job: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
+		return false, fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
-	if rowsAffected == 0 {
-		return core.ErrNotFound
-	}
-
-	return nil
+	return rowsAffected > 0, nil
 }
 
 func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(ctx context.Context, agentID string, slackIntegrationID string) ([]string, error) {
@@ -210,7 +202,7 @@ func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(ctx context.Cont
 	return jobIDs, nil
 }
 
-func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(ctx context.Context, wsConnectionID, slackIntegrationID string) error {
+func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(ctx context.Context, wsConnectionID, slackIntegrationID string) (bool, error) {
 	query := fmt.Sprintf(`
 		UPDATE %s.active_agents 
 		SET last_active_at = NOW() 
@@ -218,19 +210,15 @@ func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(ctx context.Context, 
 
 	result, err := r.db.ExecContext(ctx, query, wsConnectionID, slackIntegrationID)
 	if err != nil {
-		return fmt.Errorf("failed to update agent last_active_at: %w", err)
+		return false, fmt.Errorf("failed to update agent last_active_at: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
+		return false, fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
-	if rowsAffected == 0 {
-		return core.ErrNotFound
-	}
-
-	return nil
+	return rowsAffected > 0, nil
 }
 
 func (r *PostgresAgentsRepository) GetInactiveAgents(ctx context.Context, slackIntegrationID string, inactiveThresholdMinutes int) ([]*models.ActiveAgent, error) {
