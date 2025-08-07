@@ -22,14 +22,16 @@ type CoreUseCase struct {
 	agentsService            *services.AgentsService
 	jobsService              *services.JobsService
 	slackIntegrationsService services.SlackIntegrationsService
+	txManager                services.TransactionManager
 }
 
-func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.AgentsService, jobsService *services.JobsService, slackIntegrationsService services.SlackIntegrationsService) *CoreUseCase {
+func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.AgentsService, jobsService *services.JobsService, slackIntegrationsService services.SlackIntegrationsService, txManager services.TransactionManager) *CoreUseCase {
 	return &CoreUseCase{
 		wsClient:                 wsClient,
 		agentsService:            agentsService,
 		jobsService:              jobsService,
 		slackIntegrationsService: slackIntegrationsService,
+		txManager:                txManager,
 	}
 }
 
@@ -707,19 +709,26 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 		}
 		log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
 
-		// Unassign agent from job
-		if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, client.SlackIntegrationID); err != nil {
-			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
-			return fmt.Errorf("failed to unassign agent %s from job %s: %w", agent.ID, jobID, err)
-		}
-		log.Printf("🔗 Unassigned agent %s from job %s", agent.ID, jobID)
+		// Perform database operations within transaction
+		if err := s.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+			// Unassign agent from job
+			if err := s.agentsService.UnassignAgentFromJob(txCtx, agent.ID, jobID, client.SlackIntegrationID); err != nil {
+				log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
+				return fmt.Errorf("failed to unassign agent %s from job %s: %w", agent.ID, jobID, err)
+			}
+			log.Printf("🔗 Unassigned agent %s from job %s", agent.ID, jobID)
 
-		// Delete the job
-		if err := s.jobsService.DeleteJob(ctx, jobID, client.SlackIntegrationID); err != nil {
-			log.Printf("❌ Failed to delete abandoned job %s: %v", jobID, err)
-			return fmt.Errorf("failed to delete abandoned job %s: %w", jobID, err)
+			// Delete the job
+			if err := s.jobsService.DeleteJob(txCtx, jobID, client.SlackIntegrationID); err != nil {
+				log.Printf("❌ Failed to delete abandoned job %s: %v", jobID, err)
+				return fmt.Errorf("failed to delete abandoned job %s: %w", jobID, err)
+			}
+			log.Printf("🗑️ Deleted abandoned job %s", jobID)
+
+			return nil
+		}); err != nil {
+			return fmt.Errorf("failed to cleanup job %s in transaction: %w", jobID, err)
 		}
-		log.Printf("🗑️ Deleted abandoned job %s", jobID)
 	}
 
 	// Delete the agent record
@@ -834,19 +843,26 @@ func (s *CoreUseCase) ProcessJobComplete(ctx context.Context, clientID string, p
 		// Don't return error - this is not critical to job completion
 	}
 
-	// Unassign the agent from the job
-	if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, slackIntegrationID); err != nil {
-		log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
-		return fmt.Errorf("failed to unassign agent from job: %w", err)
-	}
-	log.Printf("✅ Unassigned agent %s from completed job %s", agent.ID, jobID)
+	// Perform database operations within transaction
+	if err := s.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		// Unassign the agent from the job
+		if err := s.agentsService.UnassignAgentFromJob(txCtx, agent.ID, jobID, slackIntegrationID); err != nil {
+			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
+			return fmt.Errorf("failed to unassign agent from job: %w", err)
+		}
+		log.Printf("✅ Unassigned agent %s from completed job %s", agent.ID, jobID)
 
-	// Delete the job and its associated processed messages
-	if err := s.jobsService.DeleteJob(ctx, jobID, slackIntegrationID); err != nil {
-		log.Printf("❌ Failed to delete completed job %s: %v", jobID, err)
-		return fmt.Errorf("failed to delete completed job: %w", err)
+		// Delete the job and its associated processed messages
+		if err := s.jobsService.DeleteJob(txCtx, jobID, slackIntegrationID); err != nil {
+			log.Printf("❌ Failed to delete completed job %s: %v", jobID, err)
+			return fmt.Errorf("failed to delete completed job: %w", err)
+		}
+		log.Printf("🗑️ Deleted completed job %s", jobID)
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to complete job processing in transaction: %w", err)
 	}
-	log.Printf("🗑️ Deleted completed job %s", jobID)
 
 	// Send completion message to Slack thread with reason
 	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, payload.Reason); err != nil {
@@ -1068,13 +1084,26 @@ func (s *CoreUseCase) ProcessReactionAdded(ctx context.Context, userID, channelI
 		// Don't return error - continue with job completion
 	}
 
-	// If agent is found, unassign them from the job
-	if agent != nil {
-		if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, job.ID, slackIntegrationID); err != nil {
-			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, job.ID, err)
-			return fmt.Errorf("failed to unassign agent from job: %w", err)
+	// Perform database operations within transaction
+	if err := s.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		// If agent is found, unassign them from the job
+		if agent != nil {
+			if err := s.agentsService.UnassignAgentFromJob(txCtx, agent.ID, job.ID, slackIntegrationID); err != nil {
+				log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, job.ID, err)
+				return fmt.Errorf("failed to unassign agent from job: %w", err)
+			}
+			log.Printf("✅ Unassigned agent %s from manually completed job %s", agent.ID, job.ID)
 		}
-		log.Printf("✅ Unassigned agent %s from manually completed job %s", agent.ID, job.ID)
+
+		// Delete the job and its associated processed messages
+		if err := s.jobsService.DeleteJob(txCtx, job.ID, slackIntegrationID); err != nil {
+			log.Printf("❌ Failed to delete completed job %s: %v", job.ID, err)
+			return fmt.Errorf("failed to delete completed job: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to complete manual job completion in transaction: %w", err)
 	}
 
 	// Update Slack reactions - remove eyes emoji and add white_check_mark
@@ -1087,12 +1116,6 @@ func (s *CoreUseCase) ProcessReactionAdded(ctx context.Context, userID, channelI
 	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, "Job manually marked as complete"); err != nil {
 		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
 		return fmt.Errorf("failed to send completion message to Slack: %w", err)
-	}
-
-	// Delete the job and its associated processed messages
-	if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID); err != nil {
-		log.Printf("❌ Failed to delete completed job %s: %v", job.ID, err)
-		return fmt.Errorf("failed to delete completed job: %w", err)
 	}
 
 	log.Printf("📤 Sent completion message to Slack thread %s", job.SlackThreadTS)

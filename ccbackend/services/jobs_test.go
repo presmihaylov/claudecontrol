@@ -45,7 +45,9 @@ func setupTestJobsService(t *testing.T) (*JobsService, *models.SlackIntegration,
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 
-	service := NewJobsService(jobsRepo, processedSlackMessagesRepo)
+	// Initialize mock transaction manager for tests
+	txManager := &MockTransactionManager{}
+	service := NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 
 	cleanup := func() {
 		// Clean up test data
@@ -282,7 +284,8 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	}()
 
 	// Create both services using the same integration
-	jobsService := NewJobsService(jobsRepo, processedSlackMessagesRepo)
+	txManager := &MockTransactionManager{}
+	jobsService := NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 	agentsService := NewAgentsService(agentsRepo)
 
 	// Use the shared integration ID
