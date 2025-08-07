@@ -208,14 +208,6 @@ func (ws *SocketIOClient) GetClientByID(clientID string) *Client {
 	return ws.getClientByID(clientID)
 }
 
-func (ws *SocketIOClient) GetSlackIntegrationIDByClientID(clientID string) string {
-	client := ws.getClientByID(clientID)
-	if client == nil {
-		return ""
-	}
-	return client.SlackIntegrationID
-}
-
 func (ws *SocketIOClient) SendMessage(clientID string, msg any) error {
 	log.Printf("📤 Attempting to send message to client %s", clientID)
 	client := ws.getClientByID(clientID)
