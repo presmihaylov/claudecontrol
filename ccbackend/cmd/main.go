@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -77,22 +76,18 @@ func run() error {
 		cfg.SlackClientSecret,
 	)
 
-	// Create API key validator for WebSocket connections
-	apiKeyValidator := func(apiKey string) (string, error) {
-		maybeSlackInt, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(context.Background(), apiKey)
-		if err != nil {
-			return "", err
-		}
-		if !maybeSlackInt.IsPresent() {
-			return "", fmt.Errorf("invalid API key")
-		}
-		integration := maybeSlackInt.MustGet()
-		return integration.ID, nil
-	}
-
-	wsClient := clients.NewSocketIOClient(apiKeyValidator)
+	// Create a temporary wsClient for coreUseCase initialization
+	wsClient := clients.NewSocketIOClient(nil)
 
 	coreUseCase := usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, txManager)
+
+	// Create API key validator using the core usecase
+	apiKeyValidator := func(apiKey string) (string, error) {
+		return coreUseCase.ValidateAPIKey(context.Background(), apiKey)
+	}
+
+	// Update the wsClient with the proper validator
+	wsClient.SetAPIKeyValidator(apiKeyValidator)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
 	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)

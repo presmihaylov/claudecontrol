@@ -107,6 +107,11 @@ func (ws *SocketIOClient) handleSocketIOConnection(sock *socket.Socket) {
 	}
 
 	// Validate API key
+	if ws.apiKeyValidator == nil {
+		log.Printf("❌ Rejecting Socket.IO connection: API key validator not set")
+		sock.Disconnect(true)
+		return
+	}
 	slackIntegrationID, err := ws.apiKeyValidator(apiKey)
 	if err != nil {
 		log.Printf("❌ Rejecting Socket.IO connection: invalid API key: %v", err)
@@ -253,6 +258,13 @@ func (ws *SocketIOClient) RegisterPingHook(hook PingHandlerFunc) {
 	defer ws.mutex.Unlock()
 	ws.pingHooks = append(ws.pingHooks, hook)
 	log.Printf("💓 Ping hook registered. Total ping hooks: %d", len(ws.pingHooks))
+}
+
+func (ws *SocketIOClient) SetAPIKeyValidator(validator APIKeyValidatorFunc) {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+	ws.apiKeyValidator = validator
+	log.Printf("🔑 API key validator updated")
 }
 
 func (ws *SocketIOClient) invokeMessageHandlers(client *Client, msg any) {

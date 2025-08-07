@@ -42,6 +42,25 @@ func NewCoreUseCase(
 	}
 }
 
+// ValidateAPIKey validates an API key and returns the slack integration ID
+func (s *CoreUseCase) ValidateAPIKey(ctx context.Context, apiKey string) (string, error) {
+	log.Printf("📋 Starting to validate API key")
+
+	maybeSlackInt, err := s.slackIntegrationsService.GetSlackIntegrationBySecretKey(ctx, apiKey)
+	if err != nil {
+		log.Printf("❌ Failed to get slack integration by secret key: %v", err)
+		return "", err
+	}
+	if !maybeSlackInt.IsPresent() {
+		log.Printf("❌ Invalid API key provided")
+		return "", fmt.Errorf("invalid API key")
+	}
+	integration := maybeSlackInt.MustGet()
+
+	log.Printf("📋 Completed successfully - validated API key for integration %s", integration.ID)
+	return integration.ID, nil
+}
+
 func (s *CoreUseCase) getSlackClientForIntegration(
 	ctx context.Context,
 	slackIntegrationID string,
