@@ -2,9 +2,6 @@ package services
 
 import (
 	"context"
-	"database/sql"
-
-	"github.com/jmoiron/sqlx"
 
 	"ccbackend/models"
 )
@@ -35,12 +32,4 @@ type TransactionManager interface {
 	BeginTransaction(ctx context.Context) (context.Context, error)
 	CommitTransaction(ctx context.Context) error
 	RollbackTransaction(ctx context.Context) error
-}
-
-// Transactional interface that both *sqlx.DB and *sqlx.Tx implement
-type Transactional interface {
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
-	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
-	QueryRowxContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row
 }

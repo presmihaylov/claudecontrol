@@ -12,7 +12,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"ccbackend/core"
-	"ccbackend/dbtx"
+	dbtx "ccbackend/db/tx"
 	"ccbackend/models"
 )
 

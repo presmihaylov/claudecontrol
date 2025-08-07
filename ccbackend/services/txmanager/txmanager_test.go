@@ -11,7 +11,7 @@ import (
 
 	"ccbackend/core"
 	"ccbackend/db"
-	"ccbackend/dbtx"
+	dbtx "ccbackend/db/tx"
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/testutils"

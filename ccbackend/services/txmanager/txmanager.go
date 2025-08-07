@@ -7,7 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"ccbackend/dbtx"
+	dbtx "ccbackend/db/tx"
 	"ccbackend/services"
 )
 
