@@ -1,4 +1,4 @@
-package services
+package agents
 
 import (
 	"context"
@@ -12,11 +12,12 @@ import (
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
+	"ccbackend/services"
 	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
 )
 
-func setupTestService(t *testing.T) (*AgentsService, *JobsService, *models.SlackIntegration, func()) {
+func setupTestService(t *testing.T) (*AgentsService, *services.JobsService, *models.SlackIntegration, func()) {
 	cfg, err := testutils.LoadTestConfig()
 	require.NoError(t, err)
 
@@ -38,7 +39,7 @@ func setupTestService(t *testing.T) (*AgentsService, *JobsService, *models.Slack
 
 	txManager := txmanager.NewTransactionManager(dbConn)
 	agentsService := NewAgentsService(agentsRepo)
-	jobsService := NewJobsService(jobsRepo, messagesRepo, txManager)
+	jobsService := services.NewJobsService(jobsRepo, messagesRepo, txManager)
 
 	cleanup := func() {
 		// Clean up test data
