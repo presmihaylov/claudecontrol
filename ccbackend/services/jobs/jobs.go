@@ -1,4 +1,4 @@
-package services
+package jobs
 
 import (
 	"context"
@@ -11,18 +11,19 @@ import (
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
+	"ccbackend/services"
 )
 
 type JobsService struct {
 	jobsRepo                   *db.PostgresJobsRepository
 	processedSlackMessagesRepo *db.PostgresProcessedSlackMessagesRepository
-	txManager                  TransactionManager
+	txManager                  services.TransactionManager
 }
 
 func NewJobsService(
 	repo *db.PostgresJobsRepository,
 	processedSlackMessagesRepo *db.PostgresProcessedSlackMessagesRepository,
-	txManager TransactionManager,
+	txManager services.TransactionManager,
 ) *JobsService {
 	return &JobsService{
 		jobsRepo:                   repo,

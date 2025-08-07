@@ -21,7 +21,7 @@ import (
 type CoreUseCase struct {
 	wsClient                 *clients.SocketIOClient
 	agentsService            services.AgentsService
-	jobsService              *services.JobsService
+	jobsService              services.JobsService
 	slackIntegrationsService services.SlackIntegrationsService
 	txManager                services.TransactionManager
 }
@@ -29,7 +29,7 @@ type CoreUseCase struct {
 func NewCoreUseCase(
 	wsClient *clients.SocketIOClient,
 	agentsService services.AgentsService,
-	jobsService *services.JobsService,
+	jobsService services.JobsService,
 	slackIntegrationsService services.SlackIntegrationsService,
 	txManager services.TransactionManager,
 ) *CoreUseCase {
