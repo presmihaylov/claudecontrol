@@ -1403,3 +1403,19 @@ func (s *CoreUseCase) sendSystemMessage(
 	// Use the base sendSlackMessage function
 	return s.sendSlackMessage(ctx, slackIntegrationID, channelID, threadTS, systemMessage)
 }
+
+func (s *CoreUseCase) ValidateAPIKey(ctx context.Context, apiKey string) (string, error) {
+	log.Printf("📋 Starting to validate API key")
+
+	maybeSlackInt, err := s.slackIntegrationsService.GetSlackIntegrationBySecretKey(ctx, apiKey)
+	if err != nil {
+		return "", err
+	}
+	if !maybeSlackInt.IsPresent() {
+		return "", fmt.Errorf("invalid API key")
+	}
+	integration := maybeSlackInt.MustGet()
+
+	log.Printf("📋 Completed successfully - validated API key for integration %s", integration.ID)
+	return integration.ID, nil
+}
