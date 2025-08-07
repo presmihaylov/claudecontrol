@@ -630,8 +630,6 @@ func (s *CoreUseCase) sortAgentsByLoad(ctx context.Context, agents []*models.Act
 			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
 		}
 
-		// Use job count as load metric for better load balancing
-		// This prevents the race condition where agents appear available immediately after completing messages
 		jobCount := len(jobIDs)
 
 		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: jobCount})
