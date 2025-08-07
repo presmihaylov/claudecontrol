@@ -23,11 +23,9 @@ func (s *UsersService) GetOrCreateUser(ctx context.Context, authProvider, authPr
 		authProvider,
 		authProviderID,
 	)
-
 	if authProvider == "" {
 		return nil, fmt.Errorf("auth_provider cannot be empty")
 	}
-
 	if authProviderID == "" {
 		return nil, fmt.Errorf("auth_provider_id cannot be empty")
 	}
