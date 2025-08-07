@@ -78,8 +78,10 @@ func TestAgentsService(t *testing.T) {
 			assert.False(t, agent.UpdatedAt.IsZero())
 
 			// Verify agent exists in database
-			fetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			fetchedAgentOpt, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, fetchedAgentOpt.IsPresent())
+			fetchedAgent := fetchedAgentOpt.MustGet()
 			assert.Equal(t, agent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
 			assert.Equal(t, testIntegration.ID, fetchedAgent.SlackIntegrationID)
@@ -116,8 +118,10 @@ func TestAgentsService(t *testing.T) {
 			assert.Equal(t, job.ID, jobs[0])
 
 			// Verify agent exists in database with correct job ID
-			fetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			fetchedAgentOpt, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, fetchedAgentOpt.IsPresent())
+			fetchedAgent := fetchedAgentOpt.MustGet()
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
 			assert.Equal(t, testIntegration.ID, fetchedAgent.SlackIntegrationID)
 			// Verify fetched agent has the assigned job
@@ -213,8 +217,9 @@ func TestAgentsService(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify agent no longer exists
-			_, err = agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
-			assert.Error(t, err)
+			agentOpt, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			require.NoError(t, err)
+			assert.False(t, agentOpt.IsPresent())
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
@@ -261,8 +266,10 @@ func TestAgentsService(t *testing.T) {
 				_ = agentsService.DeleteActiveAgent(context.Background(), createdAgent.ID, slackIntegrationID)
 			}()
 
-			fetchedAgent, err := agentsService.GetAgentByID(context.Background(), createdAgent.ID, slackIntegrationID)
+			fetchedAgentOpt, err := agentsService.GetAgentByID(context.Background(), createdAgent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, fetchedAgentOpt.IsPresent())
+			fetchedAgent := fetchedAgentOpt.MustGet()
 
 			assert.Equal(t, createdAgent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
@@ -292,9 +299,9 @@ func TestAgentsService(t *testing.T) {
 		t.Run("NotFound", func(t *testing.T) {
 			id := core.NewID("ccaid")
 
-			_, err := agentsService.GetAgentByID(context.Background(), id, slackIntegrationID)
-			require.Error(t, err)
-			assert.True(t, errors.Is(err, core.ErrNotFound))
+			agentOpt, err := agentsService.GetAgentByID(context.Background(), id, slackIntegrationID)
+			require.NoError(t, err)
+			assert.False(t, agentOpt.IsPresent())
 		})
 	})
 
@@ -404,8 +411,10 @@ func TestAgentsService(t *testing.T) {
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, slackIntegrationID) }()
 
 			// Get initial last_active_at timestamp
-			initialAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			initialAgentOpt, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, initialAgentOpt.IsPresent())
+			initialAgent := initialAgentOpt.MustGet()
 			initialLastActive := initialAgent.LastActiveAt
 
 			// Wait a bit to ensure timestamp difference
@@ -416,8 +425,10 @@ func TestAgentsService(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify the timestamp was updated
-			updatedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			updatedAgentOpt, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
 			require.NoError(t, err)
+			require.True(t, updatedAgentOpt.IsPresent())
+			updatedAgent := updatedAgentOpt.MustGet()
 			assert.True(t, updatedAgent.LastActiveAt.After(initialLastActive),
 				"last_active_at should be updated to a more recent time")
 		})

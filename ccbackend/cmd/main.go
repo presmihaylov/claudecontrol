@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -67,10 +68,14 @@ func run() error {
 
 	// Create API key validator for WebSocket connections
 	apiKeyValidator := func(apiKey string) (string, error) {
-		integration, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(context.Background(), apiKey)
+		integrationOpt, err := slackIntegrationsService.GetSlackIntegrationBySecretKey(context.Background(), apiKey)
 		if err != nil {
 			return "", err
 		}
+		if !integrationOpt.IsPresent() {
+			return "", fmt.Errorf("invalid API key")
+		}
+		integration := integrationOpt.MustGet()
 		return integration.ID, nil
 	}
 
