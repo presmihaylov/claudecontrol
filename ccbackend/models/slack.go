@@ -25,6 +25,12 @@ type SlackUserProfile struct {
 	RealName    string
 }
 
+// SlackPostMessageResponse represents the response from posting a message to Slack
+type SlackPostMessageResponse struct {
+	Channel   string
+	Timestamp string
+}
+
 // SlackItemRef represents a reference to a Slack message item
 type SlackItemRef struct {
 	Channel   string

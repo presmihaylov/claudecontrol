@@ -77,7 +77,7 @@ func (c *SlackClientImpl) GetUserInfoContext(ctx context.Context, userID string)
 }
 
 // PostMessage sends a message to a Slack channel
-func (c *SlackClientImpl) PostMessage(channelID string, options ...models.SlackMessageOption) (string, string, error) {
+func (c *SlackClientImpl) PostMessage(channelID string, options ...models.SlackMessageOption) (*models.SlackPostMessageResponse, error) {
 	// Convert our custom options to SDK options
 	var config models.SlackMessageConfig
 	for _, opt := range options {
@@ -92,7 +92,15 @@ func (c *SlackClientImpl) PostMessage(channelID string, options ...models.SlackM
 		sdkOptions = append(sdkOptions, slack.MsgOptionTS(config.ThreadTS))
 	}
 
-	return c.Client.PostMessage(channelID, sdkOptions...)
+	channel, timestamp, err := c.Client.PostMessage(channelID, sdkOptions...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.SlackPostMessageResponse{
+		Channel:   channel,
+		Timestamp: timestamp,
+	}, nil
 }
 
 // GetReactions gets the reactions on a message

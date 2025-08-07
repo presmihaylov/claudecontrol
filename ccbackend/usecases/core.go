@@ -1191,7 +1191,7 @@ func (s *CoreUseCase) sendSlackMessage(ctx context.Context, slackIntegrationID, 
 	}
 
 	// Send message to Slack
-	_, _, err = slackClient.PostMessage(channelID,
+	_, err = slackClient.PostMessage(channelID,
 		models.SlackMsgOptionTextHelper(utils.ConvertMarkdownToSlack(message), false),
 		models.SlackMsgOptionTSHelper(threadTS),
 	)

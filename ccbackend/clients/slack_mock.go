@@ -21,7 +21,7 @@ type MockSlackClient struct {
 	MockGetUserInfoContext func(ctx context.Context, userID string) (*models.SlackUser, error)
 
 	// Message operations
-	MockPostMessage func(channelID string, options ...models.SlackMessageOption) (string, string, error)
+	MockPostMessage func(channelID string, options ...models.SlackMessageOption) (*models.SlackPostMessageResponse, error)
 
 	// Reaction operations
 	MockGetReactions   func(item models.SlackItemRef, params models.SlackGetReactionsParameters) ([]models.SlackItemReaction, error)
@@ -89,13 +89,16 @@ func (m *MockSlackClient) GetUserInfoContext(ctx context.Context, userID string)
 }
 
 // PostMessage implements SlackClient interface for testing
-func (m *MockSlackClient) PostMessage(channelID string, options ...models.SlackMessageOption) (string, string, error) {
+func (m *MockSlackClient) PostMessage(channelID string, options ...models.SlackMessageOption) (*models.SlackPostMessageResponse, error) {
 	if m.MockPostMessage != nil {
 		return m.MockPostMessage(channelID, options...)
 	}
 
 	// Default mock response
-	return channelID, "1234567890.123456", nil
+	return &models.SlackPostMessageResponse{
+		Channel:   channelID,
+		Timestamp: "1234567890.123456",
+	}, nil
 }
 
 // GetReactions implements SlackClient interface for testing

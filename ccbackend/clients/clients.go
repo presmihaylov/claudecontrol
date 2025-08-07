@@ -24,7 +24,7 @@ type SlackClient interface {
 	GetUserInfoContext(ctx context.Context, userID string) (*models.SlackUser, error)
 
 	// Message operations
-	PostMessage(channelID string, options ...models.SlackMessageOption) (string, string, error)
+	PostMessage(channelID string, options ...models.SlackMessageOption) (*models.SlackPostMessageResponse, error)
 
 	// Reaction operations
 	GetReactions(item models.SlackItemRef, params models.SlackGetReactionsParameters) ([]models.SlackItemReaction, error)
