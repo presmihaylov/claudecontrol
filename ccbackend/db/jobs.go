@@ -136,7 +136,7 @@ func (r *PostgresJobsRepository) GetIdleJobs(ctx context.Context, idleMinutes in
 		aliasedColumns = append(aliasedColumns, "j."+col)
 	}
 	columnsStr := strings.Join(aliasedColumns, ", ")
-	
+
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.jobs j
@@ -214,7 +214,7 @@ func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(ctx context.Context, 
 		aliasedColumns = append(aliasedColumns, "j."+col)
 	}
 	columnsStr := strings.Join(aliasedColumns, ", ")
-	
+
 	query := fmt.Sprintf(`
 		SELECT DISTINCT %s 
 		FROM %s.jobs j

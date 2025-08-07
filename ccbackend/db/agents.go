@@ -128,7 +128,7 @@ func (r *PostgresAgentsRepository) GetAvailableAgents(ctx context.Context, slack
 		aliasedColumns = append(aliasedColumns, "a."+col)
 	}
 	columnsStr := strings.Join(aliasedColumns, ", ")
-	
+
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.active_agents a
@@ -169,7 +169,7 @@ func (r *PostgresAgentsRepository) GetAgentByJobID(ctx context.Context, jobID st
 		aliasedColumns = append(aliasedColumns, "a."+col)
 	}
 	columnsStr := strings.Join(aliasedColumns, ", ")
-	
+
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.active_agents a
