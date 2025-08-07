@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -152,14 +153,22 @@ func TestAssistantMessageParsing(t *testing.T) {
 		t.Fatalf("Expected 1 content item, got %d", len(assistantMsg.Message.Content))
 	}
 
-	content := assistantMsg.Message.Content[0]
-	if content.Type != "text" {
-		t.Errorf("Expected content type 'text', got '%s'", content.Type)
+	// Parse the content to check if it's a text content item
+	var contentItem struct {
+		Type string `json:"type"`
+		Text string `json:"text,omitempty"`
+	}
+	if err := json.Unmarshal(assistantMsg.Message.Content[0], &contentItem); err != nil {
+		t.Fatalf("Failed to parse content: %v", err)
+	}
+
+	if contentItem.Type != "text" {
+		t.Errorf("Expected content type 'text', got '%s'", contentItem.Type)
 	}
 
 	expectedText := "Hello! I'm Claude Code, ready to help you."
-	if content.Text != expectedText {
-		t.Errorf("Expected text '%s', got '%s'", expectedText, content.Text)
+	if contentItem.Text != expectedText {
+		t.Errorf("Expected text '%s', got '%s'", expectedText, contentItem.Text)
 	}
 
 	// Test interface methods
@@ -175,7 +184,7 @@ func TestAssistantMessageParsing(t *testing.T) {
 	}
 }
 
-func TestUnknownClaudeMessageParsing(t *testing.T) {
+func TestSystemMessageParsing(t *testing.T) {
 	input := `{"type":"system","subtype":"init","cwd":"/path","session_id":"79fac4e0-79bd-4489-afb5-6023fa22cc47","tools":["Task","Bash"]}`
 
 	messages, err := MapClaudeOutputToMessages(input)
@@ -187,26 +196,30 @@ func TestUnknownClaudeMessageParsing(t *testing.T) {
 		t.Fatalf("Expected 1 message, got %d", len(messages))
 	}
 
-	unknownMsg, ok := messages[0].(UnknownClaudeMessage)
+	systemMsg, ok := messages[0].(SystemMessage)
 	if !ok {
-		t.Fatalf("Expected UnknownClaudeMessage, got %T", messages[0])
+		t.Fatalf("Expected SystemMessage, got %T", messages[0])
 	}
 
-	if unknownMsg.Type != "system" {
-		t.Errorf("Expected type 'system', got '%s'", unknownMsg.Type)
+	if systemMsg.Type != "system" {
+		t.Errorf("Expected type 'system', got '%s'", systemMsg.Type)
 	}
 
-	if unknownMsg.SessionID != "79fac4e0-79bd-4489-afb5-6023fa22cc47" {
-		t.Errorf("Expected session_id '79fac4e0-79bd-4489-afb5-6023fa22cc47', got '%s'", unknownMsg.SessionID)
+	if systemMsg.Subtype != "init" {
+		t.Errorf("Expected subtype 'init', got '%s'", systemMsg.Subtype)
+	}
+
+	if systemMsg.SessionID != "79fac4e0-79bd-4489-afb5-6023fa22cc47" {
+		t.Errorf("Expected session_id '79fac4e0-79bd-4489-afb5-6023fa22cc47', got '%s'", systemMsg.SessionID)
 	}
 
 	// Test interface methods
-	if unknownMsg.GetType() != "system" {
-		t.Errorf("GetType() expected 'system', got '%s'", unknownMsg.GetType())
+	if systemMsg.GetType() != "system" {
+		t.Errorf("GetType() expected 'system', got '%s'", systemMsg.GetType())
 	}
 
-	if unknownMsg.GetSessionID() != "79fac4e0-79bd-4489-afb5-6023fa22cc47" {
-		t.Errorf("GetSessionID() expected '79fac4e0-79bd-4489-afb5-6023fa22cc47', got '%s'", unknownMsg.GetSessionID())
+	if systemMsg.GetSessionID() != "79fac4e0-79bd-4489-afb5-6023fa22cc47" {
+		t.Errorf("GetSessionID() expected '79fac4e0-79bd-4489-afb5-6023fa22cc47', got '%s'", systemMsg.GetSessionID())
 	}
 }
 
@@ -226,9 +239,18 @@ func TestExtractLastAssistantMessage(t *testing.T) {
 	var lastAssistantText string
 	for i := len(messages) - 1; i >= 0; i-- {
 		if assistantMsg, ok := messages[i].(AssistantMessage); ok {
-			if len(assistantMsg.Message.Content) > 0 && assistantMsg.Message.Content[0].Type == "text" {
-				lastAssistantText = assistantMsg.Message.Content[0].Text
-				break
+			if len(assistantMsg.Message.Content) > 0 {
+				// Parse the content to check if it's a text content item
+				var contentItem struct {
+					Type string `json:"type"`
+					Text string `json:"text,omitempty"`
+				}
+				if err := json.Unmarshal(assistantMsg.Message.Content[0], &contentItem); err == nil {
+					if contentItem.Type == "text" && contentItem.Text != "" {
+						lastAssistantText = contentItem.Text
+						break
+					}
+				}
 			}
 		}
 	}
@@ -270,8 +292,19 @@ func TestRealWorldExample(t *testing.T) {
 	}
 
 	expectedText := "I'll study the ccagent codebase to understand its logging architecture and propose options for implementing persistent logging."
-	if len(assistantMsg.Message.Content) == 0 || assistantMsg.Message.Content[0].Text != expectedText {
-		t.Errorf("Unexpected assistant message content")
+	if len(assistantMsg.Message.Content) == 0 {
+		t.Errorf("Expected content in assistant message")
+	} else {
+		// Parse the content to check if it's a text content item
+		var contentItem struct {
+			Type string `json:"type"`
+			Text string `json:"text,omitempty"`
+		}
+		if err := json.Unmarshal(assistantMsg.Message.Content[0], &contentItem); err != nil {
+			t.Errorf("Failed to parse assistant content: %v", err)
+		} else if contentItem.Text != expectedText {
+			t.Errorf("Expected text '%s', got '%s'", expectedText, contentItem.Text)
+		}
 	}
 
 	// Check third message (result)
