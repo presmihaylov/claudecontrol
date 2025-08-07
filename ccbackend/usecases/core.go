@@ -866,7 +866,7 @@ func (s *CoreUseCase) ProcessJobComplete(ctx context.Context, clientID string, p
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 	if !maybeJob.IsPresent() {
-		log.Printf("⚠️ Job %s not found - job may have already been processed or deleted, skipping", jobID)
+		log.Printf("⚠️ Job %s not found - already completed manually or by another agent, skipping", jobID)
 		return nil
 	}
 	job := maybeJob.MustGet()
