@@ -9,12 +9,76 @@ import (
 	"time"
 
 	"ccagent/core/log"
+
+	"github.com/cenkalti/backoff/v4"
 )
 
 type GitClient struct{}
 
 func NewGitClient() *GitClient {
 	return &GitClient{}
+}
+
+// isTimeoutError checks if an error is a timeout error that should be retried
+func isTimeoutError(err error, output string) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := strings.ToLower(err.Error())
+	outputStr := strings.ToLower(output)
+
+	timeoutPatterns := []string{
+		"timeout",
+		"i/o timeout",
+		"connection timeout",
+		"dial tcp",
+		"context deadline exceeded",
+	}
+
+	for _, pattern := range timeoutPatterns {
+		if strings.Contains(errStr, pattern) || strings.Contains(outputStr, pattern) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// executeWithRetry executes a GitHub CLI command with exponential backoff for timeout errors
+func (g *GitClient) executeWithRetry(cmd *exec.Cmd, operationName string) ([]byte, error) {
+	var output []byte
+	var err error
+
+	retryBackoff := backoff.NewExponentialBackOff()
+	retryBackoff.InitialInterval = 2 * time.Second
+	retryBackoff.MaxInterval = 30 * time.Second
+	retryBackoff.MaxElapsedTime = 2 * time.Minute
+	retryBackoff.Multiplier = 2
+
+	retryOperation := func() error {
+		output, err = cmd.CombinedOutput()
+
+		if err != nil && isTimeoutError(err, string(output)) {
+			log.Info("⏳ GitHub API timeout detected for %s, retrying...", operationName)
+			// Reset command for retry
+			cmd = exec.Command(cmd.Args[0], cmd.Args[1:]...)
+			return err // This will trigger a retry
+		}
+
+		return nil // Success or non-timeout error, stop retrying
+	}
+
+	retryErr := backoff.Retry(retryOperation, retryBackoff)
+	if retryErr != nil {
+		// If we still have the original error, use it
+		if err != nil {
+			return output, err
+		}
+		return output, retryErr
+	}
+
+	return output, err
 }
 
 func (g *GitClient) CheckoutBranch(branchName string) error {
@@ -133,7 +197,7 @@ func (g *GitClient) CreatePullRequest(title, body, baseBranch string) (string, e
 	log.Info("📋 Starting to create pull request: %s", title)
 
 	cmd := exec.Command("gh", "pr", "create", "--title", title, "--body", body, "--base", baseBranch)
-	output, err := cmd.CombinedOutput()
+	output, err := g.executeWithRetry(cmd, "create pull request")
 
 	if err != nil {
 		log.Error("❌ GitHub PR creation failed for title '%s': %v\nOutput: %s", title, err, string(output))
@@ -152,7 +216,7 @@ func (g *GitClient) GetPRURL(branchName string) (string, error) {
 	log.Info("📋 Starting to get PR URL for branch: %s", branchName)
 
 	cmd := exec.Command("gh", "pr", "view", branchName, "--json", "url", "--jq", ".url")
-	output, err := cmd.CombinedOutput()
+	output, err := g.executeWithRetry(cmd, "get PR URL")
 
 	if err != nil {
 		log.Error("❌ Failed to get PR URL for branch %s: %v\nOutput: %s", branchName, err, string(output))
@@ -362,7 +426,7 @@ func (g *GitClient) HasExistingPR(branchName string) (bool, error) {
 
 	// Use GitHub CLI to list PRs for the current branch
 	cmd := exec.Command("gh", "pr", "list", "--head", branchName, "--json", "number")
-	output, err := cmd.CombinedOutput()
+	output, err := g.executeWithRetry(cmd, "check existing PR")
 
 	if err != nil {
 		log.Error("❌ Failed to check for existing PR for branch %s: %v\nOutput: %s", branchName, err, string(output))
@@ -450,7 +514,7 @@ func (g *GitClient) GetPRDescription(branchName string) (string, error) {
 	log.Info("📋 Starting to get PR description for branch: %s", branchName)
 
 	cmd := exec.Command("gh", "pr", "view", branchName, "--json", "body", "--jq", ".body")
-	output, err := cmd.CombinedOutput()
+	output, err := g.executeWithRetry(cmd, "get PR description")
 
 	if err != nil {
 		log.Error("❌ Failed to get PR description for branch %s: %v\nOutput: %s", branchName, err, string(output))
@@ -467,7 +531,7 @@ func (g *GitClient) UpdatePRDescription(branchName, newDescription string) error
 	log.Info("📋 Starting to update PR description for branch: %s", branchName)
 
 	cmd := exec.Command("gh", "pr", "edit", branchName, "--body", newDescription)
-	output, err := cmd.CombinedOutput()
+	output, err := g.executeWithRetry(cmd, "update PR description")
 
 	if err != nil {
 		log.Error("❌ Failed to update PR description for branch %s: %v\nOutput: %s", branchName, err, string(output))
@@ -483,7 +547,7 @@ func (g *GitClient) GetPRTitle(branchName string) (string, error) {
 	log.Info("📋 Starting to get PR title for branch: %s", branchName)
 
 	cmd := exec.Command("gh", "pr", "view", branchName, "--json", "title", "--jq", ".title")
-	output, err := cmd.CombinedOutput()
+	output, err := g.executeWithRetry(cmd, "get PR title")
 
 	if err != nil {
 		log.Error("❌ Failed to get PR title for branch %s: %v\nOutput: %s", branchName, err, string(output))
@@ -500,7 +564,7 @@ func (g *GitClient) UpdatePRTitle(branchName, newTitle string) error {
 	log.Info("📋 Starting to update PR title for branch: %s", branchName)
 
 	cmd := exec.Command("gh", "pr", "edit", branchName, "--title", newTitle)
-	output, err := cmd.CombinedOutput()
+	output, err := g.executeWithRetry(cmd, "update PR title")
 
 	if err != nil {
 		log.Error("❌ Failed to update PR title for branch %s: %v\nOutput: %s", branchName, err, string(output))
@@ -516,7 +580,7 @@ func (g *GitClient) GetPRState(branchName string) (string, error) {
 	log.Info("📋 Starting to get PR state for branch: %s", branchName)
 
 	cmd := exec.Command("gh", "pr", "view", branchName, "--json", "state", "--jq", ".state")
-	output, err := cmd.CombinedOutput()
+	output, err := g.executeWithRetry(cmd, "get PR state")
 
 	if err != nil {
 		log.Error("❌ Failed to get PR state for branch %s: %v\nOutput: %s", branchName, err, string(output))
@@ -547,7 +611,7 @@ func (g *GitClient) GetPRStateByID(prID string) (string, error) {
 	log.Info("📋 Starting to get PR state by ID: %s", prID)
 
 	cmd := exec.Command("gh", "pr", "view", prID, "--json", "state", "--jq", ".state")
-	output, err := cmd.CombinedOutput()
+	output, err := g.executeWithRetry(cmd, "get PR state by ID")
 
 	if err != nil {
 		log.Error("❌ Failed to get PR state for PR ID %s: %v\nOutput: %s", prID, err, string(output))
