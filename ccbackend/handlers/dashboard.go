@@ -29,7 +29,6 @@ func (h *DashboardAPIHandler) ListSlackIntegrations(
 	user *models.User,
 ) ([]*models.SlackIntegration, error) {
 	log.Printf("📋 Listing Slack integrations for user: %s", user.ID)
-
 	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByUserID(ctx, user.ID)
 	if err != nil {
 		log.Printf("❌ Failed to get Slack integrations: %v", err)
@@ -47,8 +46,6 @@ func (h *DashboardAPIHandler) CreateSlackIntegration(
 	user *models.User,
 ) (*models.SlackIntegration, error) {
 	log.Printf("➕ Creating Slack integration for user: %s", user.ID)
-
-	// Create Slack integration using the authenticated user ID
 	integration, err := h.slackIntegrationsService.CreateSlackIntegration(ctx, slackAuthToken, redirectURL, user.ID)
 	if err != nil {
 		log.Printf("❌ Failed to create Slack integration: %v", err)
@@ -62,8 +59,6 @@ func (h *DashboardAPIHandler) CreateSlackIntegration(
 // DeleteSlackIntegration deletes a Slack integration by ID
 func (h *DashboardAPIHandler) DeleteSlackIntegration(ctx context.Context, integrationID string) error {
 	log.Printf("🗑️ Deleting Slack integration: %s", integrationID)
-
-	// Delete the integration (service will get user from context)
 	if err := h.slackIntegrationsService.DeleteSlackIntegration(ctx, integrationID); err != nil {
 		log.Printf("❌ Failed to delete Slack integration: %v", err)
 		return err
@@ -76,8 +71,6 @@ func (h *DashboardAPIHandler) DeleteSlackIntegration(ctx context.Context, integr
 // GenerateCCAgentSecretKey generates a new secret key for a Slack integration
 func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error) {
 	log.Printf("🔑 Generating CCAgent secret key for integration: %s", integrationID)
-
-	// Generate the secret key (service will get user from context)
 	secretKey, err := h.slackIntegrationsService.GenerateCCAgentSecretKey(ctx, integrationID)
 	if err != nil {
 		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
