@@ -1278,9 +1278,21 @@ func (s *CoreUseCase) ProcessPing(ctx context.Context, client *clients.Client) e
 
 func (s *CoreUseCase) ProcessReactionAdded(
 	ctx context.Context,
-	userID, channelID, messageTS, slackIntegrationID string,
+	reactionName, userID, channelID, messageTS, slackIntegrationID string,
 ) error {
-	log.Printf("📋 Starting to process reaction added by %s on message %s in channel %s", userID, messageTS, channelID)
+	log.Printf(
+		"📋 Starting to process reaction %s added by %s on message %s in channel %s",
+		reactionName,
+		userID,
+		messageTS,
+		channelID,
+	)
+
+	// Only handle white check mark, check mark, or white tick reactions
+	if reactionName != "white_check_mark" && reactionName != "heavy_check_mark" && reactionName != "white_tick" {
+		log.Printf("⏭️ Ignoring reaction: %s (not a completion emoji)", reactionName)
+		return nil
+	}
 
 	// Find the job by thread TS and channel - the messageTS is the thread root
 	maybeJob, err := s.jobsService.GetJobBySlackThread(ctx, messageTS, channelID, slackIntegrationID)
