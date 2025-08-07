@@ -15,7 +15,7 @@ on:
       - '.github/workflows/lint.yml'
 
 jobs:
-  golines-ccbackend:
+  lint-ccbackend:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -32,25 +32,15 @@ jobs:
       run: |
         cd ccbackend
         golines --max-len=120 --dry-run .
-
-  golangci-lint-ccbackend:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
         
-    - name: Install golangci-lint
+    - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
         version: latest
         working-directory: ccbackend
         args: --timeout=5m
 
-  golines-ccagent:
+  lint-ccagent:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -65,23 +55,13 @@ jobs:
         go install github.com/segmentio/golines@latest
         go install golang.org/x/tools/cmd/goimports@latest
         
-    - name: Run golines check
+    - name: Run golines and goimports check
       run: |
         cd ccagent
         goimports -d .
         golines --max-len=120 --dry-run .
-
-  golangci-lint-ccagent:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
         
-    - name: Install golangci-lint
+    - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
         version: latest
