@@ -133,16 +133,7 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 
 	// Create test user using testutils
 	testUser := testutils.CreateTestUserWithProvider(t, usersRepo, "test")
-	defer func() {
-		// Clean up test data from database
-		query := "DELETE FROM " + cfg.DatabaseSchema + ".users WHERE id = $1"
-		_, err := dbConn.Exec(query, testUser.ID)
-		if err != nil {
-			t.Logf("⚠️ Failed to cleanup test user from database: %v", err)
-		} else {
-			t.Logf("🧹 Cleaned up test user from database: %s", testUser.ID)
-		}
-	}()
+	defer testutils.CleanupTestUser(t, dbConn, cfg.DatabaseSchema, testUser.ID)()
 
 	// Test GetOrCreateUser with test user
 	user, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID)
