@@ -11,17 +11,17 @@ import (
 	"ccbackend/usecases"
 )
 
-type WebSocketHandler struct {
+type MessagesHandler struct {
 	coreUseCase *usecases.CoreUseCase
 }
 
-func NewWebSocketHandler(coreUseCase *usecases.CoreUseCase) *WebSocketHandler {
-	return &WebSocketHandler{
+func NewMessagesHandler(coreUseCase *usecases.CoreUseCase) *MessagesHandler {
+	return &MessagesHandler{
 		coreUseCase: coreUseCase,
 	}
 }
 
-func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error {
+func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		log.Printf("❌ Failed to marshal message from client %s: %v", client.ID, err)
