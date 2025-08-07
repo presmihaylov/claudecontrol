@@ -1365,7 +1365,7 @@ func (s *CoreUseCase) sendSlackMessage(
 
 	// Send message to Slack
 	params := clients.SlackMessageParams{
-		Text: mo.Some(utils.ConvertMarkdownToSlack(message)),
+		Text: utils.ConvertMarkdownToSlack(message),
 	}
 	if threadTS != "" {
 		params.ThreadTS = mo.Some(threadTS)

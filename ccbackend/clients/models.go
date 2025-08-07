@@ -52,9 +52,6 @@ type SlackItemReaction struct {
 
 // SlackMessageParams holds parameters for sending Slack messages
 type SlackMessageParams struct {
-	Text        mo.Option[string]
-	ThreadTS    mo.Option[string]
-	AsUser      mo.Option[bool]
-	UnfurlLinks mo.Option[bool]
-	UnfurlMedia mo.Option[bool]
+	Text     string
+	ThreadTS mo.Option[string]
 }

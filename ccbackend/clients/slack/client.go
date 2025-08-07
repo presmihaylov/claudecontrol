@@ -95,20 +95,10 @@ func (c *SlackClient) PostMessage(
 	params clients.SlackMessageParams,
 ) (*clients.SlackPostMessageResponse, error) {
 	var sdkOptions []slack.MsgOption
-	if text, hasText := params.Text.Get(); hasText {
-		sdkOptions = append(sdkOptions, slack.MsgOptionText(text, false))
-	}
+	sdkOptions = append(sdkOptions, slack.MsgOptionText(params.Text, false))
+
 	if threadTS, hasThreadTS := params.ThreadTS.Get(); hasThreadTS {
 		sdkOptions = append(sdkOptions, slack.MsgOptionTS(threadTS))
-	}
-	if asUser, hasAsUser := params.AsUser.Get(); hasAsUser {
-		sdkOptions = append(sdkOptions, slack.MsgOptionAsUser(asUser))
-	}
-	if unfurlLinks, hasUnfurlLinks := params.UnfurlLinks.Get(); hasUnfurlLinks && unfurlLinks {
-		sdkOptions = append(sdkOptions, slack.MsgOptionEnableLinkUnfurl())
-	}
-	if unfurlMedia, hasUnfurlMedia := params.UnfurlMedia.Get(); hasUnfurlMedia && !unfurlMedia {
-		sdkOptions = append(sdkOptions, slack.MsgOptionDisableMediaUnfurl())
 	}
 
 	channel, timestamp, err := c.Client.PostMessage(channelID, sdkOptions...)
