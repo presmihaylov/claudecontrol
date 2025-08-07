@@ -15,7 +15,7 @@ on:
       - '.github/workflows/lint.yml'
 
 jobs:
-  lint-go-modules:
+  lint-ccagent-ccbackend:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
