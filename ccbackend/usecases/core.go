@@ -8,14 +8,35 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/slack-go/slack"
-
 	"ccbackend/clients"
+	slackclient "ccbackend/clients/slack"
 	"ccbackend/core"
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/utils"
 )
+
+// slackClientAdapter adapts clients.SlackClient to utils.SlackUserInfoClient to avoid import cycles
+type slackClientAdapter struct {
+	client clients.SlackClient
+}
+
+func (a *slackClientAdapter) GetUserInfoContext(ctx context.Context, userID string) (*utils.SlackUser, error) {
+	clientUser, err := a.client.GetUserInfoContext(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert from clients.SlackUser to utils.SlackUser
+	return &utils.SlackUser{
+		ID:   clientUser.ID,
+		Name: clientUser.Name,
+		Profile: utils.SlackUserProfile{
+			DisplayName: clientUser.Profile.DisplayName,
+			RealName:    clientUser.Profile.RealName,
+		},
+	}, nil
+}
 
 type CoreUseCase struct {
 	wsClient                 *clients.WebSocketClient
@@ -35,7 +56,7 @@ func NewCoreUseCase(wsClient *clients.WebSocketClient, agentsService *services.A
 	}
 }
 
-func (s *CoreUseCase) getSlackClientForIntegration(ctx context.Context, slackIntegrationID string) (*slack.Client, error) {
+func (s *CoreUseCase) getSlackClientForIntegration(ctx context.Context, slackIntegrationID string) (clients.SlackClient, error) {
 	maybeSlackInt, err := s.slackIntegrationsService.GetSlackIntegrationByID(ctx, slackIntegrationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integration: %w", err)
@@ -45,7 +66,7 @@ func (s *CoreUseCase) getSlackClientForIntegration(ctx context.Context, slackInt
 	}
 	integration := maybeSlackInt.MustGet()
 
-	return slack.New(integration.SlackAuthToken), nil
+	return slackclient.NewSlackClient(integration.SlackAuthToken), nil
 }
 
 func (s *CoreUseCase) validateJobBelongsToAgent(ctx context.Context, agentID, jobID string, slackIntegrationID string) error {
@@ -87,8 +108,8 @@ func (s *CoreUseCase) ProcessAssistantMessage(ctx context.Context, clientID stri
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 	if !maybeJob.IsPresent() {
-		log.Printf("❌ Job %s not found", jobID)
-		return fmt.Errorf("job not found: %s", jobID)
+		log.Printf("⚠️ Job %s not found - already completed manually or by another agent, skipping assistant message", jobID)
+		return nil
 	}
 	job := maybeJob.MustGet()
 
@@ -174,8 +195,8 @@ func (s *CoreUseCase) ProcessSystemMessage(ctx context.Context, clientID string,
 		return fmt.Errorf("failed to get processed slack message: %w", err)
 	}
 	if !maybeProcessedMsg.IsPresent() {
-		log.Printf("❌ No processed slack message found with ID %s", messageID)
-		return fmt.Errorf("processed slack message not found: %s", messageID)
+		log.Printf("⚠️ Processed slack message %s not found - job may have been completed manually, skipping system message", messageID)
+		return nil
 	}
 	processedMessage := maybeProcessedMsg.MustGet()
 
@@ -186,8 +207,8 @@ func (s *CoreUseCase) ProcessSystemMessage(ctx context.Context, clientID string,
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 	if !maybeJob.IsPresent() {
-		log.Printf("❌ Job %s not found", processedMessage.JobID)
-		return fmt.Errorf("job not found: %s", processedMessage.JobID)
+		log.Printf("⚠️ Job %s not found - already completed manually or by another agent, skipping system message", processedMessage.JobID)
+		return nil
 	}
 	job := maybeJob.MustGet()
 
@@ -225,8 +246,8 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(ctx context.Context, clientI
 		return fmt.Errorf("failed to get processed slack message: %w", err)
 	}
 	if !maybeProcessedMsg.IsPresent() {
-		log.Printf("❌ No processed slack message found with ID %s", messageID)
-		return fmt.Errorf("processed slack message not found: %s", messageID)
+		log.Printf("⚠️ Processed slack message %s not found - job may have been completed manually, skipping processing message", messageID)
+		return nil
 	}
 	processedMessage := maybeProcessedMsg.MustGet()
 
@@ -370,16 +391,17 @@ func (s *CoreUseCase) sendStartConversationToAgent(ctx context.Context, clientID
 	job := maybeJob.MustGet()
 
 	// Generate permalink for the thread's first message
-	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
+	permalink, err := slackClient.GetPermalink(&clients.SlackPermalinkParameters{
 		Channel: message.SlackChannelID,
-		Ts:      job.SlackThreadTS,
+		TS:      job.SlackThreadTS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
 	}
 
 	// Resolve user mentions in the message text before sending to agent
-	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, slackClient)
+	adapter := &slackClientAdapter{client: slackClient}
+	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, adapter)
 	startConversationMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeStartConversation,
@@ -416,16 +438,17 @@ func (s *CoreUseCase) sendUserMessageToAgent(ctx context.Context, clientID strin
 	job := maybeJob.MustGet()
 
 	// Generate permalink for the thread's first message
-	permalink, err := slackClient.GetPermalink(&slack.PermalinkParameters{
+	permalink, err := slackClient.GetPermalink(&clients.SlackPermalinkParameters{
 		Channel: message.SlackChannelID,
-		Ts:      job.SlackThreadTS,
+		TS:      job.SlackThreadTS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
 	}
 
 	// Resolve user mentions in the message text before sending to agent
-	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, slackClient)
+	adapter := &slackClientAdapter{client: slackClient}
+	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, adapter)
 	userMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeUserMessage,
@@ -458,7 +481,7 @@ func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) 
 	}
 }
 
-func (s *CoreUseCase) getBotUserID(slackClient *slack.Client) (string, error) {
+func (s *CoreUseCase) getBotUserID(slackClient clients.SlackClient) (string, error) {
 	authTest, err := slackClient.AuthTest()
 	if err != nil {
 		return "", fmt.Errorf("failed to get bot user ID: %w", err)
@@ -466,17 +489,17 @@ func (s *CoreUseCase) getBotUserID(slackClient *slack.Client) (string, error) {
 	return authTest.UserID, nil
 }
 
-func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slackClient *slack.Client) ([]string, error) {
+func (s *CoreUseCase) getBotReactionsOnMessage(channelID, messageTS string, slackClient clients.SlackClient) ([]string, error) {
 	botUserID, err := s.getBotUserID(slackClient)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get reactions directly using GetReactions - much less rate limited
-	reactions, err := slackClient.GetReactions(slack.ItemRef{
+	reactions, err := slackClient.GetReactions(clients.SlackItemRef{
 		Channel:   channelID,
 		Timestamp: messageTS,
-	}, slack.GetReactionsParameters{})
+	}, clients.SlackGetReactionsParameters{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reactions: %w", err)
 	}
@@ -522,7 +545,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(ctx context.Context, channelID,
 	reactionsToRemove := getOldReactions(newEmoji)
 	for _, emoji := range reactionsToRemove {
 		if slices.Contains(botReactions, emoji) {
-			if err := slackClient.RemoveReaction(emoji, slack.ItemRef{
+			if err := slackClient.RemoveReaction(emoji, clients.SlackItemRef{
 				Channel:   channelID,
 				Timestamp: messageTS,
 			}); err != nil {
@@ -533,7 +556,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(ctx context.Context, channelID,
 
 	// Add new reaction if not already there
 	if newEmoji != "" && !slices.Contains(botReactions, newEmoji) {
-		if err := slackClient.AddReaction(newEmoji, slack.ItemRef{
+		if err := slackClient.AddReaction(newEmoji, clients.SlackItemRef{
 			Channel:   channelID,
 			Timestamp: messageTS,
 		}); err != nil {
@@ -866,7 +889,7 @@ func (s *CoreUseCase) ProcessJobComplete(ctx context.Context, clientID string, p
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 	if !maybeJob.IsPresent() {
-		log.Printf("⚠️ Job %s not found - job may have already been processed or deleted, skipping", jobID)
+		log.Printf("⚠️ Job %s not found - already completed manually or by another agent, skipping", jobID)
 		return nil
 	}
 	job := maybeJob.MustGet()
@@ -1192,9 +1215,9 @@ func (s *CoreUseCase) sendSlackMessage(ctx context.Context, slackIntegrationID, 
 	}
 
 	// Send message to Slack
-	_, _, err = slackClient.PostMessage(channelID,
-		slack.MsgOptionText(utils.ConvertMarkdownToSlack(message), false),
-		slack.MsgOptionTS(threadTS),
+	_, err = slackClient.PostMessage(channelID,
+		clients.SlackMsgOptionTextHelper(utils.ConvertMarkdownToSlack(message), false),
+		clients.SlackMsgOptionTSHelper(threadTS),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to send message to Slack: %w", err)
