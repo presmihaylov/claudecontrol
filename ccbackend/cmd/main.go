@@ -119,42 +119,22 @@ func run() error {
 
 	// Create wrapper functions for usecase methods that now require context
 	registerAgent := func(clientAny any) error {
-		client := clientAny.(*socketioclient.Client)
-		clientInterface := &clients.Client{
-			ID:                 client.ID,
-			SlackIntegrationID: client.SlackIntegrationID,
-			AgentID:            client.AgentID,
-		}
-		return coreUseCase.RegisterAgent(context.Background(), clientInterface)
+		client := clientAny.(*clients.Client)
+		return coreUseCase.RegisterAgent(context.Background(), client)
 	}
 	deregisterAgent := func(clientAny any) error {
-		client := clientAny.(*socketioclient.Client)
-		clientInterface := &clients.Client{
-			ID:                 client.ID,
-			SlackIntegrationID: client.SlackIntegrationID,
-			AgentID:            client.AgentID,
-		}
-		return coreUseCase.DeregisterAgent(context.Background(), clientInterface)
+		client := clientAny.(*clients.Client)
+		return coreUseCase.DeregisterAgent(context.Background(), client)
 	}
 	processPing := func(clientAny any) error {
-		client := clientAny.(*socketioclient.Client)
-		clientInterface := &clients.Client{
-			ID:                 client.ID,
-			SlackIntegrationID: client.SlackIntegrationID,
-			AgentID:            client.AgentID,
-		}
-		return coreUseCase.ProcessPing(context.Background(), clientInterface)
+		client := clientAny.(*clients.Client)
+		return coreUseCase.ProcessPing(context.Background(), client)
 	}
 
 	// Create wrapper function for message handler
 	handleMessage := func(clientAny any, msg any) {
-		client := clientAny.(*socketioclient.Client)
-		clientInterface := &clients.Client{
-			ID:                 client.ID,
-			SlackIntegrationID: client.SlackIntegrationID,
-			AgentID:            client.AgentID,
-		}
-		if err := wsHandler.HandleMessage(clientInterface, msg); err != nil {
+		client := clientAny.(*clients.Client)
+		if err := wsHandler.HandleMessage(client, msg); err != nil {
 			log.Printf("❌ Message handler error: %v", err)
 		}
 	}

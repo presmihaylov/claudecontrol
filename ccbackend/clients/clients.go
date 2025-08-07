@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/zishang520/socket.io/v2/socket"
 )
 
 // OAuthV2Response represents our custom OAuth response with only needed fields
@@ -60,9 +61,10 @@ type SocketIOClient interface {
 	RegisterPingHook(hook func(client any) error)
 }
 
-// Client represents a connected WebSocket client (matches socketio.Client structure)
+// Client represents a connected WebSocket client
 type Client struct {
 	ID                 string
+	Socket             *socket.Socket
 	SlackIntegrationID string
 	AgentID            string
 }
