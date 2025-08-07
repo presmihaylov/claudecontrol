@@ -20,8 +20,10 @@ test-verbose:
 	go test -v ./...
 
 lint:
+	golines --max-len=180 --dry-run .
 	golangci-lint run
 
 lint-fix:
 	goimports -w .
+	golines --max-len=180 --write-output .
 	golangci-lint run --fix
