@@ -16,28 +16,6 @@ import (
 	"ccbackend/utils"
 )
 
-// slackClientAdapter adapts clients.SlackClient to utils.SlackUserInfoClient to avoid import cycles
-type slackClientAdapter struct {
-	client clients.SlackClient
-}
-
-func (a *slackClientAdapter) GetUserInfoContext(ctx context.Context, userID string) (*utils.SlackUser, error) {
-	clientUser, err := a.client.GetUserInfoContext(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert from clients.SlackUser to utils.SlackUser
-	return &utils.SlackUser{
-		ID:   clientUser.ID,
-		Name: clientUser.Name,
-		Profile: utils.SlackUserProfile{
-			DisplayName: clientUser.Profile.DisplayName,
-			RealName:    clientUser.Profile.RealName,
-		},
-	}, nil
-}
-
 type CoreUseCase struct {
 	wsClient                 *clients.WebSocketClient
 	agentsService            *services.AgentsService
@@ -463,8 +441,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(
 	}
 
 	// Resolve user mentions in the message text before sending to agent
-	adapter := &slackClientAdapter{client: slackClient}
-	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, adapter)
+	resolvedText := slackClient.ResolveMentionsInMessage(ctx, message.TextContent)
 	startConversationMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeStartConversation,
@@ -514,8 +491,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(
 	}
 
 	// Resolve user mentions in the message text before sending to agent
-	adapter := &slackClientAdapter{client: slackClient}
-	resolvedText := utils.ResolveMentionsInSlackMessage(ctx, message.TextContent, adapter)
+	resolvedText := slackClient.ResolveMentionsInMessage(ctx, message.TextContent)
 	userMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeUserMessage,
@@ -1386,10 +1362,10 @@ func (s *CoreUseCase) sendSlackMessage(
 	}
 
 	// Send message to Slack
-	_, err = slackClient.PostMessage(channelID,
-		clients.SlackMsgOptionTextHelper(utils.ConvertMarkdownToSlack(message), false),
-		clients.SlackMsgOptionTSHelper(threadTS),
-	)
+	_, err = slackClient.PostMessage(channelID, clients.SlackMessageParams{
+		Text:     utils.ConvertMarkdownToSlack(message),
+		ThreadTS: threadTS,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to send message to Slack: %w", err)
 	}

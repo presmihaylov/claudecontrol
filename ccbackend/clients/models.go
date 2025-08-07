@@ -48,44 +48,11 @@ type SlackItemReaction struct {
 	Users []string
 }
 
-// SlackMessageOption represents an option for sending Slack messages
-type SlackMessageOption interface {
-	Apply(*SlackMessageConfig)
-}
-
-// SlackMessageConfig holds configuration for Slack messages
-type SlackMessageConfig struct {
+// SlackMessageParams holds parameters for sending Slack messages
+type SlackMessageParams struct {
 	Text        string
-	AsUser      bool
 	ThreadTS    string
+	AsUser      bool
 	UnfurlLinks bool
 	UnfurlMedia bool
-}
-
-// SlackMsgOptionText creates a message option with text
-type SlackMsgOptionText struct {
-	Text   string
-	Escape bool
-}
-
-func (opt SlackMsgOptionText) Apply(config *SlackMessageConfig) {
-	config.Text = opt.Text
-}
-
-// SlackMsgOptionTS creates a message option with thread timestamp
-type SlackMsgOptionTS struct {
-	Timestamp string
-}
-
-func (opt SlackMsgOptionTS) Apply(config *SlackMessageConfig) {
-	config.ThreadTS = opt.Timestamp
-}
-
-// Helper functions to create message options (similar to slack-go/slack API)
-func SlackMsgOptionTextHelper(text string, escape bool) SlackMessageOption {
-	return SlackMsgOptionText{Text: text, Escape: escape}
-}
-
-func SlackMsgOptionTSHelper(timestamp string) SlackMessageOption {
-	return SlackMsgOptionTS{Timestamp: timestamp}
 }
