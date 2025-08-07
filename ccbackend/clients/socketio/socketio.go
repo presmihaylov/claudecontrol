@@ -251,7 +251,9 @@ func (ws *Server) invokeMessageHandlers(client *clients.Client, msg any) {
 	log.Printf("🔄 Invoking %d message handlers for client %s", len(ws.messageHandlers), client.ID)
 	for i, handler := range ws.messageHandlers {
 		log.Printf("🎯 Executing handler %d for client %s", i+1, client.ID)
-		handler(client, msg)
+		if err := handler(client, msg); err != nil {
+			log.Printf("❌ Message handler %d failed for client %s: %v", i+1, client.ID, err)
+		}
 	}
 	log.Printf("✅ All message handlers completed for client %s", client.ID)
 }

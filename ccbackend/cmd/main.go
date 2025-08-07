@@ -129,19 +129,26 @@ func run() error {
 	}
 
 	// Create wrapper function for message handler
-	handleMessage := func(client *clients.Client, msg any) {
+	handleMessage := func(client *clients.Client, msg any) error {
 		if err := wsHandler.HandleMessage(client, msg); err != nil {
 			log.Printf("❌ Message handler error: %v", err)
+			return err
 		}
+		return nil
 	}
 
 	// Register WebSocket hooks for agent lifecycle
-	wsClient.RegisterConnectionHook(registerAgent)
-	wsClient.RegisterDisconnectionHook(deregisterAgent)
-	wsClient.RegisterPingHook(processPing)
+	wsClient.RegisterConnectionHook(alertMiddleware.WrapConnectionHook(registerAgent))
+	wsClient.RegisterDisconnectionHook(alertMiddleware.WrapConnectionHook(deregisterAgent))
+	wsClient.RegisterPingHook(alertMiddleware.WrapConnectionHook(processPing))
 
-	// Register WebSocket message handler
-	wsClient.RegisterMessageHandler(handleMessage)
+	// Register WebSocket message handler (middleware consumes errors internally)
+	wrappedHandler := alertMiddleware.WrapMessageHandler(handleMessage)
+	messageHandlerAdapter := func(client *clients.Client, msg any) error {
+		wrappedHandler(client, msg)
+		return nil // Middleware handles errors internally
+	}
+	wsClient.RegisterMessageHandler(messageHandlerAdapter)
 
 	// Start periodic broadcast of CheckIdleJobs, cleanup of inactive agents, and processing of queued jobs
 	cleanupTicker := time.NewTicker(1 * time.Minute)

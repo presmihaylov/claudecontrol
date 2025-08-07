@@ -62,7 +62,7 @@ type SocketIOClient interface {
 }
 
 // Hook and handler function types
-type MessageHandlerFunc func(client *Client, msg any)
+type MessageHandlerFunc func(client *Client, msg any) error
 type ConnectionHookFunc func(client *Client) error
 type PingHandlerFunc func(client *Client) error
 type APIKeyValidatorFunc func(apiKey string) (string, error)
