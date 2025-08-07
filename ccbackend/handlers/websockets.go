@@ -35,8 +35,8 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 		return fmt.Errorf("failed to parse message: %w", err)
 	}
 
-	// Log processing of message with message ID
-	log.Printf("📋 Processing message %s from ccagent", parsedMsg.ID)
+	// Log processing of message with message ID, slack integration ID, and agent ID
+	log.Printf("📋 Processing message %s from ccagent (Slack Integration: %s, Agent: %s)", parsedMsg.ID, client.SlackIntegrationID, client.AgentID)
 
 	switch parsedMsg.Type {
 	case models.MessageTypeAssistantMessage:
