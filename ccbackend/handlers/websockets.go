@@ -22,7 +22,6 @@ func NewWebSocketHandler(coreUseCase *usecases.CoreUseCase) *WebSocketHandler {
 }
 
 func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error {
-
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		log.Printf("❌ Failed to marshal message from client %s: %v", client.ID, err)
@@ -36,7 +35,12 @@ func (h *WebSocketHandler) HandleMessage(client *clients.Client, msg any) error 
 	}
 
 	// Log processing of message with message ID, slack integration ID, and agent ID
-	log.Printf("📋 Processing message %s from ccagent (Slack Integration: %s, Agent: %s)", parsedMsg.ID, client.SlackIntegrationID, client.AgentID)
+	log.Printf(
+		"📋 Processing message %s from ccagent (Slack Integration: %s, Agent: %s)",
+		parsedMsg.ID,
+		client.SlackIntegrationID,
+		client.AgentID,
+	)
 
 	switch parsedMsg.Type {
 	case models.MessageTypeAssistantMessage:
