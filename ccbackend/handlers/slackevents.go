@@ -20,18 +20,18 @@ import (
 	"ccbackend/usecases"
 )
 
-type SlackWebhooksHandler struct {
+type SlackEventsHandler struct {
 	signingSecret            string
 	coreUseCase              *usecases.CoreUseCase
 	slackIntegrationsService services.SlackIntegrationsService
 }
 
-func NewSlackWebhooksHandler(
+func NewSlackEventsHandler(
 	signingSecret string,
 	coreUseCase *usecases.CoreUseCase,
 	slackIntegrationsService services.SlackIntegrationsService,
-) *SlackWebhooksHandler {
-	return &SlackWebhooksHandler{
+) *SlackEventsHandler {
+	return &SlackEventsHandler{
 		signingSecret:            signingSecret,
 		coreUseCase:              coreUseCase,
 		slackIntegrationsService: slackIntegrationsService,
@@ -39,7 +39,7 @@ func NewSlackWebhooksHandler(
 }
 
 // verifySlackSignature verifies the authenticity of a Slack webhook request
-func (h *SlackWebhooksHandler) verifySlackSignature(r *http.Request, body []byte) error {
+func (h *SlackEventsHandler) verifySlackSignature(r *http.Request, body []byte) error {
 	// Extract headers
 	timestamp := r.Header.Get("X-Slack-Request-Timestamp")
 	signature := r.Header.Get("X-Slack-Signature")
@@ -74,7 +74,7 @@ func (h *SlackWebhooksHandler) verifySlackSignature(r *http.Request, body []byte
 	return nil
 }
 
-func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Request) {
+func (h *SlackEventsHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Request) {
 	log.Printf("📨 Slack event received from %s", r.RemoteAddr)
 
 	// Read raw body for signature verification
@@ -134,6 +134,15 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Extract channel information from the event for logging
+	event := body["event"].(map[string]any)
+	channelID := ""
+	if channel, ok := event["channel"].(string); ok {
+		channelID = channel
+	}
+
+	log.Printf("📨 Slack event details - Team: %s, Channel: %s", teamID, channelID)
+
 	// Lookup slack integration by team_id
 	maybeSlackInt, err := h.slackIntegrationsService.GetSlackIntegrationByTeamID(r.Context(), teamID)
 	if err != nil {
@@ -150,7 +159,6 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 
 	log.Printf("🔑 Found slack integration for team %s (ID: %s)", teamID, slackIntegration.ID)
 
-	event := body["event"].(map[string]any)
 	eventType := event["type"].(string)
 
 	switch eventType {
@@ -171,7 +179,7 @@ func (h *SlackWebhooksHandler) HandleSlackEvent(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
+func (h *SlackEventsHandler) SetupEndpoints(router *mux.Router) {
 	log.Printf("🚀 Registering Slack webhook endpoints")
 
 	router.HandleFunc("/slack/events", h.HandleSlackEvent).Methods("POST")
@@ -180,7 +188,7 @@ func (h *SlackWebhooksHandler) SetupEndpoints(router *mux.Router) {
 	log.Printf("✅ All Slack webhook endpoints registered successfully")
 }
 
-func (h *SlackWebhooksHandler) handleAppMention(
+func (h *SlackEventsHandler) handleAppMention(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
@@ -208,7 +216,7 @@ func (h *SlackWebhooksHandler) handleAppMention(
 	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID)
 }
 
-func (h *SlackWebhooksHandler) handleReactionAdded(
+func (h *SlackEventsHandler) handleReactionAdded(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
@@ -216,12 +224,6 @@ func (h *SlackWebhooksHandler) handleReactionAdded(
 	reactionName := event["reaction"].(string)
 	user := event["user"].(string)
 	item := event["item"].(map[string]any)
-
-	// Only handle white check mark, check mark, or white tick reactions
-	if reactionName != "white_check_mark" && reactionName != "heavy_check_mark" && reactionName != "white_tick" {
-		log.Printf("⏭️ Ignoring reaction: %s (not a completion emoji)", reactionName)
-		return nil
-	}
 
 	// Extract item details
 	itemType := item["type"].(string)
@@ -233,7 +235,7 @@ func (h *SlackWebhooksHandler) handleReactionAdded(
 	channel := item["channel"].(string)
 	ts := item["ts"].(string)
 
-	log.Printf("✅ Completion reaction added by %s on message %s in %s", user, ts, channel)
+	log.Printf("📨 Reaction %s added by %s on message %s in %s", reactionName, user, ts, channel)
 
-	return h.coreUseCase.ProcessReactionAdded(ctx, user, channel, ts, slackIntegrationID)
+	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID)
 }
