@@ -16,12 +16,14 @@ import (
 type JobsService struct {
 	jobsRepo                   *db.PostgresJobsRepository
 	processedSlackMessagesRepo *db.PostgresProcessedSlackMessagesRepository
+	txManager                  TransactionManager
 }
 
-func NewJobsService(repo *db.PostgresJobsRepository, processedSlackMessagesRepo *db.PostgresProcessedSlackMessagesRepository) *JobsService {
+func NewJobsService(repo *db.PostgresJobsRepository, processedSlackMessagesRepo *db.PostgresProcessedSlackMessagesRepository, txManager TransactionManager) *JobsService {
 	return &JobsService{
 		jobsRepo:                   repo,
 		processedSlackMessagesRepo: processedSlackMessagesRepo,
+		txManager:                  txManager,
 	}
 }
 
@@ -215,16 +217,19 @@ func (s *JobsService) DeleteJob(ctx context.Context, id string, slackIntegration
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
-	if err := s.processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(ctx, id, slackIntegrationID); err != nil {
-		return fmt.Errorf("failed to delete processed slack messages for job: %w", err)
-	}
+	// Perform database operations within transaction
+	if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+		if err := s.processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(ctx, id, slackIntegrationID); err != nil {
+			return fmt.Errorf("failed to delete processed slack messages for job: %w", err)
+		}
 
-	deleted, err := s.jobsRepo.DeleteJob(ctx, id, slackIntegrationID)
-	if err != nil {
-		return fmt.Errorf("failed to delete job: %w", err)
-	}
-	if !deleted {
-		return core.ErrNotFound
+		if _, err := s.jobsRepo.DeleteJob(ctx, id, slackIntegrationID); err != nil {
+			return fmt.Errorf("failed to delete job: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to delete job in transaction: %w", err)
 	}
 
 	log.Printf("📋 Completed successfully - deleted job with ID: %s", id)

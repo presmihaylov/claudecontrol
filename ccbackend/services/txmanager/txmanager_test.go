@@ -56,7 +56,7 @@ func TestTransactionManager_WithTransaction_Success(t *testing.T) {
 	var createdJob *models.Job
 
 	// Execute transaction that should succeed
-	err := txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create a job within the transaction
 		job := &models.Job{
 			ID:                 core.NewID("j"),
@@ -66,7 +66,7 @@ func TestTransactionManager_WithTransaction_Success(t *testing.T) {
 			SlackIntegrationID: testIntegration.ID,
 		}
 
-		if err := jobsRepo.CreateJob(txCtx, job); err != nil {
+		if err := jobsRepo.CreateJob(ctx, job); err != nil {
 			return err
 		}
 
@@ -97,7 +97,7 @@ func TestTransactionManager_WithTransaction_Rollback_OnError(t *testing.T) {
 	var jobID string
 
 	// Execute transaction that should fail and rollback
-	err := txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create a job within the transaction
 		job := &models.Job{
 			ID:                 core.NewID("j"),
@@ -107,7 +107,7 @@ func TestTransactionManager_WithTransaction_Rollback_OnError(t *testing.T) {
 			SlackIntegrationID: testIntegration.ID,
 		}
 
-		if err := jobsRepo.CreateJob(txCtx, job); err != nil {
+		if err := jobsRepo.CreateJob(ctx, job); err != nil {
 			return err
 		}
 
@@ -144,7 +144,7 @@ func TestTransactionManager_WithTransaction_Rollback_OnPanic(t *testing.T) {
 			assert.Equal(t, "intentional panic to test rollback", r)
 		}()
 
-		txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		txManager.WithTransaction(ctx, func(ctx context.Context) error {
 			// Create a job within the transaction
 			job := &models.Job{
 				ID:                 core.NewID("j"),
@@ -154,7 +154,7 @@ func TestTransactionManager_WithTransaction_Rollback_OnPanic(t *testing.T) {
 				SlackIntegrationID: testIntegration.ID,
 			}
 
-			if err := jobsRepo.CreateJob(txCtx, job); err != nil {
+			if err := jobsRepo.CreateJob(ctx, job); err != nil {
 				return err
 			}
 
@@ -180,7 +180,7 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 	var job1ID, job2ID string
 
 	// Test multiple operations within single transaction
-	err := txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create first job
 		job1 := &models.Job{
 			ID:                 core.NewID("j"),
@@ -190,7 +190,7 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 			SlackIntegrationID: testIntegration.ID,
 		}
 
-		if err := jobsRepo.CreateJob(txCtx, job1); err != nil {
+		if err := jobsRepo.CreateJob(ctx, job1); err != nil {
 			return err
 		}
 		job1ID = job1.ID
@@ -204,18 +204,18 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 			SlackIntegrationID: testIntegration.ID,
 		}
 
-		if err := jobsRepo.CreateJob(txCtx, job2); err != nil {
+		if err := jobsRepo.CreateJob(ctx, job2); err != nil {
 			return err
 		}
 		job2ID = job2.ID
 
 		// Verify both jobs exist within transaction
-		_, err := jobsRepo.GetJobByID(txCtx, job1ID, testIntegration.ID)
+		_, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID)
 		if err != nil {
 			return fmt.Errorf("job1 should exist within transaction: %w", err)
 		}
 
-		_, err = jobsRepo.GetJobByID(txCtx, job2ID, testIntegration.ID)
+		_, err = jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID)
 		if err != nil {
 			return fmt.Errorf("job2 should exist within transaction: %w", err)
 		}
@@ -249,7 +249,7 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRo
 	var job1ID, job2ID string
 
 	// Test rollback of multiple operations
-	err := txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create first job
 		job1 := &models.Job{
 			ID:                 core.NewID("j"),
@@ -259,7 +259,7 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRo
 			SlackIntegrationID: testIntegration.ID,
 		}
 
-		if err := jobsRepo.CreateJob(txCtx, job1); err != nil {
+		if err := jobsRepo.CreateJob(ctx, job1); err != nil {
 			return err
 		}
 		job1ID = job1.ID
@@ -273,7 +273,7 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRo
 			SlackIntegrationID: testIntegration.ID,
 		}
 
-		if err := jobsRepo.CreateJob(txCtx, job2); err != nil {
+		if err := jobsRepo.CreateJob(ctx, job2); err != nil {
 			return err
 		}
 		job2ID = job2.ID
@@ -305,7 +305,7 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 	var jobID string
 
 	// Test nested transaction support
-	err := txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create job in outer transaction
 		job := &models.Job{
 			ID:                 core.NewID("j"),
@@ -315,21 +315,21 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 			SlackIntegrationID: testIntegration.ID,
 		}
 
-		if err := jobsRepo.CreateJob(txCtx, job); err != nil {
+		if err := jobsRepo.CreateJob(ctx, job); err != nil {
 			return err
 		}
 		jobID = job.ID
 
 		// Nested transaction (should reuse existing transaction)
-		return txManager.WithTransaction(txCtx, func(nestedTxCtx context.Context) error {
+		return txManager.WithTransaction(ctx, func(nestedCtx context.Context) error {
 			// Verify job exists within nested context
-			_, err := jobsRepo.GetJobByID(nestedTxCtx, jobID, testIntegration.ID)
+			_, err := jobsRepo.GetJobByID(nestedCtx, jobID, testIntegration.ID)
 			if err != nil {
 				return fmt.Errorf("job should exist in nested transaction: %w", err)
 			}
 
 			// Update job within nested transaction
-			return jobsRepo.UpdateJobTimestamp(nestedTxCtx, jobID, testIntegration.ID)
+			return jobsRepo.UpdateJobTimestamp(nestedCtx, jobID, testIntegration.ID)
 		})
 	})
 

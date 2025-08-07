@@ -12,6 +12,7 @@ import (
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
+	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
 )
 
@@ -35,8 +36,9 @@ func setupTestService(t *testing.T) (*AgentsService, *JobsService, *models.Slack
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 
+	txManager := txmanager.NewTransactionManager(dbConn)
 	agentsService := NewAgentsService(agentsRepo)
-	jobsService := NewJobsService(jobsRepo, messagesRepo)
+	jobsService := NewJobsService(jobsRepo, messagesRepo, txManager)
 
 	cleanup := func() {
 		// Clean up test data
