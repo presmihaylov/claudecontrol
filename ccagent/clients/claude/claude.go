@@ -109,3 +109,113 @@ func (c *ClaudeClient) StartNewSessionWithSystemPrompt(prompt, systemPrompt stri
 	log.Info("📋 Completed successfully - created new Claude session with system prompt")
 	return result, nil
 }
+
+func (c *ClaudeClient) StartNewSessionWithDisallowedTools(prompt string, disallowedTools []string) (string, error) {
+	log.Info("📋 Starting to create new Claude session with disallowed tools")
+	args := []string{
+		"--permission-mode", c.permissionMode,
+		"--verbose",
+		"--output-format", "stream-json",
+		"-p", prompt,
+	}
+
+	for _, tool := range disallowedTools {
+		args = append(args, "--disallowed-tools", tool)
+	}
+
+	log.Info("Starting new Claude session with prompt: %s", prompt)
+	log.Info("Command arguments: %v", args)
+
+	cmd := exec.Command("claude", args...)
+	cmd.Env = os.Environ()
+
+	log.Info("Running Claude command")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", &core.ErrClaudeCommandErr{
+			Err:    err,
+			Output: string(output),
+		}
+	}
+
+	result := strings.TrimSpace(string(output))
+	log.Info("Claude command completed successfully, outputLength: %d", len(result))
+	log.Info("📋 Completed successfully - created new Claude session with disallowed tools")
+	return result, nil
+}
+
+func (c *ClaudeClient) StartNewSessionWithSystemPromptAndDisallowedTools(
+	prompt, systemPrompt string,
+	disallowedTools []string,
+) (string, error) {
+	log.Info("📋 Starting to create new Claude session with system prompt and disallowed tools")
+	args := []string{
+		"--permission-mode", c.permissionMode,
+		"--verbose",
+		"--output-format", "stream-json",
+		"-p", prompt,
+		"--append-system-prompt", systemPrompt,
+	}
+
+	for _, tool := range disallowedTools {
+		args = append(args, "--disallowed-tools", tool)
+	}
+
+	log.Info("Starting new Claude session with prompt: %s", prompt)
+	log.Info("Command arguments: %v", args)
+
+	cmd := exec.Command("claude", args...)
+	cmd.Env = os.Environ()
+
+	log.Info("Running Claude command")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", &core.ErrClaudeCommandErr{
+			Err:    err,
+			Output: string(output),
+		}
+	}
+
+	result := strings.TrimSpace(string(output))
+	log.Info("Claude command completed successfully, outputLength: %d", len(result))
+	log.Info("📋 Completed successfully - created new Claude session with system prompt and disallowed tools")
+	return result, nil
+}
+
+func (c *ClaudeClient) ContinueSessionWithDisallowedTools(
+	sessionID, prompt string,
+	disallowedTools []string,
+) (string, error) {
+	log.Info("📋 Starting to continue Claude session with disallowed tools: %s", sessionID)
+	args := []string{
+		"--permission-mode", c.permissionMode,
+		"--verbose",
+		"--output-format", "stream-json",
+		"--resume", sessionID,
+		"-p", prompt,
+	}
+
+	for _, tool := range disallowedTools {
+		args = append(args, "--disallowed-tools", tool)
+	}
+
+	log.Info("Executing Claude command with sessionID: %s, prompt: %s", sessionID, prompt)
+	log.Info("Command arguments: %v", args)
+
+	cmd := exec.Command("claude", args...)
+	cmd.Env = os.Environ()
+
+	log.Info("Running Claude command")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", &core.ErrClaudeCommandErr{
+			Err:    err,
+			Output: string(output),
+		}
+	}
+
+	result := strings.TrimSpace(string(output))
+	log.Info("Claude command completed successfully, outputLength: %d", len(result))
+	log.Info("📋 Completed successfully - continued Claude session with disallowed tools")
+	return result, nil
+}
