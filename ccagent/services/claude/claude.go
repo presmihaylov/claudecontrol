@@ -216,6 +216,16 @@ func (c *ClaudeService) extractSessionID(messages []services.ClaudeMessage) stri
 }
 
 func (c *ClaudeService) extractClaudeResult(messages []services.ClaudeMessage) (string, error) {
+	// First, look for result message type (preferred)
+	for i := len(messages) - 1; i >= 0; i-- {
+		if resultMsg, ok := messages[i].(services.ResultMessage); ok {
+			if resultMsg.Result != "" {
+				return resultMsg.Result, nil
+			}
+		}
+	}
+
+	// Fallback to assistant message (existing approach)
 	for i := len(messages) - 1; i >= 0; i-- {
 		if assistantMsg, ok := messages[i].(services.AssistantMessage); ok {
 			for _, contentRaw := range assistantMsg.Message.Content {
@@ -232,7 +242,7 @@ func (c *ClaudeService) extractClaudeResult(messages []services.ClaudeMessage) (
 			}
 		}
 	}
-	return "", fmt.Errorf("no assistant message with text content found")
+	return "", fmt.Errorf("no result or assistant message with text content found")
 }
 
 // handleClaudeClientError processes errors from Claude client calls.
@@ -258,7 +268,17 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 		return fmt.Errorf("%s: %w", operation, err)
 	}
 
-	// Try to extract the assistant message using existing logic
+	// Try to extract the result message first (preferred)
+	for i := len(messages) - 1; i >= 0; i-- {
+		if resultMsg, ok := messages[i].(services.ResultMessage); ok {
+			if resultMsg.Result != "" {
+				log.Info("✅ Successfully extracted Claude result message from error: %s", resultMsg.Result)
+				return fmt.Errorf("%s: %s", operation, resultMsg.Result)
+			}
+		}
+	}
+
+	// Fallback to assistant message (existing logic)
 	for i := len(messages) - 1; i >= 0; i-- {
 		if assistantMsg, ok := messages[i].(services.AssistantMessage); ok {
 			for _, contentRaw := range assistantMsg.Message.Content {
@@ -269,7 +289,7 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 				}
 				if err := json.Unmarshal(contentRaw, &contentItem); err == nil {
 					if contentItem.Type == "text" && contentItem.Text != "" {
-						log.Info("✅ Successfully extracted Claude message from error: %s", contentItem.Text)
+						log.Info("✅ Successfully extracted Claude assistant message from error: %s", contentItem.Text)
 						return fmt.Errorf("%s: %s", operation, contentItem.Text)
 					}
 				}

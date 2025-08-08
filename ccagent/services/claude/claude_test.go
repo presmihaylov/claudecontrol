@@ -635,9 +635,9 @@ func TestClaudeService_ParseErrorHandling(t *testing.T) {
 		t.Errorf("Expected nil result on error, got: %v", result)
 	}
 
-	// Check that error contains expected message about no assistant message
-	if !strings.Contains(err.Error(), "no assistant message with text content found") {
-		t.Errorf("Expected error about no assistant message, got: %v", err)
+	// Check that error contains expected message about no result or assistant message
+	if !strings.Contains(err.Error(), "no result or assistant message with text content found") {
+		t.Errorf("Expected error about no result or assistant message, got: %v", err)
 	}
 
 	// Mock verification not needed with function-based mocks
