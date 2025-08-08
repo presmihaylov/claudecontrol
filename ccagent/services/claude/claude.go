@@ -1,4 +1,4 @@
-package services
+package claude
 
 import (
 	"encoding/json"
@@ -11,13 +11,8 @@ import (
 	"ccagent/clients"
 	"ccagent/core"
 	"ccagent/core/log"
+	"ccagent/services"
 )
-
-// ClaudeResult represents the result of a Claude conversation
-type ClaudeResult struct {
-	Output    string
-	SessionID string
-}
 
 type ClaudeService struct {
 	claudeClient clients.ClaudeClient
@@ -98,7 +93,7 @@ func (c *ClaudeService) CleanupOldLogs(maxAgeDays int) error {
 	return nil
 }
 
-func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, error) {
+func (c *ClaudeService) StartNewConversation(prompt string) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to start new Claude conversation")
 	rawOutput, err := c.claudeClient.StartNewSession(prompt)
 	if err != nil {
@@ -112,7 +107,7 @@ func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, erro
 		log.Error("Failed to write Claude session log: %v", writeErr)
 	}
 
-	messages, err := MapClaudeOutputToMessages(rawOutput)
+	messages, err := services.MapClaudeOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
 
@@ -131,7 +126,7 @@ func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, erro
 	}
 
 	log.Info("📋 Claude response extracted successfully, session: %s, output length: %d", sessionID, len(output))
-	result := &ClaudeResult{
+	result := &services.CLIAgentResult{
 		Output:    output,
 		SessionID: sessionID,
 	}
@@ -140,7 +135,9 @@ func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, erro
 	return result, nil
 }
 
-func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPrompt string) (*ClaudeResult, error) {
+func (c *ClaudeService) StartNewConversationWithSystemPrompt(
+	prompt, systemPrompt string,
+) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to start new Claude conversation with system prompt")
 	rawOutput, err := c.claudeClient.StartNewSessionWithSystemPrompt(prompt, systemPrompt)
 	if err != nil {
@@ -154,7 +151,7 @@ func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPromp
 		log.Error("Failed to write Claude session log: %v", writeErr)
 	}
 
-	messages, err := MapClaudeOutputToMessages(rawOutput)
+	messages, err := services.MapClaudeOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
 
@@ -173,7 +170,7 @@ func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPromp
 	}
 
 	log.Info("📋 Claude response extracted successfully, session: %s, output length: %d", sessionID, len(output))
-	result := &ClaudeResult{
+	result := &services.CLIAgentResult{
 		Output:    output,
 		SessionID: sessionID,
 	}
@@ -182,7 +179,7 @@ func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPromp
 	return result, nil
 }
 
-func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeResult, error) {
+func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to continue Claude conversation: %s", sessionID)
 	rawOutput, err := c.claudeClient.ContinueSession(sessionID, prompt)
 	if err != nil {
@@ -196,7 +193,7 @@ func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeR
 		log.Error("Failed to write Claude session log: %v", writeErr)
 	}
 
-	messages, err := MapClaudeOutputToMessages(rawOutput)
+	messages, err := services.MapClaudeOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
 
@@ -215,7 +212,7 @@ func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeR
 	}
 
 	log.Info("📋 Claude response extracted successfully, session: %s, output length: %d", actualSessionID, len(output))
-	result := &ClaudeResult{
+	result := &services.CLIAgentResult{
 		Output:    output,
 		SessionID: actualSessionID,
 	}
@@ -224,16 +221,16 @@ func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeR
 	return result, nil
 }
 
-func (c *ClaudeService) extractSessionID(messages []ClaudeMessage) string {
+func (c *ClaudeService) extractSessionID(messages []services.ClaudeMessage) string {
 	if len(messages) > 0 {
 		return messages[0].GetSessionID()
 	}
 	return "unknown"
 }
 
-func (c *ClaudeService) extractClaudeResult(messages []ClaudeMessage) (string, error) {
+func (c *ClaudeService) extractClaudeResult(messages []services.ClaudeMessage) (string, error) {
 	for i := len(messages) - 1; i >= 0; i-- {
-		if assistantMsg, ok := messages[i].(AssistantMessage); ok {
+		if assistantMsg, ok := messages[i].(services.AssistantMessage); ok {
 			for _, contentRaw := range assistantMsg.Message.Content {
 				// Parse the content to check if it's a text content item
 				var contentItem struct {
@@ -267,7 +264,7 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 	}
 
 	// Try to parse the output as Claude messages using internal parsing
-	messages, parseErr := MapClaudeOutputToMessages(claudeErr.Output)
+	messages, parseErr := services.MapClaudeOutputToMessages(claudeErr.Output)
 	if parseErr != nil {
 		// If parsing fails, return original error wrapped
 		log.Error("Failed to parse Claude output from error: %v", parseErr)
@@ -276,7 +273,7 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 
 	// Try to extract the assistant message using existing logic
 	for i := len(messages) - 1; i >= 0; i-- {
-		if assistantMsg, ok := messages[i].(AssistantMessage); ok {
+		if assistantMsg, ok := messages[i].(services.AssistantMessage); ok {
 			for _, contentRaw := range assistantMsg.Message.Content {
 				// Parse the content to check if it's a text content item
 				var contentItem struct {

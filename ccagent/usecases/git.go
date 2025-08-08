@@ -16,7 +16,7 @@ import (
 
 type GitUseCase struct {
 	gitClient     *clients.GitClient
-	claudeService *services.ClaudeService
+	claudeService services.CLIAgent
 	appState      *models.AppState
 }
 
@@ -31,7 +31,7 @@ type AutoCommitResult struct {
 
 func NewGitUseCase(
 	gitClient *clients.GitClient,
-	claudeService *services.ClaudeService,
+	claudeService services.CLIAgent,
 	appState *models.AppState,
 ) *GitUseCase {
 	return &GitUseCase{

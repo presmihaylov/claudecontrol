@@ -23,7 +23,7 @@ import (
 	"ccagent/core/log"
 	"ccagent/handlers"
 	"ccagent/models"
-	"ccagent/services"
+	claudeservice "ccagent/services/claude"
 	"ccagent/usecases"
 	"ccagent/utils"
 )
@@ -47,7 +47,7 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	logDir := filepath.Join(homeDir, ".config", "ccagent", "logs")
 
 	claudeClient := claudeclient.NewClaudeClient(permissionMode)
-	claudeService := services.NewClaudeService(claudeClient, logDir)
+	claudeService := claudeservice.NewClaudeService(claudeClient, logDir)
 
 	// Cleanup old Claude session logs (older than 7 days)
 	err = claudeService.CleanupOldLogs(7)
