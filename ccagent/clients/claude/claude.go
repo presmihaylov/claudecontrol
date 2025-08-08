@@ -22,24 +22,32 @@ func NewClaudeClient(permissionMode string) *ClaudeClient {
 
 func (c *ClaudeClient) StartNewSession(prompt string, options *clients.ClaudeOptions) (string, error) {
 	log.Info("📋 Starting to create new Claude session")
+
+	// Prepend system prompt if provided in options
+	finalPrompt := prompt
+	if options != nil && options.SystemPrompt != "" {
+		finalPrompt = "# BEHAVIOR INSTRUCTIONS\n" +
+			options.SystemPrompt + "\n\n" +
+			"# USER MESSAGE\n" +
+			prompt
+		log.Info("Prepending system prompt to user prompt with clear delimiters")
+	}
+
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--verbose",
 		"--output-format", "stream-json",
-		"-p", prompt,
+		"-p", finalPrompt,
 	}
 
 	if options != nil {
-		if options.SystemPrompt != "" {
-			args = append(args, "--append-system-prompt", options.SystemPrompt)
-		}
 		if len(options.DisallowedTools) > 0 {
 			disallowedToolsStr := strings.Join(options.DisallowedTools, " ")
 			args = append(args, "--disallowedTools", disallowedToolsStr)
 		}
 	}
 
-	log.Info("Starting new Claude session with prompt: %s", prompt)
+	log.Info("Starting new Claude session with prompt: %s", finalPrompt)
 	log.Info("Command arguments: %v", args)
 
 	cmd := exec.Command("claude", args...)
@@ -62,25 +70,33 @@ func (c *ClaudeClient) StartNewSession(prompt string, options *clients.ClaudeOpt
 
 func (c *ClaudeClient) ContinueSession(sessionID, prompt string, options *clients.ClaudeOptions) (string, error) {
 	log.Info("📋 Starting to continue Claude session: %s", sessionID)
+
+	// Prepend system prompt if provided in options
+	finalPrompt := prompt
+	if options != nil && options.SystemPrompt != "" {
+		finalPrompt = "# BEHAVIOR INSTRUCTIONS\n" +
+			options.SystemPrompt + "\n\n" +
+			"# USER MESSAGE\n" +
+			prompt
+		log.Info("Prepending system prompt to user prompt with clear delimiters")
+	}
+
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--verbose",
 		"--output-format", "stream-json",
 		"--resume", sessionID,
-		"-p", prompt,
+		"-p", finalPrompt,
 	}
 
 	if options != nil {
-		if options.SystemPrompt != "" {
-			args = append(args, "--append-system-prompt", options.SystemPrompt)
-		}
 		if len(options.DisallowedTools) > 0 {
 			disallowedToolsStr := strings.Join(options.DisallowedTools, " ")
 			args = append(args, "--disallowedTools", disallowedToolsStr)
 		}
 	}
 
-	log.Info("Executing Claude command with sessionID: %s, prompt: %s", sessionID, prompt)
+	log.Info("Executing Claude command with sessionID: %s, prompt: %s", sessionID, finalPrompt)
 	log.Info("Command arguments: %v", args)
 
 	cmd := exec.Command("claude", args...)
