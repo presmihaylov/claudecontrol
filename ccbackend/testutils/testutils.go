@@ -49,16 +49,48 @@ func LoadTestConfig() (*config.AppConfig, error) {
 
 // CreateTestUser creates a test user with a unique ID to avoid constraint violations
 func CreateTestUser(t *testing.T, usersRepo *db.PostgresUsersRepository) *models.User {
+	cfg, err := LoadTestConfig()
+	require.NoError(t, err, "Failed to load test config")
+
+	dbConn, err := db.NewConnection(cfg.DatabaseURL)
+	require.NoError(t, err, "Failed to create database connection")
+	defer dbConn.Close()
+
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+
+	// Create organization first
+	testOrgID := core.NewID("org")
+	organization := &models.Organization{ID: testOrgID}
+	err = organizationsRepo.CreateOrganization(context.Background(), organization)
+	require.NoError(t, err, "Failed to create test organization")
+
+	// Create user with the organization ID
 	testUserID := core.NewID("u")
-	testUser, err := usersRepo.GetOrCreateUser(context.Background(), "test", testUserID)
+	testUser, err := usersRepo.CreateUser(context.Background(), "test", testUserID, testOrgID)
 	require.NoError(t, err, "Failed to create test user")
 	return testUser
 }
 
 // CreateTestUserWithProvider creates a test user with a specific auth provider
 func CreateTestUserWithProvider(t *testing.T, usersRepo *db.PostgresUsersRepository, authProvider string) *models.User {
+	cfg, err := LoadTestConfig()
+	require.NoError(t, err, "Failed to load test config")
+
+	dbConn, err := db.NewConnection(cfg.DatabaseURL)
+	require.NoError(t, err, "Failed to create database connection")
+	defer dbConn.Close()
+
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+
+	// Create organization first
+	testOrgID := core.NewID("org")
+	organization := &models.Organization{ID: testOrgID}
+	err = organizationsRepo.CreateOrganization(context.Background(), organization)
+	require.NoError(t, err, "Failed to create test organization")
+
+	// Create user with the organization ID
 	testUserID := core.NewID("u")
-	testUser, err := usersRepo.GetOrCreateUser(context.Background(), authProvider, testUserID)
+	testUser, err := usersRepo.CreateUser(context.Background(), authProvider, testUserID, testOrgID)
 	require.NoError(t, err, "Failed to create test user with provider %s", authProvider)
 	return testUser
 }

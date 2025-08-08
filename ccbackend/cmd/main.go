@@ -22,6 +22,7 @@ import (
 	"ccbackend/middleware"
 	agents "ccbackend/services/agents"
 	jobs "ccbackend/services/jobs"
+	organizations "ccbackend/services/organizations"
 	slackintegrations "ccbackend/services/slack_integrations"
 	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
@@ -61,6 +62,7 @@ func run() error {
 	jobsRepo := db.NewPostgresJobsRepository(dbConn, cfg.DatabaseSchema)
 	processedSlackMessagesRepo := db.NewPostgresProcessedSlackMessagesRepository(dbConn, cfg.DatabaseSchema)
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 
 	// Initialize transaction manager
@@ -68,7 +70,8 @@ func run() error {
 
 	agentsService := agents.NewAgentsService(agentsRepo)
 	jobsService := jobs.NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
-	usersService := users.NewUsersService(usersRepo)
+	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
+	usersService := users.NewUsersService(usersRepo, organizationsService, txManager)
 	slackOAuthClient := slackclient.NewSlackOAuthClient()
 	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(
 		slackIntegrationsRepo,
