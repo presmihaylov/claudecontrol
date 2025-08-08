@@ -38,6 +38,11 @@ func (c *CursorClient) StartNewSession(prompt string, options *clients.CursorOpt
 		finalPrompt,
 	}
 
+	// Add model from options if provided
+	if options != nil && options.Model != "" {
+		args = append([]string{"--model", options.Model}, args...)
+	}
+
 	log.Info("Starting new Cursor session with prompt: %s", finalPrompt)
 	log.Info("Command arguments: %v", args)
 
@@ -67,6 +72,11 @@ func (c *CursorClient) ContinueSession(sessionID, prompt string, options *client
 		"--output-format", "stream-json",
 		"--resume", sessionID,
 		prompt,
+	}
+
+	// Add model from options if provided
+	if options != nil && options.Model != "" {
+		args = append([]string{"--model", options.Model}, args...)
 	}
 
 	log.Info("Executing Cursor command with sessionID: %s, prompt: %s", sessionID, prompt)
