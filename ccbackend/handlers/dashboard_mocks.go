@@ -29,21 +29,20 @@ type MockSlackIntegrationsService struct {
 
 func (m *MockSlackIntegrationsService) CreateSlackIntegration(
 	ctx context.Context,
-	slackAuthCode, redirectURL string,
-	userID string,
+	organizationID, slackAuthCode, redirectURL string,
 ) (*models.SlackIntegration, error) {
-	args := m.Called(ctx, slackAuthCode, redirectURL, userID)
+	args := m.Called(ctx, organizationID, slackAuthCode, redirectURL)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.SlackIntegration), args.Error(1)
 }
 
-func (m *MockSlackIntegrationsService) GetSlackIntegrationsByUserID(
+func (m *MockSlackIntegrationsService) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
-	userID string,
+	organizationID string,
 ) ([]*models.SlackIntegration, error) {
-	args := m.Called(ctx, userID)
+	args := m.Called(ctx, organizationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -60,16 +59,19 @@ func (m *MockSlackIntegrationsService) GetAllSlackIntegrations(
 	return args.Get(0).([]*models.SlackIntegration), args.Error(1)
 }
 
-func (m *MockSlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, integrationID string) error {
-	args := m.Called(ctx, integrationID)
+func (m *MockSlackIntegrationsService) DeleteSlackIntegration(
+	ctx context.Context,
+	organizationID, integrationID string,
+) error {
+	args := m.Called(ctx, organizationID, integrationID)
 	return args.Error(0)
 }
 
 func (m *MockSlackIntegrationsService) GenerateCCAgentSecretKey(
 	ctx context.Context,
-	integrationID string,
+	organizationID, integrationID string,
 ) (string, error) {
-	args := m.Called(ctx, integrationID)
+	args := m.Called(ctx, organizationID, integrationID)
 	return args.String(0), args.Error(1)
 }
 

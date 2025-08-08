@@ -20,12 +20,17 @@ import (
 
 // ClerkAuthMiddleware handles JWT authentication using Clerk SDK
 type ClerkAuthMiddleware struct {
-	usersService services.UsersService
-	clerkJWKS    *jwks.Client
+	usersService         services.UsersService
+	organizationsService services.OrganizationsService
+	clerkJWKS            *jwks.Client
 }
 
 // NewClerkAuthMiddleware creates a new authentication middleware instance
-func NewClerkAuthMiddleware(usersService services.UsersService, clerkSecretKey string) *ClerkAuthMiddleware {
+func NewClerkAuthMiddleware(
+	usersService services.UsersService,
+	organizationsService services.OrganizationsService,
+	clerkSecretKey string,
+) *ClerkAuthMiddleware {
 	config := &clerk.ClientConfig{
 		BackendConfig: clerk.BackendConfig{
 			Key: clerk.String(clerkSecretKey),
@@ -34,8 +39,9 @@ func NewClerkAuthMiddleware(usersService services.UsersService, clerkSecretKey s
 	jwksClient := jwks.NewClient(config)
 
 	return &ClerkAuthMiddleware{
-		usersService: usersService,
-		clerkJWKS:    jwksClient,
+		usersService:         usersService,
+		organizationsService: organizationsService,
+		clerkJWKS:            jwksClient,
 	}
 }
 
@@ -47,16 +53,23 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		// Check if we're in testing environment
 		if os.Getenv("ENVIRONMENT") == "test" {
 			log.Printf("🧪 Test environment detected - skipping Clerk validation")
+			testOrg := &models.Organization{
+				ID:        core.NewID("org"),
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
 			testUser := &models.User{
 				ID:             core.NewID("u"),
 				AuthProvider:   "test",
 				AuthProviderID: core.NewID("testuser"),
+				OrganizationID: testOrg.ID,
 				CreatedAt:      time.Now(),
 				UpdatedAt:      time.Now(),
 			}
 
 			log.Printf("✅ Test user created: %s", testUser.ID)
 			ctx := appctx.SetUser(r.Context(), testUser)
+			ctx = appctx.SetOrganization(ctx, testOrg)
 			r = r.WithContext(ctx)
 
 			next(w, r)
@@ -100,8 +113,23 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		log.Printf("✅ User authenticated successfully: %s", user.ID)
+		// Get the user's organization
+		maybeOrg, err := m.organizationsService.GetOrganizationByID(r.Context(), user.OrganizationID)
+		if err != nil {
+			log.Printf("❌ Failed to get organization: %v", err)
+			m.writeErrorResponse(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !maybeOrg.IsPresent() {
+			log.Printf("❌ Organization not found: %s", user.OrganizationID)
+			m.writeErrorResponse(w, "organization not found", http.StatusInternalServerError)
+			return
+		}
+		org := maybeOrg.MustGet()
+
+		log.Printf("✅ User authenticated successfully: %s (org: %s)", user.ID, org.ID)
 		ctx := appctx.SetUser(r.Context(), user)
+		ctx = appctx.SetOrganization(ctx, org)
 		r = r.WithContext(ctx)
 
 		next(w, r)

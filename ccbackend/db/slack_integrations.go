@@ -12,7 +12,6 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
-	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -27,7 +26,7 @@ var slackIntegrationsColumns = []string{
 	"slack_team_id",
 	"slack_auth_token",
 	"slack_team_name",
-	"user_id",
+	"organization_id",
 	"ccagent_secret_key",
 	"ccagent_secret_key_generated_at",
 	"created_at",
@@ -47,7 +46,7 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(
 		"slack_team_id",
 		"slack_auth_token",
 		"slack_team_name",
-		"user_id",
+		"organization_id",
 		"created_at",
 		"updated_at",
 	}
@@ -59,7 +58,7 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(
 		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.SlackTeamID, integration.SlackAuthToken, integration.SlackTeamName, integration.UserID).
+	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.SlackTeamID, integration.SlackAuthToken, integration.SlackTeamName, integration.OrganizationID).
 		StructScan(integration)
 	if err != nil {
 		return fmt.Errorf("failed to create slack integration: %w", err)
@@ -68,25 +67,25 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(
 	return nil
 }
 
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
-	userID string,
+	organizationID string,
 ) ([]*models.SlackIntegration, error) {
-	if !core.IsValidULID(userID) {
-		return nil, fmt.Errorf("user ID must be a valid ULID")
+	if organizationID == "" {
+		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
 
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.slack_integrations 
-		WHERE user_id = $1 
+		WHERE organization_id = $1 
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
 	var integrations []*models.SlackIntegration
-	err := r.db.SelectContext(ctx, &integrations, query, userID)
+	err := r.db.SelectContext(ctx, &integrations, query, organizationID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get slack integrations by user ID: %w", err)
+		return nil, fmt.Errorf("failed to get slack integrations by organization ID: %w", err)
 	}
 
 	return integrations, nil
@@ -112,11 +111,11 @@ func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations(
 
 func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(
 	ctx context.Context,
-	integrationID, userID string,
+	integrationID, organizationID string,
 ) (bool, error) {
-	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND user_id = $2`, r.schema)
+	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, integrationID, userID)
+	result, err := r.db.ExecContext(ctx, query, integrationID, organizationID)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete slack integration: %w", err)
 	}
@@ -132,7 +131,7 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(
 func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(
 	ctx context.Context,
 	integrationID string,
-	userID string,
+	organizationID string,
 	secretKey string,
 ) (bool, error) {
 	if secretKey == "" {
@@ -142,9 +141,9 @@ func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(
 	query := fmt.Sprintf(`
 		UPDATE %s.slack_integrations 
 		SET ccagent_secret_key = $1, ccagent_secret_key_generated_at = NOW(), updated_at = NOW()
-		WHERE id = $2 AND user_id = $3`, r.schema)
+		WHERE id = $2 AND organization_id = $3`, r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, secretKey, integrationID, userID)
+	result, err := r.db.ExecContext(ctx, query, secretKey, integrationID, organizationID)
 	if err != nil {
 		return false, fmt.Errorf("failed to update slack integration with secret key: %w", err)
 	}
