@@ -69,8 +69,8 @@ type APIKeyValidatorFunc func(apiKey string) (string, error)
 
 // Client represents a connected WebSocket client
 type Client struct {
-	ID                 string
-	Socket             *socket.Socket
-	SlackIntegrationID string
-	AgentID            string
+	ID             string
+	Socket         *socket.Socket
+	OrganizationID string
+	AgentID        string
 }

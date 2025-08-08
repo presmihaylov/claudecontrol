@@ -153,27 +153,18 @@ func (h *DashboardHTTPHandler) HandleDeleteSlackIntegration(w http.ResponseWrite
 func (h *DashboardHTTPHandler) HandleGenerateCCAgentSecretKey(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🔑 Generate CCAgent secret key request received from %s", r.RemoteAddr)
 
-	// Extract integration ID from URL path parameters
-	vars := mux.Vars(r)
-	integrationIDStr, ok := vars["id"]
-	if !ok || !core.IsValidULID(integrationIDStr) {
-		log.Printf("❌ Missing or invalid integration ID in URL path")
-		http.Error(w, "integration ID must be a valid ULID", http.StatusBadRequest)
-		return
-	}
-
-	secretKey, err := h.handler.GenerateCCAgentSecretKey(r.Context(), integrationIDStr)
+	secretKey, err := h.handler.GenerateCCAgentSecretKey(r.Context())
 	if err != nil {
 		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "integration not found", http.StatusNotFound)
+			http.Error(w, "organization not found", http.StatusNotFound)
 		} else {
 			http.Error(w, "failed to generate secret key", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	log.Printf("✅ CCAgent secret key generated successfully for integration: %s", integrationIDStr)
+	log.Printf("✅ CCAgent secret key generated successfully")
 
 	// Return the secret key response
 	response := CCAgentSecretKeyResponse{
@@ -201,9 +192,9 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 		Methods("DELETE")
 	log.Printf("✅ DELETE /slack/integrations/{id} endpoint registered")
 
-	router.HandleFunc("/slack/integrations/{id}/ccagent_secret_key", authMiddleware.WithAuth(h.HandleGenerateCCAgentSecretKey)).
+	router.HandleFunc("/organizations/ccagent_secret_key", authMiddleware.WithAuth(h.HandleGenerateCCAgentSecretKey)).
 		Methods("POST")
-	log.Printf("✅ POST /slack/integrations/{id}/ccagent_secret_key endpoint registered")
+	log.Printf("✅ POST /organizations/ccagent_secret_key endpoint registered")
 
 	log.Printf("✅ All dashboard API endpoints registered successfully")
 }

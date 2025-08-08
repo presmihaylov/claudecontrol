@@ -2,8 +2,6 @@ package slackintegrations
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -149,61 +147,6 @@ func (s *SlackIntegrationsService) DeleteSlackIntegration(
 
 	log.Printf("📋 Completed successfully - deleted Slack integration: %s", integrationID)
 	return nil
-}
-
-func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(
-	ctx context.Context,
-	organizationID, integrationID string,
-) (string, error) {
-	log.Printf("📋 Starting to generate CCAgent secret key for integration: %s", integrationID)
-	if !core.IsValidULID(organizationID) {
-		return "", fmt.Errorf("organization ID must be a valid ULID")
-	}
-	if !core.IsValidULID(integrationID) {
-		return "", fmt.Errorf("integration ID must be a valid ULID")
-	}
-
-	// Generate cryptographically secure random secret key (32 bytes = 256 bits)
-	secretBytes := make([]byte, 32)
-	if _, err := rand.Read(secretBytes); err != nil {
-		return "", fmt.Errorf("failed to generate random secret key: %w", err)
-	}
-
-	// Encode as base64 for easier handling
-	secretKey := base64.URLEncoding.EncodeToString(secretBytes)
-
-	// Store the secret key in the database
-	updated, err := s.slackIntegrationsRepo.GenerateCCAgentSecretKey(ctx, integrationID, organizationID, secretKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to store CCAgent secret key: %w", err)
-	}
-	if !updated {
-		return "", core.ErrNotFound
-	}
-
-	log.Printf("📋 Completed successfully - generated CCAgent secret key for integration: %s", integrationID)
-	return secretKey, nil
-}
-
-func (s *SlackIntegrationsService) GetSlackIntegrationBySecretKey(
-	ctx context.Context,
-	secretKey string,
-) (mo.Option[*models.SlackIntegration], error) {
-	log.Printf("📋 Starting to get slack integration by secret key")
-	maybeSlackInt, err := s.slackIntegrationsRepo.GetSlackIntegrationBySecretKey(ctx, secretKey)
-	if err != nil {
-		log.Printf("❌ Failed to get slack integration by secret key: %v", err)
-		return mo.None[*models.SlackIntegration](), fmt.Errorf("failed to get slack integration by secret key: %w", err)
-	}
-
-	if !maybeSlackInt.IsPresent() {
-		log.Printf("📋 Completed successfully - slack integration not found")
-		return mo.None[*models.SlackIntegration](), nil
-	}
-
-	integration := maybeSlackInt.MustGet()
-	log.Printf("📋 Completed successfully - found slack integration for team: %s", integration.SlackTeamName)
-	return mo.Some(integration), nil
 }
 
 func (s *SlackIntegrationsService) GetSlackIntegrationByTeamID(
