@@ -2,17 +2,19 @@
 
 This is a simple Discord bot written in Go using the [DiscordGo](https://github.com/bwmarrin/discordgo) library. The bot demonstrates how to:
 
-- Detect when the bot is mentioned in messages
+- Detect when the bot is mentioned in top-level channel messages
+- Create public threads from messages that mention the bot
 - Add emoji reactions to messages (thumbs up 👍)
-- Respond to mentions with a personalized message
+- Respond to mentions in the created thread
 - Handle additional commands like `!greet`
 
 ## Features
 
-1. **Mention Detection**: The bot detects when it's mentioned using `@BotName`
-2. **Automatic Reactions**: Adds a thumbs up (👍) emoji reaction to messages where the bot is mentioned
-3. **Response Messages**: Replies with a personalized message when mentioned
-4. **Additional Commands**: Supports a `!greet @user` command with wave emoji reaction
+1. **Top-Level Mention Detection**: The bot detects when it's mentioned using `@BotName` in top-level channel messages (ignores mentions in existing threads)
+2. **Thread Creation**: Automatically creates a public thread from the message that mentions the bot
+3. **Automatic Reactions**: Adds a thumbs up (👍) emoji reaction to the original message
+4. **Thread Response**: Replies with a personalized message in the newly created thread
+5. **Additional Commands**: Supports a `!greet @user` command with wave emoji reaction (only in top-level channels)
 
 ## Prerequisites
 
@@ -43,6 +45,8 @@ In the "Bot" section, scroll down to "Privileged Gateway Intents" and enable:
    - Add Reactions
    - Read Message History
    - View Channels
+   - Create Public Threads
+   - Send Messages in Threads
 4. Copy the generated URL and open it in your browser to invite the bot to your server
 
 ### 4. Install Dependencies
@@ -77,17 +81,28 @@ Discord bot is now running. Press CTRL-C to exit.
 
 ## Usage Examples
 
-### Basic Mention
-Type in any Discord channel where the bot has access:
+### Basic Mention (Top-Level Channel)
+Type in any Discord channel where the bot has access (NOT in an existing thread):
 ```
 @YourBot hello there!
 ```
 
 **Result:**
 - The bot adds a 👍 reaction to your message
-- The bot replies: "Hello @YourUsername! You mentioned me. Thanks for the message!"
+- The bot creates a public thread named "Chat with YourUsername" from your message
+- The bot replies in the thread: "Hello @YourUsername! You mentioned me in the main channel, so I created this thread for our conversation. What can I help you with?"
 
-### Greet Command
+### Mention in Thread (Ignored)
+If you mention the bot in an existing thread:
+```
+@YourBot hello there!
+```
+
+**Result:**
+- The bot ignores the mention (no reaction, no response, no new thread created)
+- This prevents thread spam and keeps conversations organized
+
+### Greet Command (Top-Level Only)
 ```
 !greet @SomeUser
 ```
@@ -95,6 +110,7 @@ Type in any Discord channel where the bot has access:
 **Result:**
 - The bot adds a 👋 reaction to your message  
 - The bot replies: "Hello @SomeUser! 👋 You were greeted by @YourUsername"
+- Note: This command only works in top-level channels, not in threads
 
 ## Code Structure
 
@@ -102,23 +118,30 @@ Type in any Discord channel where the bot has access:
 
 1. **Bot Setup**: Creates Discord session with bot token
 2. **Event Handler**: `messageCreate` function handles incoming messages
-3. **Mention Detection**: Loops through `m.Mentions` to check if bot was mentioned
-4. **Reaction Adding**: Uses `MessageReactionAdd` with Unicode emoji
-5. **Message Response**: Uses `ChannelMessageSend` to reply
+3. **Channel Type Check**: Uses `s.Channel()` to determine if message is in a thread
+4. **Mention Detection**: Loops through `m.Mentions` to check if bot was mentioned
+5. **Thread Creation**: Uses `MessageThreadStart` to create public threads
+6. **Reaction Adding**: Uses `MessageReactionAdd` with Unicode emoji
+7. **Thread Response**: Uses `ChannelMessageSend` to reply in the created thread
 
 ### Key DiscordGo Functions Used
 
 - `discordgo.New("Bot " + token)` - Create Discord session
 - `s.AddHandler(messageCreate)` - Register message event handler
+- `s.Channel(channelID)` - Get channel information to check channel type
+- `s.MessageThreadStart(channelID, messageID, name, duration)` - Create public thread from message
 - `s.MessageReactionAdd(channelID, messageID, emoji)` - Add emoji reaction
-- `s.ChannelMessageSend(channelID, message)` - Send message to channel
+- `s.ChannelMessageSend(channelID, message)` - Send message to channel or thread
 - `m.Mentions` - Array of users mentioned in the message
 - `m.Author.Bot` - Check if message author is a bot
+- `isThreadChannel()` - Custom helper function to detect thread channel types
 
 ### Bot Safety Features
 
 - **Bot Detection**: Ignores messages from other bots (including itself) using `m.Author.Bot`
-- **Error Handling**: Logs errors for reactions and message sending
+- **Thread Spam Prevention**: Only responds to mentions in top-level channels, ignoring mentions in existing threads
+- **Error Handling**: Logs errors for reactions, thread creation, and message sending
+- **Fallback Response**: If thread creation fails, sends a fallback response in the original channel
 - **Graceful Shutdown**: Handles CTRL-C to cleanly close the Discord connection
 
 ## Environment Variables
@@ -135,13 +158,18 @@ Type in any Discord channel where the bot has access:
 2. **"Error opening connection"**: Verify your bot token and internet connection
 3. **Bot doesn't respond**: Ensure the bot has proper permissions and MESSAGE CONTENT INTENT is enabled
 4. **Reactions not working**: Check that the bot has "Add Reactions" permission in the channel
+5. **Thread creation fails**: Ensure the bot has "Create Public Threads" and "Send Messages in Threads" permissions
+6. **Bot ignores mentions**: Verify the mention is in a top-level channel, not an existing thread
 
 ### Debug Logs
 
 The bot logs important events:
-- When it's mentioned: `Bot mentioned by {username} in channel {channelID}`
+- When it's mentioned in top-level channel: `Bot mentioned by {username} in top-level channel {channelID}, creating thread`
+- When it's mentioned in thread: `Bot mentioned in thread {channelID}, ignoring as per configuration`
+- Thread creation: `Created thread '{name}' with ID {threadID}`
 - Errors with reactions: `Error adding reaction: {error}`
-- Errors with messages: `Error sending message: {error}`
+- Errors with thread creation: `Error creating thread: {error}`
+- Errors with messages: `Error sending message to thread: {error}`
 
 ## Extending the Bot
 
