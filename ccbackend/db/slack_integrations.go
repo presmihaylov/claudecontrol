@@ -27,8 +27,6 @@ var slackIntegrationsColumns = []string{
 	"slack_auth_token",
 	"slack_team_name",
 	"organization_id",
-	"ccagent_secret_key",
-	"ccagent_secret_key_generated_at",
 	"created_at",
 	"updated_at",
 }
@@ -126,60 +124,6 @@ func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(
 	}
 
 	return rowsAffected > 0, nil
-}
-
-func (r *PostgresSlackIntegrationsRepository) GenerateCCAgentSecretKey(
-	ctx context.Context,
-	integrationID string,
-	organizationID string,
-	secretKey string,
-) (bool, error) {
-	if secretKey == "" {
-		return false, fmt.Errorf("secret key cannot be empty")
-	}
-
-	query := fmt.Sprintf(`
-		UPDATE %s.slack_integrations 
-		SET ccagent_secret_key = $1, ccagent_secret_key_generated_at = NOW(), updated_at = NOW()
-		WHERE id = $2 AND organization_id = $3`, r.schema)
-
-	result, err := r.db.ExecContext(ctx, query, secretKey, integrationID, organizationID)
-	if err != nil {
-		return false, fmt.Errorf("failed to update slack integration with secret key: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("failed to get affected rows: %w", err)
-	}
-
-	return rowsAffected > 0, nil
-}
-
-func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationBySecretKey(
-	ctx context.Context,
-	secretKey string,
-) (mo.Option[*models.SlackIntegration], error) {
-	if secretKey == "" {
-		return mo.None[*models.SlackIntegration](), fmt.Errorf("secret key cannot be empty")
-	}
-
-	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
-	query := fmt.Sprintf(`
-		SELECT %s 
-		FROM %s.slack_integrations 
-		WHERE ccagent_secret_key = $1 AND ccagent_secret_key IS NOT NULL`, columnsStr, r.schema)
-
-	var integration models.SlackIntegration
-	err := r.db.GetContext(ctx, &integration, query, secretKey)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return mo.None[*models.SlackIntegration](), nil
-		}
-		return mo.None[*models.SlackIntegration](), fmt.Errorf("failed to get slack integration by secret key: %w", err)
-	}
-
-	return mo.Some(&integration), nil
 }
 
 func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationByTeamID(

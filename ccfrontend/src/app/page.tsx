@@ -21,7 +21,6 @@ interface SlackIntegration {
 	slack_team_id: string;
 	slack_team_name: string;
 	user_id: string;
-	ccagent_secret_key_generated_at: string | null;
 	created_at: string;
 	updated_at: string;
 }

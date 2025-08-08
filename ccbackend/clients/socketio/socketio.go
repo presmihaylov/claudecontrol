@@ -96,7 +96,7 @@ func (ws *Server) handleSocketIOConnection(sock *socket.Socket) {
 	}
 
 	// Validate API key
-	slackIntegrationID, err := ws.apiKeyValidator(apiKey)
+	organizationID, err := ws.apiKeyValidator(apiKey)
 	if err != nil {
 		log.Printf("❌ Rejecting Socket.IO connection: invalid API key: %v", err)
 		sock.Disconnect(true)
@@ -104,10 +104,10 @@ func (ws *Server) handleSocketIOConnection(sock *socket.Socket) {
 	}
 
 	client := &clients.Client{
-		ID:                 core.NewID("cl"),
-		Socket:             sock,
-		SlackIntegrationID: slackIntegrationID,
-		AgentID:            agentID,
+		ID:             core.NewID("cl"),
+		Socket:         sock,
+		OrganizationID: organizationID,
+		AgentID:        agentID,
 	}
 	ws.addClient(client)
 	log.Printf("✅ Socket.IO client connected with ID: %s, socket ID: %s", client.ID, sock.Id())

@@ -2,6 +2,8 @@ package organizations
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"log"
 
@@ -55,4 +57,52 @@ func (s *OrganizationsService) GetOrganizationByID(
 		log.Printf("📋 Completed successfully - organization not found with ID: %s", id)
 	}
 	return organization, nil
+}
+
+func (s *OrganizationsService) GenerateCCAgentSecretKey(ctx context.Context, organizationID string) (string, error) {
+	log.Printf("📋 Starting to generate CCAgent secret key for organization: %s", organizationID)
+	if !core.IsValidULID(organizationID) {
+		return "", fmt.Errorf("organization ID must be a valid ULID")
+	}
+
+	// Generate a random 32-byte secret key
+	secretBytes := make([]byte, 32)
+	_, err := rand.Read(secretBytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate random secret key: %w", err)
+	}
+	secretKey := base64.URLEncoding.EncodeToString(secretBytes)
+
+	updated, err := s.organizationsRepo.GenerateCCAgentSecretKey(ctx, organizationID, secretKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to update organization with secret key: %w", err)
+	}
+	if !updated {
+		return "", fmt.Errorf("organization not found")
+	}
+
+	log.Printf("📋 Completed successfully - generated secret key for organization: %s", organizationID)
+	return secretKey, nil
+}
+
+func (s *OrganizationsService) GetOrganizationBySecretKey(
+	ctx context.Context,
+	secretKey string,
+) (mo.Option[*models.Organization], error) {
+	log.Printf("📋 Starting to get organization by secret key")
+	if secretKey == "" {
+		return mo.None[*models.Organization](), fmt.Errorf("secret key cannot be empty")
+	}
+
+	maybeOrg, err := s.organizationsRepo.GetOrganizationBySecretKey(ctx, secretKey)
+	if err != nil {
+		return mo.None[*models.Organization](), fmt.Errorf("failed to get organization by secret key: %w", err)
+	}
+
+	if maybeOrg.IsPresent() {
+		log.Printf("📋 Completed successfully - retrieved organization by secret key")
+	} else {
+		log.Printf("📋 Completed successfully - organization not found for secret key")
+	}
+	return maybeOrg, nil
 }
