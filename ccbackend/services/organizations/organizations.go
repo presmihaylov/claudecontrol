@@ -106,3 +106,15 @@ func (s *OrganizationsService) GetOrganizationBySecretKey(
 	}
 	return maybeOrg, nil
 }
+
+func (s *OrganizationsService) GetAllOrganizations(ctx context.Context) ([]*models.Organization, error) {
+	log.Printf("📋 Starting to get all organizations")
+
+	organizations, err := s.organizationsRepo.GetAllOrganizations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all organizations: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - retrieved %d organizations", len(organizations))
+	return organizations, nil
+}
