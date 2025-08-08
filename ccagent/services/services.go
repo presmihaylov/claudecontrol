@@ -14,6 +14,9 @@ type CLIAgent interface {
 	// StartNewConversationWithSystemPrompt starts a new conversation with both user and system prompts
 	StartNewConversationWithSystemPrompt(prompt, systemPrompt string) (*CLIAgentResult, error)
 
+	// StartNewConversationWithDisallowedTools starts a new conversation with specified disallowed tools
+	StartNewConversationWithDisallowedTools(prompt string, disallowedTools []string) (*CLIAgentResult, error)
+
 	// ContinueConversation continues an existing conversation
 	ContinueConversation(sessionID, prompt string) (*CLIAgentResult, error)
 
