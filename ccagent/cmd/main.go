@@ -39,7 +39,7 @@ type CmdRunner struct {
 	reconnectChan  chan struct{}
 }
 
-func NewCmdRunner(agentType, permissionMode string) (*CmdRunner, error) {
+func NewCmdRunner(agentType, permissionMode, cursorModel string) (*CmdRunner, error) {
 	log.Info("📋 Starting to initialize CmdRunner with agent: %s", agentType)
 
 	// Create log directory for agent service
@@ -53,6 +53,13 @@ func NewCmdRunner(agentType, permissionMode string) (*CmdRunner, error) {
 	cliAgent, err := createCLIAgent(agentType, permissionMode, logDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CLI agent: %w", err)
+	}
+
+	// If using cursor and a model was provided, store it in the service
+	if agentType == "cursor" && cursorModel != "" {
+		if cs, ok := cliAgent.(*cursorservice.CursorService); ok {
+			cs.WithModel(cursorModel)
+		}
 	}
 
 	// Cleanup old session logs (older than 7 days)
@@ -87,6 +94,7 @@ func createCLIAgent(agentType, permissionMode, logDir string) (services.CLIAgent
 		return claudeservice.NewClaudeService(claudeClient, logDir), nil
 	case "cursor":
 		cursorClient := cursorclient.NewCursorClient()
+		// Model will be configured after flag parsing through Options
 		return cursorservice.NewCursorService(cursorClient, logDir), nil
 	default:
 		return nil, fmt.Errorf("unsupported agent type: %s", agentType)
@@ -96,7 +104,8 @@ func createCLIAgent(agentType, permissionMode, logDir string) (services.CLIAgent
 type Options struct {
 	BypassPermissions bool `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 	//nolint
-	Agent string `long:"agent" description:"CLI agent to use (claude or cursor)" choice:"claude" choice:"cursor" default:"claude"`
+	Agent       string `long:"agent" description:"CLI agent to use (claude or cursor)" choice:"claude" choice:"cursor" default:"claude"`
+	CursorModel string `long:"cursor-model" description:"Cursor model to use when --agent=cursor (e.g. gpt-4o, sonnet, sonnet-35, etc.)"`
 }
 
 func main() {
@@ -151,7 +160,7 @@ func main() {
 		)
 	}
 
-	cmdRunner, err := NewCmdRunner(opts.Agent, permissionMode)
+	cmdRunner, err := NewCmdRunner(opts.Agent, permissionMode, opts.CursorModel)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing CmdRunner: %v\n", err)
 		os.Exit(1)

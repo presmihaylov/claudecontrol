@@ -16,6 +16,7 @@ import (
 type CursorService struct {
 	cursorClient clients.CursorClient
 	logDir       string
+	model        string
 }
 
 func NewCursorService(cursorClient clients.CursorClient, logDir string) *CursorService {
@@ -23,6 +24,12 @@ func NewCursorService(cursorClient clients.CursorClient, logDir string) *CursorS
 		cursorClient: cursorClient,
 		logDir:       logDir,
 	}
+}
+
+// WithModel sets the preferred Cursor model on the service instance.
+func (c *CursorService) WithModel(model string) *CursorService {
+	c.model = strings.TrimSpace(model)
+	return c
 }
 
 // writeCursorSessionLog writes Cursor output to a timestamped log file and returns the filepath
@@ -101,6 +108,13 @@ func (c *CursorService) StartNewConversationWithOptions(
 	options *clients.CursorOptions,
 ) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to start new Cursor conversation")
+	// Ensure options exists and propagate model if set
+	if options == nil {
+		options = &clients.CursorOptions{}
+	}
+	if c.model != "" {
+		options.Model = c.model
+	}
 	rawOutput, err := c.cursorClient.StartNewSession(prompt, options)
 	if err != nil {
 		log.Error("Failed to start new Cursor session: %v", err)
@@ -167,6 +181,13 @@ func (c *CursorService) ContinueConversationWithOptions(
 	options *clients.CursorOptions,
 ) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to continue Cursor conversation: %s", sessionID)
+	// Ensure options exists and propagate model if set
+	if options == nil {
+		options = &clients.CursorOptions{}
+	}
+	if c.model != "" {
+		options.Model = c.model
+	}
 	rawOutput, err := c.cursorClient.ContinueSession(sessionID, prompt, options)
 	if err != nil {
 		log.Error("Failed to continue Cursor session: %v", err)
