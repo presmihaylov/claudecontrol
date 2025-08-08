@@ -397,9 +397,13 @@ export default function Home() {
 										<div className="space-y-2">
 											<p className="text-sm text-muted-foreground">
 												Secret key generated on{" "}
-												{new Date(organization.ccagent_secret_key_generated_at).toLocaleDateString()}{" "}
+												{new Date(
+													organization.ccagent_secret_key_generated_at,
+												).toLocaleDateString()}{" "}
 												at{" "}
-												{new Date(organization.ccagent_secret_key_generated_at).toLocaleTimeString()}
+												{new Date(
+													organization.ccagent_secret_key_generated_at,
+												).toLocaleTimeString()}
 											</p>
 											<Button
 												variant="outline"
@@ -414,8 +418,8 @@ export default function Home() {
 									) : (
 										<div className="space-y-2">
 											<p className="text-sm text-muted-foreground">
-												No secret key has been generated yet. Generate one to start using ccagent with
-												all your Slack workspaces.
+												No secret key has been generated yet. Generate one to start using ccagent
+												with all your Slack workspaces.
 											</p>
 											<Button
 												onClick={handleGenerateSecretKey}
@@ -508,9 +512,13 @@ export default function Home() {
 										<div className="space-y-2">
 											<p className="text-sm text-muted-foreground">
 												Secret key generated on{" "}
-												{new Date(organization.ccagent_secret_key_generated_at).toLocaleDateString()}{" "}
+												{new Date(
+													organization.ccagent_secret_key_generated_at,
+												).toLocaleDateString()}{" "}
 												at{" "}
-												{new Date(organization.ccagent_secret_key_generated_at).toLocaleTimeString()}
+												{new Date(
+													organization.ccagent_secret_key_generated_at,
+												).toLocaleTimeString()}
 											</p>
 											<Button
 												variant="outline"
@@ -525,8 +533,8 @@ export default function Home() {
 									) : (
 										<div className="space-y-2">
 											<p className="text-sm text-muted-foreground">
-												No secret key has been generated yet. Generate one to start using ccagent with
-												all your Slack workspaces.
+												No secret key has been generated yet. Generate one to start using ccagent
+												with all your Slack workspaces.
 											</p>
 											<Button
 												onClick={handleGenerateSecretKey}
