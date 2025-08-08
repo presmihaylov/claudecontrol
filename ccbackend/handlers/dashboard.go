@@ -13,15 +13,18 @@ import (
 type DashboardAPIHandler struct {
 	usersService             services.UsersService
 	slackIntegrationsService services.SlackIntegrationsService
+	organizationsService     services.OrganizationsService
 }
 
 func NewDashboardAPIHandler(
 	usersService services.UsersService,
 	slackIntegrationsService services.SlackIntegrationsService,
+	organizationsService services.OrganizationsService,
 ) *DashboardAPIHandler {
 	return &DashboardAPIHandler{
 		usersService:             usersService,
 		slackIntegrationsService: slackIntegrationsService,
+		organizationsService:     organizationsService,
 	}
 }
 
@@ -79,19 +82,25 @@ func (h *DashboardAPIHandler) DeleteSlackIntegration(ctx context.Context, integr
 	return nil
 }
 
-// GenerateCCAgentSecretKey generates a new secret key for a Slack integration
-func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error) {
-	log.Printf("🔑 Generating CCAgent secret key for integration: %s", integrationID)
+// GenerateCCAgentSecretKey generates a new secret key for an organization
+func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context, organizationID string) (string, error) {
+	log.Printf("🔑 Generating CCAgent secret key for organization: %s", organizationID)
 	org, ok := appctx.GetOrganization(ctx)
 	if !ok {
 		return "", fmt.Errorf("organization not found in context")
 	}
-	secretKey, err := h.slackIntegrationsService.GenerateCCAgentSecretKey(ctx, org.ID, integrationID)
+
+	// Ensure the requested organization matches the authenticated user's organization
+	if org.ID != organizationID {
+		return "", fmt.Errorf("access denied: organization mismatch")
+	}
+
+	secretKey, err := h.organizationsService.GenerateCCAgentSecretKey(ctx, organizationID)
 	if err != nil {
 		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
 		return "", err
 	}
 
-	log.Printf("✅ CCAgent secret key generated successfully for integration: %s", integrationID)
+	log.Printf("✅ CCAgent secret key generated successfully for organization: %s", organizationID)
 	return secretKey, nil
 }

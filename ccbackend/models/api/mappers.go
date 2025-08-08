@@ -22,13 +22,12 @@ func DomainSlackIntegrationToAPISlackIntegration(domainIntegration *models.Slack
 	}
 
 	return &SlackIntegrationModel{
-		ID:                          domainIntegration.ID,
-		SlackTeamID:                 domainIntegration.SlackTeamID,
-		SlackTeamName:               domainIntegration.SlackTeamName,
-		OrganizationID:              domainIntegration.OrganizationID,
-		CCAgentSecretKeyGeneratedAt: domainIntegration.CCAgentSecretKeyGeneratedAt,
-		CreatedAt:                   domainIntegration.CreatedAt,
-		UpdatedAt:                   domainIntegration.UpdatedAt,
+		ID:             domainIntegration.ID,
+		SlackTeamID:    domainIntegration.SlackTeamID,
+		SlackTeamName:  domainIntegration.SlackTeamName,
+		OrganizationID: domainIntegration.OrganizationID,
+		CreatedAt:      domainIntegration.CreatedAt,
+		UpdatedAt:      domainIntegration.UpdatedAt,
 	}
 }
 

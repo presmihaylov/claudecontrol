@@ -80,7 +80,14 @@ func run() error {
 		cfg.SlackClientSecret,
 	)
 
-	coreUseCase := core.NewCoreUseCase(nil, agentsService, jobsService, slackIntegrationsService, txManager)
+	coreUseCase := core.NewCoreUseCase(
+		nil,
+		agentsService,
+		jobsService,
+		slackIntegrationsService,
+		organizationsService,
+		txManager,
+	)
 
 	// Create API key validator using the core usecase
 	apiKeyValidator := func(apiKey string) (string, error) {
@@ -90,10 +97,17 @@ func run() error {
 	wsClient := socketioclient.NewSocketIOClient(apiKeyValidator)
 
 	// Update the core usecase with the wsClient after initialization
-	coreUseCase = core.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, txManager)
+	coreUseCase = core.NewCoreUseCase(
+		wsClient,
+		agentsService,
+		jobsService,
+		slackIntegrationsService,
+		organizationsService,
+		txManager,
+	)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
 	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
-	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
+	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService, organizationsService)
 	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkSecretKey)
 
