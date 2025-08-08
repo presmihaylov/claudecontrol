@@ -20,6 +20,11 @@ type GitUseCase struct {
 	appState      *models.AppState
 }
 
+type CLIAgentResult struct {
+	Output string
+	Err    error
+}
+
 type AutoCommitResult struct {
 	JustCreatedPR   bool
 	PullRequestLink string
@@ -356,29 +361,19 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 	log.Info("🆕 No existing PR found - creating new PR")
 
 	// Generate PR title and body using Claude in parallel
-	type titleResult struct {
-		title string
-		err   error
-	}
-	type bodyResult struct {
-		body string
-		err  error
-	}
-
-	// Use channels to pass results safely between goroutines
-	titleChan := make(chan titleResult)
-	bodyChan := make(chan bodyResult)
+	titleChan := make(chan CLIAgentResult)
+	bodyChan := make(chan CLIAgentResult)
 
 	// Start PR title generation
 	go func() {
-		title, err := g.generatePRTitleWithClaude(branchName)
-		titleChan <- titleResult{title: title, err: err}
+		output, err := g.generatePRTitleWithClaude(branchName)
+		titleChan <- CLIAgentResult{Output: output, Err: err}
 	}()
 
 	// Start PR body generation
 	go func() {
-		body, err := g.generatePRBodyWithClaude(branchName, slackThreadLink)
-		bodyChan <- bodyResult{body: body, err: err}
+		output, err := g.generatePRBodyWithClaude(branchName, slackThreadLink)
+		bodyChan <- CLIAgentResult{Output: output, Err: err}
 	}()
 
 	// Wait for both to complete and collect results
@@ -386,18 +381,18 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 	bodyRes := <-bodyChan
 
 	// Check for errors
-	if titleRes.err != nil {
-		log.Error("❌ Failed to generate PR title with Claude: %v", titleRes.err)
-		return nil, fmt.Errorf("failed to generate PR title with Claude: %w", titleRes.err)
+	if titleRes.Err != nil {
+		log.Error("❌ Failed to generate PR title with Claude: %v", titleRes.Err)
+		return nil, fmt.Errorf("failed to generate PR title with Claude: %w", titleRes.Err)
 	}
 
-	if bodyRes.err != nil {
-		log.Error("❌ Failed to generate PR body with Claude: %v", bodyRes.err)
-		return nil, fmt.Errorf("failed to generate PR body with Claude: %w", bodyRes.err)
+	if bodyRes.Err != nil {
+		log.Error("❌ Failed to generate PR body with Claude: %v", bodyRes.Err)
+		return nil, fmt.Errorf("failed to generate PR body with Claude: %w", bodyRes.Err)
 	}
 
-	prTitle := titleRes.title
-	prBody := bodyRes.body
+	prTitle := titleRes.Output
+	prBody := bodyRes.Output
 
 	log.Info("📋 Generated PR title: %s", prTitle)
 
@@ -792,33 +787,23 @@ func (g *GitUseCase) updatePRTitleAndDescriptionIfNeeded(branchName, slackThread
 	}
 
 	// Generate updated PR title and description using Claude in parallel
-	type titleUpdateResult struct {
-		title string
-		err   error
-	}
-	type descriptionUpdateResult struct {
-		description string
-		err         error
-	}
-
-	// Use channels to pass results safely between goroutines
-	titleUpdateChan := make(chan titleUpdateResult)
-	descriptionUpdateChan := make(chan descriptionUpdateResult)
+	titleUpdateChan := make(chan CLIAgentResult)
+	descriptionUpdateChan := make(chan CLIAgentResult)
 
 	// Start updated PR title generation
 	go func() {
-		title, err := g.generateUpdatedPRTitleWithClaude(branchName, currentTitle)
-		titleUpdateChan <- titleUpdateResult{title: title, err: err}
+		output, err := g.generateUpdatedPRTitleWithClaude(branchName, currentTitle)
+		titleUpdateChan <- CLIAgentResult{Output: output, Err: err}
 	}()
 
 	// Start updated PR description generation
 	go func() {
-		description, err := g.generateUpdatedPRDescriptionWithClaude(
+		output, err := g.generateUpdatedPRDescriptionWithClaude(
 			branchName,
 			currentDescription,
 			slackThreadLink,
 		)
-		descriptionUpdateChan <- descriptionUpdateResult{description: description, err: err}
+		descriptionUpdateChan <- CLIAgentResult{Output: output, Err: err}
 	}()
 
 	// Wait for both to complete and collect results
@@ -826,18 +811,18 @@ func (g *GitUseCase) updatePRTitleAndDescriptionIfNeeded(branchName, slackThread
 	descriptionUpdateRes := <-descriptionUpdateChan
 
 	// Check for errors
-	if titleUpdateRes.err != nil {
-		log.Error("❌ Failed to generate updated PR title with Claude: %v", titleUpdateRes.err)
-		return fmt.Errorf("failed to generate updated PR title with Claude: %w", titleUpdateRes.err)
+	if titleUpdateRes.Err != nil {
+		log.Error("❌ Failed to generate updated PR title with Claude: %v", titleUpdateRes.Err)
+		return fmt.Errorf("failed to generate updated PR title with Claude: %w", titleUpdateRes.Err)
 	}
 
-	if descriptionUpdateRes.err != nil {
-		log.Error("❌ Failed to generate updated PR description with Claude: %v", descriptionUpdateRes.err)
-		return fmt.Errorf("failed to generate updated PR description with Claude: %w", descriptionUpdateRes.err)
+	if descriptionUpdateRes.Err != nil {
+		log.Error("❌ Failed to generate updated PR description with Claude: %v", descriptionUpdateRes.Err)
+		return fmt.Errorf("failed to generate updated PR description with Claude: %w", descriptionUpdateRes.Err)
 	}
 
-	updatedTitle := titleUpdateRes.title
-	updatedDescription := descriptionUpdateRes.description
+	updatedTitle := titleUpdateRes.Output
+	updatedDescription := descriptionUpdateRes.Output
 
 	// Update title if it has changed
 	if strings.TrimSpace(updatedTitle) != strings.TrimSpace(currentTitle) {
