@@ -136,6 +136,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	// Update job timestamp to track activity
 	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, slackIntegrationID); err != nil {
 		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
+		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
 
 	// Update the ProcessedSlackMessage status to COMPLETED
@@ -243,6 +244,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	// Update job timestamp to track activity
 	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, slackIntegrationID); err != nil {
 		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
+		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
 
 	log.Printf("📋 Completed successfully - sent system message to Slack thread %s", job.SlackThreadTS)
@@ -1136,7 +1138,11 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 
 				// Update Slack reaction to show processing (eyes emoji)
 				if err := s.updateSlackMessageReaction(ctx, updatedMessage.SlackChannelID, updatedMessage.SlackTS, "eyes", slackIntegrationID); err != nil {
-					log.Printf("⚠️ Failed to update slack reaction for message %s: %v", message.ID, err)
+					processingErrors = append(
+						processingErrors,
+						fmt.Sprintf("failed to update slack reaction for message %s: %v", message.ID, err),
+					)
+					continue
 				}
 
 				// Determine if this is the first message in the job (new conversation)
@@ -1147,7 +1153,11 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 					slackIntegrationID,
 				)
 				if err != nil {
-					log.Printf("⚠️ Failed to check for existing messages in job %s: %v", job.ID, err)
+					processingErrors = append(
+						processingErrors,
+						fmt.Sprintf("failed to check for existing messages in job %s: %v", job.ID, err),
+					)
+					continue
 				}
 				isNewConversation := len(allMessages) == 0
 
