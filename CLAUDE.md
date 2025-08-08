@@ -223,11 +223,10 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 ## Development Workflow
 
 ### After Completing Tasks
-**MANDATORY: Always build, lint-fix, and test to ensure nothing is broken:**
+**MANDATORY: Always build and lint-fix to ensure code quality:**
 ```bash
 cd ccbackend && make build  # Build first to catch compilation issues
 cd ccbackend && make lint-fix  # REQUIRED: Fix linting issues automatically
-cd ccbackend && make test   # Then run tests
 cd ccagent && make build    # Build ccagent to catch compilation issues
 cd ccagent && make lint-fix  # REQUIRED: Fix linting issues automatically
 cd ccfrontend && bun run build && bun run lint  # Build and lint frontend with Biome
@@ -236,6 +235,12 @@ cd ccfrontend && bun run build && bun run lint  # Build and lint frontend with B
 **CRITICAL**: `make lint-fix` must ALWAYS be run in both ccbackend and ccagent after making any
 code changes. This automatically fixes formatting, imports, and other linting issues to maintain
 code quality standards.
+
+### Test Guidelines
+**NEVER run tests or attempt to fix test failures autonomously unless explicitly requested by the user.**
+- Tests should only be executed when the user specifically asks for them to be run
+- Test failures should only be addressed when the user explicitly requests test fixes
+- This prevents unnecessary work and allows the user to control when testing occurs
 
 ### Database Migrations
 - **Apply Pending Migrations**: `supabase migration up` to apply only new migrations
