@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"ccbackend/db"
+	organizations "ccbackend/services/organizations"
+	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
 )
 
@@ -85,9 +87,12 @@ func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
 	require.NoError(t, err)
 	defer dbConn.Close()
 
-	// Initialize repository and service
+	// Initialize repositories and services
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
-	usersService := NewUsersService(usersRepo)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
+	txManager := txmanager.NewTransactionManager(dbConn)
+	usersService := NewUsersService(usersRepo, organizationsService, txManager)
 
 	// Create test user helper
 	testHelper := NewTestUserHelper(t)
@@ -104,12 +109,14 @@ func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
 	assert.Equal(t, "clerk", user.AuthProvider)
 	assert.Equal(t, clerkUserID, user.AuthProviderID)
 	assert.NotEmpty(t, user.ID)
+	assert.NotEmpty(t, user.OrganizationID, "User should have an organization ID")
 
 	// Test that calling GetOrCreateUser again returns the same user
 	user2, err := usersService.GetOrCreateUser(context.Background(), "clerk", clerkUserID)
 	require.NoError(t, err)
 	assert.Equal(t, user.ID, user2.ID)
 	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
+	assert.Equal(t, user.OrganizationID, user2.OrganizationID, "Organization ID should be the same")
 
 	// Cleanup database record
 	defer func() {
@@ -127,9 +134,12 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	require.NoError(t, err)
 	defer dbConn.Close()
 
-	// Initialize repository and service
+	// Initialize repositories and services
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
-	usersService := NewUsersService(usersRepo)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
+	txManager := txmanager.NewTransactionManager(dbConn)
+	usersService := NewUsersService(usersRepo, organizationsService, txManager)
 
 	// Create test user using testutils
 	testUser := testutils.CreateTestUserWithProvider(t, usersRepo, "test")
@@ -142,12 +152,14 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	assert.Equal(t, testUser.AuthProvider, user.AuthProvider)
 	assert.Equal(t, testUser.AuthProviderID, user.AuthProviderID)
 	assert.Equal(t, testUser.ID, user.ID)
+	assert.Equal(t, testUser.OrganizationID, user.OrganizationID, "Should return same user with same organization ID")
 
 	// Test that calling GetOrCreateUser again returns the same user
 	user2, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID)
 	require.NoError(t, err)
 	assert.Equal(t, user.ID, user2.ID)
 	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
+	assert.Equal(t, user.OrganizationID, user2.OrganizationID, "Organization ID should remain consistent")
 }
 
 func TestUsersService_GetOrCreateUser_ValidationErrors(t *testing.T) {
@@ -159,9 +171,12 @@ func TestUsersService_GetOrCreateUser_ValidationErrors(t *testing.T) {
 	require.NoError(t, err)
 	defer dbConn.Close()
 
-	// Initialize repository and service
+	// Initialize repositories and services
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
-	usersService := NewUsersService(usersRepo)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
+	txManager := txmanager.NewTransactionManager(dbConn)
+	usersService := NewUsersService(usersRepo, organizationsService, txManager)
 
 	// Test with empty auth provider
 	user, err := usersService.GetOrCreateUser(context.Background(), "", "test_user_id")

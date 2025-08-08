@@ -24,6 +24,7 @@ var usersColumns = []string{
 	"id",
 	"auth_provider",
 	"auth_provider_id",
+	"organization_id",
 	"created_at",
 	"updated_at",
 }
@@ -32,30 +33,59 @@ func NewPostgresUsersRepository(db *sqlx.DB, schema string) *PostgresUsersReposi
 	return &PostgresUsersRepository{db: db, schema: schema}
 }
 
-func (r *PostgresUsersRepository) GetOrCreateUser(
+func (r *PostgresUsersRepository) GetUserByAuthProvider(
 	ctx context.Context,
 	authProvider, authProviderID string,
+	forUpdate bool,
+) (*models.User, error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+
+	returningStr := strings.Join(usersColumns, ", ")
+	forUpdateClause := ""
+	if forUpdate {
+		forUpdateClause = " FOR UPDATE"
+	}
+
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.users 
+		WHERE auth_provider = $1 AND auth_provider_id = $2%s`,
+		returningStr, r.schema, forUpdateClause)
+
+	user := &models.User{}
+	err := db.QueryRowxContext(ctx, query, authProvider, authProviderID).StructScan(user)
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows") {
+			return nil, nil // User not found
+		}
+		return nil, fmt.Errorf("failed to get user by auth provider: %w", err)
+	}
+
+	return user, nil
+}
+
+func (r *PostgresUsersRepository) CreateUser(
+	ctx context.Context,
+	authProvider, authProviderID, organizationID string,
 ) (*models.User, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 
 	// Generate ULID for new users
 	userID := core.NewID("u")
 
-	insertColumns := []string{"id", "auth_provider", "auth_provider_id", "created_at", "updated_at"}
+	insertColumns := []string{"id", "auth_provider", "auth_provider_id", "organization_id", "created_at", "updated_at"}
 	columnsStr := strings.Join(insertColumns, ", ")
 	returningStr := strings.Join(usersColumns, ", ")
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.users (%s) 
-		VALUES ($1, $2, $3, NOW(), NOW()) 
-		ON CONFLICT (auth_provider, auth_provider_id) 
-		DO UPDATE SET updated_at = NOW()
+		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
 	user := &models.User{}
-	err := db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID).StructScan(user)
+	err := db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID, organizationID).StructScan(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get or create user: %w", err)
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
 	return user, nil
