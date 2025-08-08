@@ -99,8 +99,15 @@ func (c *ClaudeService) CleanupOldLogs(maxAgeDays int) error {
 }
 
 func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, error) {
+	return c.StartNewConversationWithOptions(prompt, nil)
+}
+
+func (c *ClaudeService) StartNewConversationWithOptions(
+	prompt string,
+	options *clients.ClaudeOptions,
+) (*ClaudeResult, error) {
 	log.Info("📋 Starting to start new Claude conversation")
-	rawOutput, err := c.claudeClient.StartNewSession(prompt)
+	rawOutput, err := c.claudeClient.StartNewSession(prompt, options)
 	if err != nil {
 		log.Error("Failed to start new Claude session: %v", err)
 		return nil, c.handleClaudeClientError(err, "failed to start new Claude session")
@@ -141,95 +148,30 @@ func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, erro
 }
 
 func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPrompt string) (*ClaudeResult, error) {
-	log.Info("📋 Starting to start new Claude conversation with system prompt")
-	rawOutput, err := c.claudeClient.StartNewSessionWithSystemPrompt(prompt, systemPrompt)
-	if err != nil {
-		log.Error("Failed to start new Claude session with system prompt: %v", err)
-		return nil, c.handleClaudeClientError(err, "failed to start new Claude session with system prompt")
-	}
-
-	// Always log the Claude session
-	logPath, writeErr := c.writeClaudeSessionLog(rawOutput)
-	if writeErr != nil {
-		log.Error("Failed to write Claude session log: %v", writeErr)
-	}
-
-	messages, err := MapClaudeOutputToMessages(rawOutput)
-	if err != nil {
-		log.Error("Failed to parse Claude output: %v", err)
-
-		return nil, &core.ClaudeParseError{
-			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
-			LogFilePath: logPath,
-			OriginalErr: err,
-		}
-	}
-
-	sessionID := c.extractSessionID(messages)
-	output, err := c.extractClaudeResult(messages)
-	if err != nil {
-		log.Error("Failed to extract Claude result: %v", err)
-		return nil, fmt.Errorf("failed to extract Claude result: %w", err)
-	}
-
-	log.Info("📋 Claude response extracted successfully, session: %s, output length: %d", sessionID, len(output))
-	result := &ClaudeResult{
-		Output:    output,
-		SessionID: sessionID,
-	}
-
-	log.Info("📋 Completed successfully - started new Claude conversation with system prompt, session: %s", sessionID)
-	return result, nil
+	return c.StartNewConversationWithOptions(prompt, &clients.ClaudeOptions{
+		SystemPrompt: systemPrompt,
+	})
 }
 
 func (c *ClaudeService) StartNewConversationWithDisallowedTools(
 	prompt string,
 	disallowedTools []string,
 ) (*ClaudeResult, error) {
-	log.Info("📋 Starting to start new Claude conversation with disallowed tools")
-	rawOutput, err := c.claudeClient.StartNewSessionWithDisallowedTools(prompt, disallowedTools)
-	if err != nil {
-		log.Error("Failed to start new Claude session with disallowed tools: %v", err)
-		return nil, c.handleClaudeClientError(err, "failed to start new Claude session with disallowed tools")
-	}
-
-	// Always log the Claude session
-	logPath, writeErr := c.writeClaudeSessionLog(rawOutput)
-	if writeErr != nil {
-		log.Error("Failed to write Claude session log: %v", writeErr)
-	}
-
-	messages, err := MapClaudeOutputToMessages(rawOutput)
-	if err != nil {
-		log.Error("Failed to parse Claude output: %v", err)
-
-		return nil, &core.ClaudeParseError{
-			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
-			LogFilePath: logPath,
-			OriginalErr: err,
-		}
-	}
-
-	sessionID := c.extractSessionID(messages)
-	output, err := c.extractClaudeResult(messages)
-	if err != nil {
-		log.Error("Failed to extract Claude result: %v", err)
-		return nil, fmt.Errorf("failed to extract Claude result: %w", err)
-	}
-
-	log.Info("📋 Claude response extracted successfully, session: %s, output length: %d", sessionID, len(output))
-	result := &ClaudeResult{
-		Output:    output,
-		SessionID: sessionID,
-	}
-
-	log.Info("📋 Completed successfully - started new Claude conversation with disallowed tools, session: %s", sessionID)
-	return result, nil
+	return c.StartNewConversationWithOptions(prompt, &clients.ClaudeOptions{
+		DisallowedTools: disallowedTools,
+	})
 }
 
 func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeResult, error) {
+	return c.ContinueConversationWithOptions(sessionID, prompt, nil)
+}
+
+func (c *ClaudeService) ContinueConversationWithOptions(
+	sessionID, prompt string,
+	options *clients.ClaudeOptions,
+) (*ClaudeResult, error) {
 	log.Info("📋 Starting to continue Claude conversation: %s", sessionID)
-	rawOutput, err := c.claudeClient.ContinueSession(sessionID, prompt)
+	rawOutput, err := c.claudeClient.ContinueSession(sessionID, prompt, options)
 	if err != nil {
 		log.Error("Failed to continue Claude session: %v", err)
 		return nil, c.handleClaudeClientError(err, "failed to continue Claude session")

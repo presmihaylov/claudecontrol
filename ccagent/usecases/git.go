@@ -320,8 +320,10 @@ Fix user authentication validation
 
 YOUR RESPONSE MUST BE THE COMMIT MESSAGE ONLY.`, branchName)
 
-	disallowedTools := []string{"Bash(gh:*)"}
-	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, disallowedTools)
+	options := &clients.ClaudeOptions{
+		DisallowedTools: []string{"Bash(gh:*)"},
+	}
+	result, err := g.claudeService.StartNewConversationWithOptions(prompt, options)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate commit message: %w", err)
 	}
@@ -478,8 +480,10 @@ CRITICAL: Your response must contain ONLY the PR title text. Do not include:
 
 Respond with ONLY the short title text, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
 
-	disallowedTools := []string{"Bash(gh:*)"}
-	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, disallowedTools)
+	options := &clients.ClaudeOptions{
+		DisallowedTools: []string{"Bash(gh:*)"},
+	}
+	result, err := g.claudeService.StartNewConversationWithOptions(prompt, options)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate PR title: %w", err)
 	}
@@ -558,8 +562,10 @@ CRITICAL: Your response must contain ONLY the PR description in markdown format.
 
 Respond with ONLY the PR description in markdown format, nothing else.`, branchName, commitInfo, diffSummary, diffContent)
 
-	disallowedTools := []string{"Bash(gh:*)"}
-	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, disallowedTools)
+	options := &clients.ClaudeOptions{
+		DisallowedTools: []string{"Bash(gh:*)"},
+	}
+	result, err := g.claudeService.StartNewConversationWithOptions(prompt, options)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate PR body: %w", err)
 	}
@@ -953,8 +959,10 @@ CRITICAL: Your response must contain ONLY the PR title text. Do not include:
 
 Respond with ONLY the title text (updated or unchanged), nothing else.`, currentTitle, branchName, commitInfo, diffSummary)
 
-	disallowedTools := []string{"Bash(gh:*)"}
-	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, disallowedTools)
+	options := &clients.ClaudeOptions{
+		DisallowedTools: []string{"Bash(gh:*)"},
+	}
+	result, err := g.claudeService.StartNewConversationWithOptions(prompt, options)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate updated PR title: %w", err)
 	}
@@ -1045,8 +1053,10 @@ CRITICAL: Your response must contain ONLY the PR description in markdown format.
 
 Respond with ONLY the PR description in markdown format, nothing else.`, currentDescriptionClean, branchName, commitInfo, diffSummary)
 
-	disallowedTools := []string{"Bash(gh:*)"}
-	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, disallowedTools)
+	options := &clients.ClaudeOptions{
+		DisallowedTools: []string{"Bash(gh:*)"},
+	}
+	result, err := g.claudeService.StartNewConversationWithOptions(prompt, options)
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate updated PR description: %w", err)
 	}

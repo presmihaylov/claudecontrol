@@ -1,14 +1,13 @@
 package clients
 
+// ClaudeOptions contains optional parameters for Claude CLI interactions
+type ClaudeOptions struct {
+	SystemPrompt    string
+	DisallowedTools []string
+}
+
 // ClaudeClient defines the interface for Claude CLI interactions
 type ClaudeClient interface {
-	StartNewSession(prompt string) (string, error)
-	StartNewSessionWithSystemPrompt(prompt, systemPrompt string) (string, error)
-	ContinueSession(sessionID, prompt string) (string, error)
-	StartNewSessionWithDisallowedTools(prompt string, disallowedTools []string) (string, error)
-	StartNewSessionWithSystemPromptAndDisallowedTools(
-		prompt, systemPrompt string,
-		disallowedTools []string,
-	) (string, error)
-	ContinueSessionWithDisallowedTools(sessionID, prompt string, disallowedTools []string) (string, error)
+	StartNewSession(prompt string, options *ClaudeOptions) (string, error)
+	ContinueSession(sessionID, prompt string, options *ClaudeOptions) (string, error)
 }

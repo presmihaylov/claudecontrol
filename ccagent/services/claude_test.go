@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"ccagent/clients"
 	"ccagent/core"
 )
 
@@ -75,7 +76,7 @@ func TestClaudeService_StartNewConversation(t *testing.T) {
 			tmpDir := t.TempDir()
 
 			mockClient := &MockClaudeClient{
-				StartNewSessionFunc: func(prompt string) (string, error) {
+				StartNewSessionFunc: func(prompt string, options *clients.ClaudeOptions) (string, error) {
 					if prompt != tt.prompt {
 						t.Errorf("Expected prompt %s, got %s", tt.prompt, prompt)
 					}
@@ -146,12 +147,12 @@ func TestClaudeService_StartNewConversationWithSystemPrompt(t *testing.T) {
 			tmpDir := t.TempDir()
 
 			mockClient := &MockClaudeClient{
-				StartNewSessionWithSystemFunc: func(prompt, systemPrompt string) (string, error) {
+				StartNewSessionFunc: func(prompt string, options *clients.ClaudeOptions) (string, error) {
 					if prompt != tt.prompt {
 						t.Errorf("Expected prompt %s, got %s", tt.prompt, prompt)
 					}
-					if systemPrompt != tt.systemPrompt {
-						t.Errorf("Expected system prompt %s, got %s", tt.systemPrompt, systemPrompt)
+					if options == nil || options.SystemPrompt != tt.systemPrompt {
+						t.Errorf("Expected system prompt %s, got %s", tt.systemPrompt, options.SystemPrompt)
 					}
 					return tt.mockOutput, tt.mockError
 				},
@@ -220,7 +221,7 @@ func TestClaudeService_ContinueConversation(t *testing.T) {
 			tmpDir := t.TempDir()
 
 			mockClient := &MockClaudeClient{
-				ContinueSessionFunc: func(sessionID, prompt string) (string, error) {
+				ContinueSessionFunc: func(sessionID, prompt string, options *clients.ClaudeOptions) (string, error) {
 					if sessionID != tt.sessionID {
 						t.Errorf("Expected sessionID %s, got %s", tt.sessionID, sessionID)
 					}
@@ -550,7 +551,7 @@ func TestClaudeService_ParseErrorHandling(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	mockClient := &MockClaudeClient{
-		StartNewSessionFunc: func(prompt string) (string, error) {
+		StartNewSessionFunc: func(prompt string, options *clients.ClaudeOptions) (string, error) {
 			// Return output that will parse successfully but have no assistant messages
 			// This will fail at extractClaudeResult stage, not parsing stage
 			return `{"type":"system","session_id":"session_123"}`, nil
@@ -579,7 +580,7 @@ func TestClaudeService_WriteErrorLogHandling(t *testing.T) {
 	nonExistentDir := "/this/path/does/not/exist"
 
 	mockClient := &MockClaudeClient{
-		StartNewSessionFunc: func(prompt string) (string, error) {
+		StartNewSessionFunc: func(prompt string, options *clients.ClaudeOptions) (string, error) {
 			// Return output that will cause MapClaudeOutputToMessages to fail
 			// We need to trigger an actual error from MapClaudeOutputToMessages
 			// This is difficult since it's very resilient
