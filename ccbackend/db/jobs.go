@@ -28,6 +28,7 @@ var jobsColumns = []string{
 	"slack_thread_ts",
 	"slack_channel_id",
 	"slack_user_id",
+	"organization_id",
 	"slack_integration_id",
 	"created_at",
 	"updated_at",
@@ -44,6 +45,7 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 		"slack_thread_ts",
 		"slack_channel_id",
 		"slack_user_id",
+		"organization_id",
 		"slack_integration_id",
 		"created_at",
 		"updated_at",
@@ -53,10 +55,10 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.jobs (%s) 
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := db.QueryRowxContext(ctx, query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackUserID, job.OrganizationID).
+	err := db.QueryRowxContext(ctx, query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackUserID, job.OrganizationID, job.SlackIntegrationID).
 		StructScan(job)
 	if err != nil {
 		return fmt.Errorf("failed to create job: %w", err)
@@ -121,7 +123,7 @@ func (r *PostgresJobsRepository) UpdateJob(ctx context.Context, job *models.Job)
 		WHERE id = $1 AND slack_integration_id = $5
 		RETURNING %s`, r.schema, returningStr)
 
-	err := db.QueryRowxContext(ctx, query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackUserID, job.OrganizationID).
+	err := db.QueryRowxContext(ctx, query, job.ID, job.SlackThreadTS, job.SlackChannelID, job.SlackUserID, job.SlackIntegrationID).
 		StructScan(job)
 	if err != nil {
 		return fmt.Errorf("failed to update job: %w", err)

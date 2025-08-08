@@ -70,9 +70,6 @@ func run() error {
 
 	// Initialize services
 	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
-	agentsService := agents.NewAgentsService(agentsRepo)
-	jobsService := jobs.NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
-	usersService := users.NewUsersService(usersRepo, organizationsService, txManager)
 	slackOAuthClient := slackclient.NewSlackOAuthClient()
 	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(
 		slackIntegrationsRepo,
@@ -80,6 +77,9 @@ func run() error {
 		cfg.SlackClientID,
 		cfg.SlackClientSecret,
 	)
+	agentsService := agents.NewAgentsService(agentsRepo)
+	jobsService := jobs.NewJobsService(jobsRepo, processedSlackMessagesRepo, slackIntegrationsService, txManager)
+	usersService := users.NewUsersService(usersRepo, organizationsService, txManager)
 
 	coreUseCase := core.NewCoreUseCase(nil, agentsService, jobsService, slackIntegrationsService, txManager)
 

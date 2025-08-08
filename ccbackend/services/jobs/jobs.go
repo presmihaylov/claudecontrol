@@ -17,17 +17,20 @@ import (
 type JobsService struct {
 	jobsRepo                   *db.PostgresJobsRepository
 	processedSlackMessagesRepo *db.PostgresProcessedSlackMessagesRepository
+	slackIntegrationsService   services.SlackIntegrationsService
 	txManager                  services.TransactionManager
 }
 
 func NewJobsService(
 	repo *db.PostgresJobsRepository,
 	processedSlackMessagesRepo *db.PostgresProcessedSlackMessagesRepository,
+	slackIntegrationsService services.SlackIntegrationsService,
 	txManager services.TransactionManager,
 ) *JobsService {
 	return &JobsService{
 		jobsRepo:                   repo,
 		processedSlackMessagesRepo: processedSlackMessagesRepo,
+		slackIntegrationsService:   slackIntegrationsService,
 		txManager:                  txManager,
 	}
 }
@@ -71,12 +74,23 @@ func (s *JobsService) CreateJob(
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
+	// Get slack integration to get organization ID
+	maybeIntegration, err := s.slackIntegrationsService.GetSlackIntegrationByID(ctx, slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slack integration: %w", err)
+	}
+	if !maybeIntegration.IsPresent() {
+		return nil, fmt.Errorf("slack integration not found: %s", slackIntegrationID)
+	}
+	integration := maybeIntegration.MustGet()
+
 	job := &models.Job{
-		ID:             core.NewID("j"),
-		SlackThreadTS:  slackThreadTS,
-		SlackChannelID: slackChannelID,
-		SlackUserID:    slackUserID,
-		OrganizationID: slackIntegrationID,
+		ID:                 core.NewID("j"),
+		SlackThreadTS:      slackThreadTS,
+		SlackChannelID:     slackChannelID,
+		SlackUserID:        slackUserID,
+		OrganizationID:     integration.OrganizationID,
+		SlackIntegrationID: slackIntegrationID,
 	}
 
 	if err := s.jobsRepo.CreateJob(ctx, job); err != nil {
@@ -282,6 +296,16 @@ func (s *JobsService) CreateProcessedSlackMessage(
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 
+	// Get job to get organization ID for proper tenancy
+	maybeJob, err := s.jobsRepo.GetJobByID(ctx, jobID, slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job: %w", err)
+	}
+	if !maybeJob.IsPresent() {
+		return nil, fmt.Errorf("job not found: %s", jobID)
+	}
+	job := maybeJob.MustGet()
+
 	message := &models.ProcessedSlackMessage{
 		ID:             core.NewID("psm"),
 		JobID:          jobID,
@@ -289,7 +313,7 @@ func (s *JobsService) CreateProcessedSlackMessage(
 		SlackTS:        slackTS,
 		TextContent:    textContent,
 		Status:         status,
-		OrganizationID: slackIntegrationID,
+		OrganizationID: job.OrganizationID,
 	}
 
 	if err := s.processedSlackMessagesRepo.CreateProcessedSlackMessage(ctx, message); err != nil {
