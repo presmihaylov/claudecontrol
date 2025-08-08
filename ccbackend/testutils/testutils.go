@@ -101,6 +101,21 @@ func CreateTestContext(user *models.User) context.Context {
 	return appctx.SetUser(ctx, user)
 }
 
+// CreateTestContextWithUser creates a context with the given user and their organization set for testing
+func CreateTestContextWithUser(user *models.User) context.Context {
+	ctx := context.Background()
+	ctx = appctx.SetUser(ctx, user)
+
+	// Get the user's organization and add it to context
+	// For tests, we need to create or fetch the organization
+	org := &models.Organization{
+		ID: user.OrganizationID,
+	}
+	ctx = appctx.SetOrganization(ctx, org)
+
+	return ctx
+}
+
 // CreateTestSlackIntegration creates a test slack integration model for testing
 func CreateTestSlackIntegration(organizationID string) *models.SlackIntegration {
 	integrationID := core.NewID("si")

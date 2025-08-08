@@ -21,10 +21,15 @@ import (
 
 // Test data
 var (
+	testOrg = &models.Organization{
+		ID: "org_01234567890123456789012345",
+	}
+
 	testUser = &models.User{
 		ID:             "u_01234567890123456789012345",
 		AuthProvider:   "clerk",
 		AuthProviderID: "user_test_123",
+		OrganizationID: testOrg.ID,
 	}
 
 	testSecretKey        = "test-secret-key"
@@ -33,14 +38,16 @@ var (
 		SlackTeamID:      "T123456",
 		SlackAuthToken:   "xoxb-test-token",
 		SlackTeamName:    "Test Team",
-		UserID:           testUser.ID,
+		OrganizationID:   testOrg.ID,
 		CCAgentSecretKey: &testSecretKey,
 	}
 )
 
-// Helper function to create context with user
+// Helper function to create context with user and organization
 func contextWithUser(user *models.User) context.Context {
-	return appctx.SetUser(context.Background(), user)
+	ctx := appctx.SetUser(context.Background(), user)
+	ctx = appctx.SetOrganization(ctx, testOrg)
+	return ctx
 }
 
 func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
@@ -55,7 +62,7 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 			name: "success - returns integrations",
 			user: testUser,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("GetSlackIntegrationsByUserID", mock.Anything, testUser.ID).
+				m.On("GetSlackIntegrationsByOrganizationID", mock.Anything).
 					Return([]*models.SlackIntegration{testSlackIntegration}, nil)
 			},
 			expectedResult: []*models.SlackIntegration{testSlackIntegration},
@@ -65,7 +72,7 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 			name: "success - no integrations",
 			user: testUser,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("GetSlackIntegrationsByUserID", mock.Anything, testUser.ID).
+				m.On("GetSlackIntegrationsByOrganizationID", mock.Anything).
 					Return([]*models.SlackIntegration{}, nil)
 			},
 			expectedResult: []*models.SlackIntegration{},
@@ -75,7 +82,7 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 			name: "error - service fails",
 			user: testUser,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("GetSlackIntegrationsByUserID", mock.Anything, testUser.ID).
+				m.On("GetSlackIntegrationsByOrganizationID", mock.Anything).
 					Return(nil, fmt.Errorf("database error"))
 			},
 			expectedResult: nil,
@@ -124,7 +131,7 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 			redirectURL:    "https://example.com/redirect",
 			user:           testUser,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("CreateSlackIntegration", mock.Anything, "test-auth-code", "https://example.com/redirect", testUser.ID).
+				m.On("CreateSlackIntegration", mock.Anything, "test-auth-code", "https://example.com/redirect").
 					Return(testSlackIntegration, nil)
 			},
 			expectedResult: testSlackIntegration,
@@ -136,7 +143,7 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 			redirectURL:    "https://example.com/redirect",
 			user:           testUser,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("CreateSlackIntegration", mock.Anything, "test-auth-code", "https://example.com/redirect", testUser.ID).
+				m.On("CreateSlackIntegration", mock.Anything, "test-auth-code", "https://example.com/redirect").
 					Return(nil, fmt.Errorf("oauth error"))
 			},
 			expectedResult: nil,
@@ -357,7 +364,7 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 			name: "success - returns integrations",
 			user: testUser,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("GetSlackIntegrationsByUserID", mock.Anything, testUser.ID).
+				m.On("GetSlackIntegrationsByOrganizationID", mock.Anything).
 					Return([]*models.SlackIntegration{testSlackIntegration}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -373,7 +380,7 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 			name: "error - service fails",
 			user: testUser,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("GetSlackIntegrationsByUserID", mock.Anything, testUser.ID).
+				m.On("GetSlackIntegrationsByOrganizationID", mock.Anything).
 					Return(nil, fmt.Errorf("database error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -426,7 +433,7 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 			user:        testUser,
 			requestBody: validRequest,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("CreateSlackIntegration", mock.Anything, "test-auth-code", "https://example.com/redirect", testUser.ID).
+				m.On("CreateSlackIntegration", mock.Anything, "test-auth-code", "https://example.com/redirect").
 					Return(testSlackIntegration, nil)
 			},
 			expectedStatus: http.StatusOK,

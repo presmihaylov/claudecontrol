@@ -43,7 +43,7 @@ func setupTestJobsService(t *testing.T) (*JobsService, *models.SlackIntegration,
 
 	// Create test user and slack integration
 	testUser := testutils.CreateTestUser(t, usersRepo)
-	testIntegration := testutils.CreateTestSlackIntegration(testUser.ID)
+	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrganizationID)
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 
@@ -335,7 +335,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	// Create shared test user and slack integration
 	testUser := testutils.CreateTestUser(t, usersRepo)
 
-	testIntegration := testutils.CreateTestSlackIntegration(testUser.ID)
+	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrganizationID)
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 	defer func() {
