@@ -39,7 +39,7 @@ type CmdRunner struct {
 	reconnectChan  chan struct{}
 }
 
-func NewCmdRunner(agentType, permissionMode string) (*CmdRunner, error) {
+func NewCmdRunner(agentType, permissionMode, cursorModel string) (*CmdRunner, error) {
 	log.Info("📋 Starting to initialize CmdRunner with agent: %s", agentType)
 
 	// Create log directory for agent service
@@ -50,7 +50,7 @@ func NewCmdRunner(agentType, permissionMode string) (*CmdRunner, error) {
 	logDir := filepath.Join(homeDir, ".config", "ccagent", "logs")
 
 	// Create the appropriate CLI agent service
-	cliAgent, err := createCLIAgent(agentType, permissionMode, logDir)
+	cliAgent, err := createCLIAgent(agentType, permissionMode, cursorModel, logDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CLI agent: %w", err)
 	}
@@ -80,13 +80,13 @@ func NewCmdRunner(agentType, permissionMode string) (*CmdRunner, error) {
 }
 
 // createCLIAgent creates the appropriate CLI agent based on the agent type
-func createCLIAgent(agentType, permissionMode, logDir string) (services.CLIAgent, error) {
+func createCLIAgent(agentType, permissionMode, cursorModel, logDir string) (services.CLIAgent, error) {
 	switch agentType {
 	case "claude":
 		claudeClient := claudeclient.NewClaudeClient(permissionMode)
 		return claudeservice.NewClaudeService(claudeClient, logDir), nil
 	case "cursor":
-		cursorClient := cursorclient.NewCursorClient()
+		cursorClient := cursorclient.NewCursorClient(cursorModel)
 		return cursorservice.NewCursorService(cursorClient, logDir), nil
 	default:
 		return nil, fmt.Errorf("unsupported agent type: %s", agentType)
@@ -97,6 +97,7 @@ type Options struct {
 	BypassPermissions bool `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 	//nolint
 	Agent string `long:"agent" description:"CLI agent to use (claude or cursor)" choice:"claude" choice:"cursor" default:"claude"`
+	CursorModel string `long:"cursor-model" description:"Model to use with Cursor agent (only applies when --agent=cursor)"`
 }
 
 func main() {
@@ -151,7 +152,7 @@ func main() {
 		)
 	}
 
-	cmdRunner, err := NewCmdRunner(opts.Agent, permissionMode)
+	cmdRunner, err := NewCmdRunner(opts.Agent, permissionMode, opts.CursorModel)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing CmdRunner: %v\n", err)
 		os.Exit(1)

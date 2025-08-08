@@ -12,10 +12,11 @@ import (
 
 type CursorClient struct {
 	// No permissionMode needed for cursor-agent as it handles permissions differently
+	model string
 }
 
-func NewCursorClient() *CursorClient {
-	return &CursorClient{}
+func NewCursorClient(model string) *CursorClient {
+	return &CursorClient{model: model}
 }
 
 func (c *CursorClient) StartNewSession(prompt string, options *clients.CursorOptions) (string, error) {
@@ -36,6 +37,15 @@ func (c *CursorClient) StartNewSession(prompt string, options *clients.CursorOpt
 		"--print",
 		"--output-format", "stream-json",
 		finalPrompt,
+	}
+
+	// Add model from cmdline flag if provided
+	if c.model != "" {
+		args = append([]string{"--model", c.model}, args...)
+	}
+	// Add model from options if provided and no cmdline model set
+	if c.model == "" && options != nil && options.Model != "" {
+		args = append([]string{"--model", options.Model}, args...)
 	}
 
 	log.Info("Starting new Cursor session with prompt: %s", finalPrompt)
@@ -67,6 +77,15 @@ func (c *CursorClient) ContinueSession(sessionID, prompt string, options *client
 		"--output-format", "stream-json",
 		"--resume", sessionID,
 		prompt,
+	}
+
+	// Add model from cmdline flag if provided
+	if c.model != "" {
+		args = append([]string{"--model", c.model}, args...)
+	}
+	// Add model from options if provided and no cmdline model set
+	if c.model == "" && options != nil && options.Model != "" {
+		args = append([]string{"--model", options.Model}, args...)
 	}
 
 	log.Info("Executing Cursor command with sessionID: %s, prompt: %s", sessionID, prompt)
