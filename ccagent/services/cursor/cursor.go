@@ -98,13 +98,8 @@ func (c *CursorService) StartNewConversation(prompt string) (*services.CLIAgentR
 	return c.StartNewConversationWithOptions(prompt, nil)
 }
 
-func (c *CursorService) StartNewConversationWithOptions(
-	prompt string,
-	options *clients.CursorOptions,
-) (*services.CLIAgentResult, error) {
-	log.Info("📋 Starting to start new Cursor conversation")
-
-	// Create or update options to include model from service if set
+// deriveCursorOptions creates a final options struct, applying service model if set
+func (c *CursorService) deriveCursorOptions(options *clients.CursorOptions) *clients.CursorOptions {
 	finalOptions := options
 	if c.model != "" {
 		if finalOptions == nil {
@@ -117,6 +112,16 @@ func (c *CursorService) StartNewConversationWithOptions(
 			}
 		}
 	}
+	return finalOptions
+}
+
+func (c *CursorService) StartNewConversationWithOptions(
+	prompt string,
+	options *clients.CursorOptions,
+) (*services.CLIAgentResult, error) {
+	log.Info("📋 Starting to start new Cursor conversation")
+
+	finalOptions := c.deriveCursorOptions(options)
 
 	rawOutput, err := c.cursorClient.StartNewSession(prompt, finalOptions)
 	if err != nil {
@@ -185,19 +190,7 @@ func (c *CursorService) ContinueConversationWithOptions(
 ) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to continue Cursor conversation: %s", sessionID)
 
-	// Create or update options to include model from service if set
-	finalOptions := options
-	if c.model != "" {
-		if finalOptions == nil {
-			finalOptions = &clients.CursorOptions{Model: c.model}
-		} else {
-			// Create a copy to avoid modifying the original
-			finalOptions = &clients.CursorOptions{
-				SystemPrompt: finalOptions.SystemPrompt,
-				Model:        c.model, // Service model takes precedence
-			}
-		}
-	}
+	finalOptions := c.deriveCursorOptions(options)
 
 	rawOutput, err := c.cursorClient.ContinueSession(sessionID, prompt, finalOptions)
 	if err != nil {
