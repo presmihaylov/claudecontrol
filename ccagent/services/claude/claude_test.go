@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"ccagent/clients"
 	"ccagent/core"
 	"ccagent/services"
 )
@@ -83,11 +84,11 @@ func TestClaudeService_StartNewConversation(t *testing.T) {
 
 			// Set up mock client
 			mockClient := &services.MockClaudeClient{
-				StartNewSessionFunc: func(prompt string) (string, error) {
-					if prompt == tt.prompt {
-						return tt.mockOutput, tt.mockError
+				StartNewSessionFunc: func(prompt string, options *clients.ClaudeOptions) (string, error) {
+					if prompt != tt.prompt {
+						t.Errorf("Expected prompt %s, got %s", tt.prompt, prompt)
 					}
-					return "", fmt.Errorf("unexpected prompt: %s", prompt)
+					return tt.mockOutput, tt.mockError
 				},
 			}
 
@@ -161,11 +162,14 @@ func TestClaudeService_StartNewConversationWithSystemPrompt(t *testing.T) {
 
 			// Set up mock client
 			mockClient := &services.MockClaudeClient{
-				StartNewSessionWithSystemFunc: func(prompt, systemPrompt string) (string, error) {
-					if prompt == tt.prompt && systemPrompt == tt.systemPrompt {
-						return tt.mockOutput, tt.mockError
+				StartNewSessionFunc: func(prompt string, options *clients.ClaudeOptions) (string, error) {
+					if prompt != tt.prompt {
+						t.Errorf("Expected prompt %s, got %s", tt.prompt, prompt)
 					}
-					return "", fmt.Errorf("unexpected prompts: %s, %s", prompt, systemPrompt)
+					if options == nil || options.SystemPrompt != tt.systemPrompt {
+						t.Errorf("Expected system prompt %s, got %s", tt.systemPrompt, options.SystemPrompt)
+					}
+					return tt.mockOutput, tt.mockError
 				},
 			}
 
@@ -239,11 +243,14 @@ func TestClaudeService_ContinueConversation(t *testing.T) {
 
 			// Set up mock client
 			mockClient := &services.MockClaudeClient{
-				ContinueSessionFunc: func(sessionID, prompt string) (string, error) {
-					if sessionID == tt.sessionID && prompt == tt.prompt {
-						return tt.mockOutput, tt.mockError
+				ContinueSessionFunc: func(sessionID, prompt string, options *clients.ClaudeOptions) (string, error) {
+					if sessionID != tt.sessionID {
+						t.Errorf("Expected sessionID %s, got %s", tt.sessionID, sessionID)
 					}
-					return "", fmt.Errorf("unexpected session/prompt: %s, %s", sessionID, prompt)
+					if prompt != tt.prompt {
+						t.Errorf("Expected prompt %s, got %s", tt.prompt, prompt)
+					}
+					return tt.mockOutput, tt.mockError
 				},
 			}
 
@@ -607,7 +614,7 @@ func TestClaudeService_ParseErrorHandling(t *testing.T) {
 
 	// Mock output that doesn't contain valid assistant message (will fail at extract stage)
 	mockClient := &services.MockClaudeClient{
-		StartNewSessionFunc: func(prompt string) (string, error) {
+		StartNewSessionFunc: func(prompt string, options *clients.ClaudeOptions) (string, error) {
 			if prompt == "test" {
 				return "invalid json", nil
 			}
@@ -649,7 +656,7 @@ func TestClaudeService_ActualParseError(t *testing.T) {
 	// where we can force an error by creating extremely long content that exceeds buffer limits
 	longLine := strings.Repeat("x", 2*1024*1024) // 2MB line, exceeds the 1MB buffer
 	mockClient := &services.MockClaudeClient{
-		StartNewSessionFunc: func(prompt string) (string, error) {
+		StartNewSessionFunc: func(prompt string, options *clients.ClaudeOptions) (string, error) {
 			if prompt == "test" {
 				return longLine, nil
 			}
@@ -678,7 +685,7 @@ func TestClaudeService_WriteErrorLogHandling(t *testing.T) {
 	nonExistentDir := "/non/existent/parent/dir"
 
 	mockClient := &services.MockClaudeClient{
-		StartNewSessionFunc: func(prompt string) (string, error) {
+		StartNewSessionFunc: func(prompt string, options *clients.ClaudeOptions) (string, error) {
 			if prompt == "test" {
 				return `{"type":"assistant","message":{"id":"msg_123","type":"message","content":[{"type":"text","text":"Hello"}]},"session_id":"session_123"}`, nil
 			}
