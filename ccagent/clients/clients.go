@@ -6,6 +6,11 @@ type ClaudeOptions struct {
 	DisallowedTools []string
 }
 
+// CursorOptions contains optional parameters for Cursor CLI interactions
+type CursorOptions struct {
+	// Empty for now - reserved for future cursor-specific options
+}
+
 // ClaudeClient defines the interface for Claude CLI interactions
 type ClaudeClient interface {
 	StartNewSession(prompt string, options *ClaudeOptions) (string, error)
@@ -14,6 +19,6 @@ type ClaudeClient interface {
 
 // CursorClient defines the interface for Cursor CLI interactions
 type CursorClient interface {
-	StartNewSession(prompt string) (string, error)
-	ContinueSession(sessionID, prompt string) (string, error)
+	StartNewSession(prompt string, options *CursorOptions) (string, error)
+	ContinueSession(sessionID, prompt string, options *CursorOptions) (string, error)
 }

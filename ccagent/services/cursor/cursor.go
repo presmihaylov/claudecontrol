@@ -100,10 +100,10 @@ func (c *CursorService) StartNewConversation(prompt string) (*services.CLIAgentR
 
 func (c *CursorService) StartNewConversationWithOptions(
 	prompt string,
-	options *clients.ClaudeOptions, // Reusing Claude options for consistency
+	options *clients.CursorOptions,
 ) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to start new Cursor conversation")
-	rawOutput, err := c.cursorClient.StartNewSession(prompt)
+	rawOutput, err := c.cursorClient.StartNewSession(prompt, options)
 	if err != nil {
 		log.Error("Failed to start new Cursor session: %v", err)
 		return nil, c.handleCursorClientError(err, "failed to start new Cursor session")
@@ -146,8 +146,8 @@ func (c *CursorService) StartNewConversationWithOptions(
 func (c *CursorService) StartNewConversationWithSystemPrompt(
 	prompt, systemPrompt string,
 ) (*services.CLIAgentResult, error) {
-	return c.StartNewConversationWithOptions(prompt, &clients.ClaudeOptions{
-		SystemPrompt: systemPrompt,
+	return c.StartNewConversationWithOptions(prompt, &clients.CursorOptions{
+		// SystemPrompt not supported in CursorOptions yet
 	})
 }
 
@@ -155,8 +155,8 @@ func (c *CursorService) StartNewConversationWithDisallowedTools(
 	prompt string,
 	disallowedTools []string,
 ) (*services.CLIAgentResult, error) {
-	return c.StartNewConversationWithOptions(prompt, &clients.ClaudeOptions{
-		DisallowedTools: disallowedTools,
+	return c.StartNewConversationWithOptions(prompt, &clients.CursorOptions{
+		// DisallowedTools not supported in CursorOptions yet
 	})
 }
 
@@ -166,10 +166,10 @@ func (c *CursorService) ContinueConversation(sessionID, prompt string) (*service
 
 func (c *CursorService) ContinueConversationWithOptions(
 	sessionID, prompt string,
-	options *clients.ClaudeOptions,
+	options *clients.CursorOptions,
 ) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to continue Cursor conversation: %s", sessionID)
-	rawOutput, err := c.cursorClient.ContinueSession(sessionID, prompt)
+	rawOutput, err := c.cursorClient.ContinueSession(sessionID, prompt, options)
 	if err != nil {
 		log.Error("Failed to continue Cursor session: %v", err)
 		return nil, c.handleCursorClientError(err, "failed to continue Cursor session")
