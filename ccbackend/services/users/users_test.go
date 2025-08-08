@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"ccbackend/db"
+	organizations "ccbackend/services/organizations"
+	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
 )
 
@@ -85,9 +87,12 @@ func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
 	require.NoError(t, err)
 	defer dbConn.Close()
 
-	// Initialize repository and service
+	// Initialize repositories and services
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
-	usersService := NewUsersService(usersRepo)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
+	txManager := txmanager.NewTransactionManager(dbConn)
+	usersService := NewUsersService(usersRepo, organizationsService, txManager)
 
 	// Create test user helper
 	testHelper := NewTestUserHelper(t)
@@ -127,9 +132,12 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	require.NoError(t, err)
 	defer dbConn.Close()
 
-	// Initialize repository and service
+	// Initialize repositories and services
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
-	usersService := NewUsersService(usersRepo)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
+	txManager := txmanager.NewTransactionManager(dbConn)
+	usersService := NewUsersService(usersRepo, organizationsService, txManager)
 
 	// Create test user using testutils
 	testUser := testutils.CreateTestUserWithProvider(t, usersRepo, "test")
@@ -159,9 +167,12 @@ func TestUsersService_GetOrCreateUser_ValidationErrors(t *testing.T) {
 	require.NoError(t, err)
 	defer dbConn.Close()
 
-	// Initialize repository and service
+	// Initialize repositories and services
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
-	usersService := NewUsersService(usersRepo)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
+	txManager := txmanager.NewTransactionManager(dbConn)
+	usersService := NewUsersService(usersRepo, organizationsService, txManager)
 
 	// Test with empty auth provider
 	user, err := usersService.GetOrCreateUser(context.Background(), "", "test_user_id")

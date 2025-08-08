@@ -24,6 +24,7 @@ var usersColumns = []string{
 	"id",
 	"auth_provider",
 	"auth_provider_id",
+	"organization_id",
 	"created_at",
 	"updated_at",
 }
@@ -59,4 +60,32 @@ func (r *PostgresUsersRepository) GetOrCreateUser(
 	}
 
 	return user, nil
+}
+
+func (r *PostgresUsersRepository) UpdateUserOrganization(
+	ctx context.Context,
+	userID, organizationID string,
+) error {
+	db := dbtx.GetTransactional(ctx, r.db)
+
+	query := fmt.Sprintf(`
+		UPDATE %s.users 
+		SET organization_id = $1, updated_at = NOW() 
+		WHERE id = $2`, r.schema)
+
+	result, err := db.ExecContext(ctx, query, organizationID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update user organization: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
 }
