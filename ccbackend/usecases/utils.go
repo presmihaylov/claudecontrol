@@ -3,10 +3,13 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 
+	"ccbackend/clients"
 	"ccbackend/models"
 	"ccbackend/services"
+	"ccbackend/utils"
 )
 
 type agentWithLoad struct {
@@ -40,4 +43,68 @@ func sortAgentsByLoad(
 	})
 
 	return agentsWithLoad, nil
+}
+
+func getOldReactions(newEmoji string) []string {
+	allReactions := []string{"hourglass", "eyes", "white_check_mark", "hand", "x"}
+
+	var result []string
+	for _, reaction := range allReactions {
+		if reaction != newEmoji {
+			result = append(result, reaction)
+		}
+	}
+
+	return result
+}
+
+func getBotUserID(slackClient clients.SlackClient) (string, error) {
+	authTest, err := slackClient.AuthTest()
+	if err != nil {
+		return "", fmt.Errorf("failed to get bot user ID: %w", err)
+	}
+	return authTest.UserID, nil
+}
+
+func getBotReactionsOnMessage(
+	channelID, messageTS string,
+	slackClient clients.SlackClient,
+) ([]string, error) {
+	botUserID, err := getBotUserID(slackClient)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get reactions directly using GetReactions - much less rate limited
+	reactions, err := slackClient.GetReactions(clients.SlackItemRef{
+		Channel:   channelID,
+		Timestamp: messageTS,
+	}, clients.SlackGetReactionsParameters{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reactions: %w", err)
+	}
+
+	var botReactions []string
+	for _, reaction := range reactions {
+		// Check if bot added this reaction
+		if slices.Contains(reaction.Users, botUserID) {
+			botReactions = append(botReactions, reaction.Name)
+		}
+	}
+
+	return botReactions, nil
+}
+
+func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) string {
+	switch status {
+	case models.ProcessedSlackMessageStatusInProgress:
+		return "hourglass"
+	case models.ProcessedSlackMessageStatusQueued:
+		return "hourglass"
+	case models.ProcessedSlackMessageStatusCompleted:
+		return "white_check_mark"
+	default:
+		utils.AssertInvariant(false, "invalid status received")
+		return ""
+	}
 }
