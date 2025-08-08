@@ -78,6 +78,27 @@ func (u UserMessage) GetSessionID() string {
 	return u.SessionID
 }
 
+// ResultMessage represents a result message from Claude
+type ResultMessage struct {
+	Type          string  `json:"type"`
+	Subtype       string  `json:"subtype"`
+	IsError       bool    `json:"is_error"`
+	DurationMs    int     `json:"duration_ms"`
+	DurationAPIMs int     `json:"duration_api_ms"`
+	NumTurns      int     `json:"num_turns"`
+	Result        string  `json:"result"`
+	SessionID     string  `json:"session_id"`
+	TotalCostUsd  float64 `json:"total_cost_usd"`
+}
+
+func (r ResultMessage) GetType() string {
+	return r.Type
+}
+
+func (r ResultMessage) GetSessionID() string {
+	return r.SessionID
+}
+
 // MapClaudeOutputToMessages parses Claude command output into structured messages
 // This is exported to allow reuse across different modules
 func MapClaudeOutputToMessages(output string) ([]ClaudeMessage, error) {
@@ -137,6 +158,11 @@ func parseClaudeMessage(lineBytes []byte) ClaudeMessage {
 		var userMsg UserMessage
 		if err := json.Unmarshal(lineBytes, &userMsg); err == nil {
 			return userMsg
+		}
+	case "result":
+		var resultMsg ResultMessage
+		if err := json.Unmarshal(lineBytes, &resultMsg); err == nil {
+			return resultMsg
 		}
 	}
 

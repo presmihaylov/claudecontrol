@@ -231,20 +231,9 @@ func (c *ClaudeService) extractSessionID(messages []services.ClaudeMessage) stri
 func (c *ClaudeService) extractClaudeResult(messages []services.ClaudeMessage) (string, error) {
 	// First, look for result message type (preferred)
 	for i := len(messages) - 1; i >= 0; i-- {
-		if msg := messages[i]; msg.GetType() == "result" {
-			// Parse as JSON to extract the result field
-			msgJSON, err := json.Marshal(msg)
-			if err != nil {
-				continue
-			}
-
-			var resultMsg struct {
-				Result string `json:"result"`
-			}
-			if err := json.Unmarshal(msgJSON, &resultMsg); err == nil {
-				if resultMsg.Result != "" {
-					return resultMsg.Result, nil
-				}
+		if resultMsg, ok := messages[i].(services.ResultMessage); ok {
+			if resultMsg.Result != "" {
+				return resultMsg.Result, nil
 			}
 		}
 	}
@@ -294,21 +283,10 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 
 	// Try to extract the result message first (preferred)
 	for i := len(messages) - 1; i >= 0; i-- {
-		if msg := messages[i]; msg.GetType() == "result" {
-			// Parse as JSON to extract the result field
-			msgJSON, err := json.Marshal(msg)
-			if err != nil {
-				continue
-			}
-
-			var resultMsg struct {
-				Result string `json:"result"`
-			}
-			if err := json.Unmarshal(msgJSON, &resultMsg); err == nil {
-				if resultMsg.Result != "" {
-					log.Info("✅ Successfully extracted Claude result message from error: %s", resultMsg.Result)
-					return fmt.Errorf("%s: %s", operation, resultMsg.Result)
-				}
+		if resultMsg, ok := messages[i].(services.ResultMessage); ok {
+			if resultMsg.Result != "" {
+				log.Info("✅ Successfully extracted Claude result message from error: %s", resultMsg.Result)
+				return fmt.Errorf("%s: %s", operation, resultMsg.Result)
 			}
 		}
 	}
