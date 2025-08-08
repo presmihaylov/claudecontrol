@@ -241,6 +241,7 @@ code quality standards.
 - **Apply Pending Migrations**: `supabase migration up` to apply only new migrations
 - **Development Reset**: `supabase db reset` to reset and apply all migrations from scratch
 - **New Migrations**: `supabase migration new <name>` 
+- **Migration File Creation**: ALWAYS use `supabase migration new <name>` to generate migration files instead of manually determining timestamps
 - **Test Schema**: Migrations create both prod and test schemas
 ```
 
