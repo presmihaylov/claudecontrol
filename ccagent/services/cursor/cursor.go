@@ -16,12 +16,14 @@ import (
 type CursorService struct {
 	cursorClient clients.CursorClient
 	logDir       string
+	model        string
 }
 
-func NewCursorService(cursorClient clients.CursorClient, logDir string) *CursorService {
+func NewCursorService(cursorClient clients.CursorClient, logDir, model string) *CursorService {
 	return &CursorService{
 		cursorClient: cursorClient,
 		logDir:       logDir,
+		model:        model,
 	}
 }
 
@@ -101,7 +103,22 @@ func (c *CursorService) StartNewConversationWithOptions(
 	options *clients.CursorOptions,
 ) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to start new Cursor conversation")
-	rawOutput, err := c.cursorClient.StartNewSession(prompt, options)
+
+	// Create or update options to include model from service if set
+	finalOptions := options
+	if c.model != "" {
+		if finalOptions == nil {
+			finalOptions = &clients.CursorOptions{Model: c.model}
+		} else {
+			// Create a copy to avoid modifying the original
+			finalOptions = &clients.CursorOptions{
+				SystemPrompt: finalOptions.SystemPrompt,
+				Model:        c.model, // Service model takes precedence
+			}
+		}
+	}
+
+	rawOutput, err := c.cursorClient.StartNewSession(prompt, finalOptions)
 	if err != nil {
 		log.Error("Failed to start new Cursor session: %v", err)
 		return nil, c.handleCursorClientError(err, "failed to start new Cursor session")
@@ -167,7 +184,22 @@ func (c *CursorService) ContinueConversationWithOptions(
 	options *clients.CursorOptions,
 ) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to continue Cursor conversation: %s", sessionID)
-	rawOutput, err := c.cursorClient.ContinueSession(sessionID, prompt, options)
+
+	// Create or update options to include model from service if set
+	finalOptions := options
+	if c.model != "" {
+		if finalOptions == nil {
+			finalOptions = &clients.CursorOptions{Model: c.model}
+		} else {
+			// Create a copy to avoid modifying the original
+			finalOptions = &clients.CursorOptions{
+				SystemPrompt: finalOptions.SystemPrompt,
+				Model:        c.model, // Service model takes precedence
+			}
+		}
+	}
+
+	rawOutput, err := c.cursorClient.ContinueSession(sessionID, prompt, finalOptions)
 	if err != nil {
 		log.Error("Failed to continue Cursor session: %v", err)
 		return nil, c.handleCursorClientError(err, "failed to continue Cursor session")

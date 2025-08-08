@@ -12,11 +12,10 @@ import (
 
 type CursorClient struct {
 	// No permissionMode needed for cursor-agent as it handles permissions differently
-	model string
 }
 
-func NewCursorClient(model string) *CursorClient {
-	return &CursorClient{model: model}
+func NewCursorClient() *CursorClient {
+	return &CursorClient{}
 }
 
 func (c *CursorClient) StartNewSession(prompt string, options *clients.CursorOptions) (string, error) {
@@ -39,12 +38,8 @@ func (c *CursorClient) StartNewSession(prompt string, options *clients.CursorOpt
 		finalPrompt,
 	}
 
-	// Add model from cmdline flag if provided
-	if c.model != "" {
-		args = append([]string{"--model", c.model}, args...)
-	}
-	// Add model from options if provided and no cmdline model set
-	if c.model == "" && options != nil && options.Model != "" {
+	// Add model from options if provided
+	if options != nil && options.Model != "" {
 		args = append([]string{"--model", options.Model}, args...)
 	}
 
@@ -79,12 +74,8 @@ func (c *CursorClient) ContinueSession(sessionID, prompt string, options *client
 		prompt,
 	}
 
-	// Add model from cmdline flag if provided
-	if c.model != "" {
-		args = append([]string{"--model", c.model}, args...)
-	}
-	// Add model from options if provided and no cmdline model set
-	if c.model == "" && options != nil && options.Model != "" {
+	// Add model from options if provided
+	if options != nil && options.Model != "" {
 		args = append([]string{"--model", options.Model}, args...)
 	}
 

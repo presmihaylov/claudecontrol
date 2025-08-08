@@ -86,8 +86,8 @@ func createCLIAgent(agentType, permissionMode, cursorModel, logDir string) (serv
 		claudeClient := claudeclient.NewClaudeClient(permissionMode)
 		return claudeservice.NewClaudeService(claudeClient, logDir), nil
 	case "cursor":
-		cursorClient := cursorclient.NewCursorClient(cursorModel)
-		return cursorservice.NewCursorService(cursorClient, logDir), nil
+		cursorClient := cursorclient.NewCursorClient()
+		return cursorservice.NewCursorService(cursorClient, logDir, cursorModel), nil
 	default:
 		return nil, fmt.Errorf("unsupported agent type: %s", agentType)
 	}
