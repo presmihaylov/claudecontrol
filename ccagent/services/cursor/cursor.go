@@ -1,8 +1,6 @@
 package cursor
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -115,7 +113,7 @@ func (c *CursorService) StartNewConversationWithOptions(
 		log.Error("Failed to write Cursor session log: %v", writeErr)
 	}
 
-	messages, err := c.mapCursorOutputToMessages(rawOutput)
+	messages, err := MapCursorOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Cursor output: %v", err)
 
@@ -126,8 +124,8 @@ func (c *CursorService) StartNewConversationWithOptions(
 		}
 	}
 
-	sessionID := c.extractSessionID(messages)
-	output, err := c.extractCursorResult(messages)
+	sessionID := ExtractCursorSessionID(messages)
+	output, err := ExtractCursorResult(messages)
 	if err != nil {
 		log.Error("Failed to extract Cursor result: %v", err)
 		return nil, fmt.Errorf("failed to extract Cursor result: %w", err)
@@ -181,7 +179,7 @@ func (c *CursorService) ContinueConversationWithOptions(
 		log.Error("Failed to write Cursor session log: %v", writeErr)
 	}
 
-	messages, err := c.mapCursorOutputToMessages(rawOutput)
+	messages, err := MapCursorOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Cursor output: %v", err)
 
@@ -192,8 +190,8 @@ func (c *CursorService) ContinueConversationWithOptions(
 		}
 	}
 
-	actualSessionID := c.extractSessionID(messages)
-	output, err := c.extractCursorResult(messages)
+	actualSessionID := ExtractCursorSessionID(messages)
+	output, err := ExtractCursorResult(messages)
 	if err != nil {
 		log.Error("Failed to extract Cursor result: %v", err)
 		return nil, fmt.Errorf("failed to extract Cursor result: %w", err)
@@ -207,131 +205,6 @@ func (c *CursorService) ContinueConversationWithOptions(
 
 	log.Info("📋 Completed successfully - continued Cursor conversation with session: %s", actualSessionID)
 	return result, nil
-}
-
-// CursorMessage represents a simplified message interface for Cursor
-type CursorMessage interface {
-	GetType() string
-	GetSessionID() string
-}
-
-// CursorResultMessage represents a result message from Cursor (simplified version)
-type CursorResultMessage struct {
-	Type      string `json:"type"`
-	Result    string `json:"result"`
-	SessionID string `json:"session_id"`
-}
-
-func (r CursorResultMessage) GetType() string {
-	return r.Type
-}
-
-func (r CursorResultMessage) GetSessionID() string {
-	return r.SessionID
-}
-
-// UnknownCursorMessage represents an unknown message type from Cursor
-type UnknownCursorMessage struct {
-	Type      string `json:"type"`
-	SessionID string `json:"session_id"`
-}
-
-func (u UnknownCursorMessage) GetType() string {
-	return u.Type
-}
-
-func (u UnknownCursorMessage) GetSessionID() string {
-	return u.SessionID
-}
-
-// mapCursorOutputToMessages parses Cursor command output focusing only on result messages
-func (c *CursorService) mapCursorOutputToMessages(output string) ([]CursorMessage, error) {
-	var messages []CursorMessage
-
-	// Use a scanner with a larger buffer to handle long lines
-	scanner := bufio.NewScanner(strings.NewReader(output))
-	// Set a 1MB buffer to handle very long JSON lines
-	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		// Parse the message focusing only on result type
-		message := c.parseCursorMessage([]byte(line))
-		messages = append(messages, message)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return messages, nil
-}
-
-// parseCursorMessage attempts to parse a JSON line into the appropriate message type
-func (c *CursorService) parseCursorMessage(lineBytes []byte) CursorMessage {
-	// First, extract just the type to determine which struct to use
-	var typeCheck struct {
-		Type string `json:"type"`
-	}
-
-	if err := json.Unmarshal(lineBytes, &typeCheck); err != nil {
-		// If we can't even parse the type, return unknown message
-		return UnknownCursorMessage{
-			Type:      "unknown",
-			SessionID: "",
-		}
-	}
-
-	// Parse based on type - only focus on result messages for simplicity
-	switch typeCheck.Type {
-	case "result":
-		var resultMsg CursorResultMessage
-		if err := json.Unmarshal(lineBytes, &resultMsg); err == nil {
-			return resultMsg
-		}
-	}
-
-	// For all other types, extract basic info for unknown message
-	var unknownMsg struct {
-		Type      string `json:"type"`
-		SessionID string `json:"session_id"`
-	}
-
-	if err := json.Unmarshal(lineBytes, &unknownMsg); err == nil {
-		return UnknownCursorMessage{
-			Type:      unknownMsg.Type,
-			SessionID: unknownMsg.SessionID,
-		}
-	}
-
-	// Return default unknown message
-	return UnknownCursorMessage{
-		Type:      "unknown",
-		SessionID: "",
-	}
-}
-
-func (c *CursorService) extractSessionID(messages []CursorMessage) string {
-	if len(messages) > 0 {
-		return messages[0].GetSessionID()
-	}
-	return "unknown"
-}
-
-func (c *CursorService) extractCursorResult(messages []CursorMessage) (string, error) {
-	// Look for result message type (only type we care about)
-	for i := len(messages) - 1; i >= 0; i-- {
-		if resultMsg, ok := messages[i].(CursorResultMessage); ok {
-			if resultMsg.Result != "" {
-				return resultMsg.Result, nil
-			}
-		}
-	}
-	return "", fmt.Errorf("no result message found")
 }
 
 // handleCursorClientError processes errors from Cursor client calls.
@@ -348,7 +221,7 @@ func (c *CursorService) handleCursorClientError(err error, operation string) err
 	}
 
 	// Try to parse the output as Cursor messages using internal parsing
-	messages, parseErr := c.mapCursorOutputToMessages(claudeErr.Output)
+	messages, parseErr := MapCursorOutputToMessages(claudeErr.Output)
 	if parseErr != nil {
 		// If parsing fails, return original error wrapped
 		log.Error("Failed to parse Cursor output from error: %v", parseErr)
