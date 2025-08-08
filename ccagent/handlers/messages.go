@@ -17,13 +17,13 @@ import (
 )
 
 type MessageHandler struct {
-	claudeService *services.ClaudeService
+	claudeService services.CLIAgent
 	gitUseCase    *usecases.GitUseCase
 	appState      *models.AppState
 }
 
 func NewMessageHandler(
-	claudeService *services.ClaudeService,
+	claudeService services.CLIAgent,
 	gitUseCase *usecases.GitUseCase,
 	appState *models.AppState,
 ) *MessageHandler {
