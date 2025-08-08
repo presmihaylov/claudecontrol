@@ -63,9 +63,9 @@ function SlackRedirectContent() {
 				console.log("Slack integration created successfully:", integration);
 				setStatus("success");
 
-				// Redirect to integration page after a short delay
+				// Redirect to home page after a short delay
 				setTimeout(() => {
-					router.push(`/integrations/${integration.id}`);
+					router.push("/");
 				}, 2000);
 			} catch (error) {
 				console.error("Error creating Slack integration:", error);

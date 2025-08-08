@@ -436,41 +436,8 @@ export default function Home() {
 						)}
 					</div>
 				) : (
-					// Show list of integrations with "Connect another workspace" button
+					// Show secret key section and list of integrations
 					<div className="space-y-6">
-						<div>
-							<h2 className="text-2xl font-semibold mb-4">Connected Workspaces</h2>
-							<div className="grid gap-4">
-								{integrations.map((integration) => (
-									<Card key={integration.id} className="p-4">
-										<div className="flex items-center justify-between w-full">
-											<div className="flex items-center gap-3">
-												<Slack className="h-6 w-6 text-black" />
-												<div>
-													<h3 className="font-semibold">{integration.slack_team_name}</h3>
-													<p className="text-sm text-muted-foreground">
-														Connected on {new Date(integration.created_at).toLocaleDateString()}
-													</p>
-												</div>
-											</div>
-											<div className="flex items-center gap-2">
-												<Button
-													variant="destructive"
-													size="sm"
-													onClick={() => handleDeleteIntegration(integration)}
-													disabled={deleting === integration.id}
-													className="flex items-center gap-2"
-												>
-													<Trash2 className="h-4 w-4" />
-													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
-												</Button>
-											</div>
-										</div>
-									</Card>
-								))}
-							</div>
-						</div>
-
 						{/* ccagent Secret Key Section */}
 						{organization && (
 							<Card>
@@ -549,6 +516,39 @@ export default function Home() {
 								</CardContent>
 							</Card>
 						)}
+
+						<div>
+							<h2 className="text-2xl font-semibold mb-4">Connected Workspaces</h2>
+							<div className="grid gap-4">
+								{integrations.map((integration) => (
+									<Card key={integration.id} className="p-4">
+										<div className="flex items-center justify-between w-full">
+											<div className="flex items-center gap-3">
+												<Slack className="h-6 w-6 text-black" />
+												<div>
+													<h3 className="font-semibold">{integration.slack_team_name}</h3>
+													<p className="text-sm text-muted-foreground">
+														Connected on {new Date(integration.created_at).toLocaleDateString()}
+													</p>
+												</div>
+											</div>
+											<div className="flex items-center gap-2">
+												<Button
+													variant="destructive"
+													size="sm"
+													onClick={() => handleDeleteIntegration(integration)}
+													disabled={deleting === integration.id}
+													className="flex items-center gap-2"
+												>
+													<Trash2 className="h-4 w-4" />
+													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
+												</Button>
+											</div>
+										</div>
+									</Card>
+								))}
+							</div>
+						</div>
 
 						{/* Connect another workspace button */}
 						<div className="flex justify-center pt-4">
