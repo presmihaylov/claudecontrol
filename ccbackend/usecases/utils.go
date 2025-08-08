@@ -8,7 +8,6 @@ import (
 
 	"ccbackend/clients"
 	"ccbackend/models"
-	"ccbackend/services"
 	"ccbackend/utils"
 )
 
@@ -17,17 +16,16 @@ type agentWithLoad struct {
 	load  int
 }
 
-func sortAgentsByLoad(
+func (s *CoreUseCase) sortAgentsByLoad(
 	ctx context.Context,
 	agents []*models.ActiveAgent,
 	slackIntegrationID string,
-	agentsService services.AgentsService,
 ) ([]agentWithLoad, error) {
 	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
 
 	for _, agent := range agents {
 		// Get job IDs assigned to this agent
-		jobIDs, err := agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, slackIntegrationID)
+		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, slackIntegrationID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
 		}
@@ -58,7 +56,12 @@ func getOldReactions(newEmoji string) []string {
 	return result
 }
 
-func getBotUserID(slackClient clients.SlackClient) (string, error) {
+func (s *CoreUseCase) getBotUserID(ctx context.Context, slackIntegrationID string) (string, error) {
+	slackClient, err := s.getSlackClientForIntegration(ctx, slackIntegrationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Slack client for integration: %w", err)
+	}
+
 	authTest, err := slackClient.AuthTest()
 	if err != nil {
 		return "", fmt.Errorf("failed to get bot user ID: %w", err)
@@ -66,11 +69,17 @@ func getBotUserID(slackClient clients.SlackClient) (string, error) {
 	return authTest.UserID, nil
 }
 
-func getBotReactionsOnMessage(
+func (s *CoreUseCase) getBotReactionsOnMessage(
+	ctx context.Context,
 	channelID, messageTS string,
-	slackClient clients.SlackClient,
+	slackIntegrationID string,
 ) ([]string, error) {
-	botUserID, err := getBotUserID(slackClient)
+	slackClient, err := s.getSlackClientForIntegration(ctx, slackIntegrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Slack client for integration: %w", err)
+	}
+
+	botUserID, err := s.getBotUserID(ctx, slackIntegrationID)
 	if err != nil {
 		return nil, err
 	}

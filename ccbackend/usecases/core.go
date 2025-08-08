@@ -529,7 +529,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(
 	}
 
 	// Get only reactions added by our bot
-	botReactions, err := getBotReactionsOnMessage(channelID, messageTS, slackClient)
+	botReactions, err := s.getBotReactionsOnMessage(ctx, channelID, messageTS, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get bot reactions: %w", err)
 	}
@@ -666,7 +666,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(
 	}
 
 	// Sort agents by load (number of assigned jobs) to select the least loaded agent
-	sortedAgents, err := sortAgentsByLoad(ctx, connectedAgents, slackIntegrationID, s.agentsService)
+	sortedAgents, err := s.sortAgentsByLoad(ctx, connectedAgents, slackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to sort agents by load: %v", err)
 		return "", false, fmt.Errorf("failed to sort agents by load: %w", err)
