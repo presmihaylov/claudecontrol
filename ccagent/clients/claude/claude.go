@@ -22,24 +22,31 @@ func NewClaudeClient(permissionMode string) *ClaudeClient {
 
 func (c *ClaudeClient) StartNewSession(prompt string, options *clients.ClaudeOptions) (string, error) {
 	log.Info("📋 Starting to create new Claude session")
+	// Build final prompt by embedding system prompt directly (do not append via flag)
+	finalPrompt := prompt
+	if options != nil && options.SystemPrompt != "" {
+		finalPrompt = "# BEHAVIOR INSTRUCTIONS\n" +
+			options.SystemPrompt + "\n\n" +
+			"# USER MESSAGE\n" +
+			prompt
+		log.Info("Prepending system prompt to user prompt with clear delimiters")
+	}
+
 	args := []string{
 		"--permission-mode", c.permissionMode,
 		"--verbose",
 		"--output-format", "stream-json",
-		"-p", prompt,
+		"-p", finalPrompt,
 	}
 
 	if options != nil {
-		if options.SystemPrompt != "" {
-			args = append(args, "--append-system-prompt", options.SystemPrompt)
-		}
 		if len(options.DisallowedTools) > 0 {
 			disallowedToolsStr := strings.Join(options.DisallowedTools, " ")
 			args = append(args, "--disallowedTools", disallowedToolsStr)
 		}
 	}
 
-	log.Info("Starting new Claude session with prompt: %s", prompt)
+	log.Info("Starting new Claude session with prompt: %s", finalPrompt)
 	log.Info("Command arguments: %v", args)
 
 	cmd := exec.Command("claude", args...)
