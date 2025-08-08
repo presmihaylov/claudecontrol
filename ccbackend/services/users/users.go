@@ -43,30 +43,16 @@ func (s *UsersService) GetOrCreateUser(ctx context.Context, authProvider, authPr
 
 	var finalUser *models.User
 	err := s.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
-		// Get or create the user
-		user, err := s.usersRepo.GetOrCreateUser(txCtx, authProvider, authProviderID)
+		// Create organization first
+		organization, err := s.organizationsService.CreateOrganization(txCtx)
 		if err != nil {
-			return fmt.Errorf("failed to get or create user: %w", err)
+			return fmt.Errorf("failed to create organization: %w", err)
 		}
 
-		// Check if user needs an organization
-		if user.OrganizationID == "" {
-			log.Printf("📋 User %s needs an organization, creating one", user.ID)
-
-			// Create organization
-			organization, err := s.organizationsService.CreateOrganization(txCtx)
-			if err != nil {
-				return fmt.Errorf("failed to create organization: %w", err)
-			}
-
-			// Update user's organization_id
-			err = s.usersRepo.UpdateUserOrganization(txCtx, user.ID, organization.ID)
-			if err != nil {
-				return fmt.Errorf("failed to update user organization: %w", err)
-			}
-
-			// Update user struct with organization_id
-			user.OrganizationID = organization.ID
+		// Get or create the user with organization_id
+		user, err := s.usersRepo.GetOrCreateUser(txCtx, authProvider, authProviderID, organization.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get or create user: %w", err)
 		}
 
 		finalUser = user
