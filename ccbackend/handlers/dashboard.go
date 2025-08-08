@@ -82,6 +82,17 @@ func (h *DashboardAPIHandler) DeleteSlackIntegration(ctx context.Context, integr
 	return nil
 }
 
+// GetOrganization returns the organization for the authenticated user
+func (h *DashboardAPIHandler) GetOrganization(ctx context.Context) (*models.Organization, error) {
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return nil, fmt.Errorf("organization not found in context")
+	}
+
+	log.Printf("📋 Retrieved organization: %s", org.ID)
+	return org, nil
+}
+
 // GenerateCCAgentSecretKey generates a new secret key for an organization
 func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context) (string, error) {
 	org, ok := appctx.GetOrganization(ctx)
