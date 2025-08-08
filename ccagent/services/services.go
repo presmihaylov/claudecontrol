@@ -23,7 +23,7 @@ type CLIAgent interface {
 	// CleanupOldLogs removes old log files based on age
 	CleanupOldLogs(maxAgeDays int) error
 
-    // AgentName returns the identifier for the concrete agent implementation
-    // (e.g., "claude" or "cursor") so callers can adapt behavior per agent
-    AgentName() string
+	// AgentName returns the identifier for the concrete agent implementation
+	// (e.g., "claude" or "cursor") so callers can adapt behavior per agent
+	AgentName() string
 }

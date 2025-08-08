@@ -92,8 +92,8 @@ func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socket
 		return fmt.Errorf("failed to prepare Git environment: %w", err)
 	}
 
-    // Prepare separate system prompts for Claude and Cursor
-    behaviourInstructionsClaude := `You are a Claude Code instance referred to by the user as "Claude Control" for this session. When someone says "Claude Control", they refer to you.
+	// Prepare separate system prompts for Claude and Cursor
+	behaviourInstructionsClaude := `You are a Claude Code instance referred to by the user as "Claude Control" for this session. When someone says "Claude Control", they refer to you.
 
 You are being interacted with over Slack (the software). Adjust responses accordingly:
 - Focus on high-level summaries and avoid implementation details unless specifically requested
@@ -122,7 +122,7 @@ CRITICAL: Never create git commits or pull requests unless explicitly asked. Wai
 
 CRITICAL: Keep ALL responses under 400 characters (strict Slack limit).`
 
-    behaviourInstructionsCursor := `You are a Cursor agent acting as "Claude Control" for this session. When someone says "Claude Control", they refer to you.
+	behaviourInstructionsCursor := `You are a Cursor agent acting as "Claude Control" for this session. When someone says "Claude Control", they refer to you.
 
 You are being interacted with over Slack (the software). Adjust responses accordingly:
 - Focus on high-level summaries and avoid implementation details unless specifically requested
@@ -151,12 +151,12 @@ CRITICAL: Never create git commits or pull requests unless explicitly asked. Wai
 
 CRITICAL: Keep ALL responses under 400 characters (strict Slack limit).`
 
-    systemPrompt := behaviourInstructionsClaude
-    if mh.claudeService.AgentName() == "cursor" {
-        systemPrompt = behaviourInstructionsCursor
-    }
+	systemPrompt := behaviourInstructionsClaude
+	if mh.claudeService.AgentName() == "cursor" {
+		systemPrompt = behaviourInstructionsCursor
+	}
 
-    claudeResult, err := mh.claudeService.StartNewConversationWithSystemPrompt(payload.Message, systemPrompt)
+	claudeResult, err := mh.claudeService.StartNewConversationWithSystemPrompt(payload.Message, systemPrompt)
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
 		systemErr := mh.sendSystemMessage(
