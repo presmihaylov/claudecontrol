@@ -513,10 +513,6 @@ func (s *CoreUseCase) sendUserMessageToAgent(
 	return nil
 }
 
-
-
-
-
 func (s *CoreUseCase) updateSlackMessageReaction(
 	ctx context.Context,
 	channelID, messageTS, newEmoji, slackIntegrationID string,
@@ -683,7 +679,6 @@ func (s *CoreUseCase) tryAssignJobToAgent(
 	log.Printf("✅ Assigned job %s to agent %s", jobID, selectedAgent.ID)
 	return selectedAgent.WSConnectionID, true, nil
 }
-
 
 func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
