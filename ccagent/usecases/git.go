@@ -307,7 +307,7 @@ func (g *GitUseCase) generateCommitMessageWithClaude(branchName string) (string,
 
 	prompt := CommitMessageGenerationPrompt(branchName)
 
-	result, err := g.claudeService.StartNewConversation(prompt)
+	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, []string{"Bash(gh:*)"})
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate commit message: %w", err)
 	}
@@ -431,7 +431,7 @@ func (g *GitUseCase) generatePRTitleWithClaude(branchName string) (string, error
 
 	prompt := PRTitleGenerationPrompt(branchName, commitInfo, diffSummary, diffContent)
 
-	result, err := g.claudeService.StartNewConversation(prompt)
+	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, []string{"Bash(gh:*)"})
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate PR title: %w", err)
 	}
@@ -475,7 +475,7 @@ func (g *GitUseCase) generatePRBodyWithClaude(branchName, slackThreadLink string
 
 	prompt := PRDescriptionGenerationPrompt(branchName, commitInfo, diffSummary, diffContent)
 
-	result, err := g.claudeService.StartNewConversation(prompt)
+	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, []string{"Bash(gh:*)"})
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate PR body: %w", err)
 	}
@@ -831,7 +831,7 @@ func (g *GitUseCase) generateUpdatedPRTitleWithClaude(branchName, currentTitle s
 
 	prompt := PRTitleUpdatePrompt(currentTitle, branchName, commitInfo, diffSummary)
 
-	result, err := g.claudeService.StartNewConversation(prompt)
+	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, []string{"Bash(gh:*)"})
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate updated PR title: %w", err)
 	}
@@ -874,7 +874,7 @@ func (g *GitUseCase) generateUpdatedPRDescriptionWithClaude(
 
 	prompt := PRDescriptionUpdatePrompt(currentDescriptionClean, branchName, commitInfo, diffSummary)
 
-	result, err := g.claudeService.StartNewConversation(prompt)
+	result, err := g.claudeService.StartNewConversationWithDisallowedTools(prompt, []string{"Bash(gh:*)"})
 	if err != nil {
 		return "", fmt.Errorf("claude failed to generate updated PR description: %w", err)
 	}
