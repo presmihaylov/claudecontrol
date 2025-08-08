@@ -18,6 +18,8 @@ type UsersService interface {
 type OrganizationsService interface {
 	CreateOrganization(ctx context.Context) (*models.Organization, error)
 	GetOrganizationByID(ctx context.Context, id string) (mo.Option[*models.Organization], error)
+	GenerateCCAgentSecretKey(ctx context.Context, organizationID string) (string, error)
+	GetOrganizationBySecretKey(ctx context.Context, secretKey string) (mo.Option[*models.Organization], error)
 }
 
 // SlackIntegrationsService defines the interface for Slack integration operations
@@ -29,8 +31,6 @@ type SlackIntegrationsService interface {
 	GetSlackIntegrationsByOrganizationID(ctx context.Context, organizationID string) ([]*models.SlackIntegration, error)
 	GetAllSlackIntegrations(ctx context.Context) ([]*models.SlackIntegration, error)
 	DeleteSlackIntegration(ctx context.Context, organizationID, integrationID string) error
-	GenerateCCAgentSecretKey(ctx context.Context, organizationID, integrationID string) (string, error)
-	GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (mo.Option[*models.SlackIntegration], error)
 	GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (mo.Option[*models.SlackIntegration], error)
 	GetSlackIntegrationByID(ctx context.Context, id string) (mo.Option[*models.SlackIntegration], error)
 }
