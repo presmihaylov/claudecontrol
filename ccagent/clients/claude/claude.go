@@ -35,7 +35,7 @@ func (c *ClaudeClient) StartNewSession(prompt string, options *clients.ClaudeOpt
 		}
 		if len(options.DisallowedTools) > 0 {
 			disallowedToolsStr := strings.Join(options.DisallowedTools, " ")
-			args = append(args, "--disallowed-tools", disallowedToolsStr)
+			args = append(args, "--disallowedTools", disallowedToolsStr)
 		}
 	}
 
@@ -76,7 +76,7 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string, options *client
 		}
 		if len(options.DisallowedTools) > 0 {
 			disallowedToolsStr := strings.Join(options.DisallowedTools, " ")
-			args = append(args, "--disallowed-tools", disallowedToolsStr)
+			args = append(args, "--disallowedTools", disallowedToolsStr)
 		}
 	}
 
