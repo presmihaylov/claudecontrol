@@ -22,6 +22,12 @@ interface SlackIntegration {
 	slack_team_id: string;
 	slack_team_name: string;
 	user_id: string;
+	created_at: string;
+	updated_at: string;
+}
+
+interface Organization {
+	id: string;
 	ccagent_secret_key_generated_at: string | null;
 	created_at: string;
 	updated_at: string;
@@ -36,6 +42,7 @@ export default function IntegrationDetail() {
 	const router = useRouter();
 	const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
 	const [integration, setIntegration] = useState<SlackIntegration | null>(null);
+	const [organization, setOrganization] = useState<Organization | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [generatingKey, setGeneratingKey] = useState(false);
 	const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
@@ -46,14 +53,15 @@ export default function IntegrationDetail() {
 	const integrationId = params.id as string;
 
 	useEffect(() => {
-		const fetchIntegration = async () => {
+		const fetchIntegrationAndOrganization = async () => {
 			if (!isLoaded || !isSignedIn) return;
 
 			try {
 				const token = await getToken();
 				if (!token) return;
 
-				const response = await fetch(`${env.CCBACKEND_BASE_URL}/slack/integrations`, {
+				// Fetch integration details
+				const integrationResponse = await fetch(`${env.CCBACKEND_BASE_URL}/slack/integrations`, {
 					method: "GET",
 					headers: {
 						Authorization: `Bearer ${token}`,
@@ -61,12 +69,12 @@ export default function IntegrationDetail() {
 					},
 				});
 
-				if (!response.ok) {
-					console.error("Failed to fetch integrations:", response.statusText);
+				if (!integrationResponse.ok) {
+					console.error("Failed to fetch integrations:", integrationResponse.statusText);
 					return;
 				}
 
-				const integrations: SlackIntegration[] = await response.json();
+				const integrations: SlackIntegration[] = await integrationResponse.json();
 				const foundIntegration = integrations.find((i) => i.id === integrationId);
 
 				if (!foundIntegration) {
@@ -75,14 +83,34 @@ export default function IntegrationDetail() {
 				}
 
 				setIntegration(foundIntegration);
+
+				// Fetch organization details
+				const organizationResponse = await fetch(
+					`${env.CCBACKEND_BASE_URL}/api/dashboard/organization`,
+					{
+						method: "GET",
+						headers: {
+							Authorization: `Bearer ${token}`,
+							"Content-Type": "application/json",
+						},
+					},
+				);
+
+				if (!organizationResponse.ok) {
+					console.error("Failed to fetch organization:", organizationResponse.statusText);
+					return;
+				}
+
+				const organizationData: Organization = await organizationResponse.json();
+				setOrganization(organizationData);
 			} catch (error) {
-				console.error("Error fetching integration:", error);
+				console.error("Error fetching data:", error);
 			} finally {
 				setLoading(false);
 			}
 		};
 
-		fetchIntegration();
+		fetchIntegrationAndOrganization();
 	}, [isLoaded, isSignedIn, getToken, integrationId, router]);
 
 	const handleGenerateSecretKey = async () => {
@@ -94,7 +122,7 @@ export default function IntegrationDetail() {
 			if (!token) return;
 
 			const response = await fetch(
-				`${env.CCBACKEND_BASE_URL}/slack/integrations/${integrationId}/ccagent_secret_key`,
+				`${env.CCBACKEND_BASE_URL}/api/dashboard/organization/ccagent_secret_key`,
 				{
 					method: "POST",
 					headers: {
@@ -114,10 +142,10 @@ export default function IntegrationDetail() {
 			setGeneratedSecretKey(data.secret_key);
 			setSecretKeyDialogOpen(true);
 
-			// Update the integration to reflect the new timestamp
-			if (integration) {
-				setIntegration({
-					...integration,
+			// Update the organization to reflect the new timestamp
+			if (organization) {
+				setOrganization({
+					...organization,
 					ccagent_secret_key_generated_at: new Date().toISOString(),
 				});
 			}
@@ -172,7 +200,15 @@ export default function IntegrationDetail() {
 		);
 	}
 
-	const hasSecretKey = integration.ccagent_secret_key_generated_at !== null;
+	if (!organization) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="text-muted-foreground">Organization not found</div>
+			</div>
+		);
+	}
+
+	const hasSecretKey = organization.ccagent_secret_key_generated_at !== null;
 
 	return (
 		<div className="min-h-screen bg-background">
@@ -214,8 +250,8 @@ export default function IntegrationDetail() {
 								ccagent Secret Key
 							</CardTitle>
 							<CardDescription>
-								This secret key is used by the ccagent CLI to authenticate with your Slack
-								workspace.
+								This secret key is used by the ccagent CLI to authenticate with all your Slack
+								workspaces in this organization.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
@@ -225,7 +261,7 @@ export default function IntegrationDetail() {
 									<h4 className="font-medium">Download ccagent</h4>
 									<p className="text-sm text-muted-foreground">
 										Download the ccagent CLI tool to start using Claude Control with your Slack
-										workspace.
+										workspaces.
 									</p>
 								</div>
 								<Button
@@ -246,13 +282,13 @@ export default function IntegrationDetail() {
 								<div className="space-y-2">
 									<p className="text-sm text-muted-foreground">
 										Secret key generated on{" "}
-										{integration.ccagent_secret_key_generated_at &&
+										{organization.ccagent_secret_key_generated_at &&
 											new Date(
-												integration.ccagent_secret_key_generated_at,
+												organization.ccagent_secret_key_generated_at,
 											).toLocaleDateString()}{" "}
 										at{" "}
-										{integration.ccagent_secret_key_generated_at &&
-											new Date(integration.ccagent_secret_key_generated_at).toLocaleTimeString()}
+										{organization.ccagent_secret_key_generated_at &&
+											new Date(organization.ccagent_secret_key_generated_at).toLocaleTimeString()}
 									</p>
 									<Button
 										variant="outline"
@@ -268,7 +304,7 @@ export default function IntegrationDetail() {
 								<div className="space-y-2">
 									<p className="text-sm text-muted-foreground">
 										No secret key has been generated yet. Generate one to start using ccagent with
-										this workspace.
+										all your Slack workspaces.
 									</p>
 									<Button
 										onClick={handleGenerateSecretKey}
