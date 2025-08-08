@@ -726,7 +726,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(
 	}
 
 	// Sort agents by load (number of assigned jobs) to select the least loaded agent
-	sortedAgents, err := s.sortAgentsByLoad(ctx, connectedAgents, slackIntegrationID)
+	sortedAgents, err := sortAgentsByLoad(ctx, connectedAgents, slackIntegrationID, s.agentsService)
 	if err != nil {
 		log.Printf("❌ Failed to sort agents by load: %v", err)
 		return "", false, fmt.Errorf("failed to sort agents by load: %w", err)
@@ -745,37 +745,6 @@ func (s *CoreUseCase) tryAssignJobToAgent(
 	return selectedAgent.WSConnectionID, true, nil
 }
 
-type agentWithLoad struct {
-	agent *models.ActiveAgent
-	load  int
-}
-
-func (s *CoreUseCase) sortAgentsByLoad(
-	ctx context.Context,
-	agents []*models.ActiveAgent,
-	slackIntegrationID string,
-) ([]agentWithLoad, error) {
-	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
-
-	for _, agent := range agents {
-		// Get job IDs assigned to this agent
-		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, slackIntegrationID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
-		}
-
-		jobCount := len(jobIDs)
-
-		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: jobCount})
-	}
-
-	// Sort by load (ascending - least loaded first)
-	sort.Slice(agentsWithLoad, func(i, j int) bool {
-		return agentsWithLoad[i].load < agentsWithLoad[j].load
-	})
-
-	return agentsWithLoad, nil
-}
 
 func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
