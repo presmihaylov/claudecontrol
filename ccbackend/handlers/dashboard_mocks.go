@@ -30,20 +30,18 @@ type MockSlackIntegrationsService struct {
 func (m *MockSlackIntegrationsService) CreateSlackIntegration(
 	ctx context.Context,
 	slackAuthCode, redirectURL string,
-	userID string,
 ) (*models.SlackIntegration, error) {
-	args := m.Called(ctx, slackAuthCode, redirectURL, userID)
+	args := m.Called(ctx, slackAuthCode, redirectURL)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.SlackIntegration), args.Error(1)
 }
 
-func (m *MockSlackIntegrationsService) GetSlackIntegrationsByUserID(
+func (m *MockSlackIntegrationsService) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
-	userID string,
 ) ([]*models.SlackIntegration, error) {
-	args := m.Called(ctx, userID)
+	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

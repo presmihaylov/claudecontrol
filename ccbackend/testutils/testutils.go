@@ -102,7 +102,7 @@ func CreateTestContext(user *models.User) context.Context {
 }
 
 // CreateTestSlackIntegration creates a test slack integration model for testing
-func CreateTestSlackIntegration(userID string) *models.SlackIntegration {
+func CreateTestSlackIntegration(organizationID string) *models.SlackIntegration {
 	integrationID := core.NewID("si")
 	teamIDSuffix := core.NewID("team")
 	tokenSuffix := core.NewID("tok")
@@ -112,7 +112,7 @@ func CreateTestSlackIntegration(userID string) *models.SlackIntegration {
 		SlackTeamID:    "test-team-" + teamIDSuffix,
 		SlackAuthToken: "xoxb-test-token-" + tokenSuffix,
 		SlackTeamName:  "Test Team",
-		UserID:         userID,
+		OrganizationID: organizationID,
 	}
 }
 

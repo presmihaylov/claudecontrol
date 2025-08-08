@@ -23,30 +23,30 @@ func NewDashboardAPIHandler(
 	}
 }
 
-// ListSlackIntegrations returns all Slack integrations for a user
+// ListSlackIntegrations returns all Slack integrations for an organization
 func (h *DashboardAPIHandler) ListSlackIntegrations(
 	ctx context.Context,
 	user *models.User,
 ) ([]*models.SlackIntegration, error) {
-	log.Printf("📋 Listing Slack integrations for user: %s", user.ID)
-	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByUserID(ctx, user.ID)
+	log.Printf("📋 Listing Slack integrations for organization: %s", user.OrganizationID)
+	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(ctx)
 	if err != nil {
 		log.Printf("❌ Failed to get Slack integrations: %v", err)
 		return nil, err
 	}
 
-	log.Printf("✅ Retrieved %d Slack integrations for user: %s", len(integrations), user.ID)
+	log.Printf("✅ Retrieved %d Slack integrations for organization: %s", len(integrations), user.OrganizationID)
 	return integrations, nil
 }
 
-// CreateSlackIntegration creates a new Slack integration for a user
+// CreateSlackIntegration creates a new Slack integration for an organization
 func (h *DashboardAPIHandler) CreateSlackIntegration(
 	ctx context.Context,
 	slackAuthToken, redirectURL string,
 	user *models.User,
 ) (*models.SlackIntegration, error) {
-	log.Printf("➕ Creating Slack integration for user: %s", user.ID)
-	integration, err := h.slackIntegrationsService.CreateSlackIntegration(ctx, slackAuthToken, redirectURL, user.ID)
+	log.Printf("➕ Creating Slack integration for organization: %s", user.OrganizationID)
+	integration, err := h.slackIntegrationsService.CreateSlackIntegration(ctx, slackAuthToken, redirectURL)
 	if err != nil {
 		log.Printf("❌ Failed to create Slack integration: %v", err)
 		return nil, err
