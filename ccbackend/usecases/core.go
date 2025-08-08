@@ -810,14 +810,6 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 		log.Printf("❌ Failed to get jobs for cleanup: %v", err)
 		return fmt.Errorf("failed to get jobs for cleanup: %w", err)
 	}
-	if len(jobs) == 0 {
-		// No jobs to clean up, just delete the agent
-		if err := s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, client.SlackIntegrationID); err != nil {
-			return fmt.Errorf("failed to delete agent: %w", err)
-		}
-		log.Printf("📋 Completed successfully - deregistered agent for client %s", client.ID)
-		return nil
-	}
 
 	// Clean up all job assignments - handle each job consistently
 	log.Printf("🧹 Agent %s has %d assigned job(s), cleaning up all assignments", agent.ID, len(jobs))
