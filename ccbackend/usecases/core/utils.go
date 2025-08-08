@@ -19,13 +19,13 @@ type agentWithLoad struct {
 func (s *CoreUseCase) sortAgentsByLoad(
 	ctx context.Context,
 	agents []*models.ActiveAgent,
-	slackIntegrationID string,
+	organizationID string,
 ) ([]agentWithLoad, error) {
 	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
 
 	for _, agent := range agents {
 		// Get job IDs assigned to this agent
-		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, slackIntegrationID)
+		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, organizationID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
 		}
