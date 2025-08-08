@@ -25,7 +25,7 @@ func DomainSlackIntegrationToAPISlackIntegration(domainIntegration *models.Slack
 		ID:                          domainIntegration.ID,
 		SlackTeamID:                 domainIntegration.SlackTeamID,
 		SlackTeamName:               domainIntegration.SlackTeamName,
-		UserID:                      domainIntegration.UserID,
+		OrganizationID:              domainIntegration.OrganizationID,
 		CCAgentSecretKeyGeneratedAt: domainIntegration.CCAgentSecretKeyGeneratedAt,
 		CreatedAt:                   domainIntegration.CreatedAt,
 		UpdatedAt:                   domainIntegration.UpdatedAt,

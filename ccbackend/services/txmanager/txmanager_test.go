@@ -36,7 +36,7 @@ func setupTransactionTest(
 
 	// Create test user and slack integration
 	testUser := testutils.CreateTestUser(t, usersRepo)
-	testIntegration := testutils.CreateTestSlackIntegration(testUser.ID)
+	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrganizationID)
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 
