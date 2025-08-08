@@ -8,14 +8,14 @@ import (
 
 	"ccbackend/clients"
 	"ccbackend/models"
-	"ccbackend/usecases"
+	"ccbackend/usecases/core"
 )
 
 type MessagesHandler struct {
-	coreUseCase *usecases.CoreUseCase
+	coreUseCase *core.CoreUseCase
 }
 
-func NewMessagesHandler(coreUseCase *usecases.CoreUseCase) *MessagesHandler {
+func NewMessagesHandler(coreUseCase *core.CoreUseCase) *MessagesHandler {
 	return &MessagesHandler{
 		coreUseCase: coreUseCase,
 	}
