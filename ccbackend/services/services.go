@@ -14,10 +14,10 @@ type UsersService interface {
 	GetOrCreateUser(ctx context.Context, authProvider, authProviderID string) (*models.User, error)
 }
 
-// OrganizationsService defines the interface for organization-related operations
-type OrganizationsService interface {
-	CreateOrganization(ctx context.Context) (*models.Organization, error)
-	GetOrganizationByID(ctx context.Context, id string) (mo.Option[*models.Organization], error)
+// OrganisationsService defines the interface for organization-related operations
+type OrganisationsService interface {
+	CreateOrganisation(ctx context.Context) (*models.Organisation, error)
+	GetOrganisationByID(ctx context.Context, id string) (mo.Option[*models.Organisation], error)
 }
 
 // SlackIntegrationsService defines the interface for Slack integration operations

@@ -56,12 +56,12 @@ func CreateTestUser(t *testing.T, usersRepo *db.PostgresUsersRepository) *models
 	require.NoError(t, err, "Failed to create database connection")
 	defer dbConn.Close()
 
-	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+	organisationsRepo := db.NewPostgresOrganisationsRepository(dbConn, cfg.DatabaseSchema)
 
 	// Create organization first
 	testOrgID := core.NewID("org")
-	organization := &models.Organization{ID: testOrgID}
-	err = organizationsRepo.CreateOrganization(context.Background(), organization)
+	organization := &models.Organisation{ID: testOrgID}
+	err = organisationsRepo.CreateOrganisation(context.Background(), organization)
 	require.NoError(t, err, "Failed to create test organization")
 
 	// Create user with the organization ID
@@ -80,12 +80,12 @@ func CreateTestUserWithProvider(t *testing.T, usersRepo *db.PostgresUsersReposit
 	require.NoError(t, err, "Failed to create database connection")
 	defer dbConn.Close()
 
-	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+	organisationsRepo := db.NewPostgresOrganisationsRepository(dbConn, cfg.DatabaseSchema)
 
 	// Create organization first
 	testOrgID := core.NewID("org")
-	organization := &models.Organization{ID: testOrgID}
-	err = organizationsRepo.CreateOrganization(context.Background(), organization)
+	organization := &models.Organisation{ID: testOrgID}
+	err = organisationsRepo.CreateOrganisation(context.Background(), organization)
 	require.NoError(t, err, "Failed to create test organization")
 
 	// Create user with the organization ID

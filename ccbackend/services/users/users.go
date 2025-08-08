@@ -12,18 +12,18 @@ import (
 
 type UsersService struct {
 	usersRepo            *db.PostgresUsersRepository
-	organizationsService services.OrganizationsService
+	organisationsService services.OrganisationsService
 	txManager            services.TransactionManager
 }
 
 func NewUsersService(
 	repo *db.PostgresUsersRepository,
-	organizationsService services.OrganizationsService,
+	organisationsService services.OrganisationsService,
 	txManager services.TransactionManager,
 ) *UsersService {
 	return &UsersService{
 		usersRepo:            repo,
-		organizationsService: organizationsService,
+		organisationsService: organisationsService,
 		txManager:            txManager,
 	}
 }
@@ -56,7 +56,7 @@ func (s *UsersService) GetOrCreateUser(ctx context.Context, authProvider, authPr
 		}
 
 		// User doesn't exist, so create organization first
-		organization, err := s.organizationsService.CreateOrganization(txCtx)
+		organization, err := s.organisationsService.CreateOrganisation(txCtx)
 		if err != nil {
 			return fmt.Errorf("failed to create organization: %w", err)
 		}

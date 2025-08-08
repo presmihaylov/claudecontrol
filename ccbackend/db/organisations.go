@@ -15,29 +15,29 @@ import (
 	"ccbackend/models"
 )
 
-type PostgresOrganizationsRepository struct {
+type PostgresOrganisationsRepository struct {
 	db     *sqlx.DB
 	schema string
 }
 
 // Column names for organizations table
-var organizationsColumns = []string{
+var organisationsColumns = []string{
 	"id",
 	"created_at",
 	"updated_at",
 }
 
-func NewPostgresOrganizationsRepository(db *sqlx.DB, schema string) *PostgresOrganizationsRepository {
-	return &PostgresOrganizationsRepository{db: db, schema: schema}
+func NewPostgresOrganisationsRepository(db *sqlx.DB, schema string) *PostgresOrganisationsRepository {
+	return &PostgresOrganisationsRepository{db: db, schema: schema}
 }
 
-func (r *PostgresOrganizationsRepository) CreateOrganization(
+func (r *PostgresOrganisationsRepository) CreateOrganisation(
 	ctx context.Context,
-	organization *models.Organization,
+	organization *models.Organisation,
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 
-	columnsStr := strings.Join(organizationsColumns, ", ")
+	columnsStr := strings.Join(organisationsColumns, ", ")
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.organizations (%s) 
@@ -51,26 +51,26 @@ func (r *PostgresOrganizationsRepository) CreateOrganization(
 	return nil
 }
 
-func (r *PostgresOrganizationsRepository) GetOrganizationByID(
+func (r *PostgresOrganisationsRepository) GetOrganisationByID(
 	ctx context.Context,
 	id string,
-) (mo.Option[*models.Organization], error) {
+) (mo.Option[*models.Organisation], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 
-	columnsStr := strings.Join(organizationsColumns, ", ")
+	columnsStr := strings.Join(organisationsColumns, ", ")
 
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.organizations 
 		WHERE id = $1`, columnsStr, r.schema)
 
-	organization := &models.Organization{}
+	organization := &models.Organisation{}
 	err := db.QueryRowxContext(ctx, query, id).StructScan(organization)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
-			return mo.None[*models.Organization](), nil
+			return mo.None[*models.Organisation](), nil
 		}
-		return mo.None[*models.Organization](), fmt.Errorf("failed to get organization by ID: %w", err)
+		return mo.None[*models.Organisation](), fmt.Errorf("failed to get organization by ID: %w", err)
 	}
 
 	return mo.Some(organization), nil
