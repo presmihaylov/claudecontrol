@@ -93,23 +93,6 @@ func createCLIAgent(agentType, permissionMode, logDir string) (services.CLIAgent
 	}
 }
 
-// validateAgentEnvironment validates that required environment variables are set for the chosen agent
-func validateAgentEnvironment(agentType string) error {
-	switch agentType {
-	case "claude":
-		if os.Getenv("ANTHROPIC_API_KEY") == "" {
-			return fmt.Errorf("ANTHROPIC_API_KEY environment variable is required for Claude agent but not set")
-		}
-	case "cursor":
-		if os.Getenv("CURSOR_API_KEY") == "" {
-			return fmt.Errorf("CURSOR_API_KEY environment variable is required for Cursor agent but not set")
-		}
-	default:
-		return fmt.Errorf("unknown agent type: %s", agentType)
-	}
-	return nil
-}
-
 type Options struct {
 	BypassPermissions bool   `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 	Agent             string `long:"agent"             description:"CLI agent to use"                                                                             choice:"claude" default:"claude"`
@@ -154,12 +137,6 @@ func main() {
 	ccagentAPIKey := os.Getenv("CCAGENT_API_KEY")
 	if ccagentAPIKey == "" {
 		fmt.Fprintf(os.Stderr, "Error: CCAGENT_API_KEY environment variable is required but not set\n")
-		os.Exit(1)
-	}
-
-	// Validate agent-specific environment variables
-	if err := validateAgentEnvironment(opts.Agent); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 

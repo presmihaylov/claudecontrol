@@ -109,15 +109,8 @@ DATABASE_URL=<postgresql_connection_string>
 
 ccagent requires environment variables:
 ```
-# Always required
 CCAGENT_API_KEY=<ccagent_api_key>
 CCAGENT_WS_API_URL=<websocket_server_url>  # Optional, defaults to production
-
-# Required for Claude agent (default)
-ANTHROPIC_API_KEY=<anthropic_api_key>
-
-# Required for Cursor agent (when using --agent cursor)
-CURSOR_API_KEY=<cursor_api_key>
 ```
 
 ### Key Integration Points
