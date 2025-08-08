@@ -35,12 +35,3 @@ func GetOrganization(ctx context.Context) (*models.Organization, bool) {
 	org, ok := ctx.Value(OrganizationContextKey).(*models.Organization)
 	return org, ok
 }
-
-// GetOrganizationID extracts the organization ID from the user context
-func GetOrganizationID(ctx context.Context) (string, bool) {
-	user, ok := GetUser(ctx)
-	if !ok {
-		return "", false
-	}
-	return user.OrganizationID, true
-}
