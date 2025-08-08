@@ -34,11 +34,18 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 		return fmt.Errorf("failed to parse message: %w", err)
 	}
 
+	// Determine slack integration ID from the client's organization
+	slackIntegrationID, err := h.getSlackIntegrationIDForClient(client)
+	if err != nil {
+		log.Printf("❌ Failed to determine slack integration for client %s: %v", client.ID, err)
+		return fmt.Errorf("failed to determine slack integration: %w", err)
+	}
+
 	// Log processing of message with message ID, slack integration ID, and agent ID
 	log.Printf(
 		"📋 Processing message %s from ccagent (Slack Integration: %s, Agent: %s)",
 		parsedMsg.ID,
-		client.SlackIntegrationID,
+		slackIntegrationID,
 		client.AgentID,
 	)
 
@@ -51,7 +58,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 		}
 
 		log.Printf("🤖 Received assistant message from client %s", client.ID)
-		if err := h.coreUseCase.ProcessAssistantMessage(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
+		if err := h.coreUseCase.ProcessAssistantMessage(context.Background(), client.ID, payload, slackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process assistant message from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process assistant message: %w", err)
 		}
@@ -64,7 +71,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 		}
 
 		log.Printf("⚙️ Received system message from client %s: %s", client.ID, payload.Message)
-		if err := h.coreUseCase.ProcessSystemMessage(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
+		if err := h.coreUseCase.ProcessSystemMessage(context.Background(), client.ID, payload, slackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process system message from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process system message: %w", err)
 		}
@@ -81,7 +88,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 			client.ID,
 			payload.SlackMessageID,
 		)
-		if err := h.coreUseCase.ProcessProcessingSlackMessage(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
+		if err := h.coreUseCase.ProcessProcessingSlackMessage(context.Background(), client.ID, payload, slackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process processing slack message notification from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process processing slack message: %w", err)
 		}
@@ -99,7 +106,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 			payload.JobID,
 			payload.Reason,
 		)
-		if err := h.coreUseCase.ProcessJobComplete(context.Background(), client.ID, payload, client.SlackIntegrationID); err != nil {
+		if err := h.coreUseCase.ProcessJobComplete(context.Background(), client.ID, payload, slackIntegrationID); err != nil {
 			log.Printf("❌ Failed to process job complete notification from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process job complete: %w", err)
 		}
@@ -110,6 +117,14 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 	}
 
 	return nil
+}
+
+// getSlackIntegrationIDForClient determines the slack integration ID for a client
+// by finding the agent associated with that client
+func (h *MessagesHandler) getSlackIntegrationIDForClient(client *clients.Client) (string, error) {
+	// Find which slack integration this agent is registered with by checking the core use case
+	// This is a temporary solution - ideally we'd determine this from job context
+	return h.coreUseCase.GetSlackIntegrationForClient(context.Background(), client)
 }
 
 func unmarshalPayload(payload any, target any) error {

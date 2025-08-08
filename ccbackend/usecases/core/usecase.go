@@ -686,32 +686,75 @@ func (s *CoreUseCase) tryAssignJobToAgent(
 func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
 
+	// Get slack integrations for the organization to find one to register the agent with
+	slackIntegrations, err := s.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(
+		ctx,
+		client.OrganizationID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get slack integrations for organization %s: %w", client.OrganizationID, err)
+	}
+
+	if len(slackIntegrations) == 0 {
+		return fmt.Errorf("no slack integrations found for organization %s", client.OrganizationID)
+	}
+
+	// Use the first slack integration for agent registration
+	// The agent can work with jobs from any integration in the organization
+	firstIntegration := slackIntegrations[0]
+
 	// Pass the agent ID to UpsertActiveAgent
-	_, err := s.agentsService.UpsertActiveAgent(ctx, client.ID, client.SlackIntegrationID, client.AgentID)
+	_, err = s.agentsService.UpsertActiveAgent(ctx, client.ID, firstIntegration.ID, client.AgentID)
 	if err != nil {
 		return fmt.Errorf("failed to register agent for client %s: %w", client.ID, err)
 	}
 
-	log.Printf("📋 Completed successfully - registered agent for client %s", client.ID)
+	log.Printf(
+		"📋 Completed successfully - registered agent for client %s with integration %s",
+		client.ID,
+		firstIntegration.ID,
+	)
 	return nil
 }
 
 func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to deregister agent for client %s", client.ID)
 
-	// First, get the agent to check for assigned jobs
-	maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.ID, client.SlackIntegrationID)
+	// Get slack integrations for the organization to find the agent
+	slackIntegrations, err := s.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(
+		ctx,
+		client.OrganizationID,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to find agent for client %s: %w", client.ID, err)
+		return fmt.Errorf("failed to get slack integrations for organization %s: %w", client.OrganizationID, err)
 	}
-	if !maybeAgent.IsPresent() {
+
+	if len(slackIntegrations) == 0 {
+		return fmt.Errorf("no slack integrations found for organization %s", client.OrganizationID)
+	}
+
+	// Find the agent by checking all slack integrations in the organization
+	var agent *models.ActiveAgent
+	var agentSlackIntegrationID string
+	for _, integration := range slackIntegrations {
+		maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.ID, integration.ID)
+		if err != nil {
+			continue // Try next integration
+		}
+		if maybeAgent.IsPresent() {
+			agent = maybeAgent.MustGet()
+			agentSlackIntegrationID = integration.ID
+			break
+		}
+	}
+
+	if agent == nil {
 		log.Printf("❌ No agent found for client %s", client.ID)
 		return fmt.Errorf("no agent found for client: %s", client.ID)
 	}
-	agent := maybeAgent.MustGet()
 
 	// Get active jobs for agent cleanup
-	jobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, client.SlackIntegrationID)
+	jobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, agentSlackIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to get jobs for cleanup: %v", err)
 		return fmt.Errorf("failed to get jobs for cleanup: %w", err)
@@ -722,8 +765,8 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 
 	// Process each job: update Slack, unassign agent, delete job
 	for _, jobID := range jobs {
-		// Get job details for Slack notification
-		maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, client.SlackIntegrationID)
+		// Get job details to determine the correct slack integration for this job
+		maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, agentSlackIntegrationID)
 		if err != nil {
 			log.Printf("❌ Failed to get job %s for cleanup: %v", jobID, err)
 			return fmt.Errorf("failed to get job %s for cleanup: %w", jobID, err)
@@ -734,16 +777,19 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 		}
 		job := maybeJob.MustGet()
 
+		// Use the slack integration from the job for slack operations
+		jobSlackIntegrationID := job.SlackIntegrationID
+
 		// Send abandonment message to Slack thread
 		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
-		if err := s.sendSlackMessage(ctx, client.SlackIntegrationID, job.SlackChannelID, job.SlackThreadTS, abandonmentMessage); err != nil {
+		if err := s.sendSlackMessage(ctx, jobSlackIntegrationID, job.SlackChannelID, job.SlackThreadTS, abandonmentMessage); err != nil {
 			log.Printf("❌ Failed to send abandonment message to Slack thread %s: %v", job.SlackThreadTS, err)
 			return fmt.Errorf("failed to send abandonment message to Slack: %w", err)
 		}
 		log.Printf("📤 Sent abandonment message to Slack thread %s", job.SlackThreadTS)
 
 		// Update the top-level message emoji to :x:
-		if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "x", client.SlackIntegrationID); err != nil {
+		if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "x", jobSlackIntegrationID); err != nil {
 			log.Printf("❌ Failed to update slack message reaction to :x: for abandoned job %s: %v", job.ID, err)
 			return fmt.Errorf("failed to update slack message reaction to :x: for abandoned job %s: %w", job.ID, err)
 		}
@@ -751,15 +797,15 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 
 		// Perform database operations within transaction
 		if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
-			// Unassign agent from job
-			if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, client.SlackIntegrationID); err != nil {
+			// Unassign agent from job (use the agent's slack integration for DB operations)
+			if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, agentSlackIntegrationID); err != nil {
 				log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
 				return fmt.Errorf("failed to unassign agent %s from job %s: %w", agent.ID, jobID, err)
 			}
 			log.Printf("🔗 Unassigned agent %s from job %s", agent.ID, jobID)
 
-			// Delete the job
-			if err := s.jobsService.DeleteJob(ctx, jobID, client.SlackIntegrationID); err != nil {
+			// Delete the job (use the job's slack integration)
+			if err := s.jobsService.DeleteJob(ctx, jobID, jobSlackIntegrationID); err != nil {
 				log.Printf("❌ Failed to delete abandoned job %s: %v", jobID, err)
 				return fmt.Errorf("failed to delete abandoned job %s: %w", jobID, err)
 			}
@@ -772,7 +818,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	}
 
 	// Delete the agent record
-	err = s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, client.SlackIntegrationID)
+	err = s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, agentSlackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to deregister agent for client %s: %w", client.ID, err)
 	}
@@ -1175,13 +1221,74 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 func (s *CoreUseCase) ProcessPing(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to process ping from client %s", client.ID)
 
+	// Get slack integrations for the organization to find the agent
+	slackIntegrations, err := s.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(
+		ctx,
+		client.OrganizationID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get slack integrations for organization %s: %w", client.OrganizationID, err)
+	}
+
+	if len(slackIntegrations) == 0 {
+		return fmt.Errorf("no slack integrations found for organization %s", client.OrganizationID)
+	}
+
+	// Find the agent by checking all slack integrations in the organization
+	var agentSlackIntegrationID string
+	for _, integration := range slackIntegrations {
+		maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.ID, integration.ID)
+		if err != nil {
+			continue // Try next integration
+		}
+		if maybeAgent.IsPresent() {
+			agentSlackIntegrationID = integration.ID
+			break
+		}
+	}
+
+	if agentSlackIntegrationID == "" {
+		log.Printf("❌ No agent found for client %s", client.ID)
+		return fmt.Errorf("no agent found for client: %s", client.ID)
+	}
+
 	// Update the agent's last_active_at timestamp
-	if err := s.agentsService.UpdateAgentLastActiveAt(ctx, client.ID, client.SlackIntegrationID); err != nil {
+	if err := s.agentsService.UpdateAgentLastActiveAt(ctx, client.ID, agentSlackIntegrationID); err != nil {
 		log.Printf("❌ Failed to update agent last_active_at for client %s: %v", client.ID, err)
 		return fmt.Errorf("failed to update agent last_active_at: %w", err)
 	}
 
 	return nil
+}
+
+// GetSlackIntegrationForClient finds the slack integration ID for a client
+// by locating the agent associated with that client
+func (s *CoreUseCase) GetSlackIntegrationForClient(ctx context.Context, client *clients.Client) (string, error) {
+	// Get slack integrations for the organization to find the agent
+	slackIntegrations, err := s.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(
+		ctx,
+		client.OrganizationID,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to get slack integrations for organization %s: %w", client.OrganizationID, err)
+	}
+
+	if len(slackIntegrations) == 0 {
+		return "", fmt.Errorf("no slack integrations found for organization %s", client.OrganizationID)
+	}
+
+	// Find the agent by checking all slack integrations in the organization
+	for _, integration := range slackIntegrations {
+		maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.ID, integration.ID)
+		if err != nil {
+			continue // Try next integration
+		}
+		if maybeAgent.IsPresent() {
+			return integration.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("no agent found for client: %s", client.ID)
 }
 
 func (s *CoreUseCase) ProcessReactionAdded(
