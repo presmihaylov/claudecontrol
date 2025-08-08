@@ -18,7 +18,9 @@ import (
 	"ccbackend/testutils"
 )
 
-func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *models.SlackIntegration, func()) {
+func setupTestService(
+	t *testing.T,
+) (*AgentsService, services.JobsService, *models.SlackIntegration, *models.User, func()) {
 	cfg, err := testutils.LoadTestConfig()
 	require.NoError(t, err)
 
@@ -48,14 +50,16 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 		dbConn.Close()
 	}
 
-	return agentsService, jobsService, testIntegration, cleanup
+	return agentsService, jobsService, testIntegration, testUser, cleanup
 }
 
 func TestAgentsService(t *testing.T) {
-	agentsService, jobsService, testIntegration, cleanup := setupTestService(t)
+	agentsService, jobsService, testIntegration, testUser, cleanup := setupTestService(t)
 	defer cleanup()
+	_ = jobsService     // Mark as used to avoid lint warning
+	_ = testIntegration // Mark as used to avoid lint warning
 
-	slackIntegrationID := testIntegration.ID
+	organizationID := testUser.OrganizationID
 
 	t.Run("UpsertActiveAgent", func(t *testing.T) {
 		t.Run("Success with agent ID", func(t *testing.T) {
@@ -64,36 +68,36 @@ func TestAgentsService(t *testing.T) {
 			agent, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID,
-				slackIntegrationID,
+				organizationID,
 				agentID,
 			)
 
 			require.NoError(t, err)
 			defer func() {
 				// Cleanup: delete the agent we created
-				_ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, slackIntegrationID)
+				_ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, organizationID)
 			}()
 
 			assert.NotEmpty(t, agent.ID)
 			assert.NotNil(t, agent.CCAgentID)
 			assert.Equal(t, agentID, agent.CCAgentID)
 			// Verify agent has no job assignments
-			jobs, err := agentsService.GetActiveAgentJobAssignments(context.Background(), agent.ID, slackIntegrationID)
+			jobs, err := agentsService.GetActiveAgentJobAssignments(context.Background(), agent.ID, organizationID)
 			require.NoError(t, err)
 			assert.Empty(t, jobs)
 			assert.Equal(t, wsConnectionID, agent.WSConnectionID)
-			assert.Equal(t, testIntegration.ID, agent.SlackIntegrationID)
+			assert.Equal(t, testUser.OrganizationID, agent.OrganizationID)
 			assert.False(t, agent.CreatedAt.IsZero())
 			assert.False(t, agent.UpdatedAt.IsZero())
 
 			// Verify agent exists in database
-			maybeFetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			maybeFetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, organizationID)
 			require.NoError(t, err)
 			require.True(t, maybeFetchedAgent.IsPresent())
 			fetchedAgent := maybeFetchedAgent.MustGet()
 			assert.Equal(t, agent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
-			assert.Equal(t, testIntegration.ID, fetchedAgent.SlackIntegrationID)
+			assert.Equal(t, testUser.OrganizationID, fetchedAgent.OrganizationID)
 			assert.Equal(t, agent.CCAgentID, fetchedAgent.CCAgentID)
 		})
 
@@ -107,48 +111,48 @@ func TestAgentsService(t *testing.T) {
 				"test.thread.assigned",
 				"C1234567890",
 				"testuser",
-				slackIntegrationID,
+				organizationID,
 			)
 			require.NoError(t, err)
 
 			agent, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID,
-				slackIntegrationID,
+				organizationID,
 				agentID,
 			)
 			require.NoError(t, err)
 
 			// Assign job to agent
-			err = agentsService.AssignAgentToJob(context.Background(), agent.ID, job.ID, slackIntegrationID)
+			err = agentsService.AssignAgentToJob(context.Background(), agent.ID, job.ID, organizationID)
 			require.NoError(t, err)
 
 			defer func() {
 				// Cleanup: delete the agent we created
-				_ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, slackIntegrationID)
+				_ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, organizationID)
 			}()
 
 			assert.NotEmpty(t, agent.ID)
 			assert.Equal(t, wsConnectionID, agent.WSConnectionID)
-			assert.Equal(t, testIntegration.ID, agent.SlackIntegrationID)
+			assert.Equal(t, testUser.OrganizationID, agent.OrganizationID)
 			// Verify agent has the assigned job
-			jobs, err := agentsService.GetActiveAgentJobAssignments(context.Background(), agent.ID, slackIntegrationID)
+			jobs, err := agentsService.GetActiveAgentJobAssignments(context.Background(), agent.ID, organizationID)
 			require.NoError(t, err)
 			assert.Len(t, jobs, 1)
 			assert.Equal(t, job.ID, jobs[0])
 
 			// Verify agent exists in database with correct job ID
-			maybeFetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			maybeFetchedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, organizationID)
 			require.NoError(t, err)
 			require.True(t, maybeFetchedAgent.IsPresent())
 			fetchedAgent := maybeFetchedAgent.MustGet()
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
-			assert.Equal(t, testIntegration.ID, fetchedAgent.SlackIntegrationID)
+			assert.Equal(t, testUser.OrganizationID, fetchedAgent.OrganizationID)
 			// Verify fetched agent has the assigned job
 			fetchedJobs, err := agentsService.GetActiveAgentJobAssignments(
 				context.Background(),
 				fetchedAgent.ID,
-				slackIntegrationID,
+				organizationID,
 			)
 			require.NoError(t, err)
 			assert.Len(t, fetchedJobs, 1)
@@ -157,18 +161,18 @@ func TestAgentsService(t *testing.T) {
 
 		t.Run("EmptyWSConnectionID", func(t *testing.T) {
 			agentID := core.NewID("ccaid")
-			_, err := agentsService.UpsertActiveAgent(context.Background(), "", slackIntegrationID, agentID)
+			_, err := agentsService.UpsertActiveAgent(context.Background(), "", organizationID, agentID)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "ws_connection_id must be a valid ULID")
 		})
 
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
+		t.Run("EmptyOrganizationID", func(t *testing.T) {
 			agentID := core.NewID("ccaid")
 			_, err := agentsService.UpsertActiveAgent(context.Background(), core.NewID("wsc"), "", agentID)
 
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
+			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
 		})
 
 		t.Run("UpsertBehavior - Updates existing agent", func(t *testing.T) {
@@ -180,11 +184,11 @@ func TestAgentsService(t *testing.T) {
 			agent1, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID1,
-				slackIntegrationID,
+				organizationID,
 				agentID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, organizationID) }()
 
 			originalID := agent1.ID
 			originalCreatedAt := agent1.CreatedAt
@@ -193,7 +197,7 @@ func TestAgentsService(t *testing.T) {
 			agent2, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID2,
-				slackIntegrationID,
+				organizationID,
 				agentID,
 			)
 			require.NoError(t, err)
@@ -206,7 +210,7 @@ func TestAgentsService(t *testing.T) {
 			assert.True(t, agent2.UpdatedAt.After(agent1.UpdatedAt))
 
 			// Verify only one agent exists for this ccagent_id
-			allAgents, err := agentsService.agentsRepo.GetAllActiveAgents(context.Background(), slackIntegrationID)
+			allAgents, err := agentsService.agentsRepo.GetAllActiveAgents(context.Background(), organizationID)
 			require.NoError(t, err)
 
 			agentCount := 0
@@ -227,21 +231,21 @@ func TestAgentsService(t *testing.T) {
 			agent1, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID,
-				slackIntegrationID,
+				organizationID,
 				agentID1,
 			)
 			require.NoError(t, err)
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, organizationID) }()
 
 			// Create second agent with different ccagent_id - should create new record
 			agent2, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID,
-				slackIntegrationID,
+				organizationID,
 				agentID2,
 			)
 			require.NoError(t, err)
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent2.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent2.ID, organizationID) }()
 
 			// Should have different IDs
 			assert.NotEqual(t, agent1.ID, agent2.ID)
@@ -257,38 +261,38 @@ func TestAgentsService(t *testing.T) {
 			agent, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID,
-				slackIntegrationID,
+				organizationID,
 				agentID,
 			)
 			require.NoError(t, err)
 
-			err = agentsService.DeleteActiveAgent(context.Background(), agent.ID, slackIntegrationID)
+			err = agentsService.DeleteActiveAgent(context.Background(), agent.ID, organizationID)
 			require.NoError(t, err)
 
 			// Verify agent no longer exists
-			maybeAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			maybeAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, organizationID)
 			require.NoError(t, err)
 			assert.False(t, maybeAgent.IsPresent())
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			err := agentsService.DeleteActiveAgent(context.Background(), "", slackIntegrationID)
+			err := agentsService.DeleteActiveAgent(context.Background(), "", organizationID)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "agent ID must be a valid ULID")
 		})
 
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
+		t.Run("EmptyOrganizationID", func(t *testing.T) {
 			err := agentsService.DeleteActiveAgent(context.Background(), core.NewID("ccaid"), "")
 
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
+			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
 			id := core.NewID("ccaid")
 
-			err := agentsService.DeleteActiveAgent(context.Background(), id, slackIntegrationID)
+			err := agentsService.DeleteActiveAgent(context.Background(), id, organizationID)
 			require.Error(t, err)
 			assert.True(t, errors.Is(err, core.ErrNotFound))
 		})
@@ -304,7 +308,7 @@ func TestAgentsService(t *testing.T) {
 				"test.thread.getbyid",
 				"C1234567890",
 				"testuser",
-				slackIntegrationID,
+				organizationID,
 			)
 			require.NoError(t, err)
 
@@ -312,24 +316,24 @@ func TestAgentsService(t *testing.T) {
 			createdAgent, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID,
-				slackIntegrationID,
+				organizationID,
 				agentID,
 			)
 			require.NoError(t, err)
 
 			// Assign job to agent
-			err = agentsService.AssignAgentToJob(context.Background(), createdAgent.ID, job.ID, slackIntegrationID)
+			err = agentsService.AssignAgentToJob(context.Background(), createdAgent.ID, job.ID, organizationID)
 			require.NoError(t, err)
 
 			defer func() {
 				// Cleanup: delete the agent we created
-				_ = agentsService.DeleteActiveAgent(context.Background(), createdAgent.ID, slackIntegrationID)
+				_ = agentsService.DeleteActiveAgent(context.Background(), createdAgent.ID, organizationID)
 			}()
 
 			maybeFetchedAgent, err := agentsService.GetAgentByID(
 				context.Background(),
 				createdAgent.ID,
-				slackIntegrationID,
+				organizationID,
 			)
 			require.NoError(t, err)
 			require.True(t, maybeFetchedAgent.IsPresent())
@@ -337,13 +341,13 @@ func TestAgentsService(t *testing.T) {
 
 			assert.Equal(t, createdAgent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
-			assert.Equal(t, testIntegration.ID, fetchedAgent.SlackIntegrationID)
+			assert.Equal(t, testUser.OrganizationID, fetchedAgent.OrganizationID)
 
 			// Verify agent has the assigned job
 			jobs, err := agentsService.GetActiveAgentJobAssignments(
 				context.Background(),
 				fetchedAgent.ID,
-				slackIntegrationID,
+				organizationID,
 			)
 			require.NoError(t, err)
 			assert.Len(t, jobs, 1)
@@ -351,23 +355,23 @@ func TestAgentsService(t *testing.T) {
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			_, err := agentsService.GetAgentByID(context.Background(), "", slackIntegrationID)
+			_, err := agentsService.GetAgentByID(context.Background(), "", organizationID)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "agent ID must be a valid ULID")
 		})
 
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
+		t.Run("EmptyOrganizationID", func(t *testing.T) {
 			_, err := agentsService.GetAgentByID(context.Background(), core.NewID("ccaid"), "")
 
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
+			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
 			id := core.NewID("ccaid")
 
-			maybeAgent, err := agentsService.GetAgentByID(context.Background(), id, slackIntegrationID)
+			maybeAgent, err := agentsService.GetAgentByID(context.Background(), id, organizationID)
 			require.NoError(t, err)
 			assert.False(t, maybeAgent.IsPresent())
 		})
@@ -380,11 +384,11 @@ func TestAgentsService(t *testing.T) {
 			agent1, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				core.NewID("wsc"),
-				slackIntegrationID,
+				organizationID,
 				agentID1,
 			)
 			require.NoError(t, err)
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, organizationID) }()
 
 			// Create a real job first
 			job, err := jobsService.CreateJob(
@@ -392,7 +396,7 @@ func TestAgentsService(t *testing.T) {
 				"test.thread.available",
 				"C1234567890",
 				"testuser",
-				slackIntegrationID,
+				organizationID,
 			)
 			require.NoError(t, err)
 
@@ -400,29 +404,29 @@ func TestAgentsService(t *testing.T) {
 			agent2, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				core.NewID("wsc"),
-				slackIntegrationID,
+				organizationID,
 				agentID2,
 			)
 			require.NoError(t, err)
 
 			// Assign job to agent2
-			err = agentsService.AssignAgentToJob(context.Background(), agent2.ID, job.ID, slackIntegrationID)
+			err = agentsService.AssignAgentToJob(context.Background(), agent2.ID, job.ID, organizationID)
 			require.NoError(t, err)
 
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent2.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent2.ID, organizationID) }()
 
 			agentID3 := core.NewID("ccaid")
 			agent3, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				core.NewID("wsc"),
-				slackIntegrationID,
+				organizationID,
 				agentID3,
 			)
 			require.NoError(t, err)
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent3.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent3.ID, organizationID) }()
 
 			// Get available agents (should only return agent1 and agent3)
-			availableAgents, err := agentsService.GetAvailableAgents(context.Background(), slackIntegrationID)
+			availableAgents, err := agentsService.GetAvailableAgents(context.Background(), organizationID)
 			require.NoError(t, err)
 
 			// Should have at least 2 available agents (the ones we created without jobs)
@@ -433,11 +437,11 @@ func TestAgentsService(t *testing.T) {
 				jobs, err := agentsService.GetActiveAgentJobAssignments(
 					context.Background(),
 					agent.ID,
-					slackIntegrationID,
+					organizationID,
 				)
 				require.NoError(t, err)
 				assert.Empty(t, jobs)
-				assert.Equal(t, testIntegration.ID, agent.SlackIntegrationID)
+				assert.Equal(t, testUser.OrganizationID, agent.OrganizationID)
 				if agent.ID == agent1.ID {
 					foundAgent1 = true
 				}
@@ -460,7 +464,7 @@ func TestAgentsService(t *testing.T) {
 				"test.thread.busy1",
 				"C1111111111",
 				"testuser",
-				slackIntegrationID,
+				organizationID,
 			)
 			require.NoError(t, err)
 
@@ -468,51 +472,51 @@ func TestAgentsService(t *testing.T) {
 			agent1, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				core.NewID("wsc"),
-				slackIntegrationID,
+				organizationID,
 				agentIDBusy1,
 			)
 			require.NoError(t, err)
 
 			// Assign job to agent1
-			err = agentsService.AssignAgentToJob(context.Background(), agent1.ID, job1.ID, slackIntegrationID)
+			err = agentsService.AssignAgentToJob(context.Background(), agent1.ID, job1.ID, organizationID)
 			require.NoError(t, err)
 
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, organizationID) }()
 
 			job2, err := jobsService.CreateJob(
 				context.Background(),
 				"test.thread.busy2",
 				"C2222222222",
 				"testuser",
-				slackIntegrationID,
+				organizationID,
 			)
 			require.NoError(t, err)
 			agentIDBusy2 := core.NewID("ccaid")
 			agent2, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				core.NewID("wsc"),
-				slackIntegrationID,
+				organizationID,
 				agentIDBusy2,
 			)
 			require.NoError(t, err)
 
 			// Assign job to agent2
-			err = agentsService.AssignAgentToJob(context.Background(), agent2.ID, job2.ID, slackIntegrationID)
+			err = agentsService.AssignAgentToJob(context.Background(), agent2.ID, job2.ID, organizationID)
 			require.NoError(t, err)
 
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent2.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent2.ID, organizationID) }()
 
 			// Get available agents (should be empty)
-			availableAgents, err := agentsService.GetAvailableAgents(context.Background(), slackIntegrationID)
+			availableAgents, err := agentsService.GetAvailableAgents(context.Background(), organizationID)
 			require.NoError(t, err)
 			assert.Empty(t, availableAgents)
 		})
 
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
+		t.Run("EmptyOrganizationID", func(t *testing.T) {
 			_, err := agentsService.GetAvailableAgents(context.Background(), "")
 
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
+			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
 		})
 	})
 
@@ -524,14 +528,14 @@ func TestAgentsService(t *testing.T) {
 			agent, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID,
-				slackIntegrationID,
+				organizationID,
 				agentID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, organizationID) }()
 
 			// Get initial last_active_at timestamp
-			maybeInitialAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			maybeInitialAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, organizationID)
 			require.NoError(t, err)
 			require.True(t, maybeInitialAgent.IsPresent())
 			initialAgent := maybeInitialAgent.MustGet()
@@ -541,11 +545,11 @@ func TestAgentsService(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 
 			// Update last_active_at
-			err = agentsService.UpdateAgentLastActiveAt(context.Background(), wsConnectionID, slackIntegrationID)
+			err = agentsService.UpdateAgentLastActiveAt(context.Background(), wsConnectionID, organizationID)
 			require.NoError(t, err)
 
 			// Verify the timestamp was updated
-			maybeUpdatedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, slackIntegrationID)
+			maybeUpdatedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, organizationID)
 			require.NoError(t, err)
 			require.True(t, maybeUpdatedAgent.IsPresent())
 			updatedAgent := maybeUpdatedAgent.MustGet()
@@ -554,19 +558,19 @@ func TestAgentsService(t *testing.T) {
 		})
 
 		t.Run("EmptyWSConnectionID", func(t *testing.T) {
-			err := agentsService.UpdateAgentLastActiveAt(context.Background(), "", slackIntegrationID)
+			err := agentsService.UpdateAgentLastActiveAt(context.Background(), "", organizationID)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "ws_connection_id must be a valid ULID")
 		})
 
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
+		t.Run("EmptyOrganizationID", func(t *testing.T) {
 			err := agentsService.UpdateAgentLastActiveAt(context.Background(), core.NewID("wsc"), "")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
+			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
-			err := agentsService.UpdateAgentLastActiveAt(context.Background(), core.NewID("wsc"), slackIntegrationID)
+			err := agentsService.UpdateAgentLastActiveAt(context.Background(), core.NewID("wsc"), organizationID)
 			require.Error(t, err)
 			assert.True(t, errors.Is(err, core.ErrNotFound))
 		})
@@ -581,11 +585,11 @@ func TestAgentsService(t *testing.T) {
 			agent1, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID1,
-				slackIntegrationID,
+				organizationID,
 				agentID1,
 			)
 			require.NoError(t, err)
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, organizationID) }()
 
 			// Agent 2 - inactive (we'll manually set an old timestamp)
 			wsConnectionID2 := core.NewID("wsc")
@@ -593,11 +597,11 @@ func TestAgentsService(t *testing.T) {
 			agent2, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID2,
-				slackIntegrationID,
+				organizationID,
 				agentID2,
 			)
 			require.NoError(t, err)
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent2.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent2.ID, organizationID) }()
 
 			// Manually update agent2's last_active_at to be old (>15 minutes ago)
 			// We need to access the repository directly for this test
@@ -613,7 +617,7 @@ func TestAgentsService(t *testing.T) {
 			require.NoError(t, err)
 
 			// Get inactive agents with 15 minute threshold
-			inactiveAgents, err := agentsService.GetInactiveAgents(context.Background(), slackIntegrationID, 15)
+			inactiveAgents, err := agentsService.GetInactiveAgents(context.Background(), organizationID, 15)
 			require.NoError(t, err)
 
 			// Should find agent2 but not agent1
@@ -641,30 +645,30 @@ func TestAgentsService(t *testing.T) {
 			agent, err := agentsService.UpsertActiveAgent(
 				context.Background(),
 				wsConnectionID,
-				slackIntegrationID,
+				organizationID,
 				agentID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, slackIntegrationID) }()
+			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, organizationID) }()
 
 			// Get inactive agents with 10 minute threshold
-			inactiveAgents, err := agentsService.GetInactiveAgents(context.Background(), slackIntegrationID, 10)
+			inactiveAgents, err := agentsService.GetInactiveAgents(context.Background(), organizationID, 10)
 			require.NoError(t, err)
 			assert.Empty(t, inactiveAgents)
 		})
 
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
+		t.Run("EmptyOrganizationID", func(t *testing.T) {
 			_, err := agentsService.GetInactiveAgents(context.Background(), "", 10)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
+			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
 		})
 
 		t.Run("InvalidThreshold", func(t *testing.T) {
-			_, err := agentsService.GetInactiveAgents(context.Background(), slackIntegrationID, 0)
+			_, err := agentsService.GetInactiveAgents(context.Background(), organizationID, 0)
 			require.Error(t, err)
 			assert.Equal(t, "inactive threshold must be positive", err.Error())
 
-			_, err = agentsService.GetInactiveAgents(context.Background(), slackIntegrationID, -5)
+			_, err = agentsService.GetInactiveAgents(context.Background(), organizationID, -5)
 			require.Error(t, err)
 			assert.Equal(t, "inactive threshold must be positive", err.Error())
 		})

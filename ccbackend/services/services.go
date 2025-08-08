@@ -39,40 +39,40 @@ type SlackIntegrationsService interface {
 type AgentsService interface {
 	UpsertActiveAgent(
 		ctx context.Context,
-		wsConnectionID, slackIntegrationID string,
+		wsConnectionID, organizationID string,
 		agentID string,
 	) (*models.ActiveAgent, error)
-	DeleteActiveAgentByWsConnectionID(ctx context.Context, wsConnectionID, slackIntegrationID string) error
-	DeleteActiveAgent(ctx context.Context, id string, slackIntegrationID string) error
-	GetAgentByID(ctx context.Context, id string, slackIntegrationID string) (mo.Option[*models.ActiveAgent], error)
-	GetAvailableAgents(ctx context.Context, slackIntegrationID string) ([]*models.ActiveAgent, error)
+	DeleteActiveAgentByWsConnectionID(ctx context.Context, wsConnectionID, organizationID string) error
+	DeleteActiveAgent(ctx context.Context, id string, organizationID string) error
+	GetAgentByID(ctx context.Context, id string, organizationID string) (mo.Option[*models.ActiveAgent], error)
+	GetAvailableAgents(ctx context.Context, organizationID string) ([]*models.ActiveAgent, error)
 	GetConnectedActiveAgents(
 		ctx context.Context,
-		slackIntegrationID string,
+		organizationID string,
 		connectedClientIDs []string,
 	) ([]*models.ActiveAgent, error)
 	GetConnectedAvailableAgents(
 		ctx context.Context,
-		slackIntegrationID string,
+		organizationID string,
 		connectedClientIDs []string,
 	) ([]*models.ActiveAgent, error)
 	CheckAgentHasActiveConnection(agent *models.ActiveAgent, connectedClientIDs []string) bool
-	AssignAgentToJob(ctx context.Context, agentID, jobID string, slackIntegrationID string) error
-	UnassignAgentFromJob(ctx context.Context, agentID, jobID string, slackIntegrationID string) error
+	AssignAgentToJob(ctx context.Context, agentID, jobID string, organizationID string) error
+	UnassignAgentFromJob(ctx context.Context, agentID, jobID string, organizationID string) error
 	GetAgentByJobID(
 		ctx context.Context,
 		jobID string,
-		slackIntegrationID string,
+		organizationID string,
 	) (mo.Option[*models.ActiveAgent], error)
 	GetAgentByWSConnectionID(
 		ctx context.Context,
-		wsConnectionID, slackIntegrationID string,
+		wsConnectionID, organizationID string,
 	) (mo.Option[*models.ActiveAgent], error)
-	GetActiveAgentJobAssignments(ctx context.Context, agentID string, slackIntegrationID string) ([]string, error)
-	UpdateAgentLastActiveAt(ctx context.Context, wsConnectionID, slackIntegrationID string) error
+	GetActiveAgentJobAssignments(ctx context.Context, agentID string, organizationID string) ([]string, error)
+	UpdateAgentLastActiveAt(ctx context.Context, wsConnectionID, organizationID string) error
 	GetInactiveAgents(
 		ctx context.Context,
-		slackIntegrationID string,
+		organizationID string,
 		inactiveThresholdMinutes int,
 	) ([]*models.ActiveAgent, error)
 }
