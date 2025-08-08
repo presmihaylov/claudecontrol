@@ -261,6 +261,76 @@ func TestExtractLastAssistantMessage(t *testing.T) {
 	}
 }
 
+func TestExitPlanModeMessageParsing(t *testing.T) {
+	input := `{"type":"assistant","message":{"id":"msg_0139SNMjfcWzXrNfYBpWk95m","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","id":"toolu_01LSsuZqZKgXvatJKCL59rb1","name":"ExitPlanMode","input":{"plan":"# Test Plan\n\n## Overview\nThis is a test plan for ExitPlanMode parsing."}}]},"session_id":"82dc5b6b-5683-4862-b95e-837abf08df0d"}`
+
+	messages, err := MapClaudeOutputToMessages(input)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if len(messages) != 1 {
+		t.Fatalf("Expected 1 message, got %d", len(messages))
+	}
+
+	exitPlanMsg, ok := messages[0].(ExitPlanModeMessage)
+	if !ok {
+		t.Fatalf("Expected ExitPlanModeMessage, got %T", messages[0])
+	}
+
+	// Test field values
+	if exitPlanMsg.Type != "assistant" {
+		t.Errorf("Expected type 'assistant', got '%s'", exitPlanMsg.Type)
+	}
+
+	if exitPlanMsg.SessionID != "82dc5b6b-5683-4862-b95e-837abf08df0d" {
+		t.Errorf("Expected session_id '82dc5b6b-5683-4862-b95e-837abf08df0d', got '%s'", exitPlanMsg.SessionID)
+	}
+
+	if exitPlanMsg.Message.ID != "msg_0139SNMjfcWzXrNfYBpWk95m" {
+		t.Errorf("Expected message ID 'msg_0139SNMjfcWzXrNfYBpWk95m', got '%s'", exitPlanMsg.Message.ID)
+	}
+
+	if exitPlanMsg.Message.Model != "claude-sonnet-4-20250514" {
+		t.Errorf("Expected model 'claude-sonnet-4-20250514', got '%s'", exitPlanMsg.Message.Model)
+	}
+
+	if len(exitPlanMsg.Message.Content) != 1 {
+		t.Fatalf("Expected 1 content item, got %d", len(exitPlanMsg.Message.Content))
+	}
+
+	content := exitPlanMsg.Message.Content[0]
+	if content.Type != "tool_use" {
+		t.Errorf("Expected content type 'tool_use', got '%s'", content.Type)
+	}
+
+	if content.Name != "ExitPlanMode" {
+		t.Errorf("Expected tool name 'ExitPlanMode', got '%s'", content.Name)
+	}
+
+	expectedPlan := "# Test Plan\n\n## Overview\nThis is a test plan for ExitPlanMode parsing."
+	if content.Input.Plan != expectedPlan {
+		t.Errorf("Expected plan '%s', got '%s'", expectedPlan, content.Input.Plan)
+	}
+
+	// Test interface methods
+	if exitPlanMsg.GetType() != "exit_plan_mode" {
+		t.Errorf("GetType() expected 'exit_plan_mode', got '%s'", exitPlanMsg.GetType())
+	}
+
+	if exitPlanMsg.GetSessionID() != "82dc5b6b-5683-4862-b95e-837abf08df0d" {
+		t.Errorf(
+			"GetSessionID() expected '82dc5b6b-5683-4862-b95e-837abf08df0d', got '%s'",
+			exitPlanMsg.GetSessionID(),
+		)
+	}
+
+	// Test GetPlan() method
+	if exitPlanMsg.GetPlan() != expectedPlan {
+		t.Errorf("GetPlan() expected '%s', got '%s'", expectedPlan, exitPlanMsg.GetPlan())
+	}
+}
+
 func TestRealWorldExample(t *testing.T) {
 	// Based on the actual output-finish-todo.jsonl structure
 	input := `{"type":"system","subtype":"init","cwd":"/Users/pmihaylov/prg/ccpg/cc1","session_id":"79fac4e0-79bd-4489-afb5-6023fa22cc47","tools":["Task","Bash","Glob","Grep","LS","ExitPlanMode","Read","Edit","MultiEdit","Write","NotebookRead","NotebookEdit","WebFetch","TodoWrite","WebSearch"],"mcp_servers":[],"model":"claude-sonnet-4-20250514","permissionMode":"acceptEdits","apiKeySource":"ANTHROPIC_API_KEY"}

@@ -216,7 +216,17 @@ func (c *ClaudeService) extractSessionID(messages []services.ClaudeMessage) stri
 }
 
 func (c *ClaudeService) extractClaudeResult(messages []services.ClaudeMessage) (string, error) {
-	// First, look for result message type (preferred)
+	// First priority: Look for ExitPlanMode messages (highest priority)
+	for i := len(messages) - 1; i >= 0; i-- {
+		if exitPlanMsg, ok := messages[i].(services.ExitPlanModeMessage); ok {
+			plan := exitPlanMsg.GetPlan()
+			if plan != "" {
+				return plan, nil
+			}
+		}
+	}
+
+	// Second priority: Look for result message type
 	for i := len(messages) - 1; i >= 0; i-- {
 		if resultMsg, ok := messages[i].(services.ResultMessage); ok {
 			if resultMsg.Result != "" {
@@ -225,7 +235,7 @@ func (c *ClaudeService) extractClaudeResult(messages []services.ClaudeMessage) (
 		}
 	}
 
-	// Fallback to assistant message (existing approach)
+	// Third priority: Fallback to assistant message (existing approach)
 	for i := len(messages) - 1; i >= 0; i-- {
 		if assistantMsg, ok := messages[i].(services.AssistantMessage); ok {
 			for _, contentRaw := range assistantMsg.Message.Content {
@@ -242,7 +252,7 @@ func (c *ClaudeService) extractClaudeResult(messages []services.ClaudeMessage) (
 			}
 		}
 	}
-	return "", fmt.Errorf("no result or assistant message with text content found")
+	return "", fmt.Errorf("no ExitPlanMode, result, or assistant message with text content found")
 }
 
 // handleClaudeClientError processes errors from Claude client calls.
@@ -268,7 +278,18 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 		return fmt.Errorf("%s: %w", operation, err)
 	}
 
-	// Try to extract the result message first (preferred)
+	// First priority: Try to extract ExitPlanMode message (highest priority)
+	for i := len(messages) - 1; i >= 0; i-- {
+		if exitPlanMsg, ok := messages[i].(services.ExitPlanModeMessage); ok {
+			plan := exitPlanMsg.GetPlan()
+			if plan != "" {
+				log.Info("✅ Successfully extracted Claude ExitPlanMode message from error: %s", plan)
+				return fmt.Errorf("%s: %s", operation, plan)
+			}
+		}
+	}
+
+	// Second priority: Try to extract the result message
 	for i := len(messages) - 1; i >= 0; i-- {
 		if resultMsg, ok := messages[i].(services.ResultMessage); ok {
 			if resultMsg.Result != "" {
@@ -278,7 +299,7 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 		}
 	}
 
-	// Fallback to assistant message (existing logic)
+	// Third priority: Fallback to assistant message (existing logic)
 	for i := len(messages) - 1; i >= 0; i-- {
 		if assistantMsg, ok := messages[i].(services.AssistantMessage); ok {
 			for _, contentRaw := range assistantMsg.Message.Content {
