@@ -63,9 +63,9 @@ func (s *CoreUseCase) getSlackClientForIntegration(
 func (s *CoreUseCase) validateJobBelongsToAgent(
 	ctx context.Context,
 	agentID, jobID string,
-	slackIntegrationID string,
+	organizationID string,
 ) error {
-	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agentID, slackIntegrationID)
+	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agentID, organizationID)
 	if err != nil {
 		return fmt.Errorf("failed to get jobs for agent: %w", err)
 	}
@@ -561,10 +561,10 @@ func (s *CoreUseCase) updateSlackMessageReaction(
 func (s *CoreUseCase) getOrAssignAgentForJob(
 	ctx context.Context,
 	job *models.Job,
-	threadTS, slackIntegrationID string,
+	threadTS, organizationID string,
 ) (string, error) {
 	// Check if this job is already assigned to an agent
-	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, slackIntegrationID)
+	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, organizationID)
 	if err != nil {
 		// Some error occurred
 		log.Printf("❌ Failed to check for existing agent assignment: %v", err)
@@ -573,7 +573,7 @@ func (s *CoreUseCase) getOrAssignAgentForJob(
 
 	if !maybeExistingAgent.IsPresent() {
 		// Job not assigned to any agent yet - need to assign to an available agent
-		return s.assignJobToAvailableAgent(ctx, job, threadTS, slackIntegrationID)
+		return s.assignJobToAvailableAgent(ctx, job, threadTS, organizationID)
 	}
 
 	existingAgent := maybeExistingAgent.MustGet()
@@ -599,11 +599,11 @@ func (s *CoreUseCase) getOrAssignAgentForJob(
 func (s *CoreUseCase) assignJobToAvailableAgent(
 	ctx context.Context,
 	job *models.Job,
-	threadTS, slackIntegrationID string,
+	threadTS, organizationID string,
 ) (string, error) {
 	log.Printf("📝 Job %s not yet assigned, looking for any active agent", job.ID)
 
-	clientID, assigned, err := s.tryAssignJobToAgent(ctx, job.ID, slackIntegrationID)
+	clientID, assigned, err := s.tryAssignJobToAgent(ctx, job.ID, organizationID)
 	if err != nil {
 		return "", err
 	}
@@ -625,10 +625,10 @@ func (s *CoreUseCase) assignJobToAvailableAgent(
 func (s *CoreUseCase) tryAssignJobToAgent(
 	ctx context.Context,
 	jobID string,
-	slackIntegrationID string,
+	organizationID string,
 ) (string, bool, error) {
 	// First check if this job is already assigned to an agent
-	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, jobID, slackIntegrationID)
+	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, jobID, organizationID)
 	if err != nil {
 		return "", false, fmt.Errorf("failed to check for existing agent assignment: %w", err)
 	}
@@ -652,7 +652,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
 	// Get only agents with active connections using centralized service method
-	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, slackIntegrationID, connectedClientIDs)
+	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, organizationID, connectedClientIDs)
 	if err != nil {
 		log.Printf("❌ Failed to get connected active agents: %v", err)
 		return "", false, fmt.Errorf("failed to get connected active agents: %w", err)
@@ -664,7 +664,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(
 	}
 
 	// Sort agents by load (number of assigned jobs) to select the least loaded agent
-	sortedAgents, err := s.sortAgentsByLoad(ctx, connectedAgents, slackIntegrationID)
+	sortedAgents, err := s.sortAgentsByLoad(ctx, connectedAgents, organizationID)
 	if err != nil {
 		log.Printf("❌ Failed to sort agents by load: %v", err)
 		return "", false, fmt.Errorf("failed to sort agents by load: %w", err)
@@ -674,7 +674,7 @@ func (s *CoreUseCase) tryAssignJobToAgent(
 	log.Printf("🎯 Selected agent %s with %d active jobs (least loaded)", selectedAgent.ID, sortedAgents[0].load)
 
 	// Assign the job to the selected agent (agents can now handle multiple jobs simultaneously)
-	if err := s.agentsService.AssignAgentToJob(ctx, selectedAgent.ID, jobID, slackIntegrationID); err != nil {
+	if err := s.agentsService.AssignAgentToJob(ctx, selectedAgent.ID, jobID, organizationID); err != nil {
 		log.Printf("❌ Failed to assign job %s to agent %s: %v", jobID, selectedAgent.ID, err)
 		return "", false, fmt.Errorf("failed to assign job to agent: %w", err)
 	}
@@ -1031,8 +1031,11 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 		for _, job := range queuedJobs {
 			log.Printf("🔄 Processing queued job %s", job.ID)
 
+			// Get organization ID for this integration
+			organizationID := integration.OrganizationID
+
 			// Try to assign job to an available agent
-			clientID, assigned, err := s.tryAssignJobToAgent(ctx, job.ID, slackIntegrationID)
+			clientID, assigned, err := s.tryAssignJobToAgent(ctx, job.ID, organizationID)
 			if err != nil {
 				processingErrors = append(
 					processingErrors,
