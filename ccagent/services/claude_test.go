@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"ccagent/core"
 )
@@ -257,14 +258,14 @@ func TestClaudeService_ContinueConversation(t *testing.T) {
 	}
 }
 
-func TestClaudeService_writeClaudeErrorLog(t *testing.T) {
+func TestClaudeService_writeClaudeSessionLog(t *testing.T) {
 	tmpDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
 	service := NewClaudeService(mockClient, tmpDir)
 
-	rawOutput := "This is test error output\nwith multiple lines"
+	rawOutput := "This is test session output\nwith multiple lines"
 
-	logPath, err := service.writeClaudeErrorLog(rawOutput)
+	logPath, err := service.writeClaudeSessionLog(rawOutput)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -276,7 +277,7 @@ func TestClaudeService_writeClaudeErrorLog(t *testing.T) {
 
 	// Verify filename pattern
 	filename := filepath.Base(logPath)
-	if !strings.HasPrefix(filename, "claude-error-") || !strings.HasSuffix(filename, ".log") {
+	if !strings.HasPrefix(filename, "claude-session-") || !strings.HasSuffix(filename, ".log") {
 		t.Errorf("Unexpected filename pattern: %s", filename)
 	}
 
@@ -288,6 +289,98 @@ func TestClaudeService_writeClaudeErrorLog(t *testing.T) {
 
 	if string(content) != rawOutput {
 		t.Errorf("Expected content %q, got %q", rawOutput, string(content))
+	}
+}
+
+func TestClaudeService_CleanupOldLogs(t *testing.T) {
+	tmpDir := t.TempDir()
+	mockClient := &MockClaudeClient{}
+	service := NewClaudeService(mockClient, tmpDir)
+
+	// Create some test log files with different ages
+	now := time.Now()
+	oldTime := now.AddDate(0, 0, -8) // 8 days old
+	newTime := now.AddDate(0, 0, -3) // 3 days old
+
+	// Create old session log file
+	oldLogPath := filepath.Join(tmpDir, "claude-session-20230101-120000.log")
+	err := os.WriteFile(oldLogPath, []byte("old log content"), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create old log file: %v", err)
+	}
+	err = os.Chtimes(oldLogPath, oldTime, oldTime)
+	if err != nil {
+		t.Fatalf("Failed to set old file time: %v", err)
+	}
+
+	// Create new session log file
+	newLogPath := filepath.Join(tmpDir, "claude-session-20230108-120000.log")
+	err = os.WriteFile(newLogPath, []byte("new log content"), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create new log file: %v", err)
+	}
+	err = os.Chtimes(newLogPath, newTime, newTime)
+	if err != nil {
+		t.Fatalf("Failed to set new file time: %v", err)
+	}
+
+	// Create non-session log file (should not be deleted)
+	otherLogPath := filepath.Join(tmpDir, "other-log.log")
+	err = os.WriteFile(otherLogPath, []byte("other content"), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create other log file: %v", err)
+	}
+	err = os.Chtimes(otherLogPath, oldTime, oldTime)
+	if err != nil {
+		t.Fatalf("Failed to set other file time: %v", err)
+	}
+
+	// Run cleanup with 7 day threshold
+	err = service.CleanupOldLogs(7)
+	if err != nil {
+		t.Fatalf("Cleanup failed: %v", err)
+	}
+
+	// Verify old session log was deleted
+	if _, err := os.Stat(oldLogPath); !os.IsNotExist(err) {
+		t.Errorf("Old session log should have been deleted")
+	}
+
+	// Verify new session log was kept
+	if _, err := os.Stat(newLogPath); os.IsNotExist(err) {
+		t.Errorf("New session log should have been kept")
+	}
+
+	// Verify other log was kept (not a session log)
+	if _, err := os.Stat(otherLogPath); os.IsNotExist(err) {
+		t.Errorf("Other log should have been kept")
+	}
+}
+
+func TestClaudeService_CleanupOldLogs_InvalidMaxAge(t *testing.T) {
+	tmpDir := t.TempDir()
+	mockClient := &MockClaudeClient{}
+	service := NewClaudeService(mockClient, tmpDir)
+
+	err := service.CleanupOldLogs(0)
+	if err == nil {
+		t.Error("Expected error for invalid max age")
+	}
+
+	err = service.CleanupOldLogs(-1)
+	if err == nil {
+		t.Error("Expected error for negative max age")
+	}
+}
+
+func TestClaudeService_CleanupOldLogs_NonExistentDirectory(t *testing.T) {
+	mockClient := &MockClaudeClient{}
+	service := NewClaudeService(mockClient, "/non/existent/directory")
+
+	// Should not error when directory doesn't exist
+	err := service.CleanupOldLogs(7)
+	if err != nil {
+		t.Errorf("Should not error when directory doesn't exist: %v", err)
 	}
 }
 
