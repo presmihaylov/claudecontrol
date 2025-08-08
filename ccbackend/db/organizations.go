@@ -37,8 +37,7 @@ func (r *PostgresOrganizationsRepository) CreateOrganization(
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 
-	insertColumns := []string{"id", "created_at", "updated_at"}
-	columnsStr := strings.Join(insertColumns, ", ")
+	columnsStr := strings.Join(organizationsColumns, ", ")
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.organizations (%s) 
