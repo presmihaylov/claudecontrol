@@ -8,7 +8,7 @@ type ClaudeOptions struct {
 
 // CursorOptions contains optional parameters for Cursor CLI interactions
 type CursorOptions struct {
-	// Empty for now - reserved for future cursor-specific options
+	SystemPrompt string
 }
 
 // ClaudeClient defines the interface for Claude CLI interactions

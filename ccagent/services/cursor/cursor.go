@@ -145,7 +145,7 @@ func (c *CursorService) StartNewConversationWithSystemPrompt(
 	prompt, systemPrompt string,
 ) (*services.CLIAgentResult, error) {
 	return c.StartNewConversationWithOptions(prompt, &clients.CursorOptions{
-		// SystemPrompt not supported in CursorOptions yet
+		SystemPrompt: systemPrompt,
 	})
 }
 

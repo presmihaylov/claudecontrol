@@ -20,13 +20,21 @@ func NewCursorClient() *CursorClient {
 
 func (c *CursorClient) StartNewSession(prompt string, options *clients.CursorOptions) (string, error) {
 	log.Info("📋 Starting to create new Cursor session")
+
+	// Prepend system prompt if provided in options
+	finalPrompt := prompt
+	if options != nil && options.SystemPrompt != "" {
+		finalPrompt = options.SystemPrompt + "\n\n" + prompt
+		log.Info("Prepending system prompt to user prompt")
+	}
+
 	args := []string{
 		"--print",
 		"--output-format", "stream-json",
-		prompt,
+		finalPrompt,
 	}
 
-	log.Info("Starting new Cursor session with prompt: %s", prompt)
+	log.Info("Starting new Cursor session with prompt: %s", finalPrompt)
 	log.Info("Command arguments: %v", args)
 
 	cmd := exec.Command("cursor-agent", args...)
