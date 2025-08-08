@@ -30,7 +30,8 @@ type SlackIntegrationRequest struct {
 }
 
 type CCAgentSecretKeyResponse struct {
-	SecretKey string `json:"secret_key"`
+	SecretKey   string `json:"secret_key"`
+	GeneratedAt string `json:"generated_at"`
 }
 
 func (h *DashboardHTTPHandler) HandleUserAuthenticate(w http.ResponseWriter, r *http.Request) {
@@ -150,6 +151,25 @@ func (h *DashboardHTTPHandler) HandleDeleteSlackIntegration(w http.ResponseWrite
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *DashboardHTTPHandler) HandleGetOrganization(w http.ResponseWriter, r *http.Request) {
+	log.Printf("📋 Get organization request received from %s", r.RemoteAddr)
+
+	organization, err := h.handler.GetOrganization(r.Context())
+	if err != nil {
+		log.Printf("❌ Failed to get organization: %v", err)
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "organization not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "failed to get organization", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	log.Printf("✅ Organization retrieved successfully: %s", organization.ID)
+
+	h.writeJSONResponse(w, http.StatusOK, organization)
+}
+
 func (h *DashboardHTTPHandler) HandleGenerateCCAgentSecretKey(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🔑 Generate CCAgent secret key request received from %s", r.RemoteAddr)
 
@@ -164,11 +184,25 @@ func (h *DashboardHTTPHandler) HandleGenerateCCAgentSecretKey(w http.ResponseWri
 		return
 	}
 
+	// Get organization from context to get the timestamp
+	org, ok := appctx.GetOrganization(r.Context())
+	if !ok {
+		log.Printf("❌ Organization not found in context")
+		http.Error(w, "organization not found", http.StatusNotFound)
+		return
+	}
+
 	log.Printf("✅ CCAgent secret key generated successfully")
 
-	// Return the secret key response
+	// Return the secret key response with timestamp
+	generatedAt := ""
+	if org.CCAgentSecretKeyGeneratedAt != nil {
+		generatedAt = org.CCAgentSecretKeyGeneratedAt.Format("2006-01-02T15:04:05Z07:00")
+	}
+
 	response := CCAgentSecretKeyResponse{
-		SecretKey: secretKey,
+		SecretKey:   secretKey,
+		GeneratedAt: generatedAt,
 	}
 
 	h.writeJSONResponse(w, http.StatusOK, response)
@@ -191,6 +225,10 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	router.HandleFunc("/slack/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteSlackIntegration)).
 		Methods("DELETE")
 	log.Printf("✅ DELETE /slack/integrations/{id} endpoint registered")
+
+	// Organization endpoints
+	router.HandleFunc("/organizations", authMiddleware.WithAuth(h.HandleGetOrganization)).Methods("GET")
+	log.Printf("✅ GET /organizations endpoint registered")
 
 	router.HandleFunc("/organizations/ccagent_secret_key", authMiddleware.WithAuth(h.HandleGenerateCCAgentSecretKey)).
 		Methods("POST")

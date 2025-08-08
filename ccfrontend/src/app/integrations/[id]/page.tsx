@@ -35,6 +35,7 @@ interface Organization {
 
 interface CCAgentSecretKeyResponse {
 	secret_key: string;
+	generated_at: string;
 }
 
 export default function IntegrationDetail() {
@@ -85,16 +86,13 @@ export default function IntegrationDetail() {
 				setIntegration(foundIntegration);
 
 				// Fetch organization details
-				const organizationResponse = await fetch(
-					`${env.CCBACKEND_BASE_URL}/api/dashboard/organization`,
-					{
-						method: "GET",
-						headers: {
-							Authorization: `Bearer ${token}`,
-							"Content-Type": "application/json",
-						},
+				const organizationResponse = await fetch(`${env.CCBACKEND_BASE_URL}/organizations`, {
+					method: "GET",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
 					},
-				);
+				});
 
 				if (!organizationResponse.ok) {
 					console.error("Failed to fetch organization:", organizationResponse.statusText);
@@ -121,16 +119,13 @@ export default function IntegrationDetail() {
 			const token = await getToken();
 			if (!token) return;
 
-			const response = await fetch(
-				`${env.CCBACKEND_BASE_URL}/api/dashboard/organization/ccagent_secret_key`,
-				{
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${token}`,
-						"Content-Type": "application/json",
-					},
+			const response = await fetch(`${env.CCBACKEND_BASE_URL}/organizations/ccagent_secret_key`, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
 				},
-			);
+			});
 
 			if (!response.ok) {
 				console.error("Failed to generate secret key:", response.statusText);
@@ -143,10 +138,10 @@ export default function IntegrationDetail() {
 			setSecretKeyDialogOpen(true);
 
 			// Update the organization to reflect the new timestamp
-			if (organization) {
+			if (organization && data.generated_at) {
 				setOrganization({
 					...organization,
-					ccagent_secret_key_generated_at: new Date().toISOString(),
+					ccagent_secret_key_generated_at: data.generated_at,
 				});
 			}
 		} catch (error) {
