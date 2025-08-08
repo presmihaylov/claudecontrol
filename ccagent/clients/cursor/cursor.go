@@ -5,7 +5,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"ccagent/clients"
 	"ccagent/core"
 	"ccagent/core/log"
 )
@@ -18,7 +17,7 @@ func NewCursorClient() *CursorClient {
 	return &CursorClient{}
 }
 
-func (c *CursorClient) StartNewSession(prompt string, options *clients.ClaudeOptions) (string, error) {
+func (c *CursorClient) StartNewSession(prompt string) (string, error) {
 	log.Info("📋 Starting to create new Cursor session")
 	args := []string{
 		"--print",
@@ -47,7 +46,7 @@ func (c *CursorClient) StartNewSession(prompt string, options *clients.ClaudeOpt
 	return result, nil
 }
 
-func (c *CursorClient) ContinueSession(sessionID, prompt string, options *clients.ClaudeOptions) (string, error) {
+func (c *CursorClient) ContinueSession(sessionID, prompt string) (string, error) {
 	log.Info("📋 Starting to continue Cursor session: %s", sessionID)
 	args := []string{
 		"--print",

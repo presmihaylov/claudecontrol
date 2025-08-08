@@ -14,6 +14,6 @@ type ClaudeClient interface {
 
 // CursorClient defines the interface for Cursor CLI interactions
 type CursorClient interface {
-	StartNewSession(prompt string, options *ClaudeOptions) (string, error)
-	ContinueSession(sessionID, prompt string, options *ClaudeOptions) (string, error)
+	StartNewSession(prompt string) (string, error)
+	ContinueSession(sessionID, prompt string) (string, error)
 }

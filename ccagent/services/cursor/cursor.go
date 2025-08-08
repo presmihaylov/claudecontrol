@@ -103,7 +103,7 @@ func (c *CursorService) StartNewConversationWithOptions(
 	options *clients.ClaudeOptions, // Reusing Claude options for consistency
 ) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to start new Cursor conversation")
-	rawOutput, err := c.cursorClient.StartNewSession(prompt, options)
+	rawOutput, err := c.cursorClient.StartNewSession(prompt)
 	if err != nil {
 		log.Error("Failed to start new Cursor session: %v", err)
 		return nil, c.handleCursorClientError(err, "failed to start new Cursor session")
@@ -169,7 +169,7 @@ func (c *CursorService) ContinueConversationWithOptions(
 	options *clients.ClaudeOptions,
 ) (*services.CLIAgentResult, error) {
 	log.Info("📋 Starting to continue Cursor conversation: %s", sessionID)
-	rawOutput, err := c.cursorClient.ContinueSession(sessionID, prompt, options)
+	rawOutput, err := c.cursorClient.ContinueSession(sessionID, prompt)
 	if err != nil {
 		log.Error("Failed to continue Cursor session: %v", err)
 		return nil, c.handleCursorClientError(err, "failed to continue Cursor session")
