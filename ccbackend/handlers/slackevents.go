@@ -17,18 +17,18 @@ import (
 
 	"ccbackend/models"
 	"ccbackend/services"
-	"ccbackend/usecases"
+	"ccbackend/usecases/core"
 )
 
 type SlackEventsHandler struct {
 	signingSecret            string
-	coreUseCase              *usecases.CoreUseCase
+	coreUseCase              *core.CoreUseCase
 	slackIntegrationsService services.SlackIntegrationsService
 }
 
 func NewSlackEventsHandler(
 	signingSecret string,
-	coreUseCase *usecases.CoreUseCase,
+	coreUseCase *core.CoreUseCase,
 	slackIntegrationsService services.SlackIntegrationsService,
 ) *SlackEventsHandler {
 	return &SlackEventsHandler{

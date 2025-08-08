@@ -25,7 +25,7 @@ import (
 	slackintegrations "ccbackend/services/slack_integrations"
 	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
-	"ccbackend/usecases"
+	"ccbackend/usecases/core"
 )
 
 func main() {
@@ -77,7 +77,7 @@ func run() error {
 		cfg.SlackClientSecret,
 	)
 
-	coreUseCase := usecases.NewCoreUseCase(nil, agentsService, jobsService, slackIntegrationsService, txManager)
+	coreUseCase := core.NewCoreUseCase(nil, agentsService, jobsService, slackIntegrationsService, txManager)
 
 	// Create API key validator using the core usecase
 	apiKeyValidator := func(apiKey string) (string, error) {
@@ -87,7 +87,7 @@ func run() error {
 	wsClient := socketioclient.NewSocketIOClient(apiKeyValidator)
 
 	// Update the core usecase with the wsClient after initialization
-	coreUseCase = usecases.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, txManager)
+	coreUseCase = core.NewCoreUseCase(wsClient, agentsService, jobsService, slackIntegrationsService, txManager)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
 	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
