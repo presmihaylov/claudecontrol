@@ -24,8 +24,11 @@ func (c *CursorClient) StartNewSession(prompt string, options *clients.CursorOpt
 	// Prepend system prompt if provided in options
 	finalPrompt := prompt
 	if options != nil && options.SystemPrompt != "" {
-		finalPrompt = options.SystemPrompt + "\n\n" + prompt
-		log.Info("Prepending system prompt to user prompt")
+		finalPrompt = "# BEHAVIOR INSTRUCTIONS\n" +
+			options.SystemPrompt + "\n\n" +
+			"# USER MESSAGE\n" +
+			prompt
+		log.Info("Prepending system prompt to user prompt with clear delimiters")
 	}
 
 	args := []string{
