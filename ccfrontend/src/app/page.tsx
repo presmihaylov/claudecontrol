@@ -10,9 +10,10 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { Settings, Slack, Trash2 } from "lucide-react";
+import { Copy, Download, Key, RefreshCw, Slack, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -25,16 +26,34 @@ interface SlackIntegration {
 	updated_at: string;
 }
 
+interface Organization {
+	id: string;
+	ccagent_secret_key_generated_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+interface CCAgentSecretKeyResponse {
+	secret_key: string;
+	generated_at: string;
+}
+
 export default function Home() {
 	const router = useRouter();
 	const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
 	const [integrations, setIntegrations] = useState<SlackIntegration[]>([]);
+	const [organization, setOrganization] = useState<Organization | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [backendAuthenticated, setBackendAuthenticated] = useState(false);
 	const [authError, setAuthError] = useState<string | null>(null);
 	const [deleting, setDeleting] = useState<string | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [integrationToDelete, setIntegrationToDelete] = useState<SlackIntegration | null>(null);
+	const [generatingKey, setGeneratingKey] = useState(false);
+	const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
+	const [secretKeyDialogOpen, setSecretKeyDialogOpen] = useState(false);
+	const [generatedSecretKey, setGeneratedSecretKey] = useState<string>("");
+	const [copySuccess, setCopySuccess] = useState(false);
 
 	// Authenticate user with backend and fetch integrations when they first sign in
 	useEffect(() => {
@@ -66,8 +85,9 @@ export default function Home() {
 				setBackendAuthenticated(true);
 				setAuthError(null);
 
-				// Then fetch their Slack integrations
+				// Then fetch their Slack integrations and organization
 				await fetchIntegrations();
+				await fetchOrganization();
 			} catch (error) {
 				console.error("Error authenticating user:", error);
 				setAuthError(`Authentication error: ${error}`);
@@ -102,6 +122,31 @@ export default function Home() {
 			setIntegrations(integrationsData || []);
 		} catch (error) {
 			console.error("Error fetching integrations:", error);
+		}
+	};
+
+	const fetchOrganization = async () => {
+		try {
+			const token = await getToken();
+			if (!token) return;
+
+			const response = await fetch(`${env.CCBACKEND_BASE_URL}/organizations`, {
+				method: "GET",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+			});
+
+			if (!response.ok) {
+				console.error("Failed to fetch organization:", response.statusText);
+				return;
+			}
+
+			const organizationData = await response.json();
+			setOrganization(organizationData);
+		} catch (error) {
+			console.error("Error fetching organization:", error);
 		}
 	};
 
@@ -158,6 +203,63 @@ export default function Home() {
 			setDeleting(null);
 			setIntegrationToDelete(null);
 		}
+	};
+
+	const handleGenerateSecretKey = async () => {
+		setGeneratingKey(true);
+		setRegenerateDialogOpen(false);
+
+		try {
+			const token = await getToken();
+			if (!token) return;
+
+			const response = await fetch(`${env.CCBACKEND_BASE_URL}/organizations/ccagent_secret_key`, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+			});
+
+			if (!response.ok) {
+				console.error("Failed to generate secret key:", response.statusText);
+				alert("Failed to generate secret key. Please try again.");
+				return;
+			}
+
+			const data: CCAgentSecretKeyResponse = await response.json();
+			setGeneratedSecretKey(data.secret_key);
+			setSecretKeyDialogOpen(true);
+
+			// Update the organization to reflect the new timestamp
+			if (organization && data.generated_at) {
+				setOrganization({
+					...organization,
+					ccagent_secret_key_generated_at: data.generated_at,
+				});
+			}
+		} catch (error) {
+			console.error("Error generating secret key:", error);
+			alert("Failed to generate secret key. Please try again.");
+		} finally {
+			setGeneratingKey(false);
+		}
+	};
+
+	const handleCopyToClipboard = async () => {
+		try {
+			await navigator.clipboard.writeText(generatedSecretKey);
+			setCopySuccess(true);
+			setTimeout(() => setCopySuccess(false), 2000);
+		} catch (error) {
+			console.error("Failed to copy to clipboard:", error);
+		}
+	};
+
+	const handleCloseSecretKeyDialog = () => {
+		setSecretKeyDialogOpen(false);
+		setGeneratedSecretKey("");
+		setCopySuccess(false);
 	};
 
 	if (!isLoaded || loading) {
@@ -239,18 +341,95 @@ export default function Home() {
 			<div className="container mx-auto px-4 py-8 max-w-4xl">
 				{integrations.length === 0 ? (
 					// Show "Add to Slack" when no integrations exist
-					<div className="flex flex-col items-center justify-center min-h-[60vh]">
-						<p className="text-lg text-muted-foreground mb-6 text-center">
-							Connect your Slack workspace to get started with Claude Control
-						</p>
-						<Button
-							size="lg"
-							className="flex items-center gap-2 cursor-pointer"
-							onClick={handleAddToSlack}
-						>
-							<Slack className="h-5 w-5" />
-							Add to Slack
-						</Button>
+					<div className="space-y-6">
+						<div className="flex flex-col items-center justify-center min-h-[40vh]">
+							<p className="text-lg text-muted-foreground mb-6 text-center">
+								Connect your Slack workspace to get started with Claude Control
+							</p>
+							<Button
+								size="lg"
+								className="flex items-center gap-2 cursor-pointer"
+								onClick={handleAddToSlack}
+							>
+								<Slack className="h-5 w-5" />
+								Add to Slack
+							</Button>
+						</div>
+
+						{/* ccagent Secret Key Section - always show */}
+						{organization && (
+							<Card>
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<Key className="h-5 w-5" />
+										ccagent Secret Key
+									</CardTitle>
+									<CardDescription>
+										This secret key is used by the ccagent CLI to authenticate with all your Slack
+										workspaces in this organization.
+									</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									{/* Download ccagent Button */}
+									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+										<div className="space-y-1">
+											<h4 className="font-medium">Download ccagent</h4>
+											<p className="text-sm text-muted-foreground">
+												Download the ccagent CLI tool to start using Claude Control with your Slack
+												workspaces.
+											</p>
+										</div>
+										<Button
+											variant="outline"
+											onClick={() =>
+												window.open(
+													"https://github.com/presmihaylov/ccagent/blob/main/ccagent-beta.zip",
+													"_blank",
+												)
+											}
+											className="flex items-center gap-2"
+										>
+											<Download className="h-4 w-4" />
+											Download
+										</Button>
+									</div>
+									{organization.ccagent_secret_key_generated_at ? (
+										<div className="space-y-2">
+											<p className="text-sm text-muted-foreground">
+												Secret key generated on{" "}
+												{new Date(organization.ccagent_secret_key_generated_at).toLocaleDateString()}{" "}
+												at{" "}
+												{new Date(organization.ccagent_secret_key_generated_at).toLocaleTimeString()}
+											</p>
+											<Button
+												variant="outline"
+												onClick={() => setRegenerateDialogOpen(true)}
+												disabled={generatingKey}
+												className="flex items-center gap-2"
+											>
+												<RefreshCw className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
+												{generatingKey ? "Regenerating..." : "Regenerate Secret Key"}
+											</Button>
+										</div>
+									) : (
+										<div className="space-y-2">
+											<p className="text-sm text-muted-foreground">
+												No secret key has been generated yet. Generate one to start using ccagent with
+												all your Slack workspaces.
+											</p>
+											<Button
+												onClick={handleGenerateSecretKey}
+												disabled={generatingKey}
+												className="flex items-center gap-2"
+											>
+												<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
+												{generatingKey ? "Generating..." : "Generate Secret Key"}
+											</Button>
+										</div>
+									)}
+								</CardContent>
+							</Card>
+						)}
 					</div>
 				) : (
 					// Show list of integrations with "Connect another workspace" button
@@ -272,15 +451,6 @@ export default function Home() {
 											</div>
 											<div className="flex items-center gap-2">
 												<Button
-													variant="outline"
-													size="sm"
-													onClick={() => router.push(`/integrations/${integration.id}`)}
-													className="flex items-center gap-2"
-												>
-													<Settings className="h-4 w-4" />
-													Manage
-												</Button>
-												<Button
 													variant="destructive"
 													size="sm"
 													onClick={() => handleDeleteIntegration(integration)}
@@ -296,6 +466,81 @@ export default function Home() {
 								))}
 							</div>
 						</div>
+
+						{/* ccagent Secret Key Section */}
+						{organization && (
+							<Card>
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<Key className="h-5 w-5" />
+										ccagent Secret Key
+									</CardTitle>
+									<CardDescription>
+										This secret key is used by the ccagent CLI to authenticate with all your Slack
+										workspaces in this organization.
+									</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									{/* Download ccagent Button */}
+									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+										<div className="space-y-1">
+											<h4 className="font-medium">Download ccagent</h4>
+											<p className="text-sm text-muted-foreground">
+												Download the ccagent CLI tool to start using Claude Control with your Slack
+												workspaces.
+											</p>
+										</div>
+										<Button
+											variant="outline"
+											onClick={() =>
+												window.open(
+													"https://github.com/presmihaylov/ccagent/blob/main/ccagent-beta.zip",
+													"_blank",
+												)
+											}
+											className="flex items-center gap-2"
+										>
+											<Download className="h-4 w-4" />
+											Download
+										</Button>
+									</div>
+									{organization.ccagent_secret_key_generated_at ? (
+										<div className="space-y-2">
+											<p className="text-sm text-muted-foreground">
+												Secret key generated on{" "}
+												{new Date(organization.ccagent_secret_key_generated_at).toLocaleDateString()}{" "}
+												at{" "}
+												{new Date(organization.ccagent_secret_key_generated_at).toLocaleTimeString()}
+											</p>
+											<Button
+												variant="outline"
+												onClick={() => setRegenerateDialogOpen(true)}
+												disabled={generatingKey}
+												className="flex items-center gap-2"
+											>
+												<RefreshCw className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
+												{generatingKey ? "Regenerating..." : "Regenerate Secret Key"}
+											</Button>
+										</div>
+									) : (
+										<div className="space-y-2">
+											<p className="text-sm text-muted-foreground">
+												No secret key has been generated yet. Generate one to start using ccagent with
+												all your Slack workspaces.
+											</p>
+											<Button
+												onClick={handleGenerateSecretKey}
+												disabled={generatingKey}
+												className="flex items-center gap-2"
+											>
+												<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
+												{generatingKey ? "Generating..." : "Generate Secret Key"}
+											</Button>
+										</div>
+									)}
+								</CardContent>
+							</Card>
+						)}
 
 						{/* Connect another workspace button */}
 						<div className="flex justify-center pt-4">
@@ -328,6 +573,78 @@ export default function Home() {
 							>
 								{deleting === integrationToDelete?.id ? "Disconnecting..." : "Disconnect"}
 							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+
+				{/* Regenerate Warning Dialog */}
+				<Dialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Regenerate Secret Key</DialogTitle>
+							<DialogDescription>
+								Are you sure you want to regenerate the secret key for your organization?
+								<br />
+								<br />
+								<strong>Warning:</strong> This will invalidate the old key and any running ccagent
+								instances using the old key will stop working until you update them with the new
+								key.
+							</DialogDescription>
+						</DialogHeader>
+						<DialogFooter>
+							<Button variant="outline" onClick={() => setRegenerateDialogOpen(false)}>
+								Cancel
+							</Button>
+							<Button onClick={handleGenerateSecretKey} disabled={generatingKey}>
+								{generatingKey ? "Regenerating..." : "Regenerate Key"}
+							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+
+				{/* Secret Key Display Dialog */}
+				<Dialog open={secretKeyDialogOpen} onOpenChange={setSecretKeyDialogOpen}>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Your ccagent Secret Key</DialogTitle>
+							<DialogDescription>
+								Copy this secret key and save it somewhere safe. You won't be able to see it again
+								after closing this dialog.
+							</DialogDescription>
+						</DialogHeader>
+						<div className="space-y-4">
+							<div className="space-y-2">
+								<label htmlFor="secret-key-input" className="text-sm font-medium">
+									Secret Key
+								</label>
+								<div className="flex gap-2">
+									<Input
+										id="secret-key-input"
+										type="text"
+										value={generatedSecretKey}
+										readOnly
+										className="font-mono text-sm"
+										onClick={(e) => e.currentTarget.select()}
+									/>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={handleCopyToClipboard}
+										className="flex items-center gap-2"
+									>
+										<Copy className="h-4 w-4" />
+										{copySuccess ? "Copied!" : "Copy"}
+									</Button>
+								</div>
+							</div>
+							{copySuccess && (
+								<p className="text-sm text-green-600">
+									Secret key copied to clipboard successfully!
+								</p>
+							)}
+						</div>
+						<DialogFooter>
+							<Button onClick={handleCloseSecretKeyDialog}>Close</Button>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
