@@ -61,6 +61,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -100,6 +101,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"",
 			"http://localhost:3000/callback",
 		)
@@ -109,7 +111,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		assert.Contains(t, err.Error(), "slack auth code cannot be empty")
 	})
 
-	t.Run("nil user ID returns error", func(t *testing.T) {
+	t.Run("invalid organization ID returns error", func(t *testing.T) {
 		mockClient := slack.NewMockSlackClient()
 		testService := NewSlackIntegrationsService(
 			service.slackIntegrationsRepo,
@@ -120,13 +122,14 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 
 		integration, err := testService.CreateSlackIntegration(
 			context.Background(),
+			"invalid-org-id", // Invalid organizationID
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
 
 		assert.Error(t, err)
 		assert.Nil(t, integration)
-		assert.Contains(t, err.Error(), "organization not found in context")
+		assert.Contains(t, err.Error(), "organization ID must be a valid ULID")
 	})
 
 	t.Run("slack OAuth error is propagated", func(t *testing.T) {
@@ -143,6 +146,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"invalid-code",
 			"http://localhost:3000/callback",
 		)
@@ -171,6 +175,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -198,6 +203,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -225,6 +231,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -253,6 +260,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -287,6 +295,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration1, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code-1",
 			"http://localhost:3000/callback",
 		)
@@ -308,6 +317,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 		ctx = testutils.CreateTestContextWithUser(testUser)
 		integration2, err := testService2.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code-2",
 			"http://localhost:3000/callback",
 		)
@@ -330,6 +340,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 		ctx3 := testutils.CreateTestContextWithUser(otherUser)
 		integration3, err := testService3.CreateSlackIntegration(
 			ctx3,
+			otherUser.OrganizationID,
 			"test-auth-code-3",
 			"http://localhost:3000/callback",
 		)
@@ -337,7 +348,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 
 		// Get integrations for the first user
 		ctx = testutils.CreateTestContextWithUser(testUser)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrganizationID)
 
 		require.NoError(t, err)
 		assert.Len(t, integrations, 2)
@@ -366,18 +377,18 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		ctx := testutils.CreateTestContextWithUser(testUser)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrganizationID)
 
 		require.NoError(t, err)
 		assert.Empty(t, integrations)
 	})
 
-	t.Run("no organization in context returns error", func(t *testing.T) {
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(context.Background())
+	t.Run("invalid organization ID returns error", func(t *testing.T) {
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(context.Background(), "invalid-org-id")
 
 		assert.Error(t, err)
 		assert.Nil(t, integrations)
-		assert.Contains(t, err.Error(), "organization not found in context")
+		assert.Contains(t, err.Error(), "organization ID must be a valid ULID")
 	})
 }
 
@@ -405,6 +416,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -414,12 +426,12 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		ctx = testutils.CreateTestContextWithUser(testUser)
 
 		// Delete the integration
-		err = service.DeleteSlackIntegration(ctx, integration.ID)
+		err = service.DeleteSlackIntegration(ctx, testUser.OrganizationID, integration.ID)
 		require.NoError(t, err)
 
 		// Verify integration is deleted
 		ctx = testutils.CreateTestContextWithUser(testUser)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrganizationID)
 		require.NoError(t, err)
 		assert.Empty(t, integrations)
 	})
@@ -446,6 +458,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(user1)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			user1.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -454,13 +467,13 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		// Try to delete using user2's context
 		ctx = testutils.CreateTestContextWithUser(user2)
 
-		err = service.DeleteSlackIntegration(ctx, integration.ID)
+		err = service.DeleteSlackIntegration(ctx, user2.OrganizationID, integration.ID)
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Verify integration still exists
 		ctx = testutils.CreateTestContextWithUser(user1)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, user1.OrganizationID)
 		require.NoError(t, err)
 		assert.Len(t, integrations, 1)
 
@@ -478,24 +491,24 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContextWithUser(testUser)
 
-		err := service.DeleteSlackIntegration(ctx, "")
+		err := service.DeleteSlackIntegration(ctx, testUser.OrganizationID, "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "integration ID must be a valid ULID")
 	})
 
-	t.Run("missing user in context returns error", func(t *testing.T) {
+	t.Run("invalid organization ID returns error", func(t *testing.T) {
 		ctx := context.Background() // No user in context
 
-		err := service.DeleteSlackIntegration(ctx, core.NewID("t"))
+		err := service.DeleteSlackIntegration(ctx, "invalid-org-id", core.NewID("t"))
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "organization not found in context")
+		assert.Contains(t, err.Error(), "organization ID must be a valid ULID")
 	})
 
 	t.Run("non-existent integration returns error", func(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContextWithUser(testUser)
 
-		err := service.DeleteSlackIntegration(ctx, core.NewID("t"))
+		err := service.DeleteSlackIntegration(ctx, testUser.OrganizationID, core.NewID("t"))
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 	})
@@ -525,6 +538,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -534,7 +548,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		ctx = testutils.CreateTestContextWithUser(testUser)
 
 		// Generate secret key
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, integration.ID)
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, testUser.OrganizationID, integration.ID)
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, secretKey)
@@ -542,7 +556,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 
 		// Verify the integration was updated by fetching it again
 		ctx = testutils.CreateTestContextWithUser(testUser)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrganizationID)
 		require.NoError(t, err)
 		require.Len(t, integrations, 1)
 
@@ -582,6 +596,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -591,18 +606,18 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		ctx = testutils.CreateTestContextWithUser(testUser)
 
 		// Generate first secret key
-		firstSecretKey, err := service.GenerateCCAgentSecretKey(ctx, integration.ID)
+		firstSecretKey, err := service.GenerateCCAgentSecretKey(ctx, testUser.OrganizationID, integration.ID)
 		require.NoError(t, err)
 
 		// Get the first timestamp
 		ctx = testutils.CreateTestContextWithUser(testUser)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrganizationID)
 		require.NoError(t, err)
 		require.Len(t, integrations, 1)
 		firstTimestamp := *integrations[0].CCAgentSecretKeyGeneratedAt
 
 		// Generate second secret key
-		secondSecretKey, err := service.GenerateCCAgentSecretKey(ctx, integration.ID)
+		secondSecretKey, err := service.GenerateCCAgentSecretKey(ctx, testUser.OrganizationID, integration.ID)
 		require.NoError(t, err)
 
 		// Keys should be different
@@ -652,6 +667,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(user1)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
+			user1.OrganizationID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -660,14 +676,14 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		// Try to generate secret key using user2's context
 		ctx = testutils.CreateTestContextWithUser(user2)
 
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, integration.ID)
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, user2.OrganizationID, integration.ID)
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Verify integration still has no secret key
 		ctx = testutils.CreateTestContextWithUser(user1)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, user1.OrganizationID)
 		require.NoError(t, err)
 		require.Len(t, integrations, 1)
 		assert.Nil(t, integrations[0].CCAgentSecretKey)
@@ -687,26 +703,26 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContextWithUser(testUser)
 
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, "")
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, testUser.OrganizationID, "")
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
 		assert.Contains(t, err.Error(), "integration ID must be a valid ULID")
 	})
 
-	t.Run("missing organization in context returns error", func(t *testing.T) {
+	t.Run("invalid organization ID returns error", func(t *testing.T) {
 		ctx := context.Background() // No user/organization in context
 
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, core.NewID("t"))
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, "invalid-org-id", core.NewID("t"))
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
-		assert.Contains(t, err.Error(), "organization not found in context")
+		assert.Contains(t, err.Error(), "organization ID must be a valid ULID")
 	})
 
 	t.Run("non-existent integration returns error", func(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContextWithUser(testUser)
 
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, core.NewID("t"))
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, testUser.OrganizationID, core.NewID("t"))
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
@@ -732,6 +748,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration1, err := testService1.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code-1",
 			"http://localhost:3000/callback",
 		)
@@ -753,6 +770,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		ctx = testutils.CreateTestContextWithUser(testUser)
 		integration2, err := testService2.CreateSlackIntegration(
 			ctx,
+			testUser.OrganizationID,
 			"test-auth-code-2",
 			"http://localhost:3000/callback",
 		)
@@ -762,10 +780,10 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		ctx = testutils.CreateTestContextWithUser(testUser)
 
 		// Generate secret keys for both integrations
-		secretKey1, err := service.GenerateCCAgentSecretKey(ctx, integration1.ID)
+		secretKey1, err := service.GenerateCCAgentSecretKey(ctx, testUser.OrganizationID, integration1.ID)
 		require.NoError(t, err)
 
-		secretKey2, err := service.GenerateCCAgentSecretKey(ctx, integration2.ID)
+		secretKey2, err := service.GenerateCCAgentSecretKey(ctx, testUser.OrganizationID, integration2.ID)
 		require.NoError(t, err)
 
 		// Keys should be different

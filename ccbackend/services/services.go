@@ -24,12 +24,12 @@ type OrganizationsService interface {
 type SlackIntegrationsService interface {
 	CreateSlackIntegration(
 		ctx context.Context,
-		slackAuthCode, redirectURL string,
+		organizationID, slackAuthCode, redirectURL string,
 	) (*models.SlackIntegration, error)
-	GetSlackIntegrationsByOrganizationID(ctx context.Context) ([]*models.SlackIntegration, error)
+	GetSlackIntegrationsByOrganizationID(ctx context.Context, organizationID string) ([]*models.SlackIntegration, error)
 	GetAllSlackIntegrations(ctx context.Context) ([]*models.SlackIntegration, error)
-	DeleteSlackIntegration(ctx context.Context, integrationID string) error
-	GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error)
+	DeleteSlackIntegration(ctx context.Context, organizationID, integrationID string) error
+	GenerateCCAgentSecretKey(ctx context.Context, organizationID, integrationID string) (string, error)
 	GetSlackIntegrationBySecretKey(ctx context.Context, secretKey string) (mo.Option[*models.SlackIntegration], error)
 	GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (mo.Option[*models.SlackIntegration], error)
 	GetSlackIntegrationByID(ctx context.Context, id string) (mo.Option[*models.SlackIntegration], error)

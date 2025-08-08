@@ -39,13 +39,12 @@ func NewSlackIntegrationsService(
 
 func (s *SlackIntegrationsService) CreateSlackIntegration(
 	ctx context.Context,
-	slackAuthCode, redirectURL string,
+	organizationID, slackAuthCode, redirectURL string,
 ) (*models.SlackIntegration, error) {
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return nil, fmt.Errorf("organization not found in context")
+	log.Printf("📋 Starting to create Slack integration for organization: %s", organizationID)
+	if !core.IsValidULID(organizationID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
-	log.Printf("📋 Starting to create Slack integration for organization: %s", org.ID)
 	if slackAuthCode == "" {
 		return nil, fmt.Errorf("slack auth code cannot be empty")
 	}
@@ -82,7 +81,7 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(
 		SlackTeamID:    teamID,
 		SlackAuthToken: botAccessToken,
 		SlackTeamName:  teamName,
-		OrganizationID: org.ID,
+		OrganizationID: organizationID,
 	}
 	if err := s.slackIntegrationsRepo.CreateSlackIntegration(ctx, integration); err != nil {
 		return nil, fmt.Errorf("failed to create slack integration in database: %w", err)
@@ -98,14 +97,14 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(
 
 func (s *SlackIntegrationsService) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
+	organizationID string,
 ) ([]*models.SlackIntegration, error) {
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return nil, fmt.Errorf("organization not found in context")
+	log.Printf("📋 Starting to get Slack integrations for organization: %s", organizationID)
+	if !core.IsValidULID(organizationID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
-	log.Printf("📋 Starting to get Slack integrations for organization: %s", org.ID)
 
-	integrations, err := s.slackIntegrationsRepo.GetSlackIntegrationsByOrganizationID(ctx, org.ID)
+	integrations, err := s.slackIntegrationsRepo.GetSlackIntegrationsByOrganizationID(ctx, organizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integrations for organization: %w", err)
 	}
@@ -113,7 +112,7 @@ func (s *SlackIntegrationsService) GetSlackIntegrationsByOrganizationID(
 	log.Printf(
 		"📋 Completed successfully - found %d Slack integrations for organization: %s",
 		len(integrations),
-		org.ID,
+		organizationID,
 	)
 	return integrations, nil
 }
@@ -129,18 +128,16 @@ func (s *SlackIntegrationsService) GetAllSlackIntegrations(ctx context.Context) 
 	return integrations, nil
 }
 
-func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, integrationID string) error {
+func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, organizationID, integrationID string) error {
 	log.Printf("📋 Starting to delete Slack integration: %s", integrationID)
+	if !core.IsValidULID(organizationID) {
+		return fmt.Errorf("organization ID must be a valid ULID")
+	}
 	if !core.IsValidULID(integrationID) {
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return fmt.Errorf("organization not found in context")
-	}
-
-	deleted, err := s.slackIntegrationsRepo.DeleteSlackIntegrationByID(ctx, integrationID, org.ID)
+	deleted, err := s.slackIntegrationsRepo.DeleteSlackIntegrationByID(ctx, integrationID, organizationID)
 	if err != nil {
 		return fmt.Errorf("failed to delete slack integration: %w", err)
 	}
@@ -152,15 +149,13 @@ func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, i
 	return nil
 }
 
-func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error) {
+func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context, organizationID, integrationID string) (string, error) {
 	log.Printf("📋 Starting to generate CCAgent secret key for integration: %s", integrationID)
+	if !core.IsValidULID(organizationID) {
+		return "", fmt.Errorf("organization ID must be a valid ULID")
+	}
 	if !core.IsValidULID(integrationID) {
 		return "", fmt.Errorf("integration ID must be a valid ULID")
-	}
-
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return "", fmt.Errorf("organization not found in context")
 	}
 
 	// Generate cryptographically secure random secret key (32 bytes = 256 bits)
@@ -173,7 +168,7 @@ func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context,
 	secretKey := base64.URLEncoding.EncodeToString(secretBytes)
 
 	// Store the secret key in the database
-	updated, err := s.slackIntegrationsRepo.GenerateCCAgentSecretKey(ctx, integrationID, org.ID, secretKey)
+	updated, err := s.slackIntegrationsRepo.GenerateCCAgentSecretKey(ctx, integrationID, organizationID, secretKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to store CCAgent secret key: %w", err)
 	}

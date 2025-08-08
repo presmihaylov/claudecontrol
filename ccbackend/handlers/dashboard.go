@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 
+	"ccbackend/appctx"
 	"ccbackend/models"
 	"ccbackend/services"
 )
@@ -29,7 +31,7 @@ func (h *DashboardAPIHandler) ListSlackIntegrations(
 	user *models.User,
 ) ([]*models.SlackIntegration, error) {
 	log.Printf("📋 Listing Slack integrations for organization: %s", user.OrganizationID)
-	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(ctx)
+	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(ctx, user.OrganizationID)
 	if err != nil {
 		log.Printf("❌ Failed to get Slack integrations: %v", err)
 		return nil, err
@@ -46,7 +48,7 @@ func (h *DashboardAPIHandler) CreateSlackIntegration(
 	user *models.User,
 ) (*models.SlackIntegration, error) {
 	log.Printf("➕ Creating Slack integration for organization: %s", user.OrganizationID)
-	integration, err := h.slackIntegrationsService.CreateSlackIntegration(ctx, slackAuthToken, redirectURL)
+	integration, err := h.slackIntegrationsService.CreateSlackIntegration(ctx, user.OrganizationID, slackAuthToken, redirectURL)
 	if err != nil {
 		log.Printf("❌ Failed to create Slack integration: %v", err)
 		return nil, err
@@ -59,7 +61,11 @@ func (h *DashboardAPIHandler) CreateSlackIntegration(
 // DeleteSlackIntegration deletes a Slack integration by ID
 func (h *DashboardAPIHandler) DeleteSlackIntegration(ctx context.Context, integrationID string) error {
 	log.Printf("🗑️ Deleting Slack integration: %s", integrationID)
-	if err := h.slackIntegrationsService.DeleteSlackIntegration(ctx, integrationID); err != nil {
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return fmt.Errorf("organization not found in context")
+	}
+	if err := h.slackIntegrationsService.DeleteSlackIntegration(ctx, org.ID, integrationID); err != nil {
 		log.Printf("❌ Failed to delete Slack integration: %v", err)
 		return err
 	}
@@ -71,7 +77,11 @@ func (h *DashboardAPIHandler) DeleteSlackIntegration(ctx context.Context, integr
 // GenerateCCAgentSecretKey generates a new secret key for a Slack integration
 func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error) {
 	log.Printf("🔑 Generating CCAgent secret key for integration: %s", integrationID)
-	secretKey, err := h.slackIntegrationsService.GenerateCCAgentSecretKey(ctx, integrationID)
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return "", fmt.Errorf("organization not found in context")
+	}
+	secretKey, err := h.slackIntegrationsService.GenerateCCAgentSecretKey(ctx, org.ID, integrationID)
 	if err != nil {
 		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
 		return "", err
