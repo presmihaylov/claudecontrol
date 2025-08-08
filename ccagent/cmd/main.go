@@ -48,6 +48,14 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 
 	claudeClient := claudeclient.NewClaudeClient(permissionMode)
 	claudeService := services.NewClaudeService(claudeClient, logDir)
+
+	// Cleanup old Claude session logs (older than 7 days)
+	err = claudeService.CleanupOldLogs(7)
+	if err != nil {
+		log.Error("Warning: Failed to cleanup old Claude session logs: %v", err)
+		// Don't exit - this is not critical for agent operation
+	}
+
 	gitClient := clients.NewGitClient()
 	appState := models.NewAppState()
 	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService, appState)

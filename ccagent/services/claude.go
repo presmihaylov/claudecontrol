@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"ccagent/clients"
@@ -30,14 +31,14 @@ func NewClaudeService(claudeClient clients.ClaudeClient, logDir string) *ClaudeS
 	}
 }
 
-// writeClaudeErrorLog writes Claude output to a timestamped log file and returns the filepath
-func (c *ClaudeService) writeClaudeErrorLog(rawOutput string) (string, error) {
+// writeClaudeSessionLog writes Claude output to a timestamped log file and returns the filepath
+func (c *ClaudeService) writeClaudeSessionLog(rawOutput string) (string, error) {
 	if err := os.MkdirAll(c.logDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create log directory: %w", err)
 	}
 
 	timestamp := time.Now().Format("20060102-150405")
-	filename := fmt.Sprintf("claude-error-%s.log", timestamp)
+	filename := fmt.Sprintf("claude-session-%s.log", timestamp)
 	filepath := filepath.Join(c.logDir, filename)
 
 	if err := os.WriteFile(filepath, []byte(rawOutput), 0600); err != nil {
@@ -45,6 +46,56 @@ func (c *ClaudeService) writeClaudeErrorLog(rawOutput string) (string, error) {
 	}
 
 	return filepath, nil
+}
+
+// CleanupOldLogs removes log files older than the specified number of days
+func (c *ClaudeService) CleanupOldLogs(maxAgeDays int) error {
+	log.Info("📋 Starting to cleanup old Claude session logs older than %d days", maxAgeDays)
+
+	if maxAgeDays <= 0 {
+		return fmt.Errorf("maxAgeDays must be greater than 0")
+	}
+
+	files, err := os.ReadDir(c.logDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Info("📋 Log directory does not exist, nothing to clean up")
+			return nil
+		}
+		return fmt.Errorf("failed to read log directory: %w", err)
+	}
+
+	cutoffTime := time.Now().AddDate(0, 0, -maxAgeDays)
+	removedCount := 0
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		// Only clean up claude session log files
+		if !strings.HasPrefix(file.Name(), "claude-session-") || !strings.HasSuffix(file.Name(), ".log") {
+			continue
+		}
+
+		filePath := filepath.Join(c.logDir, file.Name())
+		info, err := file.Info()
+		if err != nil {
+			log.Error("Failed to get file info for %s: %v", filePath, err)
+			continue
+		}
+
+		if info.ModTime().Before(cutoffTime) {
+			if err := os.Remove(filePath); err != nil {
+				log.Error("Failed to remove old log file %s: %v", filePath, err)
+				continue
+			}
+			removedCount++
+		}
+	}
+
+	log.Info("📋 Completed successfully - removed %d old Claude session log files", removedCount)
+	return nil
 }
 
 func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, error) {
@@ -55,16 +106,15 @@ func (c *ClaudeService) StartNewConversation(prompt string) (*ClaudeResult, erro
 		return nil, c.handleClaudeClientError(err, "failed to start new Claude session")
 	}
 
+	// Always log the Claude session
+	logPath, writeErr := c.writeClaudeSessionLog(rawOutput)
+	if writeErr != nil {
+		log.Error("Failed to write Claude session log: %v", writeErr)
+	}
+
 	messages, err := MapClaudeOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
-
-		// Write raw output to error log file
-		logPath, writeErr := c.writeClaudeErrorLog(rawOutput)
-		if writeErr != nil {
-			log.Error("Failed to write Claude error log: %v", writeErr)
-			return nil, fmt.Errorf("failed to parse Claude output: %w", err)
-		}
 
 		return nil, &core.ClaudeParseError{
 			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
@@ -98,16 +148,15 @@ func (c *ClaudeService) StartNewConversationWithSystemPrompt(prompt, systemPromp
 		return nil, c.handleClaudeClientError(err, "failed to start new Claude session with system prompt")
 	}
 
+	// Always log the Claude session
+	logPath, writeErr := c.writeClaudeSessionLog(rawOutput)
+	if writeErr != nil {
+		log.Error("Failed to write Claude session log: %v", writeErr)
+	}
+
 	messages, err := MapClaudeOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
-
-		// Write raw output to error log file
-		logPath, writeErr := c.writeClaudeErrorLog(rawOutput)
-		if writeErr != nil {
-			log.Error("Failed to write Claude error log: %v", writeErr)
-			return nil, fmt.Errorf("failed to parse Claude output: %w", err)
-		}
 
 		return nil, &core.ClaudeParseError{
 			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
@@ -141,16 +190,15 @@ func (c *ClaudeService) ContinueConversation(sessionID, prompt string) (*ClaudeR
 		return nil, c.handleClaudeClientError(err, "failed to continue Claude session")
 	}
 
+	// Always log the Claude session
+	logPath, writeErr := c.writeClaudeSessionLog(rawOutput)
+	if writeErr != nil {
+		log.Error("Failed to write Claude session log: %v", writeErr)
+	}
+
 	messages, err := MapClaudeOutputToMessages(rawOutput)
 	if err != nil {
 		log.Error("Failed to parse Claude output: %v", err)
-
-		// Write raw output to error log file
-		logPath, writeErr := c.writeClaudeErrorLog(rawOutput)
-		if writeErr != nil {
-			log.Error("Failed to write Claude error log: %v", writeErr)
-			return nil, fmt.Errorf("failed to parse Claude output: %w", err)
-		}
 
 		return nil, &core.ClaudeParseError{
 			Message:     fmt.Sprintf("couldn't parse claude response and instead stored the response in %s", logPath),
