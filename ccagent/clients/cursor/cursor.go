@@ -32,6 +32,7 @@ func (c *CursorClient) StartNewSession(prompt string, options *clients.CursorOpt
 	}
 
 	args := []string{
+		"--force", // otherwise, it will wait for approval for all mutation commands
 		"--print",
 		"--output-format", "stream-json",
 		finalPrompt,
@@ -61,6 +62,7 @@ func (c *CursorClient) StartNewSession(prompt string, options *clients.CursorOpt
 func (c *CursorClient) ContinueSession(sessionID, prompt string, options *clients.CursorOptions) (string, error) {
 	log.Info("📋 Starting to continue Cursor session: %s", sessionID)
 	args := []string{
+		"--force", // otherwise, it will wait for approval for all mutation commands
 		"--print",
 		"--output-format", "stream-json",
 		"--resume", sessionID,
