@@ -99,6 +99,41 @@ func (r ResultMessage) GetSessionID() string {
 	return r.SessionID
 }
 
+// ExitPlanModeMessage represents an assistant message containing ExitPlanMode tool use
+type ExitPlanModeMessage struct {
+	Type    string `json:"type"`
+	Message struct {
+		ID      string `json:"id"`
+		Type    string `json:"type"`
+		Role    string `json:"role"`
+		Model   string `json:"model"`
+		Content []struct {
+			Type  string `json:"type"`
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Input struct {
+				Plan string `json:"plan"`
+			} `json:"input"`
+		} `json:"content"`
+	} `json:"message"`
+	SessionID string `json:"session_id"`
+}
+
+func (e ExitPlanModeMessage) GetType() string {
+	return "exit_plan_mode"
+}
+
+func (e ExitPlanModeMessage) GetSessionID() string {
+	return e.SessionID
+}
+
+func (e ExitPlanModeMessage) GetPlan() string {
+	if len(e.Message.Content) > 0 {
+		return e.Message.Content[0].Input.Plan
+	}
+	return ""
+}
+
 // MapClaudeOutputToMessages parses Claude command output into structured messages
 // This is exported to allow reuse across different modules
 func MapClaudeOutputToMessages(output string) ([]ClaudeMessage, error) {
@@ -127,6 +162,35 @@ func MapClaudeOutputToMessages(output string) ([]ClaudeMessage, error) {
 	return messages, nil
 }
 
+// isExitPlanModeMessage checks if an assistant message contains ExitPlanMode tool use
+func isExitPlanModeMessage(lineBytes []byte) bool {
+	var tempMsg struct {
+		Type    string `json:"type"`
+		Message struct {
+			Content []struct {
+				Type string `json:"type"`
+				Name string `json:"name"`
+			} `json:"content"`
+		} `json:"message"`
+	}
+
+	if err := json.Unmarshal(lineBytes, &tempMsg); err != nil {
+		return false
+	}
+
+	if tempMsg.Type != "assistant" {
+		return false
+	}
+
+	for _, content := range tempMsg.Message.Content {
+		if content.Type == "tool_use" && content.Name == "ExitPlanMode" {
+			return true
+		}
+	}
+
+	return false
+}
+
 // parseClaudeMessage attempts to parse a JSON line into the appropriate message type
 func parseClaudeMessage(lineBytes []byte) ClaudeMessage {
 	// First, extract just the type to determine which struct to use
@@ -145,6 +209,14 @@ func parseClaudeMessage(lineBytes []byte) ClaudeMessage {
 	// Parse based on type
 	switch typeCheck.Type {
 	case "assistant":
+		// First check if this is an ExitPlanMode tool use
+		if isExitPlanModeMessage(lineBytes) {
+			var exitPlanMsg ExitPlanModeMessage
+			if err := json.Unmarshal(lineBytes, &exitPlanMsg); err == nil {
+				return exitPlanMsg
+			}
+		}
+		// Otherwise parse as regular assistant message
 		var assistantMsg AssistantMessage
 		if err := json.Unmarshal(lineBytes, &assistantMsg); err == nil {
 			return assistantMsg
