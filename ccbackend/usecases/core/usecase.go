@@ -419,13 +419,13 @@ func (s *CoreUseCase) sendStartConversationToAgent(
 	message *models.ProcessedSlackMessage,
 ) error {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(ctx, message.SlackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(ctx, message.OrganizationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
 
 	// Get job to access thread timestamp
-	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.SlackIntegrationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.OrganizationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -469,13 +469,13 @@ func (s *CoreUseCase) sendUserMessageToAgent(
 	message *models.ProcessedSlackMessage,
 ) error {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(ctx, message.SlackIntegrationID)
+	slackClient, err := s.getSlackClientForIntegration(ctx, message.OrganizationID)
 	if err != nil {
 		return fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
 
 	// Get job to access thread timestamp
-	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.SlackIntegrationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.OrganizationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}

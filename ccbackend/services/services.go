@@ -9,6 +9,12 @@ import (
 	"ccbackend/models"
 )
 
+// OrganizationsService defines the interface for organization-related operations
+type OrganizationsService interface {
+	CreateOrganization(ctx context.Context) (*models.Organization, error)
+	GetOrganizationByID(ctx context.Context, id string) (mo.Option[*models.Organization], error)
+}
+
 // UsersService defines the interface for user-related operations
 type UsersService interface {
 	GetOrCreateUser(ctx context.Context, authProvider, authProviderID string) (*models.User, error)

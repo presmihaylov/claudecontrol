@@ -72,11 +72,11 @@ func (s *JobsService) CreateJob(
 	}
 
 	job := &models.Job{
-		ID:                 core.NewID("j"),
-		SlackThreadTS:      slackThreadTS,
-		SlackChannelID:     slackChannelID,
-		SlackUserID:        slackUserID,
-		SlackIntegrationID: slackIntegrationID,
+		ID:             core.NewID("j"),
+		SlackThreadTS:  slackThreadTS,
+		SlackChannelID: slackChannelID,
+		SlackUserID:    slackUserID,
+		OrganizationID: slackIntegrationID,
 	}
 
 	if err := s.jobsRepo.CreateJob(ctx, job); err != nil {
@@ -283,13 +283,13 @@ func (s *JobsService) CreateProcessedSlackMessage(
 	}
 
 	message := &models.ProcessedSlackMessage{
-		ID:                 core.NewID("psm"),
-		JobID:              jobID,
-		SlackChannelID:     slackChannelID,
-		SlackTS:            slackTS,
-		TextContent:        textContent,
-		Status:             status,
-		SlackIntegrationID: slackIntegrationID,
+		ID:             core.NewID("psm"),
+		JobID:          jobID,
+		SlackChannelID: slackChannelID,
+		SlackTS:        slackTS,
+		TextContent:    textContent,
+		Status:         status,
+		OrganizationID: slackIntegrationID,
 	}
 
 	if err := s.processedSlackMessagesRepo.CreateProcessedSlackMessage(ctx, message); err != nil {

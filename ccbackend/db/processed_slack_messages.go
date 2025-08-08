@@ -59,7 +59,7 @@ func (r *PostgresProcessedSlackMessagesRepository) CreateProcessedSlackMessage(
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, message.ID, message.JobID, message.SlackChannelID, message.SlackTS, message.TextContent, message.Status, message.SlackIntegrationID).
+	err := r.db.QueryRowxContext(ctx, query, message.ID, message.JobID, message.SlackChannelID, message.SlackTS, message.TextContent, message.Status, message.OrganizationID).
 		StructScan(message)
 	if err != nil {
 		return fmt.Errorf("failed to create processed slack message: %w", err)

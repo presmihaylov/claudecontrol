@@ -37,10 +37,10 @@ func (s *AgentsService) UpsertActiveAgent(
 	}
 
 	agent := &models.ActiveAgent{
-		ID:                 core.NewID("ag"),
-		WSConnectionID:     wsConnectionID,
-		SlackIntegrationID: slackIntegrationID,
-		CCAgentID:          agentID,
+		ID:             core.NewID("ag"),
+		WSConnectionID: wsConnectionID,
+		OrganizationID: slackIntegrationID,
+		CCAgentID:      agentID,
 	}
 	if err := s.agentsRepo.UpsertActiveAgent(ctx, agent); err != nil {
 		return nil, fmt.Errorf("failed to upsert active agent: %w", err)
@@ -260,10 +260,10 @@ func (s *AgentsService) AssignAgentToJob(ctx context.Context, agentID, jobID str
 	}
 
 	assignment := &models.AgentJobAssignment{
-		ID:                 core.NewID("aji"),
-		AgentID:            agentID,
-		JobID:              jobID,
-		SlackIntegrationID: slackIntegrationID,
+		ID:             core.NewID("aji"),
+		AgentID:        agentID,
+		JobID:          jobID,
+		OrganizationID: slackIntegrationID,
 	}
 
 	if err := s.agentsRepo.AssignAgentToJob(ctx, assignment); err != nil {

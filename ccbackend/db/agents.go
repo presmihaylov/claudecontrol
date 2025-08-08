@@ -24,7 +24,7 @@ type PostgresAgentsRepository struct {
 var activeAgentsColumns = []string{
 	"id",
 	"ws_connection_id",
-	"slack_integration_id",
+	"organization_id",
 	"ccagent_id",
 	"created_at",
 	"updated_at",
@@ -36,7 +36,7 @@ var agentJobAssignmentsColumns = []string{
 	"id",
 	"agent_id",
 	"job_id",
-	"slack_integration_id",
+	"organization_id",
 	"assigned_at",
 }
 
@@ -48,7 +48,7 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent 
 	insertColumns := []string{
 		"id",
 		"ws_connection_id",
-		"slack_integration_id",
+		"organization_id",
 		"ccagent_id",
 		"created_at",
 		"updated_at",
@@ -67,7 +67,7 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent 
 			last_active_at = NOW()
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, agent.ID, agent.WSConnectionID, agent.SlackIntegrationID, agent.CCAgentID).
+	err := r.db.QueryRowxContext(ctx, query, agent.ID, agent.WSConnectionID, agent.OrganizationID, agent.CCAgentID).
 		StructScan(agent)
 	if err != nil {
 		return fmt.Errorf("failed to upsert active agent: %w", err)
@@ -231,7 +231,7 @@ func (r *PostgresAgentsRepository) AssignAgentToJob(ctx context.Context, assignm
 		ON CONFLICT (agent_id, job_id) DO NOTHING
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, assignment.ID, assignment.AgentID, assignment.JobID, assignment.SlackIntegrationID).
+	err := r.db.QueryRowxContext(ctx, query, assignment.ID, assignment.AgentID, assignment.JobID, assignment.OrganizationID).
 		StructScan(assignment)
 	if err != nil {
 		// Check if it's a no rows error (conflict occurred, nothing was inserted)

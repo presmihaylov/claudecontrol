@@ -28,6 +28,7 @@ var slackIntegrationsColumns = []string{
 	"slack_auth_token",
 	"slack_team_name",
 	"user_id",
+	"organization_id",
 	"ccagent_secret_key",
 	"ccagent_secret_key_generated_at",
 	"created_at",
@@ -48,6 +49,7 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(
 		"slack_auth_token",
 		"slack_team_name",
 		"user_id",
+		"organization_id",
 		"created_at",
 		"updated_at",
 	}
@@ -56,10 +58,10 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.slack_integrations (%s) 
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.SlackTeamID, integration.SlackAuthToken, integration.SlackTeamName, integration.UserID).
+	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.SlackTeamID, integration.SlackAuthToken, integration.SlackTeamName, integration.UserID, integration.OrganizationID).
 		StructScan(integration)
 	if err != nil {
 		return fmt.Errorf("failed to create slack integration: %w", err)
@@ -87,6 +89,30 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByUserID(
 	err := r.db.SelectContext(ctx, &integrations, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integrations by user ID: %w", err)
+	}
+
+	return integrations, nil
+}
+
+func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByOrganizationID(
+	ctx context.Context,
+	organizationID string,
+) ([]*models.SlackIntegration, error) {
+	if !core.IsValidULID(organizationID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
+	}
+
+	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.slack_integrations 
+		WHERE organization_id = $1 
+		ORDER BY created_at DESC`, columnsStr, r.schema)
+
+	var integrations []*models.SlackIntegration
+	err := r.db.SelectContext(ctx, &integrations, query, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slack integrations by organization ID: %w", err)
 	}
 
 	return integrations, nil
