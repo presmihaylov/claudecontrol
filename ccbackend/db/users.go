@@ -33,40 +33,6 @@ func NewPostgresUsersRepository(db *sqlx.DB, schema string) *PostgresUsersReposi
 	return &PostgresUsersRepository{db: db, schema: schema}
 }
 
-func (r *PostgresUsersRepository) GetOrCreateUser(
-	ctx context.Context,
-	authProvider, authProviderID, organizationID string,
-) (*models.User, error) {
-	db := dbtx.GetTransactional(ctx, r.db)
-
-	// Generate ULID for new users
-	userID := core.NewID("u")
-
-	insertColumns := []string{"id", "auth_provider", "auth_provider_id", "organization_id", "created_at", "updated_at"}
-	columnsStr := strings.Join(insertColumns, ", ")
-	returningStr := strings.Join(usersColumns, ", ")
-
-	query := fmt.Sprintf(`
-		INSERT INTO %s.users (%s) 
-		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
-		ON CONFLICT (auth_provider, auth_provider_id) 
-		DO UPDATE SET 
-			organization_id = CASE 
-				WHEN %s.users.organization_id IS NULL OR %s.users.organization_id = '' THEN EXCLUDED.organization_id 
-				ELSE %s.users.organization_id 
-			END,
-			updated_at = NOW()
-		RETURNING %s`, r.schema, columnsStr, r.schema, r.schema, r.schema, returningStr)
-
-	user := &models.User{}
-	err := db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID, organizationID).StructScan(user)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get or create user: %w", err)
-	}
-
-	return user, nil
-}
-
 func (r *PostgresUsersRepository) GetUserByAuthProvider(
 	ctx context.Context,
 	authProvider, authProviderID string,
