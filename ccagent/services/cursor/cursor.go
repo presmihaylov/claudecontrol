@@ -245,5 +245,5 @@ func (c *CursorService) handleCursorClientError(err error, operation string) err
 
 // AgentName identifies this service implementation
 func (c *CursorService) AgentName() string {
-    return "cursor"
+	return "cursor"
 }

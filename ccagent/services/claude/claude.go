@@ -325,5 +325,5 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 
 // AgentName identifies this service implementation
 func (c *ClaudeService) AgentName() string {
-    return "claude"
+	return "claude"
 }
