@@ -33,8 +33,9 @@ func (c *ClaudeClient) StartNewSession(prompt string, options *clients.ClaudeOpt
 		if options.SystemPrompt != "" {
 			args = append(args, "--append-system-prompt", options.SystemPrompt)
 		}
-		for _, tool := range options.DisallowedTools {
-			args = append(args, "--disallowed-tools", tool)
+		if len(options.DisallowedTools) > 0 {
+			disallowedToolsStr := strings.Join(options.DisallowedTools, " ")
+			args = append(args, "--disallowed-tools", disallowedToolsStr)
 		}
 	}
 
@@ -73,8 +74,9 @@ func (c *ClaudeClient) ContinueSession(sessionID, prompt string, options *client
 		if options.SystemPrompt != "" {
 			args = append(args, "--append-system-prompt", options.SystemPrompt)
 		}
-		for _, tool := range options.DisallowedTools {
-			args = append(args, "--disallowed-tools", tool)
+		if len(options.DisallowedTools) > 0 {
+			disallowedToolsStr := strings.Join(options.DisallowedTools, " ")
+			args = append(args, "--disallowed-tools", disallowedToolsStr)
 		}
 	}
 
