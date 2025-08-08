@@ -95,7 +95,7 @@ func createCLIAgent(agentType, permissionMode, logDir string) (services.CLIAgent
 
 type Options struct {
 	BypassPermissions bool   `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
-	Agent             string `long:"agent"             description:"CLI agent to use (claude or cursor)"                                                          choice:"claude" default:"claude"`
+	Agent             string `long:"agent" description:"CLI agent to use (claude or cursor)" choice:"claude" choice:"cursor" default:"claude"`
 }
 
 func main() {
