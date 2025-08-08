@@ -355,17 +355,39 @@ func (g *GitUseCase) handlePRCreationOrUpdate(branchName, slackThreadLink string
 
 	log.Info("🆕 No existing PR found - creating new PR")
 
-	// Generate PR title and body using Claude
-	prTitle, err := g.generatePRTitleWithClaude(branchName)
-	if err != nil {
-		log.Error("❌ Failed to generate PR title with Claude: %v", err)
-		return nil, fmt.Errorf("failed to generate PR title with Claude: %w", err)
+	// Generate PR title and body using Claude in parallel
+	var prTitle, prBody string
+	var titleErr, bodyErr error
+
+	// Use channels to synchronize parallel execution
+	titleDone := make(chan bool)
+	bodyDone := make(chan bool)
+
+	// Start PR title generation
+	go func() {
+		prTitle, titleErr = g.generatePRTitleWithClaude(branchName)
+		titleDone <- true
+	}()
+
+	// Start PR body generation
+	go func() {
+		prBody, bodyErr = g.generatePRBodyWithClaude(branchName, slackThreadLink)
+		bodyDone <- true
+	}()
+
+	// Wait for both to complete
+	<-titleDone
+	<-bodyDone
+
+	// Check for errors
+	if titleErr != nil {
+		log.Error("❌ Failed to generate PR title with Claude: %v", titleErr)
+		return nil, fmt.Errorf("failed to generate PR title with Claude: %w", titleErr)
 	}
 
-	prBody, err := g.generatePRBodyWithClaude(branchName, slackThreadLink)
-	if err != nil {
-		log.Error("❌ Failed to generate PR body with Claude: %v", err)
-		return nil, fmt.Errorf("failed to generate PR body with Claude: %w", err)
+	if bodyErr != nil {
+		log.Error("❌ Failed to generate PR body with Claude: %v", bodyErr)
+		return nil, fmt.Errorf("failed to generate PR body with Claude: %w", bodyErr)
 	}
 
 	log.Info("📋 Generated PR title: %s", prTitle)
@@ -760,18 +782,43 @@ func (g *GitUseCase) updatePRTitleAndDescriptionIfNeeded(branchName, slackThread
 		return fmt.Errorf("failed to get current PR description: %w", err)
 	}
 
-	// Generate updated PR title using Claude
-	updatedTitle, err := g.generateUpdatedPRTitleWithClaude(branchName, currentTitle)
-	if err != nil {
-		log.Error("❌ Failed to generate updated PR title with Claude: %v", err)
-		return fmt.Errorf("failed to generate updated PR title with Claude: %w", err)
+	// Generate updated PR title and description using Claude in parallel
+	var updatedTitle, updatedDescription string
+	var titleErr, descriptionErr error
+
+	// Use channels to synchronize parallel execution
+	titleDone := make(chan bool)
+	descriptionDone := make(chan bool)
+
+	// Start updated PR title generation
+	go func() {
+		updatedTitle, titleErr = g.generateUpdatedPRTitleWithClaude(branchName, currentTitle)
+		titleDone <- true
+	}()
+
+	// Start updated PR description generation
+	go func() {
+		updatedDescription, descriptionErr = g.generateUpdatedPRDescriptionWithClaude(
+			branchName,
+			currentDescription,
+			slackThreadLink,
+		)
+		descriptionDone <- true
+	}()
+
+	// Wait for both to complete
+	<-titleDone
+	<-descriptionDone
+
+	// Check for errors
+	if titleErr != nil {
+		log.Error("❌ Failed to generate updated PR title with Claude: %v", titleErr)
+		return fmt.Errorf("failed to generate updated PR title with Claude: %w", titleErr)
 	}
 
-	// Generate updated PR description using Claude
-	updatedDescription, err := g.generateUpdatedPRDescriptionWithClaude(branchName, currentDescription, slackThreadLink)
-	if err != nil {
-		log.Error("❌ Failed to generate updated PR description with Claude: %v", err)
-		return fmt.Errorf("failed to generate updated PR description with Claude: %w", err)
+	if descriptionErr != nil {
+		log.Error("❌ Failed to generate updated PR description with Claude: %v", descriptionErr)
+		return fmt.Errorf("failed to generate updated PR description with Claude: %w", descriptionErr)
 	}
 
 	// Update title if it has changed
