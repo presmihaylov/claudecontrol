@@ -322,3 +322,8 @@ func (c *ClaudeService) handleClaudeClientError(err error, operation string) err
 	log.Info("⚠️ No assistant message found in Claude command output, returning original error")
 	return fmt.Errorf("%s: %w", operation, err)
 }
+
+// AgentName identifies this service implementation
+func (c *ClaudeService) AgentName() string {
+    return "claude"
+}
