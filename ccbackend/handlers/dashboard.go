@@ -48,7 +48,12 @@ func (h *DashboardAPIHandler) CreateSlackIntegration(
 	user *models.User,
 ) (*models.SlackIntegration, error) {
 	log.Printf("➕ Creating Slack integration for organization: %s", user.OrganizationID)
-	integration, err := h.slackIntegrationsService.CreateSlackIntegration(ctx, user.OrganizationID, slackAuthToken, redirectURL)
+	integration, err := h.slackIntegrationsService.CreateSlackIntegration(
+		ctx,
+		user.OrganizationID,
+		slackAuthToken,
+		redirectURL,
+	)
 	if err != nil {
 		log.Printf("❌ Failed to create Slack integration: %v", err)
 		return nil, err

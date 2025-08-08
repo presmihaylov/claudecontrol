@@ -10,7 +10,6 @@ import (
 
 	"github.com/samber/mo"
 
-	"ccbackend/appctx"
 	"ccbackend/clients"
 	"ccbackend/core"
 	"ccbackend/db"
@@ -128,7 +127,10 @@ func (s *SlackIntegrationsService) GetAllSlackIntegrations(ctx context.Context) 
 	return integrations, nil
 }
 
-func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, organizationID, integrationID string) error {
+func (s *SlackIntegrationsService) DeleteSlackIntegration(
+	ctx context.Context,
+	organizationID, integrationID string,
+) error {
 	log.Printf("📋 Starting to delete Slack integration: %s", integrationID)
 	if !core.IsValidULID(organizationID) {
 		return fmt.Errorf("organization ID must be a valid ULID")
@@ -149,7 +151,10 @@ func (s *SlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, o
 	return nil
 }
 
-func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(ctx context.Context, organizationID, integrationID string) (string, error) {
+func (s *SlackIntegrationsService) GenerateCCAgentSecretKey(
+	ctx context.Context,
+	organizationID, integrationID string,
+) (string, error) {
 	log.Printf("📋 Starting to generate CCAgent secret key for integration: %s", integrationID)
 	if !core.IsValidULID(organizationID) {
 		return "", fmt.Errorf("organization ID must be a valid ULID")

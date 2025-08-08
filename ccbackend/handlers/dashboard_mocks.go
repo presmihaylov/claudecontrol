@@ -59,7 +59,10 @@ func (m *MockSlackIntegrationsService) GetAllSlackIntegrations(
 	return args.Get(0).([]*models.SlackIntegration), args.Error(1)
 }
 
-func (m *MockSlackIntegrationsService) DeleteSlackIntegration(ctx context.Context, organizationID, integrationID string) error {
+func (m *MockSlackIntegrationsService) DeleteSlackIntegration(
+	ctx context.Context,
+	organizationID, integrationID string,
+) error {
 	args := m.Called(ctx, organizationID, integrationID)
 	return args.Error(0)
 }

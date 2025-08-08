@@ -263,7 +263,8 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			ctx:           ctx,
 			integrationID: integrationID,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("GenerateCCAgentSecretKey", ctx, testOrg.ID, integrationID).Return("", fmt.Errorf("integration not found"))
+				m.On("GenerateCCAgentSecretKey", ctx, testOrg.ID, integrationID).
+					Return("", fmt.Errorf("integration not found"))
 			},
 			expectedResult: "",
 			expectedError:  "integration not found",
@@ -515,7 +516,8 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 			name:          "success - deletes integration",
 			integrationID: validID,
 			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("DeleteSlackIntegration", mock.AnythingOfType("*context.valueCtx"), testOrg.ID, validID).Return(nil)
+				m.On("DeleteSlackIntegration", mock.AnythingOfType("*context.valueCtx"), testOrg.ID, validID).
+					Return(nil)
 			},
 			expectedStatus: http.StatusNoContent,
 			validateBody: func(t *testing.T, body []byte) {

@@ -625,7 +625,7 @@ func TestSlackIntegrationsService_GenerateCCAgentSecretKey(t *testing.T) {
 
 		// Verify the integration was updated
 		ctx = testutils.CreateTestContextWithUser(testUser)
-		integrations, err = service.GetSlackIntegrationsByOrganizationID(ctx)
+		integrations, err = service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrganizationID)
 		require.NoError(t, err)
 		require.Len(t, integrations, 1)
 
