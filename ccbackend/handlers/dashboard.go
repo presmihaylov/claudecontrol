@@ -13,15 +13,18 @@ import (
 type DashboardAPIHandler struct {
 	usersService             services.UsersService
 	slackIntegrationsService services.SlackIntegrationsService
+	organizationsService     services.OrganizationsService
 }
 
 func NewDashboardAPIHandler(
 	usersService services.UsersService,
 	slackIntegrationsService services.SlackIntegrationsService,
+	organizationsService services.OrganizationsService,
 ) *DashboardAPIHandler {
 	return &DashboardAPIHandler{
 		usersService:             usersService,
 		slackIntegrationsService: slackIntegrationsService,
+		organizationsService:     organizationsService,
 	}
 }
 
@@ -79,19 +82,19 @@ func (h *DashboardAPIHandler) DeleteSlackIntegration(ctx context.Context, integr
 	return nil
 }
 
-// GenerateCCAgentSecretKey generates a new secret key for a Slack integration
-func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context, integrationID string) (string, error) {
-	log.Printf("🔑 Generating CCAgent secret key for integration: %s", integrationID)
+// GenerateCCAgentSecretKey generates a new secret key for an organization
+func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context) (string, error) {
+	log.Printf("🔑 Generating CCAgent secret key for organization")
 	org, ok := appctx.GetOrganization(ctx)
 	if !ok {
 		return "", fmt.Errorf("organization not found in context")
 	}
-	secretKey, err := h.slackIntegrationsService.GenerateCCAgentSecretKey(ctx, org.ID, integrationID)
+	secretKey, err := h.organizationsService.GenerateCCAgentSecretKey(ctx, org.ID)
 	if err != nil {
 		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
 		return "", err
 	}
 
-	log.Printf("✅ CCAgent secret key generated successfully for integration: %s", integrationID)
+	log.Printf("✅ CCAgent secret key generated successfully for organization: %s", org.ID)
 	return secretKey, nil
 }

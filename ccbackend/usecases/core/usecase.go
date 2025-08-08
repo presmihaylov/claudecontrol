@@ -22,6 +22,7 @@ type CoreUseCase struct {
 	agentsService            services.AgentsService
 	jobsService              services.JobsService
 	slackIntegrationsService services.SlackIntegrationsService
+	organizationsService     services.OrganizationsService
 	txManager                services.TransactionManager
 }
 
@@ -30,6 +31,7 @@ func NewCoreUseCase(
 	agentsService services.AgentsService,
 	jobsService services.JobsService,
 	slackIntegrationsService services.SlackIntegrationsService,
+	organizationsService services.OrganizationsService,
 	txManager services.TransactionManager,
 ) *CoreUseCase {
 	return &CoreUseCase{
@@ -37,6 +39,7 @@ func NewCoreUseCase(
 		agentsService:            agentsService,
 		jobsService:              jobsService,
 		slackIntegrationsService: slackIntegrationsService,
+		organizationsService:     organizationsService,
 		txManager:                txManager,
 	}
 }
@@ -1312,15 +1315,32 @@ func (s *CoreUseCase) sendSystemMessage(
 func (s *CoreUseCase) ValidateAPIKey(ctx context.Context, apiKey string) (string, error) {
 	log.Printf("📋 Starting to validate API key")
 
-	maybeSlackInt, err := s.slackIntegrationsService.GetSlackIntegrationBySecretKey(ctx, apiKey)
+	// Validate API key against organization instead of slack integration
+	maybeOrg, err := s.organizationsService.GetOrganizationBySecretKey(ctx, apiKey)
 	if err != nil {
 		return "", err
 	}
-	if !maybeSlackInt.IsPresent() {
+	if !maybeOrg.IsPresent() {
 		return "", fmt.Errorf("invalid API key")
 	}
-	integration := maybeSlackInt.MustGet()
+	organization := maybeOrg.MustGet()
 
-	log.Printf("📋 Completed successfully - validated API key for integration %s", integration.ID)
-	return integration.ID, nil
+	// Get the first slack integration for this organization
+	// This maintains compatibility while enabling organization-scoped keys
+	integrations, err := s.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(ctx, organization.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get slack integrations for organization: %w", err)
+	}
+	if len(integrations) == 0 {
+		return "", fmt.Errorf("no slack integrations found for organization")
+	}
+
+	// Return the first slack integration ID to maintain current architecture
+	firstIntegration := integrations[0]
+	log.Printf(
+		"📋 Completed successfully - validated API key for organization %s, using integration %s",
+		organization.ID,
+		firstIntegration.ID,
+	)
+	return firstIntegration.ID, nil
 }

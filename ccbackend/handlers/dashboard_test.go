@@ -32,14 +32,12 @@ var (
 		OrganizationID: testOrg.ID,
 	}
 
-	testSecretKey        = "test-secret-key"
 	testSlackIntegration = &models.SlackIntegration{
-		ID:               "si_01234567890123456789012345",
-		SlackTeamID:      "T123456",
-		SlackAuthToken:   "xoxb-test-token",
-		SlackTeamName:    "Test Team",
-		OrganizationID:   testOrg.ID,
-		CCAgentSecretKey: &testSecretKey,
+		ID:             "si_01234567890123456789012345",
+		SlackTeamID:    "T123456",
+		SlackAuthToken: "xoxb-test-token",
+		SlackTeamName:  "Test Team",
+		OrganizationID: testOrg.ID,
 	}
 )
 
@@ -96,7 +94,8 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
+			mockOrganizationsService := &MockOrganizationsService{}
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService, mockOrganizationsService)
 
 			result, err := handler.ListSlackIntegrations(context.Background(), tt.user)
 
@@ -157,7 +156,8 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
+			mockOrganizationsService := &MockOrganizationsService{}
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService, mockOrganizationsService)
 
 			result, err := handler.CreateSlackIntegration(
 				context.Background(),
@@ -218,7 +218,8 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
+			mockOrganizationsService := &MockOrganizationsService{}
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService, mockOrganizationsService)
 
 			err := handler.DeleteSlackIntegration(tt.ctx, tt.integrationID)
 
@@ -237,37 +238,33 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 
 func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 	ctx := contextWithUser(testUser)
-	integrationID := "si_01234567890123456789012345"
 	expectedSecretKey := "new-secret-key-123"
 
 	tests := []struct {
 		name           string
 		ctx            context.Context
-		integrationID  string
-		mockSetup      func(*MockSlackIntegrationsService)
+		mockSetup      func(*MockOrganizationsService)
 		expectedResult string
 		expectedError  string
 	}{
 		{
-			name:          "success - generates key",
-			ctx:           ctx,
-			integrationID: integrationID,
-			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("GenerateCCAgentSecretKey", ctx, testOrg.ID, integrationID).Return(expectedSecretKey, nil)
+			name: "success - generates key",
+			ctx:  ctx,
+			mockSetup: func(m *MockOrganizationsService) {
+				m.On("GenerateCCAgentSecretKey", ctx, testOrg.ID).Return(expectedSecretKey, nil)
 			},
 			expectedResult: expectedSecretKey,
 			expectedError:  "",
 		},
 		{
-			name:          "error - service fails",
-			ctx:           ctx,
-			integrationID: integrationID,
-			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("GenerateCCAgentSecretKey", ctx, testOrg.ID, integrationID).
-					Return("", fmt.Errorf("integration not found"))
+			name: "error - service fails",
+			ctx:  ctx,
+			mockSetup: func(m *MockOrganizationsService) {
+				m.On("GenerateCCAgentSecretKey", ctx, testOrg.ID).
+					Return("", fmt.Errorf("organization not found"))
 			},
 			expectedResult: "",
-			expectedError:  "integration not found",
+			expectedError:  "organization not found",
 		},
 	}
 
@@ -275,11 +272,12 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUsersService := &MockUsersService{}
 			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
-			tt.mockSetup(mockSlackIntegrationsService)
+			mockOrganizationsService := &MockOrganizationsService{}
+			tt.mockSetup(mockOrganizationsService)
 
-			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService, mockOrganizationsService)
 
-			result, err := handler.GenerateCCAgentSecretKey(tt.ctx, tt.integrationID)
+			result, err := handler.GenerateCCAgentSecretKey(tt.ctx)
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -292,6 +290,7 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 
 			mockUsersService.AssertExpectations(t)
 			mockSlackIntegrationsService.AssertExpectations(t)
+			mockOrganizationsService.AssertExpectations(t)
 		})
 	}
 }
@@ -326,7 +325,8 @@ func TestDashboardHTTPHandler_HandleUserAuthenticate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUsersService := &MockUsersService{}
 			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
-			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
+			mockOrganizationsService := &MockOrganizationsService{}
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService, mockOrganizationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			req := httptest.NewRequest(tt.method, "/users/authenticate", nil)
@@ -397,7 +397,8 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
+			mockOrganizationsService := &MockOrganizationsService{}
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService, mockOrganizationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			req := httptest.NewRequest("GET", "/slack/integrations", nil)
@@ -476,7 +477,8 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
+			mockOrganizationsService := &MockOrganizationsService{}
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService, mockOrganizationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			var body []byte
@@ -553,7 +555,8 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
-			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
+			mockOrganizationsService := &MockOrganizationsService{}
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService, mockOrganizationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			req := httptest.NewRequest("DELETE", fmt.Sprintf("/slack/integrations/%s", tt.integrationID), nil)
@@ -576,22 +579,19 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 }
 
 func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
-	validID := "si_01234567890123456789012345"
 	expectedSecretKey := "new-secret-key-123"
 	ctx := contextWithUser(testUser)
 
 	tests := []struct {
 		name           string
-		integrationID  string
-		mockSetup      func(*MockSlackIntegrationsService)
+		mockSetup      func(*MockOrganizationsService)
 		expectedStatus int
 		validateBody   func(*testing.T, []byte)
 	}{
 		{
-			name:          "success - generates key",
-			integrationID: validID,
-			mockSetup: func(m *MockSlackIntegrationsService) {
-				m.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), testOrg.ID, validID).
+			name: "success - generates key",
+			mockSetup: func(m *MockOrganizationsService) {
+				m.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), testOrg.ID).
 					Return(expectedSecretKey, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -602,12 +602,14 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 			},
 		},
 		{
-			name:           "error - invalid ID",
-			integrationID:  "invalid-id",
-			mockSetup:      func(m *MockSlackIntegrationsService) {},
-			expectedStatus: http.StatusBadRequest,
+			name: "error - service fails",
+			mockSetup: func(m *MockOrganizationsService) {
+				m.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), testOrg.ID).
+					Return("", fmt.Errorf("organization not found"))
+			},
+			expectedStatus: http.StatusNotFound,
 			validateBody: func(t *testing.T, body []byte) {
-				assert.Contains(t, string(body), "integration ID must be a valid ULID")
+				assert.Contains(t, string(body), "organization not found")
 			},
 		},
 	}
@@ -616,21 +618,22 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUsersService := &MockUsersService{}
 			mockSlackIntegrationsService := &MockSlackIntegrationsService{}
-			tt.mockSetup(mockSlackIntegrationsService)
+			mockOrganizationsService := &MockOrganizationsService{}
+			tt.mockSetup(mockOrganizationsService)
 
-			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService)
+			handler := NewDashboardAPIHandler(mockUsersService, mockSlackIntegrationsService, mockOrganizationsService)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
 			req := httptest.NewRequest(
 				"POST",
-				fmt.Sprintf("/slack/integrations/%s/ccagent_secret_key", tt.integrationID),
+				"/organization/ccagent_secret_key",
 				nil,
 			)
 			req = req.WithContext(ctx)
 
-			// Setup mux router to capture path variables
+			// Setup mux router to match new endpoint
 			router := mux.NewRouter()
-			router.HandleFunc("/slack/integrations/{id}/ccagent_secret_key", httpHandler.HandleGenerateCCAgentSecretKey)
+			router.HandleFunc("/organization/ccagent_secret_key", httpHandler.HandleGenerateCCAgentSecretKey)
 
 			rr := httptest.NewRecorder()
 			router.ServeHTTP(rr, req)
@@ -640,6 +643,7 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 
 			mockUsersService.AssertExpectations(t)
 			mockSlackIntegrationsService.AssertExpectations(t)
+			mockOrganizationsService.AssertExpectations(t)
 		})
 	}
 }
