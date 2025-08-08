@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/samber/mo"
@@ -514,70 +513,6 @@ func (s *CoreUseCase) sendUserMessageToAgent(
 	return nil
 }
 
-func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) string {
-	switch status {
-	case models.ProcessedSlackMessageStatusInProgress:
-		return "hourglass"
-	case models.ProcessedSlackMessageStatusQueued:
-		return "hourglass"
-	case models.ProcessedSlackMessageStatusCompleted:
-		return "white_check_mark"
-	default:
-		utils.AssertInvariant(false, "invalid status received")
-		return ""
-	}
-}
-
-func (s *CoreUseCase) getBotUserID(slackClient clients.SlackClient) (string, error) {
-	authTest, err := slackClient.AuthTest()
-	if err != nil {
-		return "", fmt.Errorf("failed to get bot user ID: %w", err)
-	}
-	return authTest.UserID, nil
-}
-
-func (s *CoreUseCase) getBotReactionsOnMessage(
-	channelID, messageTS string,
-	slackClient clients.SlackClient,
-) ([]string, error) {
-	botUserID, err := s.getBotUserID(slackClient)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get reactions directly using GetReactions - much less rate limited
-	reactions, err := slackClient.GetReactions(clients.SlackItemRef{
-		Channel:   channelID,
-		Timestamp: messageTS,
-	}, clients.SlackGetReactionsParameters{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get reactions: %w", err)
-	}
-
-	var botReactions []string
-	for _, reaction := range reactions {
-		// Check if bot added this reaction
-		if slices.Contains(reaction.Users, botUserID) {
-			botReactions = append(botReactions, reaction.Name)
-		}
-	}
-
-	return botReactions, nil
-}
-
-func getOldReactions(newEmoji string) []string {
-	allReactions := []string{"hourglass", "eyes", "white_check_mark", "hand", "x"}
-
-	var result []string
-	for _, reaction := range allReactions {
-		if reaction != newEmoji {
-			result = append(result, reaction)
-		}
-	}
-
-	return result
-}
-
 func (s *CoreUseCase) updateSlackMessageReaction(
 	ctx context.Context,
 	channelID, messageTS, newEmoji, slackIntegrationID string,
@@ -589,7 +524,7 @@ func (s *CoreUseCase) updateSlackMessageReaction(
 	}
 
 	// Get only reactions added by our bot
-	botReactions, err := s.getBotReactionsOnMessage(channelID, messageTS, slackClient)
+	botReactions, err := s.getBotReactionsOnMessage(ctx, channelID, messageTS, slackIntegrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get bot reactions: %w", err)
 	}
@@ -745,38 +680,6 @@ func (s *CoreUseCase) tryAssignJobToAgent(
 	return selectedAgent.WSConnectionID, true, nil
 }
 
-type agentWithLoad struct {
-	agent *models.ActiveAgent
-	load  int
-}
-
-func (s *CoreUseCase) sortAgentsByLoad(
-	ctx context.Context,
-	agents []*models.ActiveAgent,
-	slackIntegrationID string,
-) ([]agentWithLoad, error) {
-	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
-
-	for _, agent := range agents {
-		// Get job IDs assigned to this agent
-		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, slackIntegrationID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
-		}
-
-		jobCount := len(jobIDs)
-
-		agentsWithLoad = append(agentsWithLoad, agentWithLoad{agent: agent, load: jobCount})
-	}
-
-	// Sort by load (ascending - least loaded first)
-	sort.Slice(agentsWithLoad, func(i, j int) bool {
-		return agentsWithLoad[i].load < agentsWithLoad[j].load
-	})
-
-	return agentsWithLoad, nil
-}
-
 func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
 
@@ -809,14 +712,6 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	if err != nil {
 		log.Printf("❌ Failed to get jobs for cleanup: %v", err)
 		return fmt.Errorf("failed to get jobs for cleanup: %w", err)
-	}
-	if len(jobs) == 0 {
-		// No jobs to clean up, just delete the agent
-		if err := s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, client.SlackIntegrationID); err != nil {
-			return fmt.Errorf("failed to delete agent: %w", err)
-		}
-		log.Printf("📋 Completed successfully - deregistered agent for client %s", client.ID)
-		return nil
 	}
 
 	// Clean up all job assignments - handle each job consistently
