@@ -37,13 +37,14 @@ func (r *PostgresOrganizationsRepository) CreateOrganization(
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 
-	columnsStr := strings.Join(organizationsColumns, ", ")
+	returningStr := strings.Join(organizationsColumns, ", ")
 
 	query := fmt.Sprintf(`
-		INSERT INTO %s.organizations (%s) 
-		VALUES ($1, NOW(), NOW())`, r.schema, columnsStr)
+		INSERT INTO %s.organizations (id, created_at, updated_at) 
+		VALUES ($1, NOW(), NOW()) 
+		RETURNING %s`, r.schema, returningStr)
 
-	_, err := db.ExecContext(ctx, query, organization.ID)
+	err := db.QueryRowxContext(ctx, query, organization.ID).StructScan(organization)
 	if err != nil {
 		return fmt.Errorf("failed to create organization: %w", err)
 	}
