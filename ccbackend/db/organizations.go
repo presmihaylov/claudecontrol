@@ -142,3 +142,21 @@ func (r *PostgresOrganizationsRepository) GetOrganizationBySecretKey(
 
 	return mo.Some(&organization), nil
 }
+
+func (r *PostgresOrganizationsRepository) GetAllOrganizations(ctx context.Context) ([]*models.Organization, error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+
+	columnsStr := strings.Join(organizationsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.organizations 
+		ORDER BY created_at ASC`, columnsStr, r.schema)
+
+	var organizations []*models.Organization
+	err := db.SelectContext(ctx, &organizations, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all organizations: %w", err)
+	}
+
+	return organizations, nil
+}

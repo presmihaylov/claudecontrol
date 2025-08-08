@@ -838,14 +838,14 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 	log.Printf("📋 Starting to broadcast CheckIdleJobs to all connected agents")
 
-	// Get all slack integrations to broadcast to agents in each integration
-	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations(ctx)
+	// Get all organizations to broadcast to agents in each organization
+	organizations, err := s.organizationsService.GetAllOrganizations(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get slack integrations: %w", err)
+		return fmt.Errorf("failed to get organizations: %w", err)
 	}
 
-	if len(integrations) == 0 {
-		log.Printf("📋 No slack integrations found")
+	if len(organizations) == 0 {
+		log.Printf("📋 No organizations found")
 		return nil
 	}
 
@@ -854,15 +854,15 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 	connectedClientIDs := s.wsClient.GetClientIDs()
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
-	for _, integration := range integrations {
-		slackIntegrationID := integration.ID
+	for _, organization := range organizations {
+		organizationID := organization.ID
 
-		// Get connected agents for this integration using centralized service method
-		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, slackIntegrationID, connectedClientIDs)
+		// Get connected agents for this organization using centralized service method
+		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, organizationID, connectedClientIDs)
 		if err != nil {
 			broadcastErrors = append(
 				broadcastErrors,
-				fmt.Sprintf("failed to get connected agents for integration %s: %v", slackIntegrationID, err),
+				fmt.Sprintf("failed to get connected agents for organization %s: %v", organizationID, err),
 			)
 			continue
 		}
@@ -872,9 +872,9 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 		}
 
 		log.Printf(
-			"📡 Broadcasting CheckIdleJobs to %d connected agents for integration %s",
+			"📡 Broadcasting CheckIdleJobs to %d connected agents for organization %s",
 			len(connectedAgents),
-			slackIntegrationID,
+			organizationID,
 		)
 		checkIdleJobsMessage := models.BaseMessage{
 			ID:      core.NewID("msg"),

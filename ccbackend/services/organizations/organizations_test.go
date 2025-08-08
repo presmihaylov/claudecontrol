@@ -424,3 +424,130 @@ func TestOrganizationsService_GetOrganizationBySecretKey(t *testing.T) {
 		}()
 	})
 }
+
+func TestOrganizationsService_GetAllOrganizations(t *testing.T) {
+	service, repo, cleanup := setupOrganizationsTest(t)
+	defer cleanup()
+
+	t.Run("successful retrieval of all organizations", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create multiple organizations
+		org1ID := core.NewID("org")
+		org1 := &models.Organization{ID: org1ID}
+		err := repo.CreateOrganization(ctx, org1)
+		require.NoError(t, err)
+
+		org2ID := core.NewID("org")
+		org2 := &models.Organization{ID: org2ID}
+		err = repo.CreateOrganization(ctx, org2)
+		require.NoError(t, err)
+
+		org3ID := core.NewID("org")
+		org3 := &models.Organization{ID: org3ID}
+		err = repo.CreateOrganization(ctx, org3)
+		require.NoError(t, err)
+
+		// Retrieve all organizations
+		organizations, err := service.GetAllOrganizations(ctx)
+		require.NoError(t, err)
+
+		// Should contain at least our 3 test organizations (there might be others from other tests)
+		assert.GreaterOrEqual(t, len(organizations), 3)
+
+		// Find our test organizations in the results
+		orgIDs := make(map[string]bool)
+		for _, org := range organizations {
+			orgIDs[org.ID] = true
+			assert.True(t, core.IsValidULID(org.ID))
+			assert.False(t, org.CreatedAt.IsZero())
+			assert.False(t, org.UpdatedAt.IsZero())
+		}
+
+		assert.True(t, orgIDs[org1ID], "org1 should be in results")
+		assert.True(t, orgIDs[org2ID], "org2 should be in results")
+		assert.True(t, orgIDs[org3ID], "org3 should be in results")
+
+		// Clean up
+		defer func() {
+			cfg, _ := testutils.LoadTestConfig()
+			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
+			defer dbConn.Close()
+			query := fmt.Sprintf("DELETE FROM %s.organizations WHERE id IN ($1, $2, $3)", cfg.DatabaseSchema)
+			dbConn.Exec(query, org1ID, org2ID, org3ID)
+		}()
+	})
+
+	t.Run("returns empty list when no organizations exist", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Clean up any existing organizations first
+		cfg, err := testutils.LoadTestConfig()
+		require.NoError(t, err)
+		dbConn, err := db.NewConnection(cfg.DatabaseURL)
+		require.NoError(t, err)
+		defer dbConn.Close()
+
+		// Delete all organizations to ensure clean state
+		query := fmt.Sprintf("DELETE FROM %s.organizations", cfg.DatabaseSchema)
+		_, err = dbConn.Exec(query)
+		require.NoError(t, err)
+
+		// Retrieve all organizations
+		organizations, err := service.GetAllOrganizations(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, organizations)
+	})
+
+	t.Run("organizations are ordered by created_at ASC", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create organizations one by one to ensure different creation times
+		org1ID := core.NewID("org")
+		org1 := &models.Organization{ID: org1ID}
+		err := repo.CreateOrganization(ctx, org1)
+		require.NoError(t, err)
+
+		org2ID := core.NewID("org")
+		org2 := &models.Organization{ID: org2ID}
+		err = repo.CreateOrganization(ctx, org2)
+		require.NoError(t, err)
+
+		// Retrieve all organizations
+		organizations, err := service.GetAllOrganizations(ctx)
+		require.NoError(t, err)
+
+		// Should have at least 2 organizations
+		assert.GreaterOrEqual(t, len(organizations), 2)
+
+		// Find our organizations in results and verify ordering
+		var org1Idx, org2Idx int = -1, -1
+		for i, org := range organizations {
+			if org.ID == org1ID {
+				org1Idx = i
+			}
+			if org.ID == org2ID {
+				org2Idx = i
+			}
+		}
+
+		assert.NotEqual(t, -1, org1Idx, "org1 should be found")
+		assert.NotEqual(t, -1, org2Idx, "org2 should be found")
+		assert.Less(t, org1Idx, org2Idx, "org1 should come before org2 (created first)")
+
+		// Verify the ordering is consistent with creation time
+		if org1Idx < len(organizations) && org2Idx < len(organizations) {
+			assert.True(t, organizations[org1Idx].CreatedAt.Before(organizations[org2Idx].CreatedAt) ||
+				organizations[org1Idx].CreatedAt.Equal(organizations[org2Idx].CreatedAt))
+		}
+
+		// Clean up
+		defer func() {
+			cfg, _ := testutils.LoadTestConfig()
+			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
+			defer dbConn.Close()
+			query := fmt.Sprintf("DELETE FROM %s.organizations WHERE id IN ($1, $2)", cfg.DatabaseSchema)
+			dbConn.Exec(query, org1ID, org2ID)
+		}()
+	})
+}
