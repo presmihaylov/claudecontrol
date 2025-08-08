@@ -22,14 +22,16 @@ go fmt ./...                # Format Go source files
 ### ccagent (Go CLI Agent)
 ```bash
 cd ccagent
-make run                    # Run agent
+make run                    # Run agent (default: Claude)
 make build                  # Build binary to bin/ccagent
 make clean                  # Remove build artifacts
 make build-prod             # Build production binaries for multiple platforms
 make lint                   # Run golangci-lint checks
 make lint-fix               # Run golangci-lint and fix issues automatically
-go run cmd/*.go             # Run agent directly
+go run cmd/*.go             # Run agent directly (default: Claude)
 go run cmd/*.go --bypassPermissions  # Run with bypass permissions (sandbox only)
+go run cmd/*.go --agent claude       # Run with Claude agent (default)
+go run cmd/*.go --agent cursor       # Run with Cursor agent
 ```
 
 ### ccfrontend (Next.js Frontend)
@@ -107,9 +109,15 @@ DATABASE_URL=<postgresql_connection_string>
 
 ccagent requires environment variables:
 ```
-ANTHROPIC_API_KEY=<anthropic_api_key>
+# Always required
 CCAGENT_API_KEY=<ccagent_api_key>
 CCAGENT_WS_API_URL=<websocket_server_url>  # Optional, defaults to production
+
+# Required for Claude agent (default)
+ANTHROPIC_API_KEY=<anthropic_api_key>
+
+# Required for Cursor agent (when using --agent cursor)
+CURSOR_API_KEY=<cursor_api_key>
 ```
 
 ### Key Integration Points
@@ -502,11 +510,13 @@ This pattern ensures consistency, maintainability, and proper separation of conc
 - **State Persistence**: In-memory job state with branch tracking
 - **Idle Job Detection**: Automatic job completion based on PR status
 
-### Claude Integration
-- **Session Management**: Persistent Claude Code sessions per job
+### CLI Agent Integration
+- **Multiple Agents**: Support for both Claude Code (`--agent claude`) and Cursor (`--agent cursor`)
+- **Session Management**: Persistent agent sessions per job with automatic resumption
 - **Git Environment**: Automatic Git repository validation and setup
-- **Permission Modes**: Support for both `acceptEdits` and `bypassPermissions`
-- **Logging**: Comprehensive logging with file output and optional stdout
+- **Permission Modes**: Support for both `acceptEdits` and `bypassPermissions` (Claude only)
+- **Logging**: Comprehensive logging with agent-specific file output and optional stdout
+- **Default Agent**: Claude Code is the default agent when no `--agent` flag is specified
 
 ## Authentication Architecture
 

@@ -19,11 +19,14 @@ import (
 
 	"ccagent/clients"
 	claudeclient "ccagent/clients/claude"
+	cursorclient "ccagent/clients/cursor"
 	"ccagent/core"
 	"ccagent/core/log"
 	"ccagent/handlers"
 	"ccagent/models"
+	"ccagent/services"
 	claudeservice "ccagent/services/claude"
+	cursorservice "ccagent/services/cursor"
 	"ccagent/usecases"
 	"ccagent/utils"
 )
@@ -36,35 +39,38 @@ type CmdRunner struct {
 	reconnectChan  chan struct{}
 }
 
-func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
-	log.Info("📋 Starting to initialize CmdRunner")
+func NewCmdRunner(agentType, permissionMode string) (*CmdRunner, error) {
+	log.Info("📋 Starting to initialize CmdRunner with agent: %s", agentType)
 
-	// Create log directory for Claude service
+	// Create log directory for agent service
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
 	logDir := filepath.Join(homeDir, ".config", "ccagent", "logs")
 
-	claudeClient := claudeclient.NewClaudeClient(permissionMode)
-	claudeService := claudeservice.NewClaudeService(claudeClient, logDir)
-
-	// Cleanup old Claude session logs (older than 7 days)
-	err = claudeService.CleanupOldLogs(7)
+	// Create the appropriate CLI agent service
+	cliAgent, err := createCLIAgent(agentType, permissionMode, logDir)
 	if err != nil {
-		log.Error("Warning: Failed to cleanup old Claude session logs: %v", err)
+		return nil, fmt.Errorf("failed to create CLI agent: %w", err)
+	}
+
+	// Cleanup old session logs (older than 7 days)
+	err = cliAgent.CleanupOldLogs(7)
+	if err != nil {
+		log.Error("Warning: Failed to cleanup old session logs: %v", err)
 		// Don't exit - this is not critical for agent operation
 	}
 
 	gitClient := clients.NewGitClient()
 	appState := models.NewAppState()
-	gitUseCase := usecases.NewGitUseCase(gitClient, claudeService, appState)
-	messageHandler := handlers.NewMessageHandler(claudeService, gitUseCase, appState)
+	gitUseCase := usecases.NewGitUseCase(gitClient, cliAgent, appState)
+	messageHandler := handlers.NewMessageHandler(cliAgent, gitUseCase, appState)
 
 	agentID := core.NewID("ccaid")
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
 
-	log.Info("📋 Completed successfully - initialized CmdRunner with all services")
+	log.Info("📋 Completed successfully - initialized CmdRunner with %s agent", agentType)
 	return &CmdRunner{
 		messageHandler: messageHandler,
 		gitUseCase:     gitUseCase,
@@ -73,8 +79,40 @@ func NewCmdRunner(permissionMode string) (*CmdRunner, error) {
 	}, nil
 }
 
+// createCLIAgent creates the appropriate CLI agent based on the agent type
+func createCLIAgent(agentType, permissionMode, logDir string) (services.CLIAgent, error) {
+	switch agentType {
+	case "claude":
+		claudeClient := claudeclient.NewClaudeClient(permissionMode)
+		return claudeservice.NewClaudeService(claudeClient, logDir), nil
+	case "cursor":
+		cursorClient := cursorclient.NewCursorClient()
+		return cursorservice.NewCursorService(cursorClient, logDir), nil
+	default:
+		return nil, fmt.Errorf("unsupported agent type: %s", agentType)
+	}
+}
+
+// validateAgentEnvironment validates that required environment variables are set for the chosen agent
+func validateAgentEnvironment(agentType string) error {
+	switch agentType {
+	case "claude":
+		if os.Getenv("ANTHROPIC_API_KEY") == "" {
+			return fmt.Errorf("ANTHROPIC_API_KEY environment variable is required for Claude agent but not set")
+		}
+	case "cursor":
+		if os.Getenv("CURSOR_API_KEY") == "" {
+			return fmt.Errorf("CURSOR_API_KEY environment variable is required for Cursor agent but not set")
+		}
+	default:
+		return fmt.Errorf("unknown agent type: %s", agentType)
+	}
+	return nil
+}
+
 type Options struct {
-	BypassPermissions bool `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
+	BypassPermissions bool   `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
+	Agent             string `long:"agent"             description:"CLI agent to use"                                                                             choice:"claude" default:"claude"`
 }
 
 func main() {
@@ -119,6 +157,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Validate agent-specific environment variables
+	if err := validateAgentEnvironment(opts.Agent); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Determine permission mode based on flag
 	permissionMode := "acceptEdits"
 	if opts.BypassPermissions {
@@ -129,7 +173,7 @@ func main() {
 		)
 	}
 
-	cmdRunner, err := NewCmdRunner(permissionMode)
+	cmdRunner, err := NewCmdRunner(opts.Agent, permissionMode)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing CmdRunner: %v\n", err)
 		os.Exit(1)
