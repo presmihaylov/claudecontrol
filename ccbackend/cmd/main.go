@@ -95,7 +95,7 @@ func run() error {
 	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService)
 	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
-	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, cfg.ClerkSecretKey)
+	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkSecretKey)
 
 	// Create a new router
 	router := mux.NewRouter()
