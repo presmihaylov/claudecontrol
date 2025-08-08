@@ -242,3 +242,8 @@ func (c *CursorService) handleCursorClientError(err error, operation string) err
 	log.Info("⚠️ No result message found in Cursor command output, returning original error")
 	return fmt.Errorf("%s: %w", operation, err)
 }
+
+// AgentName identifies this service implementation
+func (c *CursorService) AgentName() string {
+    return "cursor"
+}
