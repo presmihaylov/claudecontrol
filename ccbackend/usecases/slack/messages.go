@@ -144,6 +144,19 @@ func (s *SlackUseCase) ProcessSystemMessage(
 	organizationID string,
 ) error {
 	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
+	
+	// Get the agent by WebSocket connection ID to validate assignment
+	maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, organizationID)
+	if err != nil {
+		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
+		return fmt.Errorf("failed to find agent for client: %w", err)
+	}
+	if !maybeAgent.IsPresent() {
+		log.Printf("❌ No agent found for client %s", clientID)
+		return fmt.Errorf("no agent found for client: %s", clientID)
+	}
+	agent := maybeAgent.MustGet()
+	
 	jobID := payload.JobID
 	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
 	if err != nil {
@@ -159,30 +172,24 @@ func (s *SlackUseCase) ProcessSystemMessage(
 	}
 	job := maybeJob.MustGet()
 	if job.SlackPayload == nil {
-		log.Printf("⚠️ Job %s has no Slack payload, skipping assistant message", jobID)
+		log.Printf("⚠️ Job %s has no Slack payload, skipping system message", jobID)
 		return fmt.Errorf("job has no Slack payload")
 	}
 	slackIntegrationID := job.SlackPayload.IntegrationID
+	
+	// Validate that this agent is actually assigned to this job
+	if err := s.agentsUseCase.ValidateJobBelongsToAgent(ctx, agent.ID, jobID, organizationID); err != nil {
+		log.Printf("❌ Agent %s is not assigned to job %s: %v", agent.ID, jobID, err)
+		return err
+	}
 
 	// Check if this is an error message from the agent
 	if IsAgentErrorMessage(payload.Message) {
 		log.Printf("❌ Detected agent error message for job %s: %s", job.ID, payload.Message)
 
-		// Get the agent that encountered the error
-		maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, organizationID)
-		if err != nil {
-			log.Printf("❌ Failed to find agent for error handling: %v", err)
-			return fmt.Errorf("failed to find agent for error handling: %w", err)
-		}
-
-		var agentID string
-		if maybeAgent.IsPresent() {
-			agentID = maybeAgent.MustGet().ID
-		}
-
-		// Clean up the failed job
+		// Clean up the failed job (we already have the agent from above)
 		errorMessage := fmt.Sprintf(":x: Agent encountered an error and cannot continue:\n%s", payload.Message)
-		if err := s.CleanupFailedSlackJob(ctx, job, agentID, errorMessage); err != nil {
+		if err := s.CleanupFailedSlackJob(ctx, job, agent.ID, errorMessage); err != nil {
 			return fmt.Errorf("failed to cleanup failed job: %w", err)
 		}
 

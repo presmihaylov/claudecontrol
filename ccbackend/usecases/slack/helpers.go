@@ -31,41 +31,55 @@ func (s *SlackUseCase) getSlackClientForIntegration(
 	return slackclient.NewSlackClient(integration.SlackAuthToken), nil
 }
 
-func (s *SlackUseCase) sendStartConversationToAgent(
+// prepareMessageForAgent handles common logic for preparing messages to send to agents
+func (s *SlackUseCase) prepareMessageForAgent(
 	ctx context.Context,
-	clientID string,
 	message *models.ProcessedSlackMessage,
-) error {
+) (slackClient clients.SlackClient, permalink string, resolvedText string, err error) {
 	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(ctx, message.SlackIntegrationID)
+	slackClient, err = s.getSlackClientForIntegration(ctx, message.SlackIntegrationID)
 	if err != nil {
-		return fmt.Errorf("failed to get Slack client for integration: %w", err)
+		return nil, "", "", fmt.Errorf("failed to get Slack client for integration: %w", err)
 	}
 
 	// Get job to access thread timestamp
 	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.OrganizationID)
 	if err != nil {
-		return fmt.Errorf("failed to get job: %w", err)
+		return nil, "", "", fmt.Errorf("failed to get job: %w", err)
 	}
 	if !maybeJob.IsPresent() {
-		return fmt.Errorf("job not found: %s", message.JobID)
+		return nil, "", "", fmt.Errorf("job not found: %s", message.JobID)
 	}
 	job := maybeJob.MustGet()
 
 	// Generate permalink for the thread's first message
 	if job.SlackPayload == nil {
-		return fmt.Errorf("job has no Slack payload")
+		return nil, "", "", fmt.Errorf("job has no Slack payload")
 	}
-	permalink, err := slackClient.GetPermalink(&clients.SlackPermalinkParameters{
+	permalink, err = slackClient.GetPermalink(&clients.SlackPermalinkParameters{
 		Channel: message.SlackChannelID,
 		TS:      job.SlackPayload.ThreadTS,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get permalink for slack message: %w", err)
+		return nil, "", "", fmt.Errorf("failed to get permalink for slack message: %w", err)
 	}
 
 	// Resolve user mentions in the message text before sending to agent
-	resolvedText := slackClient.ResolveMentionsInMessage(ctx, message.TextContent)
+	resolvedText = slackClient.ResolveMentionsInMessage(ctx, message.TextContent)
+	return slackClient, permalink, resolvedText, nil
+}
+
+func (s *SlackUseCase) sendStartConversationToAgent(
+	ctx context.Context,
+	clientID string,
+	message *models.ProcessedSlackMessage,
+) error {
+	// Use common preparation logic
+	_, permalink, resolvedText, err := s.prepareMessageForAgent(ctx, message)
+	if err != nil {
+		return err
+	}
+
 	startConversationMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeStartConversation,
@@ -89,36 +103,12 @@ func (s *SlackUseCase) sendUserMessageToAgent(
 	clientID string,
 	message *models.ProcessedSlackMessage,
 ) error {
-	// Get integration-specific Slack client
-	slackClient, err := s.getSlackClientForIntegration(ctx, message.SlackIntegrationID)
+	// Use common preparation logic
+	_, permalink, resolvedText, err := s.prepareMessageForAgent(ctx, message)
 	if err != nil {
-		return fmt.Errorf("failed to get Slack client for integration: %w", err)
+		return err
 	}
 
-	// Get job to access thread timestamp
-	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.OrganizationID)
-	if err != nil {
-		return fmt.Errorf("failed to get job: %w", err)
-	}
-	if !maybeJob.IsPresent() {
-		return fmt.Errorf("job not found: %s", message.JobID)
-	}
-	job := maybeJob.MustGet()
-
-	// Generate permalink for the thread's first message
-	if job.SlackPayload == nil {
-		return fmt.Errorf("job has no Slack payload")
-	}
-	permalink, err := slackClient.GetPermalink(&clients.SlackPermalinkParameters{
-		Channel: message.SlackChannelID,
-		TS:      job.SlackPayload.ThreadTS,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get permalink for slack message: %w", err)
-	}
-
-	// Resolve user mentions in the message text before sending to agent
-	resolvedText := slackClient.ResolveMentionsInMessage(ctx, message.TextContent)
 	userMessage := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeUserMessage,
