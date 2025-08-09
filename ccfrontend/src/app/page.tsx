@@ -340,22 +340,8 @@ export default function Home() {
 			</header>
 			<div className="container mx-auto px-4 py-8 max-w-4xl">
 				{integrations.length === 0 ? (
-					// Show "Add to Slack" when no integrations exist
+					// Show ccagent Secret Key section first, then "Add to Slack"
 					<div className="space-y-6">
-						<div className="flex flex-col items-center justify-center min-h-[40vh]">
-							<p className="text-lg text-muted-foreground mb-6 text-center">
-								Connect your Slack workspace to get started with Claude Control
-							</p>
-							<Button
-								size="lg"
-								className="flex items-center gap-2 cursor-pointer"
-								onClick={handleAddToSlack}
-							>
-								<Slack className="h-5 w-5" />
-								Add to Slack
-							</Button>
-						</div>
-
 						{/* ccagent Secret Key Section - always show */}
 						{organization && (
 							<Card>
@@ -434,6 +420,20 @@ export default function Home() {
 								</CardContent>
 							</Card>
 						)}
+
+						<div className="flex flex-col items-center justify-center min-h-[40vh]">
+							<p className="text-lg text-muted-foreground mb-6 text-center">
+								Connect your Slack workspace to get started with Claude Control
+							</p>
+							<Button
+								size="lg"
+								className="flex items-center gap-2 cursor-pointer"
+								onClick={handleAddToSlack}
+							>
+								<Slack className="h-5 w-5" />
+								Add to Slack
+							</Button>
+						</div>
 					</div>
 				) : (
 					// Show secret key section and list of integrations
