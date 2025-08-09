@@ -70,7 +70,6 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 func (r *PostgresJobsRepository) GetJobByID(
 	ctx context.Context,
 	id string,
-	slackIntegrationID string,
 	organizationID string,
 ) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
@@ -78,10 +77,10 @@ func (r *PostgresJobsRepository) GetJobByID(
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.jobs 
-		WHERE id = $1 AND slack_integration_id = $2 AND organization_id = $3`, columnsStr, r.schema)
+		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	job := &models.Job{}
-	err := db.GetContext(ctx, job, query, id, slackIntegrationID, organizationID)
+	err := db.GetContext(ctx, job, query, id, organizationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.Job](), nil

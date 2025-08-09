@@ -75,7 +75,6 @@ func (r *PostgresProcessedSlackMessagesRepository) CreateProcessedSlackMessage(
 func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 	ctx context.Context,
 	id string,
-	slackIntegrationID string,
 	organizationID string,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
@@ -83,10 +82,10 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.processed_slack_messages 
-		WHERE id = $1 AND slack_integration_id = $2 AND organization_id = $3`, columnsStr, r.schema)
+		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	message := &models.ProcessedSlackMessage{}
-	err := db.GetContext(ctx, message, query, id, slackIntegrationID, organizationID)
+	err := db.GetContext(ctx, message, query, id, organizationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ProcessedSlackMessage](), nil
