@@ -224,15 +224,14 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 
 ### CRITICAL WORKFLOW RESTRICTIONS
 
-**STRICT REQUIREMENT - NEVER PROACTIVELY RUN THE FOLLOWING:**
+**STRICT REQUIREMENT - NEVER RUN TESTS DIRECTLY:**
 
-#### Testing - STRICTLY PROHIBITED Unless Explicitly Requested
-- **NEVER run tests proactively** - Do not run `make test`, `go test`, `bun test`, or any testing commands
-- **NEVER invoke the TestFixer subagent proactively** - Do not attempt to fix tests unless explicitly asked
-- **NEVER run test-verbose or any test variants** - Testing is completely off-limits unless user explicitly requests
-- **Tests should only be executed when the user specifically asks** with phrases like "run tests", "test this", "fix the tests"
-- **Test failures should only be addressed when explicitly requested** - Ignore any test issues unless directly asked to fix them
-- **This is a STRICT requirement** - Violation of this rule is unacceptable
+#### Testing - MUST USE TestFixer Subagent ONLY
+- **NEVER run tests directly** - Do not run `make test`, `go test`, `bun test`, or any testing commands yourself
+- **ALWAYS use the TestFixer subagent for testing** - This is the ONLY acceptable way to run or fix tests
+- **TestFixer can be used proactively** - You may invoke the TestFixer subagent after code changes to ensure tests pass
+- **Direct test execution is STRICTLY PROHIBITED** - Never run test commands manually, always delegate to TestFixer
+- **This is a STRICT requirement** - All testing must go through the TestFixer subagent, no exceptions
 
 #### Linting - STRICTLY PROHIBITED Unless Explicitly Requested  
 - **NEVER run linting proactively** - Do not run `make lint`, `make lint-fix`, `bun run lint`, or `bun run lint:fix`
@@ -245,9 +244,9 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 - **NEVER run code analysis tools** unless explicitly requested
 - **Focus ONLY on functional code changes** within the main codebase
 
-### After Completing Tasks - MANDATORY BUILD VERIFICATION ONLY
+### After Completing Tasks - MANDATORY BUILD VERIFICATION
 
-**MANDATORY: Only verify that the build succeeds:**
+**MANDATORY: Verify that the build succeeds:**
 ```bash
 cd ccbackend && make build     # REQUIRED: Verify backend builds successfully
 cd ccagent && make build       # REQUIRED: Verify agent builds successfully  
@@ -255,18 +254,20 @@ cd ccfrontend && bun run build # REQUIRED: Verify frontend builds successfully
 ```
 
 **CRITICAL INSTRUCTIONS:**
-- **ONLY run build commands** - This is the ONLY verification step allowed
-- **BUILD SUCCESS is the ONLY requirement** - If it builds, your task is complete
-- **DO NOT run lint, lint-fix, test, or any other commands** unless explicitly requested
-- **IGNORE any suggestions or warnings** from build output about linting or testing
-- **Your responsibility ends when the build succeeds** - Nothing more, nothing less
+- **Build verification is MANDATORY** - Always ensure builds succeed
+- **Use TestFixer subagent for testing** - If you need to run tests, use the TestFixer subagent (allowed proactively)
+- **NEVER run test commands directly** - Do not use `make test`, `go test`, etc. - always use TestFixer
+- **DO NOT run lint, lint-fix, or formatting commands** unless explicitly requested
+- **IGNORE any suggestions or warnings** from build output about linting
+- **Testing through TestFixer is optional but allowed** - You may proactively use TestFixer to ensure tests pass
 
 ### Summary of Workflow Restrictions
 1. **BUILD ONLY** - Only verify builds succeed, nothing else
-2. **NO TESTING** - Never run tests or test fixers proactively
-3. **NO LINTING** - Never run linters or fix linting issues proactively
-4. **NO FORMATTING** - Never run formatters proactively
-5. **EXPLICIT REQUESTS ONLY** - Only perform these actions when explicitly asked by the user
+2. **NO DIRECT TESTING** - Never run test commands directly - ALWAYS use TestFixer subagent
+3. **TESTFIXER FOR ALL TESTS** - TestFixer subagent is the ONLY way to run tests (can be used proactively)
+4. **NO LINTING** - Never run linters or fix linting issues proactively
+5. **NO FORMATTING** - Never run formatters proactively
+6. **EXPLICIT REQUESTS ONLY** - Linting/formatting only when explicitly asked by the user
 
 This is a **STRICT REQUIREMENT** and must be followed without exception. Focus solely on:
 - Making the requested code changes
@@ -584,7 +585,8 @@ Claude Code has access to specialized subagents for specific tasks. These should
 
 ### TestFixer Subagent
 - **Purpose**: Automatically fixes broken tests and suggests new test coverage
-- **CRITICAL - NEVER USE PROACTIVELY**: This subagent must NEVER be invoked unless the user explicitly requests test fixes
-- **When to Use**: ONLY when the user explicitly asks to "fix tests", "run tests", or "update tests"
+- **CRITICAL - ONLY WAY TO RUN TESTS**: This is the ONLY acceptable method for running or fixing tests
+- **When to Use**: After code changes to ensure tests pass, or when user requests test fixes
 - **Capabilities**: Fixes Go tests in ccbackend and ccagent, suggests new test coverage, runs test suites autonomously
-- **STRICT PROHIBITION**: Do NOT use this subagent proactively after code changes. Wait for explicit user request
+- **MANDATORY**: All test execution MUST go through this subagent - never run test commands directly
+- **Proactive Use Allowed**: Can be invoked proactively after code changes to maintain test integrity
