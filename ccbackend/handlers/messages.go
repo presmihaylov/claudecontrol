@@ -69,8 +69,8 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 			return fmt.Errorf("failed to process system message: %w", err)
 		}
 
-	case models.MessageTypeProcessingSlackMessage:
-		var payload models.ProcessingSlackMessagePayload
+	case models.MessageTypeProcessingMessage:
+		var payload models.ProcessingMessagePayload
 		if err := unmarshalPayload(parsedMsg.Payload, &payload); err != nil {
 			log.Printf("❌ Failed to unmarshal processing slack message payload from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to unmarshal processing slack message payload: %w", err)
