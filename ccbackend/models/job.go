@@ -12,6 +12,7 @@ type Job struct {
 	SlackChannelID     string    `json:"slack_channel_id"     db:"slack_channel_id"`
 	SlackUserID        string    `json:"slack_user_id"        db:"slack_user_id"`
 	SlackIntegrationID string    `json:"slack_integration_id" db:"slack_integration_id"`
+	OrganizationID     string    `json:"organization_id"      db:"organization_id"`
 }
 
 type JobCreationStatus string
