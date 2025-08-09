@@ -375,9 +375,22 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 	job := jobResult.Job
 	isNewConversation := jobResult.Status == models.JobCreationStatusCreated
 
+	// Get organization ID from slack integration (agents are organization-scoped)
+	maybeSlackIntegration, err := s.slackIntegrationsService.GetSlackIntegrationByID(ctx, slackIntegrationID)
+	if err != nil {
+		log.Printf("❌ Failed to get slack integration: %v", err)
+		return fmt.Errorf("failed to get slack integration: %w", err)
+	}
+	if !maybeSlackIntegration.IsPresent() {
+		log.Printf("❌ Slack integration not found: %s", slackIntegrationID)
+		return fmt.Errorf("slack integration not found: %s", slackIntegrationID)
+	}
+	organizationID := maybeSlackIntegration.MustGet().OrganizationID
+
 	// Check if agents are available first
 	connectedClientIDs := s.wsClient.GetClientIDs()
-	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, slackIntegrationID, connectedClientIDs)
+	log.Printf("📋 Retrieved %d active client IDs", len(connectedClientIDs))
+	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, organizationID, connectedClientIDs)
 	if err != nil {
 		log.Printf("❌ Failed to check for connected agents: %v", err)
 		return fmt.Errorf("failed to check for connected agents: %w", err)
@@ -393,7 +406,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 		clientID = "" // No agent assigned
 	} else {
 		// Agents available - assign job to agent
-		clientID, err = s.getOrAssignAgentForJob(ctx, job, threadTS, slackIntegrationID)
+		clientID, err = s.getOrAssignAgentForJob(ctx, job, threadTS, organizationID)
 		if err != nil {
 			return fmt.Errorf("failed to get or assign agent for job: %w", err)
 		}
@@ -1185,9 +1198,10 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 
 	for _, integration := range integrations {
 		slackIntegrationID := integration.ID
+		organizationID := integration.OrganizationID
 
-		// Get inactive agents for this integration
-		inactiveAgents, err := s.agentsService.GetInactiveAgents(ctx, slackIntegrationID, inactiveThresholdMinutes)
+		// Get inactive agents for this organization (agents are organization-scoped)
+		inactiveAgents, err := s.agentsService.GetInactiveAgents(ctx, organizationID, inactiveThresholdMinutes)
 		if err != nil {
 			cleanupErrors = append(
 				cleanupErrors,
@@ -1211,7 +1225,7 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 			)
 
 			// Delete the inactive agent - CASCADE DELETE will automatically clean up job assignments
-			if err := s.agentsService.DeleteActiveAgent(ctx, agent.ID, slackIntegrationID); err != nil {
+			if err := s.agentsService.DeleteActiveAgent(ctx, agent.ID, organizationID); err != nil {
 				cleanupErrors = append(
 					cleanupErrors,
 					fmt.Sprintf("failed to delete inactive agent %s: %v", agent.ID, err),
@@ -1301,8 +1315,20 @@ func (s *CoreUseCase) ProcessReactionAdded(
 
 	log.Printf("✅ Job completion reaction confirmed - user %s is the job creator", userID)
 
+	// Get organization ID from slack integration (agents are organization-scoped)
+	maybeSlackIntegration, err := s.slackIntegrationsService.GetSlackIntegrationByID(ctx, slackIntegrationID)
+	if err != nil {
+		log.Printf("❌ Failed to get slack integration: %v", err)
+		return fmt.Errorf("failed to get slack integration: %w", err)
+	}
+	if !maybeSlackIntegration.IsPresent() {
+		log.Printf("❌ Slack integration not found: %s", slackIntegrationID)
+		return fmt.Errorf("slack integration not found: %s", slackIntegrationID)
+	}
+	organizationID := maybeSlackIntegration.MustGet().OrganizationID
+
 	// Get the assigned agent for this job to unassign them
-	maybeAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, slackIntegrationID)
+	maybeAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, organizationID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for job %s: %v", job.ID, err)
 		return fmt.Errorf("failed to get agent by job id: %w", err)
@@ -1312,7 +1338,7 @@ func (s *CoreUseCase) ProcessReactionAdded(
 		// If agent is found, unassign them from the job
 		if maybeAgent.IsPresent() {
 			agent := maybeAgent.MustGet()
-			if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, job.ID, slackIntegrationID); err != nil {
+			if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, job.ID, organizationID); err != nil {
 				log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, job.ID, err)
 				return fmt.Errorf("failed to unassign agent from job: %w", err)
 			}
