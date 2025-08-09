@@ -11,17 +11,6 @@ const (
 	// Future: JobTypeDiscord JobType = "discord"
 )
 
-// IsValid checks if the job type is valid
-func (jt JobType) IsValid() bool {
-	switch jt {
-	case JobTypeSlack:
-		return true
-	// Add future job types here
-	default:
-		return false
-	}
-}
-
 type Job struct {
 	// Common fields
 	ID             string    `json:"id"              db:"id"`
