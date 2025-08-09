@@ -460,8 +460,8 @@ func (mh *MessageHandler) sendErrorMessage(socketClient *socket.Socket, err erro
 func (mh *MessageHandler) sendProcessingSlackMessage(socketClient *socket.Socket, slackMessageID string) error {
 	processingSlackMessageMsg := models.BaseMessage{
 		ID:   core.NewID("msg"),
-		Type: models.MessageTypeProcessingSlackMessage,
-		Payload: models.ProcessingSlackMessagePayload{
+		Type: models.MessageTypeProcessingMessage,
+		Payload: models.ProcessingMessagePayload{
 			ProcessedMessageID: slackMessageID,
 		},
 	}
