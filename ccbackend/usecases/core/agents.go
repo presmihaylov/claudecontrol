@@ -55,33 +55,27 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	// Clean up all job assignments - handle each job consistently
 	log.Printf("🧹 Agent %s has %d assigned job(s), cleaning up all assignments", agent.ID, len(jobs))
 
-	// Collect errors during job cleanup instead of returning early
-	var cleanupErrors []string
-	abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
-
 	// Process each job: route cleanup based on job type
 	for _, jobID := range jobs {
 		// Get job directly using organization_id (optimization)
 		maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, client.OrganizationID)
 		if err != nil {
 			log.Printf("❌ Failed to get job %s for cleanup: %v", jobID, err)
-			cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to get job %s: %v", jobID, err))
-			continue
+			return fmt.Errorf("failed to get job for cleanup: %w", err)
 		}
 		if !maybeJob.IsPresent() {
-			log.Printf("⚠️ Job %s not found for cleanup (may have been deleted already)", jobID)
+			log.Printf("❌ Job %s not found for cleanup", jobID)
 			continue // Skip this job, it may have been deleted already
 		}
 
 		job := maybeJob.MustGet()
 
 		// Route cleanup based on job type
+		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
 		switch job.JobType {
 		case models.JobTypeSlack:
 			if err := s.slackUseCase.CleanupFailedSlackJob(ctx, job, agent.ID, abandonmentMessage); err != nil {
-				log.Printf("❌ Failed to cleanup Slack job %s: %v", jobID, err)
-				cleanupErrors = append(cleanupErrors, fmt.Sprintf("failed to cleanup Slack job %s: %v", jobID, err))
-				continue
+				return fmt.Errorf("failed to cleanup abandoned Slack job %s: %w", jobID, err)
 			}
 		// Future: case models.JobTypeEmail:
 		//     err = s.emailUseCase.CleanupFailedEmailJob(ctx, job, agent.ID, abandonmentMessage)
@@ -97,15 +91,6 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	err = s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, client.OrganizationID)
 	if err != nil {
 		return fmt.Errorf("failed to deregister agent for client %s: %w", client.ID, err)
-	}
-
-	// Return error if there were any job cleanup failures (after agent is deleted)
-	if len(cleanupErrors) > 0 {
-		return fmt.Errorf(
-			"agent deregistered but encountered %d job cleanup errors: %s",
-			len(cleanupErrors),
-			strings.Join(cleanupErrors, "; "),
-		)
 	}
 
 	log.Printf("📋 Completed successfully - deregistered agent for client %s", client.ID)
