@@ -66,6 +66,7 @@ func TestTransactionManager_WithTransaction_Success(t *testing.T) {
 			SlackChannelID:     "test-channel",
 			SlackUserID:        "test-user",
 			SlackIntegrationID: testIntegration.ID,
+			OrganizationID:     testIntegration.OrganizationID,
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job); err != nil {
@@ -81,13 +82,13 @@ func TestTransactionManager_WithTransaction_Success(t *testing.T) {
 	require.NotNil(t, createdJob)
 
 	// Job should exist in database after transaction commit
-	maybeJob, err := jobsRepo.GetJobByID(ctx, createdJob.ID, testIntegration.ID)
+	maybeJob, err := jobsRepo.GetJobByID(ctx, createdJob.ID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	assert.Equal(t, createdJob.ID, maybeJob.OrEmpty().ID)
 	assert.Equal(t, createdJob.SlackThreadTS, maybeJob.OrEmpty().SlackThreadTS)
 
 	// Clean up
-	jobsRepo.DeleteJob(ctx, createdJob.ID, testIntegration.ID)
+	jobsRepo.DeleteJob(ctx, createdJob.ID, testIntegration.ID, testIntegration.OrganizationID)
 }
 
 func TestTransactionManager_WithTransaction_Rollback_OnError(t *testing.T) {
@@ -107,6 +108,7 @@ func TestTransactionManager_WithTransaction_Rollback_OnError(t *testing.T) {
 			SlackChannelID:     "test-channel",
 			SlackUserID:        "test-user",
 			SlackIntegrationID: testIntegration.ID,
+			OrganizationID:     testIntegration.OrganizationID,
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job); err != nil {
@@ -124,7 +126,7 @@ func TestTransactionManager_WithTransaction_Rollback_OnError(t *testing.T) {
 	assert.Contains(t, err.Error(), "intentional error to trigger rollback")
 
 	// Job should NOT exist in database after rollback
-	maybeJob1, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID)
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	require.True(t, maybeJob1.IsAbsent(), "Job1 should not exist after rollback")
 }
@@ -154,6 +156,7 @@ func TestTransactionManager_WithTransaction_Rollback_OnPanic(t *testing.T) {
 				SlackChannelID:     "test-channel",
 				SlackUserID:        "test-user",
 				SlackIntegrationID: testIntegration.ID,
+				OrganizationID:     testIntegration.OrganizationID,
 			}
 
 			if err := jobsRepo.CreateJob(ctx, job); err != nil {
@@ -168,7 +171,7 @@ func TestTransactionManager_WithTransaction_Rollback_OnPanic(t *testing.T) {
 	}()
 
 	// Job should NOT exist in database after panic rollback
-	maybeJob1, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID)
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	require.True(t, maybeJob1.IsAbsent(), "Job1 should not exist after rollback")
 }
@@ -190,6 +193,7 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 			SlackChannelID:     "test-channel-1",
 			SlackUserID:        "test-user",
 			SlackIntegrationID: testIntegration.ID,
+			OrganizationID:     testIntegration.OrganizationID,
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job1); err != nil {
@@ -204,6 +208,7 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 			SlackChannelID:     "test-channel-2",
 			SlackUserID:        "test-user",
 			SlackIntegrationID: testIntegration.ID,
+			OrganizationID:     testIntegration.OrganizationID,
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job2); err != nil {
@@ -212,12 +217,12 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 		job2ID = job2.ID
 
 		// Verify both jobs exist within transaction
-		_, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID)
+		_, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID, testIntegration.OrganizationID)
 		if err != nil {
 			return fmt.Errorf("job1 should exist within transaction: %w", err)
 		}
 
-		_, err = jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID)
+		_, err = jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID, testIntegration.OrganizationID)
 		if err != nil {
 			return fmt.Errorf("job2 should exist within transaction: %w", err)
 		}
@@ -229,17 +234,17 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 	require.NoError(t, err)
 
 	// Both jobs should exist after commit
-	maybeJob1, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID)
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	assert.Equal(t, "test-thread-1", maybeJob1.OrEmpty().SlackThreadTS)
 
-	maybeJob2, err := jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID)
+	maybeJob2, err := jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	assert.Equal(t, "test-thread-2", maybeJob2.OrEmpty().SlackThreadTS)
 
 	// Clean up
-	jobsRepo.DeleteJob(ctx, job1ID, testIntegration.ID)
-	jobsRepo.DeleteJob(ctx, job2ID, testIntegration.ID)
+	jobsRepo.DeleteJob(ctx, job1ID, testIntegration.ID, testIntegration.OrganizationID)
+	jobsRepo.DeleteJob(ctx, job2ID, testIntegration.ID, testIntegration.OrganizationID)
 }
 
 func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRollback(t *testing.T) {
@@ -259,6 +264,7 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRo
 			SlackChannelID:     "test-channel-1",
 			SlackUserID:        "test-user",
 			SlackIntegrationID: testIntegration.ID,
+			OrganizationID:     testIntegration.OrganizationID,
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job1); err != nil {
@@ -273,6 +279,7 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRo
 			SlackChannelID:     "test-channel-2",
 			SlackUserID:        "test-user",
 			SlackIntegrationID: testIntegration.ID,
+			OrganizationID:     testIntegration.OrganizationID,
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job2); err != nil {
@@ -289,11 +296,11 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRo
 	assert.Contains(t, err.Error(), "rollback both operations")
 
 	// Neither job should exist after rollback
-	maybeJob1, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID)
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	require.True(t, maybeJob1.IsAbsent(), "Job1 should not exist after rollback")
 
-	maybeJob2, err := jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID)
+	maybeJob2, err := jobsRepo.GetJobByID(ctx, job2ID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	require.True(t, maybeJob2.IsAbsent(), "Job2 should not exist after rollback")
 }
@@ -315,6 +322,7 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 			SlackChannelID:     "test-channel",
 			SlackUserID:        "test-user",
 			SlackIntegrationID: testIntegration.ID,
+			OrganizationID:     testIntegration.OrganizationID,
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job); err != nil {
@@ -325,13 +333,13 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 		// Nested transaction (should reuse existing transaction)
 		return txManager.WithTransaction(ctx, func(nestedCtx context.Context) error {
 			// Verify job exists within nested context
-			_, err := jobsRepo.GetJobByID(nestedCtx, jobID, testIntegration.ID)
+			_, err := jobsRepo.GetJobByID(nestedCtx, jobID, testIntegration.ID, testIntegration.OrganizationID)
 			if err != nil {
 				return fmt.Errorf("job should exist in nested transaction: %w", err)
 			}
 
 			// Update job within nested transaction
-			return jobsRepo.UpdateJobTimestamp(nestedCtx, jobID, testIntegration.ID)
+			return jobsRepo.UpdateJobTimestamp(nestedCtx, jobID, testIntegration.ID, testIntegration.OrganizationID)
 		})
 	})
 
@@ -339,12 +347,12 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Job should exist after both transactions
-	maybeJob, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID)
+	maybeJob, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	assert.Equal(t, "test-nested-thread", maybeJob.OrEmpty().SlackThreadTS)
 
 	// Clean up
-	jobsRepo.DeleteJob(ctx, jobID, testIntegration.ID)
+	jobsRepo.DeleteJob(ctx, jobID, testIntegration.ID, testIntegration.OrganizationID)
 }
 
 func TestTransactionManager_ManualTransaction_Success(t *testing.T) {
@@ -364,6 +372,7 @@ func TestTransactionManager_ManualTransaction_Success(t *testing.T) {
 		SlackChannelID:     "test-channel",
 		SlackUserID:        "test-user",
 		SlackIntegrationID: testIntegration.ID,
+		OrganizationID:     testIntegration.OrganizationID,
 	}
 
 	err = jobsRepo.CreateJob(txCtx, job)
@@ -374,12 +383,12 @@ func TestTransactionManager_ManualTransaction_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Job should exist after commit
-	maybeRetrievedJob, err := jobsRepo.GetJobByID(ctx, job.ID, testIntegration.ID)
+	maybeRetrievedJob, err := jobsRepo.GetJobByID(ctx, job.ID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	assert.Equal(t, job.SlackThreadTS, maybeRetrievedJob.OrEmpty().SlackThreadTS)
 
 	// Clean up
-	jobsRepo.DeleteJob(ctx, job.ID, testIntegration.ID)
+	jobsRepo.DeleteJob(ctx, job.ID, testIntegration.ID, testIntegration.OrganizationID)
 }
 
 func TestTransactionManager_ManualTransaction_Rollback(t *testing.T) {
@@ -399,6 +408,7 @@ func TestTransactionManager_ManualTransaction_Rollback(t *testing.T) {
 		SlackChannelID:     "test-channel",
 		SlackUserID:        "test-user",
 		SlackIntegrationID: testIntegration.ID,
+		OrganizationID:     testIntegration.OrganizationID,
 	}
 
 	err = jobsRepo.CreateJob(txCtx, job)
@@ -409,7 +419,7 @@ func TestTransactionManager_ManualTransaction_Rollback(t *testing.T) {
 	require.NoError(t, err)
 
 	// Job should NOT exist after rollback
-	maybeJob1, err := jobsRepo.GetJobByID(ctx, job.ID, testIntegration.ID)
+	maybeJob1, err := jobsRepo.GetJobByID(ctx, job.ID, testIntegration.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	require.True(t, maybeJob1.IsAbsent(), "Job1 should not exist after rollback")
 }

@@ -108,6 +108,7 @@ func TestAgentsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				testIntegration.ID,
+				testIntegration.OrganizationID,
 			)
 			require.NoError(t, err)
 
@@ -305,6 +306,7 @@ func TestAgentsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				testIntegration.ID,
+				testIntegration.OrganizationID,
 			)
 			require.NoError(t, err)
 
@@ -393,6 +395,7 @@ func TestAgentsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				testIntegration.ID,
+				testIntegration.OrganizationID,
 			)
 			require.NoError(t, err)
 
@@ -461,6 +464,7 @@ func TestAgentsService(t *testing.T) {
 				"C1111111111",
 				"testuser",
 				testIntegration.ID,
+				testIntegration.OrganizationID,
 			)
 			require.NoError(t, err)
 
@@ -485,6 +489,7 @@ func TestAgentsService(t *testing.T) {
 				"C2222222222",
 				"testuser",
 				testIntegration.ID,
+				testIntegration.OrganizationID,
 			)
 			require.NoError(t, err)
 			agentIDBusy2 := core.NewID("ccaid")

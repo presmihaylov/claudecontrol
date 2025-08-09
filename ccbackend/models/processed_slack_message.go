@@ -20,6 +20,7 @@ type ProcessedSlackMessage struct {
 	TextContent        string                      `json:"text_content"         db:"text_content"`
 	Status             ProcessedSlackMessageStatus `json:"status"               db:"status"`
 	SlackIntegrationID string                      `json:"slack_integration_id" db:"slack_integration_id"`
+	OrganizationID     string                      `json:"organization_id"      db:"organization_id"`
 	CreatedAt          time.Time                   `json:"created_at"           db:"created_at"`
 	UpdatedAt          time.Time                   `json:"updated_at"           db:"updated_at"`
 }
