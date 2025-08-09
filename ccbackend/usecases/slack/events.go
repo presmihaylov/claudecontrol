@@ -260,10 +260,10 @@ func (s *SlackUseCase) ProcessReactionAdded(
 	return nil
 }
 
-func (s *SlackUseCase) ProcessProcessingSlackMessage(
+func (s *SlackUseCase) ProcessProcessingMessage(
 	ctx context.Context,
 	clientID string,
-	payload models.ProcessingSlackMessagePayload,
+	payload models.ProcessingMessagePayload,
 	organizationID string,
 ) error {
 	log.Printf("📋 Starting to process processing slack message notification from client %s", clientID)
