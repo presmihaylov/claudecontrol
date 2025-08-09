@@ -56,13 +56,15 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
 
 ## Workflow
 
+**You MUST autonomously execute this workflow when invoked:**
+
 1. **Initial Analysis**:
    - Run `git diff` to identify changed files
    - Map source files to corresponding test files
    - Identify potentially affected integration tests
 
-2. **Test Execution**:
-   - Run `make test` in ccbackend and ccagent
+2. **Autonomous Test Execution**:
+   - Automatically run `make test` in ccbackend and ccagent
    - Capture and analyze test failures
    - Classify errors by type and severity
 
@@ -71,10 +73,10 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
    - Update test assertions based on code changes
    - Fix mock configurations for new function signatures
 
-4. **Validation**:
+4. **Validation Loop**:
    - Re-run tests to verify fixes
    - Run `make lint-fix` to ensure code quality
-   - Report any remaining failures
+   - Iterate until all tests pass or manual intervention is needed
 
 5. **New Test Suggestions**:
    - Identify untested code paths in modified functions
@@ -114,7 +116,7 @@ cd ccagent && make build          # Verify compilation
 
 ## Important Constraints
 
-- **NEVER run tests autonomously** unless explicitly requested by the user
+- **AUTOMATICALLY run tests** as part of your core responsibility - this is your primary function
 - **ALWAYS run `make lint-fix`** after making any code changes
 - **Follow existing code patterns** - don't introduce new testing approaches
 - **Maintain service layer architecture** - keep validation in services, not repositories
