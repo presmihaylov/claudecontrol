@@ -264,7 +264,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 
 		// Clean up the failed job
 		errorMessage := fmt.Sprintf(":x: Agent encountered an error and cannot continue:\n%s", payload.Message)
-		if err := s.cleanupFailedJob(ctx, job, agentID, errorMessage, organizationID); err != nil {
+		if err := s.cleanupFailedJob(ctx, job, agentID, errorMessage); err != nil {
 			return fmt.Errorf("failed to cleanup failed job: %w", err)
 		}
 
@@ -810,7 +810,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 
 		// Clean up the abandoned job
 		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
-		if err := s.cleanupFailedJob(ctx, job, agent.ID, abandonmentMessage, client.OrganizationID); err != nil {
+		if err := s.cleanupFailedJob(ctx, job, agent.ID, abandonmentMessage); err != nil {
 			return fmt.Errorf("failed to cleanup abandoned job %s: %w", jobID, err)
 		}
 		log.Printf("✅ Cleaned up abandoned job %s", jobID)
@@ -1412,9 +1412,9 @@ func (s *CoreUseCase) cleanupFailedJob(
 	job *models.Job,
 	agentID string,
 	failureMessage string,
-	organizationID string,
 ) error {
 	slackIntegrationID := job.SlackIntegrationID
+	organizationID := job.OrganizationID
 
 	// Send failure message to Slack thread
 	if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, failureMessage); err != nil {
@@ -1439,7 +1439,7 @@ func (s *CoreUseCase) cleanupFailedJob(
 			log.Printf("🔗 Unassigned agent %s from job %s", agentID, job.ID)
 		}
 
-		// Delete the job (use the job's slack integration)
+		// Delete the job (use the job's slack integration and organization from the job)
 		if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
 			log.Printf("❌ Failed to delete job %s: %v", job.ID, err)
 			return fmt.Errorf("failed to delete job: %w", err)
