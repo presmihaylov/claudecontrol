@@ -135,7 +135,12 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	payload models.SystemMessagePayload,
 	organizationID string,
 ) error {
-	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
+	log.Printf(
+		"📋 Starting to process system message from client %s for job %s: %s",
+		clientID,
+		payload.JobID,
+		payload.Message,
+	)
 
 	// Validate SlackMessageID is provided
 	if payload.SlackMessageID == "" {
@@ -212,8 +217,17 @@ func (s *CoreUseCase) ProcessSystemMessage(
 		processedMessage.SlackChannelID,
 	)
 
-	// Send system message (gear emoji will be added automatically)
-	if err := s.sendSystemMessage(ctx, slackIntegrationID, processedMessage.SlackChannelID, job.SlackThreadTS, payload.Message); err != nil {
+	// Format message with Job ID and send system message (gear emoji will be added automatically)
+	messageWithJobID := payload.Message
+	if payload.JobID != "" {
+		// Extract last 7 characters of job ID for brevity
+		shortJobID := payload.JobID
+		if len(shortJobID) > 7 {
+			shortJobID = shortJobID[len(shortJobID)-7:]
+		}
+		messageWithJobID = fmt.Sprintf("[job_%s] %s", shortJobID, payload.Message)
+	}
+	if err := s.sendSystemMessage(ctx, slackIntegrationID, processedMessage.SlackChannelID, job.SlackThreadTS, messageWithJobID); err != nil {
 		return fmt.Errorf("❌ Failed to send system message to Slack: %v", err)
 	}
 
