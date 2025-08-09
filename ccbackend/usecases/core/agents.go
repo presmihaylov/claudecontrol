@@ -108,12 +108,15 @@ func (s *CoreUseCase) ProcessPing(ctx context.Context, client *clients.Client) e
 		return fmt.Errorf("failed to update agent last_active_at: %w", err)
 	}
 
+	log.Printf("📋 Completed successfully - updated ping timestamp for client %s", client.ID)
 	return nil
 }
 
-// CleanupInactiveAgents removes agents that have been inactive for more than 10 minutes
+const DefaultInactiveAgentTimeoutMinutes = 10
+
+// CleanupInactiveAgents removes agents that have been inactive for more than the timeout period
 func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
-	log.Printf("📋 Starting to cleanup inactive agents (>10 minutes)")
+	log.Printf("📋 Starting to cleanup inactive agents (>%d minutes)", DefaultInactiveAgentTimeoutMinutes)
 
 	// Get all slack integrations
 	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations(ctx)
@@ -128,7 +131,7 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 
 	totalInactiveAgents := 0
 	var cleanupErrors []string
-	inactiveThresholdMinutes := 10 // 10 minutes
+	inactiveThresholdMinutes := DefaultInactiveAgentTimeoutMinutes
 
 	for _, integration := range integrations {
 		slackIntegrationID := integration.ID
