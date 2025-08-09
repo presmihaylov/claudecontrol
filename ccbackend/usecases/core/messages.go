@@ -136,16 +136,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	organizationID string,
 ) error {
 	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
-
-	// Validate JobID is provided
-	if payload.JobID == "" {
-		log.Printf("⚠️ System message has no JobID, cannot determine target thread")
-		return nil
-	}
-
 	jobID := payload.JobID
-
-	// Get the job directly using the JobID from the payload
 	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
 	if err != nil {
 		log.Printf("❌ Failed to get job %s: %v", jobID, err)
