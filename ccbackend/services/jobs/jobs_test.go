@@ -83,9 +83,10 @@ func TestJobsService(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.NotEmpty(t, job.ID)
-			assert.Equal(t, slackThreadTS, job.SlackThreadTS)
-			assert.Equal(t, slackChannelID, job.SlackChannelID)
-			assert.Equal(t, testIntegration.ID, job.SlackIntegrationID)
+			assert.NotNil(t, job.SlackPayload)
+			assert.Equal(t, slackThreadTS, job.SlackPayload.ThreadTS)
+			assert.Equal(t, slackChannelID, job.SlackPayload.ChannelID)
+			assert.Equal(t, testIntegration.ID, job.SlackPayload.IntegrationID)
 			assert.False(t, job.CreatedAt.IsZero())
 			assert.False(t, job.UpdatedAt.IsZero())
 		})
@@ -157,9 +158,11 @@ func TestJobsService(t *testing.T) {
 			fetchedJob := maybeFetchedJob.MustGet()
 
 			assert.Equal(t, createdJob.ID, fetchedJob.ID)
-			assert.Equal(t, createdJob.SlackThreadTS, fetchedJob.SlackThreadTS)
-			assert.Equal(t, createdJob.SlackChannelID, fetchedJob.SlackChannelID)
-			assert.Equal(t, testIntegration.ID, fetchedJob.SlackIntegrationID)
+			assert.NotNil(t, createdJob.SlackPayload)
+			assert.NotNil(t, fetchedJob.SlackPayload)
+			assert.Equal(t, createdJob.SlackPayload.ThreadTS, fetchedJob.SlackPayload.ThreadTS)
+			assert.Equal(t, createdJob.SlackPayload.ChannelID, fetchedJob.SlackPayload.ChannelID)
+			assert.Equal(t, testIntegration.ID, fetchedJob.SlackPayload.IntegrationID)
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
@@ -206,9 +209,10 @@ func TestJobsService(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotEmpty(t, result.Job.ID)
-			assert.Equal(t, slackThreadTS, result.Job.SlackThreadTS)
-			assert.Equal(t, slackChannelID, result.Job.SlackChannelID)
-			assert.Equal(t, testIntegration.ID, result.Job.SlackIntegrationID)
+			assert.NotNil(t, result.Job.SlackPayload)
+			assert.Equal(t, slackThreadTS, result.Job.SlackPayload.ThreadTS)
+			assert.Equal(t, slackChannelID, result.Job.SlackPayload.ChannelID)
+			assert.Equal(t, testIntegration.ID, result.Job.SlackPayload.IntegrationID)
 			assert.Equal(t, models.JobCreationStatusCreated, result.Status)
 
 			// Cleanup
@@ -253,9 +257,11 @@ func TestJobsService(t *testing.T) {
 
 			// Should be the same job
 			assert.Equal(t, firstResult.Job.ID, secondResult.Job.ID)
-			assert.Equal(t, firstResult.Job.SlackThreadTS, secondResult.Job.SlackThreadTS)
-			assert.Equal(t, firstResult.Job.SlackChannelID, secondResult.Job.SlackChannelID)
-			assert.Equal(t, testIntegration.ID, secondResult.Job.SlackIntegrationID)
+			assert.NotNil(t, firstResult.Job.SlackPayload)
+			assert.NotNil(t, secondResult.Job.SlackPayload)
+			assert.Equal(t, firstResult.Job.SlackPayload.ThreadTS, secondResult.Job.SlackPayload.ThreadTS)
+			assert.Equal(t, firstResult.Job.SlackPayload.ChannelID, secondResult.Job.SlackPayload.ChannelID)
+			assert.Equal(t, testIntegration.ID, secondResult.Job.SlackPayload.IntegrationID)
 
 			// Cleanup
 			defer func() {
@@ -1460,8 +1466,10 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			// Should only return job1
 			require.Len(t, queuedJobs, 1)
 			assert.Equal(t, job1.ID, queuedJobs[0].ID)
-			assert.Equal(t, job1.SlackThreadTS, queuedJobs[0].SlackThreadTS)
-			assert.Equal(t, job1.SlackChannelID, queuedJobs[0].SlackChannelID)
+			assert.NotNil(t, job1.SlackPayload)
+			assert.NotNil(t, queuedJobs[0].SlackPayload)
+			assert.Equal(t, job1.SlackPayload.ThreadTS, queuedJobs[0].SlackPayload.ThreadTS)
+			assert.Equal(t, job1.SlackPayload.ChannelID, queuedJobs[0].SlackPayload.ChannelID)
 		})
 
 		t.Run("MultipleJobsWithQueuedMessages", func(t *testing.T) {
@@ -1529,11 +1537,15 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			for _, job := range queuedJobs {
 				if job.ID == job1.ID {
 					foundJob1 = true
-					assert.Equal(t, job1.SlackThreadTS, job.SlackThreadTS)
+					assert.NotNil(t, job.SlackPayload)
+					assert.NotNil(t, job1.SlackPayload)
+					assert.Equal(t, job1.SlackPayload.ThreadTS, job.SlackPayload.ThreadTS)
 				}
 				if job.ID == job2.ID {
 					foundJob2 = true
-					assert.Equal(t, job2.SlackThreadTS, job.SlackThreadTS)
+					assert.NotNil(t, job.SlackPayload)
+					assert.NotNil(t, job2.SlackPayload)
+					assert.Equal(t, job2.SlackPayload.ThreadTS, job.SlackPayload.ThreadTS)
 				}
 			}
 			assert.True(t, foundJob1, "Job1 should be in queued jobs list")
@@ -1603,7 +1615,9 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			for _, queuedJob := range queuedJobs {
 				if queuedJob.ID == job.ID {
 					foundJob = true
-					assert.Equal(t, job.SlackThreadTS, queuedJob.SlackThreadTS)
+					assert.NotNil(t, job.SlackPayload)
+					assert.NotNil(t, queuedJob.SlackPayload)
+					assert.Equal(t, job.SlackPayload.ThreadTS, queuedJob.SlackPayload.ThreadTS)
 					break
 				}
 			}

@@ -43,7 +43,11 @@ func (s *CoreUseCase) ProcessJobComplete(
 	}
 
 	job := maybeJob.MustGet()
-	slackIntegrationID := job.SlackIntegrationID
+	if job.SlackPayload == nil {
+		log.Printf("❌ Job %s has no Slack payload", jobID)
+		return fmt.Errorf("job has no Slack payload")
+	}
+	slackIntegrationID := job.SlackPayload.IntegrationID
 
 	// Get the agent by WebSocket connection ID to verify ownership (agents are organization-scoped)
 	maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, organizationID)
@@ -64,7 +68,7 @@ func (s *CoreUseCase) ProcessJobComplete(
 	}
 
 	// Set white_check_mark emoji on the top-level message to indicate job completion
-	if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "white_check_mark", slackIntegrationID); err != nil {
+	if err := s.updateSlackMessageReaction(ctx, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, "white_check_mark", slackIntegrationID); err != nil {
 		log.Printf("⚠️ Failed to update top-level message reaction for completed job %s: %v", jobID, err)
 		// Don't return error - this is not critical to job completion
 	}
@@ -91,12 +95,12 @@ func (s *CoreUseCase) ProcessJobComplete(
 	}
 
 	// Send completion message to Slack thread with reason
-	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, payload.Reason); err != nil {
-		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
+	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, payload.Reason); err != nil {
+		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackPayload.ThreadTS, err)
 		return fmt.Errorf("failed to send completion message to Slack: %w", err)
 	}
 
-	log.Printf("📤 Sent completion message to Slack thread %s: %s", job.SlackThreadTS, payload.Reason)
+	log.Printf("📤 Sent completion message to Slack thread %s: %s", job.SlackPayload.ThreadTS, payload.Reason)
 	log.Printf("📋 Completed successfully - processed job complete for job %s", jobID)
 	return nil
 }
@@ -254,17 +258,21 @@ func (s *CoreUseCase) cleanupFailedJob(
 	agentID string,
 	failureMessage string,
 ) error {
-	slackIntegrationID := job.SlackIntegrationID
+	if job.SlackPayload == nil {
+		log.Printf("❌ Job %s has no Slack payload", job.ID)
+		return fmt.Errorf("job has no Slack payload")
+	}
+	slackIntegrationID := job.SlackPayload.IntegrationID
 	organizationID := job.OrganizationID
 
 	// Send failure message to Slack thread
-	if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, failureMessage); err != nil {
-		log.Printf("❌ Failed to send failure message to Slack thread %s: %v", job.SlackThreadTS, err)
+	if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, failureMessage); err != nil {
+		log.Printf("❌ Failed to send failure message to Slack thread %s: %v", job.SlackPayload.ThreadTS, err)
 		// Continue with cleanup even if Slack message fails
 	}
 
 	// Update the top-level message emoji to :x:
-	if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "x", slackIntegrationID); err != nil {
+	if err := s.updateSlackMessageReaction(ctx, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, "x", slackIntegrationID); err != nil {
 		log.Printf("❌ Failed to update slack message reaction to :x: for failed job %s: %v", job.ID, err)
 		// Continue with cleanup even if reaction update fails
 	}

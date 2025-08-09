@@ -134,7 +134,10 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 	}
 
 	// Always add eyes emoji to top-level message to show agent is processing
-	if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "eyes", slackIntegrationID); err != nil {
+	if job.SlackPayload == nil {
+		return fmt.Errorf("job has no Slack payload")
+	}
+	if err := s.updateSlackMessageReaction(ctx, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, "eyes", slackIntegrationID); err != nil {
 		return fmt.Errorf("failed to update top-level message reaction: %w", err)
 	}
 	log.Printf("👀 Updated top-level message with eyes emoji for job %s - agent processing message", job.ID)
@@ -194,8 +197,12 @@ func (s *CoreUseCase) ProcessReactionAdded(
 	job := maybeJob.MustGet()
 
 	// Check if the user who added the reaction is the same as the user who created the job
-	if job.SlackUserID != userID {
-		log.Printf("⏭️ Reaction from %s ignored - job %s was created by %s", userID, job.ID, job.SlackUserID)
+	if job.SlackPayload == nil {
+		log.Printf("⏭️ Job %s has no Slack payload", job.ID)
+		return nil
+	}
+	if job.SlackPayload.UserID != userID {
+		log.Printf("⏭️ Reaction from %s ignored - job %s was created by %s", userID, job.ID, job.SlackPayload.UserID)
 		return nil
 	}
 
@@ -244,18 +251,18 @@ func (s *CoreUseCase) ProcessReactionAdded(
 	}
 
 	// Update Slack reactions - remove eyes emoji and add white_check_mark
-	if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "white_check_mark", slackIntegrationID); err != nil {
+	if err := s.updateSlackMessageReaction(ctx, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, "white_check_mark", slackIntegrationID); err != nil {
 		log.Printf("⚠️ Failed to update reaction for completed job %s: %v", job.ID, err)
 		// Don't return error - this is not critical
 	}
 
 	// Send completion message to Slack thread
-	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, "Job manually marked as complete"); err != nil {
-		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackThreadTS, err)
+	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, "Job manually marked as complete"); err != nil {
+		log.Printf("❌ Failed to send completion message to Slack thread %s: %v", job.SlackPayload.ThreadTS, err)
 		return fmt.Errorf("failed to send completion message to Slack: %w", err)
 	}
 
-	log.Printf("📤 Sent completion message to Slack thread %s", job.SlackThreadTS)
+	log.Printf("📤 Sent completion message to Slack thread %s", job.SlackPayload.ThreadTS)
 	log.Printf("🗑️ Deleted manually completed job %s", job.ID)
 	log.Printf("📋 Completed successfully - processed manual job completion for job %s", job.ID)
 	return nil
@@ -338,9 +345,12 @@ func (s *CoreUseCase) sendStartConversationToAgent(
 	job := maybeJob.MustGet()
 
 	// Generate permalink for the thread's first message
+	if job.SlackPayload == nil {
+		return fmt.Errorf("job has no Slack payload")
+	}
 	permalink, err := slackClient.GetPermalink(&clients.SlackPermalinkParameters{
 		Channel: message.SlackChannelID,
-		TS:      job.SlackThreadTS,
+		TS:      job.SlackPayload.ThreadTS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
@@ -388,9 +398,12 @@ func (s *CoreUseCase) sendUserMessageToAgent(
 	job := maybeJob.MustGet()
 
 	// Generate permalink for the thread's first message
+	if job.SlackPayload == nil {
+		return fmt.Errorf("job has no Slack payload")
+	}
 	permalink, err := slackClient.GetPermalink(&clients.SlackPermalinkParameters{
 		Channel: message.SlackChannelID,
-		TS:      job.SlackThreadTS,
+		TS:      job.SlackPayload.ThreadTS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get permalink for slack message: %w", err)
