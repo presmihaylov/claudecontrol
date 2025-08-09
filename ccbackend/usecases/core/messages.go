@@ -50,14 +50,22 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	}
 
 	job := maybeJob.MustGet()
-	slackIntegrationID := job.SlackIntegrationID
+	if job.SlackPayload == nil {
+		log.Printf("⚠️ Job %s has no Slack payload, skipping assistant message", jobID)
+		return fmt.Errorf("job has no Slack payload")
+	}
+	slackIntegrationID := job.SlackPayload.IntegrationID
 
 	// Validate that this agent is actually assigned to this job
 	if err := s.validateJobBelongsToAgent(ctx, agent.ID, jobID, organizationID); err != nil {
 		return err
 	}
 
-	log.Printf("📤 Sending assistant message to Slack thread %s in channel %s", job.SlackThreadTS, job.SlackChannelID)
+	log.Printf(
+		"📤 Sending assistant message to Slack thread %s in channel %s",
+		job.SlackPayload.ThreadTS,
+		job.SlackPayload.ChannelID,
+	)
 
 	// Handle empty message from Claude
 	messageToSend := payload.Message
@@ -67,7 +75,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	}
 
 	// Send assistant message to Slack
-	if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, messageToSend); err != nil {
+	if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, messageToSend); err != nil {
 		return fmt.Errorf("❌ Failed to send assistant message to Slack: %v", err)
 	}
 
@@ -96,7 +104,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	// Add completed emoji reaction
 	// For top-level messages (where SlackTS equals SlackThreadTS), only set white_check_mark on job completion
 	// For other messages, set white_check_mark immediately when processed
-	isTopLevelMessage := updatedMessage.SlackTS == job.SlackThreadTS
+	isTopLevelMessage := updatedMessage.SlackTS == job.SlackPayload.ThreadTS
 	if !isTopLevelMessage {
 		reactionEmoji := DeriveMessageReactionFromStatus(models.ProcessedSlackMessageStatusCompleted)
 		if err := s.updateSlackMessageReaction(ctx, updatedMessage.SlackChannelID, updatedMessage.SlackTS, reactionEmoji, slackIntegrationID); err != nil {
@@ -117,14 +125,14 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 
 	if maybeLatestMsg.IsPresent() && maybeLatestMsg.MustGet().ID == messageID {
 		// This is the latest message - agent is done processing, add hand emoji to top-level message
-		if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "hand", slackIntegrationID); err != nil {
+		if err := s.updateSlackMessageReaction(ctx, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, "hand", slackIntegrationID); err != nil {
 			log.Printf("⚠️ Failed to add hand emoji to job %s thread: %v", job.ID, err)
 			return fmt.Errorf("failed to add hand emoji to job thread: %w", err)
 		}
 		log.Printf("✋ Added hand emoji to job %s - agent waiting for next steps", job.ID)
 	}
 
-	log.Printf("📋 Completed successfully - sent assistant message to Slack thread %s", job.SlackThreadTS)
+	log.Printf("📋 Completed successfully - sent assistant message to Slack thread %s", job.SlackPayload.ThreadTS)
 	return nil
 }
 
@@ -150,7 +158,11 @@ func (s *CoreUseCase) ProcessSystemMessage(
 		return nil
 	}
 	job := maybeJob.MustGet()
-	slackIntegrationID := job.SlackIntegrationID
+	if job.SlackPayload == nil {
+		log.Printf("⚠️ Job %s has no Slack payload, skipping assistant message", jobID)
+		return fmt.Errorf("job has no Slack payload")
+	}
+	slackIntegrationID := job.SlackPayload.IntegrationID
 
 	// Check if this is an error message from the agent
 	if IsAgentErrorMessage(payload.Message) {
@@ -180,12 +192,12 @@ func (s *CoreUseCase) ProcessSystemMessage(
 
 	log.Printf(
 		"📤 Sending system message to Slack thread %s in channel %s",
-		job.SlackThreadTS,
-		job.SlackChannelID,
+		job.SlackPayload.ThreadTS,
+		job.SlackPayload.ChannelID,
 	)
 
 	// Send system message (gear emoji will be added automatically)
-	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, payload.Message); err != nil {
+	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, payload.Message); err != nil {
 		return fmt.Errorf("❌ Failed to send system message to Slack: %v", err)
 	}
 
@@ -195,6 +207,6 @@ func (s *CoreUseCase) ProcessSystemMessage(
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - sent system message to Slack thread %s", job.SlackThreadTS)
+	log.Printf("📋 Completed successfully - sent system message to Slack thread %s", job.SlackPayload.ThreadTS)
 	return nil
 }

@@ -4,15 +4,29 @@ import (
 	"time"
 )
 
+type JobType string
+
+const (
+	JobTypeSlack JobType = "slack"
+)
+
 type Job struct {
-	ID                 string    `json:"id"                   db:"id"`
-	CreatedAt          time.Time `json:"created_at"           db:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"           db:"updated_at"`
-	SlackThreadTS      string    `json:"slack_thread_ts"      db:"slack_thread_ts"`
-	SlackChannelID     string    `json:"slack_channel_id"     db:"slack_channel_id"`
-	SlackUserID        string    `json:"slack_user_id"        db:"slack_user_id"`
-	SlackIntegrationID string    `json:"slack_integration_id" db:"slack_integration_id"`
-	OrganizationID     string    `json:"organization_id"      db:"organization_id"`
+	// Common fields
+	ID             string    `json:"id"              db:"id"`
+	JobType        JobType   `json:"job_type"        db:"job_type"`
+	OrganizationID string    `json:"organization_id" db:"organization_id"`
+	CreatedAt      time.Time `json:"created_at"      db:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"      db:"updated_at"`
+
+	// Polymorphic payload - only one populated based on JobType
+	SlackPayload *SlackJobPayload `json:"slack_payload,omitempty"`
+}
+
+type SlackJobPayload struct {
+	ThreadTS      string `json:"thread_ts"      db:"slack_thread_ts"`
+	ChannelID     string `json:"channel_id"     db:"slack_channel_id"`
+	UserID        string `json:"user_id"        db:"slack_user_id"`
+	IntegrationID string `json:"integration_id" db:"slack_integration_id"`
 }
 
 type JobCreationStatus string
