@@ -194,33 +194,6 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(
 	return mo.Some(dbJobToModel(&dbJob)), nil
 }
 
-func (r *PostgresJobsRepository) UpdateJob(ctx context.Context, job *models.Job) error {
-	db := dbtx.GetTransactional(ctx, r.db)
-	dbJob, err := modelToDBJob(job)
-	if err != nil {
-		return fmt.Errorf("failed to convert job to db model: %w", err)
-	}
-	returningStr := strings.Join(jobsColumns, ", ")
-	query := fmt.Sprintf(`
-		UPDATE %s.jobs 
-		SET slack_thread_ts = $2, slack_channel_id = $3, slack_user_id = $4, updated_at = NOW() 
-		WHERE id = $1 AND slack_integration_id = $5 AND organization_id = $6
-		RETURNING %s`, r.schema, returningStr)
-
-	var returnedDBJob DBJob
-	err = db.QueryRowxContext(ctx, query,
-		dbJob.ID, dbJob.SlackThreadTS, dbJob.SlackChannelID,
-		dbJob.SlackUserID, dbJob.SlackIntegrationID, dbJob.OrganizationID).
-		StructScan(&returnedDBJob)
-	if err != nil {
-		return fmt.Errorf("failed to update job: %w", err)
-	}
-
-	// Update the original job with returned values
-	*job = *dbJobToModel(&returnedDBJob)
-	return nil
-}
-
 func (r *PostgresJobsRepository) UpdateJobTimestamp(
 	ctx context.Context,
 	jobID string,
