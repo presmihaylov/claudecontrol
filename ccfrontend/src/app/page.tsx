@@ -11,10 +11,10 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DiscordIcon, SlackIcon } from "@/icons";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
 import { Copy, Download, Key, RefreshCw, Trash2 } from "lucide-react";
-import { DiscordIcon, SlackIcon } from "@/icons";
 import { useEffect, useState } from "react";
 
 interface SlackIntegration {
@@ -59,7 +59,8 @@ export default function Home() {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [integrationToDelete, setIntegrationToDelete] = useState<SlackIntegration | null>(null);
 	const [discordDeleteDialogOpen, setDiscordDeleteDialogOpen] = useState(false);
-	const [discordIntegrationToDelete, setDiscordIntegrationToDelete] = useState<DiscordIntegration | null>(null);
+	const [discordIntegrationToDelete, setDiscordIntegrationToDelete] =
+		useState<DiscordIntegration | null>(null);
 	const [generatingKey, setGeneratingKey] = useState(false);
 	const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
 	const [secretKeyDialogOpen, setSecretKeyDialogOpen] = useState(false);
@@ -198,7 +199,7 @@ export default function Home() {
 	};
 
 	const handleAddToDiscord = () => {
-		const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1403408262338187264&redirect_uri=${encodeURIComponent(env.DISCORD_REDIRECT_URI)}&response_type=code&scope=applications.commands%20bot`;
+		const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1403408262338187264&permissions=34359740480&integration_type=0&scope=bot&redirect_uri=${encodeURIComponent(env.DISCORD_REDIRECT_URI)}&response_type=code`;
 
 		window.location.href = discordAuthUrl;
 	};
@@ -644,7 +645,8 @@ export default function Home() {
 												<div>
 													<h3 className="font-semibold">{integration.slack_team_name}</h3>
 													<p className="text-sm text-muted-foreground">
-														Slack • Connected on {new Date(integration.created_at).toLocaleDateString()}
+														Slack • Connected on{" "}
+														{new Date(integration.created_at).toLocaleDateString()}
 													</p>
 												</div>
 											</div>
@@ -671,7 +673,8 @@ export default function Home() {
 												<div>
 													<h3 className="font-semibold">{integration.discord_guild_name}</h3>
 													<p className="text-sm text-muted-foreground">
-														Discord • Connected on {new Date(integration.created_at).toLocaleDateString()}
+														Discord • Connected on{" "}
+														{new Date(integration.created_at).toLocaleDateString()}
 													</p>
 												</div>
 											</div>
@@ -739,8 +742,9 @@ export default function Home() {
 						<DialogHeader>
 							<DialogTitle>Disconnect Discord Server</DialogTitle>
 							<DialogDescription>
-								Are you sure you want to disconnect "{discordIntegrationToDelete?.discord_guild_name}" from
-								Claude Control? This action cannot be undone.
+								Are you sure you want to disconnect "
+								{discordIntegrationToDelete?.discord_guild_name}" from Claude Control? This action
+								cannot be undone.
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter>

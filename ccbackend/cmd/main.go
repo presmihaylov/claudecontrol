@@ -29,6 +29,7 @@ import (
 	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
 	"ccbackend/usecases/core"
+	"ccbackend/utils"
 )
 
 func main() {
@@ -82,7 +83,9 @@ func run() error {
 		cfg.SlackClientID,
 		cfg.SlackClientSecret,
 	)
-	discordClient := discordclient.NewDiscordClient(&http.Client{}, cfg.DiscordBotToken)
+	discordClient, err := discordclient.NewDiscordClient(&http.Client{}, cfg.DiscordBotToken)
+	utils.AssertInvariant(err == nil, "Failed to create Discord client: "+err.Error())
+
 	discordIntegrationsService := discordintegrations.NewDiscordIntegrationsService(
 		discordIntegrationsRepo,
 		discordClient,

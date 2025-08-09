@@ -11,7 +11,11 @@ const rawIconsDir = path.join(__dirname, "../src/icons/raw");
 const iconsDir = path.join(__dirname, "../src/icons");
 
 // Template for React icon components
-const componentTemplate = (componentName, title, pathData) => `import type { SVGProps } from "react";
+const componentTemplate = (
+	componentName,
+	title,
+	pathData,
+) => `import type { SVGProps } from "react";
 
 interface ${componentName}Props extends SVGProps<SVGSVGElement> {
 	color?: "black" | "white" | string;
@@ -50,10 +54,12 @@ function extractTitleFromSVG(svgContent) {
 // Function to convert filename to component name
 function filenameToComponentName(filename) {
 	const name = path.basename(filename, ".svg");
-	return name
-		.split(/[-_]/)
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-		.join("") + "Icon";
+	return (
+		name
+			.split(/[-_]/)
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+			.join("") + "Icon"
+	);
 }
 
 // Main generation function
