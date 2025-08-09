@@ -1,13 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -371,14 +365,7 @@ export default function Home() {
 						{organization && (
 							<Card>
 								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<Key className="h-5 w-5" />
-										ccagent Secret Key
-									</CardTitle>
-									<CardDescription>
-										This secret key is used by the ccagent CLI to authenticate
-										with all your Slack workspaces in this organization.
-									</CardDescription>
+									<CardTitle>Control Panel</CardTitle>
 								</CardHeader>
 								<CardContent className="space-y-4">
 									{/* Download ccagent Button */}
@@ -427,52 +414,45 @@ export default function Home() {
 										</Button>
 									</div>
 
-									{organization.ccagent_secret_key_generated_at ? (
-										<div className="space-y-2">
+									{/* CCAgent API Key Section */}
+									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+										<div className="space-y-1">
+											<h4 className="font-medium flex items-center gap-2">
+												<Key className="h-4 w-4" />
+												CCAgent API Key
+											</h4>
 											<p className="text-sm text-muted-foreground">
-												Secret key generated on{" "}
-												{new Date(
-													organization.ccagent_secret_key_generated_at,
-												).toLocaleDateString()}{" "}
-												at{" "}
-												{new Date(
-													organization.ccagent_secret_key_generated_at,
-												).toLocaleTimeString()}
+												The secret key used to authenticate ccagent against your
+												organization
 											</p>
-											<Button
-												variant="outline"
-												onClick={() => setRegenerateDialogOpen(true)}
-												disabled={generatingKey}
-												className="flex items-center gap-2"
-											>
-												<RefreshCw
-													className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
-												/>
-												{generatingKey
-													? "Regenerating..."
-													: "Regenerate Secret Key"}
-											</Button>
 										</div>
-									) : (
-										<div className="space-y-2">
-											<p className="text-sm text-muted-foreground">
-												No secret key has been generated yet. Generate one to
-												start using ccagent with all your Slack workspaces.
-											</p>
-											<Button
-												onClick={handleGenerateSecretKey}
-												disabled={generatingKey}
-												className="flex items-center gap-2"
-											>
-												<Key
-													className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
-												/>
-												{generatingKey
-													? "Generating..."
-													: "Generate Secret Key"}
-											</Button>
+										<div className="flex gap-2">
+											{organization.ccagent_secret_key_generated_at ? (
+												<Button
+													variant="outline"
+													onClick={() => setRegenerateDialogOpen(true)}
+													disabled={generatingKey}
+													className="flex items-center gap-2"
+												>
+													<RefreshCw
+														className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
+													/>
+													{generatingKey ? "Regenerating..." : "Regenerate"}
+												</Button>
+											) : (
+												<Button
+													onClick={handleGenerateSecretKey}
+													disabled={generatingKey}
+													className="flex items-center gap-2"
+												>
+													<Key
+														className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
+													/>
+													{generatingKey ? "Generating..." : "Generate"}
+												</Button>
+											)}
 										</div>
-									)}
+									</div>
 								</CardContent>
 							</Card>
 						)}
@@ -498,14 +478,7 @@ export default function Home() {
 						{organization && (
 							<Card>
 								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<Key className="h-5 w-5" />
-										ccagent Secret Key
-									</CardTitle>
-									<CardDescription>
-										This secret key is used by the ccagent CLI to authenticate
-										with all your Slack workspaces in this organization.
-									</CardDescription>
+									<CardTitle>Control Panel</CardTitle>
 								</CardHeader>
 								<CardContent className="space-y-4">
 									{/* Download ccagent Button */}
@@ -554,52 +527,45 @@ export default function Home() {
 										</Button>
 									</div>
 
-									{organization.ccagent_secret_key_generated_at ? (
-										<div className="space-y-2">
+									{/* CCAgent API Key Section */}
+									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+										<div className="space-y-1">
+											<h4 className="font-medium flex items-center gap-2">
+												<Key className="h-4 w-4" />
+												CCAgent API Key
+											</h4>
 											<p className="text-sm text-muted-foreground">
-												Secret key generated on{" "}
-												{new Date(
-													organization.ccagent_secret_key_generated_at,
-												).toLocaleDateString()}{" "}
-												at{" "}
-												{new Date(
-													organization.ccagent_secret_key_generated_at,
-												).toLocaleTimeString()}
+												The secret key used to authenticate ccagent against your
+												organization
 											</p>
-											<Button
-												variant="outline"
-												onClick={() => setRegenerateDialogOpen(true)}
-												disabled={generatingKey}
-												className="flex items-center gap-2"
-											>
-												<RefreshCw
-													className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
-												/>
-												{generatingKey
-													? "Regenerating..."
-													: "Regenerate Secret Key"}
-											</Button>
 										</div>
-									) : (
-										<div className="space-y-2">
-											<p className="text-sm text-muted-foreground">
-												No secret key has been generated yet. Generate one to
-												start using ccagent with all your Slack workspaces.
-											</p>
-											<Button
-												onClick={handleGenerateSecretKey}
-												disabled={generatingKey}
-												className="flex items-center gap-2"
-											>
-												<Key
-													className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
-												/>
-												{generatingKey
-													? "Generating..."
-													: "Generate Secret Key"}
-											</Button>
+										<div className="flex gap-2">
+											{organization.ccagent_secret_key_generated_at ? (
+												<Button
+													variant="outline"
+													onClick={() => setRegenerateDialogOpen(true)}
+													disabled={generatingKey}
+													className="flex items-center gap-2"
+												>
+													<RefreshCw
+														className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
+													/>
+													{generatingKey ? "Regenerating..." : "Regenerate"}
+												</Button>
+											) : (
+												<Button
+													onClick={handleGenerateSecretKey}
+													disabled={generatingKey}
+													className="flex items-center gap-2"
+												>
+													<Key
+														className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
+													/>
+													{generatingKey ? "Generating..." : "Generate"}
+												</Button>
+											)}
 										</div>
-									)}
+									</div>
 								</CardContent>
 							</Card>
 						)}
