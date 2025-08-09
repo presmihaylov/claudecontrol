@@ -84,7 +84,7 @@ func run() error {
 		cfg.SlackClientSecret,
 	)
 	discordClient, err := discordclient.NewDiscordClient(&http.Client{}, cfg.DiscordBotToken)
-	utils.AssertInvariant(err == nil, "Failed to create Discord client: "+err.Error())
+	utils.AssertInvariant(err == nil, "Failed to create Discord client")
 
 	discordIntegrationsService := discordintegrations.NewDiscordIntegrationsService(
 		discordIntegrationsRepo,
