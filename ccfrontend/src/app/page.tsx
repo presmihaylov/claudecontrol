@@ -302,7 +302,7 @@ export default function Home() {
 					<div className="container mx-auto px-4 py-4 flex items-center justify-between">
 						<div />
 						<h1 className="text-2xl font-semibold">Claude Control</h1>
-						<Button variant="outline" size="sm" onClick={() => signOut()}>
+						<Button variant="secondary" size="sm" onClick={() => signOut()}>
 							Logout
 						</Button>
 					</div>
@@ -352,7 +352,7 @@ export default function Home() {
 				<div className="container mx-auto px-4 py-4 flex items-center justify-between">
 					<div />
 					<h1 className="text-2xl font-semibold">Claude Control</h1>
-					<Button variant="outline" size="sm" onClick={() => signOut()}>
+					<Button variant="secondary" size="sm" onClick={() => signOut()}>
 						Logout
 					</Button>
 				</div>
