@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"ccbackend/core"
 	"ccbackend/models"
@@ -26,7 +25,6 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 	}
 
 	totalAgentCount := 0
-	var broadcastErrors []string
 	connectedClientIDs := s.wsClient.GetClientIDs()
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
@@ -36,11 +34,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 		// Get connected agents for this organization using centralized service method
 		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, organizationID, connectedClientIDs)
 		if err != nil {
-			broadcastErrors = append(
-				broadcastErrors,
-				fmt.Sprintf("failed to get connected agents for organization %s: %v", organizationID, err),
-			)
-			continue
+			return fmt.Errorf("failed to get connected agents for organization %s: %w", organizationID, err)
 		}
 
 		if len(connectedAgents) == 0 {
@@ -60,26 +54,11 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 
 		for _, agent := range connectedAgents {
 			if err := s.wsClient.SendMessage(agent.WSConnectionID, checkIdleJobsMessage); err != nil {
-				broadcastErrors = append(
-					broadcastErrors,
-					fmt.Sprintf("failed to send CheckIdleJobs message to agent %s: %v", agent.ID, err),
-				)
-				continue
+				return fmt.Errorf("failed to send CheckIdleJobs message to agent %s: %w", agent.ID, err)
 			}
 			log.Printf("📤 Sent CheckIdleJobs message to agent %s", agent.ID)
 			totalAgentCount++
 		}
-	}
-
-	log.Printf("📋 Completed broadcast - sent CheckIdleJobs to %d agents", totalAgentCount)
-
-	// Return error if there were any broadcast failures
-	if len(broadcastErrors) > 0 {
-		return fmt.Errorf(
-			"CheckIdleJobs broadcast encountered %d errors: %s",
-			len(broadcastErrors),
-			strings.Join(broadcastErrors, "; "),
-		)
 	}
 
 	log.Printf("📋 Completed successfully - broadcasted CheckIdleJobs to %d agents", totalAgentCount)
@@ -102,7 +81,6 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 	}
 
 	totalProcessedJobs := 0
-	var processingErrors []string
 
 	for _, integration := range integrations {
 		slackIntegrationID := integration.ID
@@ -110,11 +88,7 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 		// Get jobs with queued messages for this integration
 		queuedJobs, err := s.jobsService.GetJobsWithQueuedMessages(ctx, slackIntegrationID, integration.OrganizationID)
 		if err != nil {
-			processingErrors = append(
-				processingErrors,
-				fmt.Sprintf("failed to get queued jobs for integration %s: %v", slackIntegrationID, err),
-			)
-			continue
+			return fmt.Errorf("failed to get queued jobs for integration %s: %w", slackIntegrationID, err)
 		}
 
 		if len(queuedJobs) == 0 {
@@ -133,11 +107,7 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 			// Try to assign job to an available agent
 			clientID, assigned, err := s.tryAssignJobToAgent(ctx, job.ID, organizationID)
 			if err != nil {
-				processingErrors = append(
-					processingErrors,
-					fmt.Sprintf("failed to assign queued job %s: %v", job.ID, err),
-				)
-				continue
+				return fmt.Errorf("failed to assign queued job %s: %w", job.ID, err)
 			}
 
 			if !assigned {
@@ -154,11 +124,7 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 				integration.OrganizationID,
 			)
 			if err != nil {
-				processingErrors = append(
-					processingErrors,
-					fmt.Sprintf("failed to get queued messages for job %s: %v", job.ID, err),
-				)
-				continue
+				return fmt.Errorf("failed to get queued messages for job %s: %w", job.ID, err)
 			}
 
 			log.Printf("📨 Found %d queued messages for job %s", len(queuedMessages), job.ID)
@@ -174,20 +140,12 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 					organizationID,
 				)
 				if err != nil {
-					processingErrors = append(
-						processingErrors,
-						fmt.Sprintf("failed to update message %s status: %v", message.ID, err),
-					)
-					continue
+					return fmt.Errorf("failed to update message %s status: %w", message.ID, err)
 				}
 
 				// Update Slack reaction to show processing (eyes emoji)
 				if err := s.updateSlackMessageReaction(ctx, updatedMessage.SlackChannelID, updatedMessage.SlackTS, "eyes", slackIntegrationID); err != nil {
-					processingErrors = append(
-						processingErrors,
-						fmt.Sprintf("failed to update slack reaction for message %s: %v", message.ID, err),
-					)
-					continue
+					return fmt.Errorf("failed to update slack reaction for message %s: %w", message.ID, err)
 				}
 
 				// Determine if this is the first message in the job (new conversation)
@@ -200,11 +158,7 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 					integration.OrganizationID,
 				)
 				if err != nil {
-					processingErrors = append(
-						processingErrors,
-						fmt.Sprintf("failed to check for completed messages in job %s: %v", job.ID, err),
-					)
-					continue
+					return fmt.Errorf("failed to check for completed messages in job %s: %w", job.ID, err)
 				}
 				inProgressMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(
 					ctx,
@@ -214,30 +168,18 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 					integration.OrganizationID,
 				)
 				if err != nil {
-					processingErrors = append(
-						processingErrors,
-						fmt.Sprintf("failed to check for in-progress messages in job %s: %v", job.ID, err),
-					)
-					continue
+					return fmt.Errorf("failed to check for in-progress messages in job %s: %w", job.ID, err)
 				}
 				isNewConversation := len(completedMessages) == 0 && len(inProgressMessages) == 0
 
 				// Send work to assigned agent
 				if isNewConversation {
 					if err := s.sendStartConversationToAgent(ctx, clientID, updatedMessage); err != nil {
-						processingErrors = append(
-							processingErrors,
-							fmt.Sprintf("failed to send start conversation for message %s: %v", message.ID, err),
-						)
-						continue
+						return fmt.Errorf("failed to send start conversation for message %s: %w", message.ID, err)
 					}
 				} else {
 					if err := s.sendUserMessageToAgent(ctx, clientID, updatedMessage); err != nil {
-						processingErrors = append(
-							processingErrors,
-							fmt.Sprintf("failed to send user message %s: %v", message.ID, err),
-						)
-						continue
+						return fmt.Errorf("failed to send user message %s: %w", message.ID, err)
 					}
 				}
 
@@ -247,17 +189,6 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 			totalProcessedJobs++
 			log.Printf("✅ Successfully processed queued job %s with %d messages", job.ID, len(queuedMessages))
 		}
-	}
-
-	log.Printf("📋 Completed queue processing - processed %d jobs", totalProcessedJobs)
-
-	// Return error if there were any processing failures
-	if len(processingErrors) > 0 {
-		return fmt.Errorf(
-			"queued job processing encountered %d errors: %s",
-			len(processingErrors),
-			strings.Join(processingErrors, "; "),
-		)
 	}
 
 	log.Printf("📋 Completed successfully - processed %d queued jobs", totalProcessedJobs)
