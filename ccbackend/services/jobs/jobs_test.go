@@ -150,7 +150,6 @@ func TestJobsService(t *testing.T) {
 			maybeFetchedJob, err := service.GetJobByID(
 				context.Background(),
 				createdJob.ID,
-				slackIntegrationID,
 				testIntegration.OrganizationID,
 			)
 			require.NoError(t, err)
@@ -164,14 +163,14 @@ func TestJobsService(t *testing.T) {
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			_, err := service.GetJobByID(context.Background(), "", slackIntegrationID, testIntegration.OrganizationID)
+			_, err := service.GetJobByID(context.Background(), "", testIntegration.OrganizationID)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
 		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
-			_, err := service.GetJobByID(context.Background(), core.NewID("j"), "", testIntegration.OrganizationID)
+			_, err := service.GetJobByID(context.Background(), core.NewID("j"), testIntegration.OrganizationID)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
@@ -183,7 +182,6 @@ func TestJobsService(t *testing.T) {
 			maybeJob, err := service.GetJobByID(
 				context.Background(),
 				id,
-				slackIntegrationID,
 				testIntegration.OrganizationID,
 			)
 			require.NoError(t, err)
@@ -330,7 +328,6 @@ func TestJobsService(t *testing.T) {
 			maybeFetchedJob, err := service.GetJobByID(
 				context.Background(),
 				job.ID,
-				slackIntegrationID,
 				testIntegration.OrganizationID,
 			)
 			require.NoError(t, err)
@@ -346,7 +343,6 @@ func TestJobsService(t *testing.T) {
 			maybeJob, err := service.GetJobByID(
 				context.Background(),
 				job.ID,
-				slackIntegrationID,
 				testIntegration.OrganizationID,
 			)
 			require.NoError(t, err)
@@ -694,7 +690,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Get the job again to verify timestamp changed
-		maybeUpdatedJob, err := jobsService.GetJobByID(context.Background(), job.ID, slackIntegrationID, organizationID)
+		maybeUpdatedJob, err := jobsService.GetJobByID(context.Background(), job.ID, organizationID)
 		require.NoError(t, err)
 		require.True(t, maybeUpdatedJob.IsPresent())
 		updatedJob := maybeUpdatedJob.MustGet()
@@ -1193,7 +1189,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify job is deleted
-		maybeJob, err := jobsService.GetJobByID(context.Background(), job.ID, slackIntegrationID, organizationID)
+		maybeJob, err := jobsService.GetJobByID(context.Background(), job.ID, organizationID)
 		require.NoError(t, err)
 		assert.False(t, maybeJob.IsPresent())
 
@@ -1266,21 +1262,18 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		_, err = jobsService.GetProcessedSlackMessageByID(
 			context.Background(),
 			message1.ID,
-			slackIntegrationID,
 			organizationID,
 		)
 		require.NoError(t, err)
 		_, err = jobsService.GetProcessedSlackMessageByID(
 			context.Background(),
 			message2.ID,
-			slackIntegrationID,
 			organizationID,
 		)
 		require.NoError(t, err)
 		_, err = jobsService.GetProcessedSlackMessageByID(
 			context.Background(),
 			message3.ID,
-			slackIntegrationID,
 			organizationID,
 		)
 		require.NoError(t, err)
@@ -1290,7 +1283,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify job is deleted
-		maybeJob, err := jobsService.GetJobByID(context.Background(), job.ID, slackIntegrationID, organizationID)
+		maybeJob, err := jobsService.GetJobByID(context.Background(), job.ID, organizationID)
 		require.NoError(t, err)
 		assert.False(t, maybeJob.IsPresent())
 
@@ -1298,7 +1291,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		maybeMessage1, err := jobsService.GetProcessedSlackMessageByID(
 			context.Background(),
 			message1.ID,
-			slackIntegrationID,
 			organizationID,
 		)
 		require.NoError(t, err)
@@ -1307,7 +1299,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		maybeMessage2, err := jobsService.GetProcessedSlackMessageByID(
 			context.Background(),
 			message2.ID,
-			slackIntegrationID,
 			organizationID,
 		)
 		require.NoError(t, err)
@@ -1316,7 +1307,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		maybeMessage3, err := jobsService.GetProcessedSlackMessageByID(
 			context.Background(),
 			message3.ID,
-			slackIntegrationID,
 			organizationID,
 		)
 		require.NoError(t, err)

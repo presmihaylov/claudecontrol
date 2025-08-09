@@ -93,7 +93,6 @@ type JobsService interface {
 	GetJobByID(
 		ctx context.Context,
 		id string,
-		slackIntegrationID string,
 		organizationID string,
 	) (mo.Option[*models.Job], error)
 	GetJobBySlackThread(
@@ -130,7 +129,6 @@ type JobsService interface {
 	GetProcessedSlackMessageByID(
 		ctx context.Context,
 		id string,
-		slackIntegrationID string,
 		organizationID string,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
 	TESTS_UpdateJobUpdatedAt(
@@ -156,18 +154,6 @@ type JobsService interface {
 		ctx context.Context,
 		jobID string,
 		slackIntegrationID string,
-		organizationID string,
-	) (mo.Option[*models.ProcessedSlackMessage], error)
-
-	// Optimized methods that use organization_id directly instead of looping through slack integrations
-	GetJobWithIntegrationByID(
-		ctx context.Context,
-		jobID string,
-		organizationID string,
-	) (mo.Option[*models.Job], error)
-	GetProcessedSlackMessageWithIntegrationByID(
-		ctx context.Context,
-		messageID string,
 		organizationID string,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
 }

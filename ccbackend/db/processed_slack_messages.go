@@ -75,7 +75,6 @@ func (r *PostgresProcessedSlackMessagesRepository) CreateProcessedSlackMessage(
 func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 	ctx context.Context,
 	id string,
-	slackIntegrationID string,
 	organizationID string,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
@@ -83,10 +82,10 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.processed_slack_messages 
-		WHERE id = $1 AND slack_integration_id = $2 AND organization_id = $3`, columnsStr, r.schema)
+		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	message := &models.ProcessedSlackMessage{}
-	err := db.GetContext(ctx, message, query, id, slackIntegrationID, organizationID)
+	err := db.GetContext(ctx, message, query, id, organizationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ProcessedSlackMessage](), nil
@@ -275,34 +274,6 @@ func (r *PostgresProcessedSlackMessagesRepository) GetLatestProcessedMessageForJ
 		}
 		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf(
 			"failed to get latest processed message for job: %w",
-			err,
-		)
-	}
-
-	return mo.Some(message), nil
-}
-
-// GetProcessedSlackMessageWithIntegrationByID gets a processed slack message by ID using organization_id directly (optimization)
-func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageWithIntegrationByID(
-	ctx context.Context,
-	messageID string,
-	organizationID string,
-) (mo.Option[*models.ProcessedSlackMessage], error) {
-	db := dbtx.GetTransactional(ctx, r.db)
-	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
-	query := fmt.Sprintf(`
-		SELECT %s 
-		FROM %s.processed_slack_messages 
-		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
-
-	message := &models.ProcessedSlackMessage{}
-	err := db.GetContext(ctx, message, query, messageID, organizationID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return mo.None[*models.ProcessedSlackMessage](), nil
-		}
-		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf(
-			"failed to get processed slack message with integration: %w",
 			err,
 		)
 	}
