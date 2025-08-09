@@ -36,6 +36,22 @@ type SlackIntegrationsService interface {
 	GetSlackIntegrationByID(ctx context.Context, id string) (mo.Option[*models.SlackIntegration], error)
 }
 
+// DiscordIntegrationsService defines the interface for Discord integration operations
+type DiscordIntegrationsService interface {
+	CreateDiscordIntegration(
+		ctx context.Context,
+		organizationID, discordAuthCode, redirectURL string,
+	) (*models.DiscordIntegration, error)
+	GetDiscordIntegrationsByOrganizationID(
+		ctx context.Context,
+		organizationID string,
+	) ([]*models.DiscordIntegration, error)
+	GetAllDiscordIntegrations(ctx context.Context) ([]*models.DiscordIntegration, error)
+	DeleteDiscordIntegration(ctx context.Context, organizationID, integrationID string) error
+	GetDiscordIntegrationByGuildID(ctx context.Context, guildID string) (mo.Option[*models.DiscordIntegration], error)
+	GetDiscordIntegrationByID(ctx context.Context, id string) (mo.Option[*models.DiscordIntegration], error)
+}
+
 // AgentsService defines the interface for agent-related operations
 type AgentsService interface {
 	UpsertActiveAgent(

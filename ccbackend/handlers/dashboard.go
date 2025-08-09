@@ -11,20 +11,23 @@ import (
 )
 
 type DashboardAPIHandler struct {
-	usersService             services.UsersService
-	slackIntegrationsService services.SlackIntegrationsService
-	organizationsService     services.OrganizationsService
+	usersService               services.UsersService
+	slackIntegrationsService   services.SlackIntegrationsService
+	discordIntegrationsService services.DiscordIntegrationsService
+	organizationsService       services.OrganizationsService
 }
 
 func NewDashboardAPIHandler(
 	usersService services.UsersService,
 	slackIntegrationsService services.SlackIntegrationsService,
+	discordIntegrationsService services.DiscordIntegrationsService,
 	organizationsService services.OrganizationsService,
 ) *DashboardAPIHandler {
 	return &DashboardAPIHandler{
-		usersService:             usersService,
-		slackIntegrationsService: slackIntegrationsService,
-		organizationsService:     organizationsService,
+		usersService:               usersService,
+		slackIntegrationsService:   slackIntegrationsService,
+		discordIntegrationsService: discordIntegrationsService,
+		organizationsService:       organizationsService,
 	}
 }
 
@@ -91,6 +94,60 @@ func (h *DashboardAPIHandler) GetOrganization(ctx context.Context) (*models.Orga
 
 	log.Printf("📋 Retrieved organization: %s", org.ID)
 	return org, nil
+}
+
+// ListDiscordIntegrations returns all Discord integrations for an organization
+func (h *DashboardAPIHandler) ListDiscordIntegrations(
+	ctx context.Context,
+	user *models.User,
+) ([]*models.DiscordIntegration, error) {
+	log.Printf("📋 Listing Discord integrations for organization: %s", user.OrganizationID)
+	integrations, err := h.discordIntegrationsService.GetDiscordIntegrationsByOrganizationID(ctx, user.OrganizationID)
+	if err != nil {
+		log.Printf("❌ Failed to get Discord integrations: %v", err)
+		return nil, err
+	}
+
+	log.Printf("✅ Retrieved %d Discord integrations for organization: %s", len(integrations), user.OrganizationID)
+	return integrations, nil
+}
+
+// CreateDiscordIntegration creates a new Discord integration for an organization
+func (h *DashboardAPIHandler) CreateDiscordIntegration(
+	ctx context.Context,
+	discordAuthCode, redirectURL string,
+	user *models.User,
+) (*models.DiscordIntegration, error) {
+	log.Printf("➕ Creating Discord integration for organization: %s", user.OrganizationID)
+	integration, err := h.discordIntegrationsService.CreateDiscordIntegration(
+		ctx,
+		user.OrganizationID,
+		discordAuthCode,
+		redirectURL,
+	)
+	if err != nil {
+		log.Printf("❌ Failed to create Discord integration: %v", err)
+		return nil, err
+	}
+
+	log.Printf("✅ Discord integration created successfully: %s", integration.ID)
+	return integration, nil
+}
+
+// DeleteDiscordIntegration deletes a Discord integration by ID
+func (h *DashboardAPIHandler) DeleteDiscordIntegration(ctx context.Context, integrationID string) error {
+	log.Printf("🗑️ Deleting Discord integration: %s", integrationID)
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return fmt.Errorf("organization not found in context")
+	}
+	if err := h.discordIntegrationsService.DeleteDiscordIntegration(ctx, org.ID, integrationID); err != nil {
+		log.Printf("❌ Failed to delete Discord integration: %v", err)
+		return err
+	}
+
+	log.Printf("✅ Discord integration deleted successfully: %s", integrationID)
+	return nil
 }
 
 // GenerateCCAgentSecretKey generates a new secret key for an organization

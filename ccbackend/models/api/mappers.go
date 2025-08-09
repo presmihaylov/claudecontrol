@@ -46,3 +46,37 @@ func DomainSlackIntegrationsToAPISlackIntegrations(
 
 	return apiIntegrations
 }
+
+// DomainDiscordIntegrationToAPIDiscordIntegration converts a domain DiscordIntegration model to an API DiscordIntegrationModel
+func DomainDiscordIntegrationToAPIDiscordIntegration(
+	domainIntegration *models.DiscordIntegration,
+) *DiscordIntegrationModel {
+	if domainIntegration == nil {
+		return nil
+	}
+
+	return &DiscordIntegrationModel{
+		ID:               domainIntegration.ID,
+		DiscordGuildID:   domainIntegration.DiscordGuildID,
+		DiscordGuildName: domainIntegration.DiscordGuildName,
+		OrganizationID:   domainIntegration.OrganizationID,
+		CreatedAt:        domainIntegration.CreatedAt,
+		UpdatedAt:        domainIntegration.UpdatedAt,
+	}
+}
+
+// DomainDiscordIntegrationsToAPIDiscordIntegrations converts a slice of domain DiscordIntegration models to API DiscordIntegrationModel slice
+func DomainDiscordIntegrationsToAPIDiscordIntegrations(
+	domainIntegrations []*models.DiscordIntegration,
+) []*DiscordIntegrationModel {
+	if domainIntegrations == nil {
+		return nil
+	}
+
+	apiIntegrations := make([]*DiscordIntegrationModel, len(domainIntegrations))
+	for i, domainIntegration := range domainIntegrations {
+		apiIntegrations[i] = DomainDiscordIntegrationToAPIDiscordIntegration(domainIntegration)
+	}
+
+	return apiIntegrations
+}

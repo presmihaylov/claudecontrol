@@ -15,12 +15,39 @@ type OAuthV2Response struct {
 	AccessToken string
 }
 
+// DiscordOAuthResponse represents Discord OAuth response with needed fields
+type DiscordOAuthResponse struct {
+	AccessToken string
+	TokenType   string
+	ExpiresIn   int
+	Scope       string
+}
+
+// DiscordGuild represents Discord guild information
+type DiscordGuild struct {
+	ID   string
+	Name string
+}
+
 // SlackOAuthClient defines the interface for Slack OAuth operations
 type SlackOAuthClient interface {
 	GetOAuthV2Response(
 		httpClient *http.Client,
 		clientID, clientSecret, code, redirectURL string,
 	) (*OAuthV2Response, error)
+}
+
+// DiscordOAuthClient defines the interface for Discord OAuth operations
+type DiscordOAuthClient interface {
+	ExchangeCodeForToken(
+		httpClient *http.Client,
+		clientID, clientSecret, code, redirectURL string,
+	) (*DiscordOAuthResponse, error)
+
+	GetGuildInfo(
+		httpClient *http.Client,
+		accessToken string,
+	) ([]*DiscordGuild, error)
 }
 
 // SlackClient defines the interface for Slack API operations
