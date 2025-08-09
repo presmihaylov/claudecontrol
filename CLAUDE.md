@@ -530,3 +530,29 @@ This pattern ensures consistency, maintainability, and proper separation of conc
 - **User Extraction**: Users extracted from context using `appctx.GetUser()`
 - **Database Isolation**: All queries filtered by user's slack_integration_id
 - **Security**: No cross-user data access possible
+
+## Available Subagents
+
+Claude Code has access to specialized subagents for specific tasks. These should be used proactively when appropriate:
+
+### Researcher Subagent
+- **Purpose**: Research APIs, libraries, SDKs, and development tools using Context7 and web search
+- **When to Use**: Anytime you need to understand how a specific library, API, or tool works
+- **Capabilities**: 
+  - Context7 documentation lookup for up-to-date library information
+  - Web search for latest documentation and best practices
+  - Implementation guidance with concrete examples
+  - Feature availability analysis and alternative solutions
+- **Usage**: Use whenever you encounter unfamiliar libraries or need to research integration approaches
+
+### Code Reviewer Subagent  
+- **Purpose**: Comprehensive code review of all changes on current branch vs main branch
+- **When to Use**: After significant code changes or before creating pull requests
+- **Capabilities**: Reviews Go backend, CLI agent, and Next.js frontend code for bugs, performance, security, and adherence to project conventions
+- **Usage**: Proactive use after completing major development tasks
+
+### TestFixer Subagent
+- **Purpose**: Automatically fixes broken tests and suggests new test coverage
+- **When to Use**: After source code changes that may have broken existing tests
+- **Capabilities**: Fixes Go tests in ccbackend and ccagent, suggests new test coverage, runs test suites autonomously
+- **Usage**: Follow-up to code modifications to ensure test suite integrity
