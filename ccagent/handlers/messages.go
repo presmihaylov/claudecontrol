@@ -40,13 +40,11 @@ func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *so
 		if err := mh.handleStartConversation(msg, socketClient); err != nil {
 			// Extract SlackMessageID and JobID from payload for error reporting
 			var payload models.StartConversationPayload
-			slackMessageID := ""
-			jobID := ""
-			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
-				slackMessageID = payload.SlackMessageID
-				jobID = payload.JobID
+			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr != nil {
+				log.Error("Failed to unmarshal StartConversationPayload for error reporting: %v", unmarshalErr)
+				return
 			}
-			if sendErr := mh.sendErrorMessage(socketClient, err, slackMessageID, jobID); sendErr != nil {
+			if sendErr := mh.sendErrorMessage(socketClient, err, payload.SlackMessageID, payload.JobID); sendErr != nil {
 				log.Error("Failed to send error message: %v", sendErr)
 			}
 		}
@@ -54,13 +52,11 @@ func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *so
 		if err := mh.handleUserMessage(msg, socketClient); err != nil {
 			// Extract SlackMessageID and JobID from payload for error reporting
 			var payload models.UserMessagePayload
-			slackMessageID := ""
-			jobID := ""
-			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
-				slackMessageID = payload.SlackMessageID
-				jobID = payload.JobID
+			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr != nil {
+				log.Error("Failed to unmarshal UserMessagePayload for error reporting: %v", unmarshalErr)
+				return
 			}
-			if sendErr := mh.sendErrorMessage(socketClient, err, slackMessageID, jobID); sendErr != nil {
+			if sendErr := mh.sendErrorMessage(socketClient, err, payload.SlackMessageID, payload.JobID); sendErr != nil {
 				log.Error("Failed to send error message: %v", sendErr)
 			}
 		}
