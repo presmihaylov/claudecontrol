@@ -137,48 +137,29 @@ func (s *CoreUseCase) ProcessSystemMessage(
 ) error {
 	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
 
-	// Validate SlackMessageID is provided
-	if payload.SlackMessageID == "" {
-		log.Printf("⚠️ System message has no SlackMessageID, cannot determine target thread")
+	// Validate JobID is provided
+	if payload.JobID == "" {
+		log.Printf("⚠️ System message has no JobID, cannot determine target thread")
 		return nil
 	}
 
-	messageID := payload.SlackMessageID
+	jobID := payload.JobID
 
-	// Get processed slack message directly using organization_id (optimization)
-	maybeMessage, err := s.jobsService.GetProcessedSlackMessageByID(
-		ctx,
-		messageID,
-		organizationID,
-	)
+	// Get the job directly using the JobID from the payload
+	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
 	if err != nil {
-		return fmt.Errorf("failed to get processed slack message: %w", err)
-	}
-	if !maybeMessage.IsPresent() {
-		log.Printf(
-			"⚠️ Processed slack message %s not found - job may have been completed manually, skipping system message",
-			messageID,
-		)
-		return nil
-	}
-
-	processedMessage := maybeMessage.MustGet()
-	slackIntegrationID := processedMessage.SlackIntegrationID
-
-	// Get the job to find the thread timestamp (should be in the same slack integration)
-	maybeJob, err := s.jobsService.GetJobByID(ctx, processedMessage.JobID, organizationID)
-	if err != nil {
-		log.Printf("❌ Failed to get job %s: %v", processedMessage.JobID, err)
+		log.Printf("❌ Failed to get job %s: %v", jobID, err)
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 	if !maybeJob.IsPresent() {
 		log.Printf(
 			"⚠️ Job %s not found - already completed manually or by another agent, skipping system message",
-			processedMessage.JobID,
+			jobID,
 		)
 		return nil
 	}
 	job := maybeJob.MustGet()
+	slackIntegrationID := job.SlackIntegrationID
 
 	// Check if this is an error message from the agent
 	if IsAgentErrorMessage(payload.Message) {
@@ -209,11 +190,11 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	log.Printf(
 		"📤 Sending system message to Slack thread %s in channel %s",
 		job.SlackThreadTS,
-		processedMessage.SlackChannelID,
+		job.SlackChannelID,
 	)
 
 	// Send system message (gear emoji will be added automatically)
-	if err := s.sendSystemMessage(ctx, slackIntegrationID, processedMessage.SlackChannelID, job.SlackThreadTS, payload.Message); err != nil {
+	if err := s.sendSystemMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, payload.Message); err != nil {
 		return fmt.Errorf("❌ Failed to send system message to Slack: %v", err)
 	}
 
