@@ -190,13 +190,55 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 					continue
 				}
 
-				// Send work to assigned agent - queued messages are always for existing jobs, so always continue conversation
-				if err := s.sendUserMessageToAgent(ctx, clientID, updatedMessage); err != nil {
+				// Determine if this is the first message in the job (new conversation)
+				// Check for any completed or in-progress messages (excluding queued ones)
+				completedMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(
+					ctx,
+					job.ID,
+					models.ProcessedSlackMessageStatusCompleted,
+					slackIntegrationID,
+					integration.OrganizationID,
+				)
+				if err != nil {
 					processingErrors = append(
 						processingErrors,
-						fmt.Sprintf("failed to send user message %s: %v", message.ID, err),
+						fmt.Sprintf("failed to check for completed messages in job %s: %v", job.ID, err),
 					)
 					continue
+				}
+				inProgressMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(
+					ctx,
+					job.ID,
+					models.ProcessedSlackMessageStatusInProgress,
+					slackIntegrationID,
+					integration.OrganizationID,
+				)
+				if err != nil {
+					processingErrors = append(
+						processingErrors,
+						fmt.Sprintf("failed to check for in-progress messages in job %s: %v", job.ID, err),
+					)
+					continue
+				}
+				isNewConversation := len(completedMessages) == 0 && len(inProgressMessages) == 0
+
+				// Send work to assigned agent
+				if isNewConversation {
+					if err := s.sendStartConversationToAgent(ctx, clientID, updatedMessage); err != nil {
+						processingErrors = append(
+							processingErrors,
+							fmt.Sprintf("failed to send start conversation for message %s: %v", message.ID, err),
+						)
+						continue
+					}
+				} else {
+					if err := s.sendUserMessageToAgent(ctx, clientID, updatedMessage); err != nil {
+						processingErrors = append(
+							processingErrors,
+							fmt.Sprintf("failed to send user message %s: %v", message.ID, err),
+						)
+						continue
+					}
 				}
 
 				log.Printf("✅ Successfully assigned and sent queued message %s to agent", message.ID)
