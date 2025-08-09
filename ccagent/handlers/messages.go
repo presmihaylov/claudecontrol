@@ -12,6 +12,7 @@ import (
 	"ccagent/core/log"
 	"ccagent/models"
 	"ccagent/services"
+	"ccagent/services/vim"
 	"ccagent/usecases"
 	"ccagent/utils"
 )
@@ -20,17 +21,20 @@ type MessageHandler struct {
 	claudeService services.CLIAgent
 	gitUseCase    *usecases.GitUseCase
 	appState      *models.AppState
+	vimService    *vim.VimService
 }
 
 func NewMessageHandler(
 	claudeService services.CLIAgent,
 	gitUseCase *usecases.GitUseCase,
 	appState *models.AppState,
+	vimService *vim.VimService,
 ) *MessageHandler {
 	return &MessageHandler{
 		claudeService: claudeService,
 		gitUseCase:    gitUseCase,
 		appState:      appState,
+		vimService:    vimService,
 	}
 }
 
@@ -83,10 +87,26 @@ func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socket
 		return fmt.Errorf("failed to send processing slack message notification: %w", err)
 	}
 
-	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
+	// Process vim commands if vim mode is enabled
+	processedMessage := payload.Message
+	if mh.vimService != nil {
+		processed, shouldForward, err := mh.vimService.ProcessCommand(payload.Message)
+		if err != nil {
+			log.Info("❌ Failed to process vim command: %v", err)
+		}
+		if !shouldForward {
+			// Command was handled by vim, don't forward to Claude
+			return nil
+		}
+		if processed != "" {
+			processedMessage = processed
+		}
+	}
+
+	log.Info("🚀 Starting new conversation with message: %s", processedMessage)
 
 	// Prepare Git environment for new conversation - FAIL if this doesn't work
-	branchName, err := mh.gitUseCase.PrepareForNewConversation(payload.Message)
+	branchName, err := mh.gitUseCase.PrepareForNewConversation(processedMessage)
 	if err != nil {
 		log.Error("❌ Failed to prepare Git environment: %v", err)
 		return fmt.Errorf("failed to prepare Git environment: %w", err)
@@ -98,7 +118,7 @@ func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socket
 		systemPrompt = GetCursorSystemPrompt()
 	}
 
-	claudeResult, err := mh.claudeService.StartNewConversationWithSystemPrompt(payload.Message, systemPrompt)
+	claudeResult, err := mh.claudeService.StartNewConversationWithSystemPrompt(processedMessage, systemPrompt)
 	if err != nil {
 		log.Info("❌ Error starting Claude session: %v", err)
 		systemErr := mh.sendSystemMessage(
@@ -192,7 +212,23 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 		return fmt.Errorf("failed to send processing slack message notification: %w", err)
 	}
 
-	log.Info("💬 Continuing conversation with message: %s", payload.Message)
+	// Process vim commands if vim mode is enabled
+	processedMessage := payload.Message
+	if mh.vimService != nil {
+		processed, shouldForward, err := mh.vimService.ProcessCommand(payload.Message)
+		if err != nil {
+			log.Info("❌ Failed to process vim command: %v", err)
+		}
+		if !shouldForward {
+			// Command was handled by vim, don't forward to Claude
+			return nil
+		}
+		if processed != "" {
+			processedMessage = processed
+		}
+	}
+
+	log.Info("💬 Continuing conversation with message: %s", processedMessage)
 
 	// Get the current job data to retrieve the Claude session ID and branch
 	jobData, exists := mh.appState.GetJobData(payload.JobID)
@@ -217,7 +253,7 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 	}
 	log.Info("✅ Successfully switched to job branch: %s", jobData.BranchName)
 
-	claudeResult, err := mh.claudeService.ContinueConversation(sessionID, payload.Message)
+	claudeResult, err := mh.claudeService.ContinueConversation(sessionID, processedMessage)
 	if err != nil {
 		log.Info("❌ Error continuing Claude session: %v", err)
 		systemErr := mh.sendSystemMessage(

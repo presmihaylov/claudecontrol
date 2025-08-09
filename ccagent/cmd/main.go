@@ -27,6 +27,7 @@ import (
 	"ccagent/services"
 	claudeservice "ccagent/services/claude"
 	cursorservice "ccagent/services/cursor"
+	"ccagent/services/vim"
 	"ccagent/usecases"
 	"ccagent/utils"
 )
@@ -39,7 +40,7 @@ type CmdRunner struct {
 	reconnectChan  chan struct{}
 }
 
-func NewCmdRunner(agentType, permissionMode, cursorModel string) (*CmdRunner, error) {
+func NewCmdRunner(agentType, permissionMode, cursorModel string, vimModeEnabled bool) (*CmdRunner, error) {
 	log.Info("📋 Starting to initialize CmdRunner with agent: %s", agentType)
 
 	// Create log directory for agent service
@@ -65,7 +66,15 @@ func NewCmdRunner(agentType, permissionMode, cursorModel string) (*CmdRunner, er
 	gitClient := clients.NewGitClient()
 	appState := models.NewAppState()
 	gitUseCase := usecases.NewGitUseCase(gitClient, cliAgent, appState)
-	messageHandler := handlers.NewMessageHandler(cliAgent, gitUseCase, appState)
+	
+	// Initialize vim service if enabled
+	var vimService *vim.VimService
+	if vimModeEnabled {
+		vimService = vim.NewVimService(vim.NewSystemClipboard())
+		log.Info("📋 Vim mode enabled with yank support")
+	}
+	
+	messageHandler := handlers.NewMessageHandler(cliAgent, gitUseCase, appState, vimService)
 
 	agentID := core.NewID("ccaid")
 	log.Info("🆔 Using persistent agent ID: %s", agentID)
@@ -98,6 +107,7 @@ type Options struct {
 	Agent string `long:"agent" description:"CLI agent to use (claude or cursor)" choice:"claude" choice:"cursor" default:"claude"`
 	BypassPermissions bool `long:"claude-bypass-permissions" description:"Use bypassPermissions mode for Claude (only applies when --agent=claude) (WARNING: Only use in controlled sandbox environments)"`
 	CursorModel string `long:"cursor-model" description:"Model to use with Cursor agent (only applies when --agent=cursor)" choice:"gpt-5" choice:"sonnet-4" choice:"sonnet-4-thinking"`
+	VimMode bool `long:"vim-mode" description:"Enable vim mode for message preprocessing"`
 }
 
 func main() {
@@ -152,7 +162,7 @@ func main() {
 		)
 	}
 
-	cmdRunner, err := NewCmdRunner(opts.Agent, permissionMode, opts.CursorModel)
+	cmdRunner, err := NewCmdRunner(opts.Agent, permissionMode, opts.CursorModel, opts.VimMode)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing CmdRunner: %v\n", err)
 		os.Exit(1)
