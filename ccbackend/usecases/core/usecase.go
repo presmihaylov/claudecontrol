@@ -262,40 +262,10 @@ func (s *CoreUseCase) ProcessSystemMessage(
 			agentID = maybeAgent.MustGet().ID
 		}
 
-		// Send error message to Slack first (before cleanup)
+		// Clean up the failed job
 		errorMessage := fmt.Sprintf(":x: Agent encountered an error and cannot continue:\n%s", payload.Message)
-		if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, errorMessage); err != nil {
-			log.Printf("❌ Failed to send error message to Slack: %v", err)
-			// Continue with cleanup even if Slack message fails
-		}
-
-		// Update the top-level message emoji to :x: to indicate failure
-		if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "x", slackIntegrationID); err != nil {
-			log.Printf("⚠️ Failed to update slack message reaction to :x: for failed job %s: %v", job.ID, err)
-			// Continue with cleanup even if reaction update fails
-		}
-
-		// Clean up the failed job in a transaction
-		if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
-			// If agent exists, unassign it from the job
-			if agentID != "" {
-				if err := s.agentsService.UnassignAgentFromJob(ctx, agentID, job.ID, organizationID); err != nil {
-					log.Printf("❌ Failed to unassign agent %s from failed job %s: %v", agentID, job.ID, err)
-					return fmt.Errorf("failed to unassign agent from failed job: %w", err)
-				}
-				log.Printf("🔗 Unassigned agent %s from failed job %s", agentID, job.ID)
-			}
-
-			// Delete the failed job and its associated processed messages
-			if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
-				log.Printf("❌ Failed to delete failed job %s: %v", job.ID, err)
-				return fmt.Errorf("failed to delete failed job: %w", err)
-			}
-			log.Printf("🗑️ Deleted failed job %s due to agent error", job.ID)
-
-			return nil
-		}); err != nil {
-			return fmt.Errorf("failed to clean up failed job in transaction: %w", err)
+		if err := s.cleanupFailedJob(ctx, job, agentID, errorMessage, organizationID); err != nil {
+			return fmt.Errorf("failed to cleanup failed job: %w", err)
 		}
 
 		log.Printf("📋 Completed error handling - cleaned up failed job %s", job.ID)
@@ -837,43 +807,13 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 		}
 
 		job := maybeJob.MustGet()
-		jobSlackIntegrationID := job.SlackIntegrationID
 
-		// Send abandonment message to Slack thread
+		// Clean up the abandoned job
 		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
-		if err := s.sendSlackMessage(ctx, jobSlackIntegrationID, job.SlackChannelID, job.SlackThreadTS, abandonmentMessage); err != nil {
-			log.Printf("❌ Failed to send abandonment message to Slack thread %s: %v", job.SlackThreadTS, err)
-			return fmt.Errorf("failed to send abandonment message to Slack: %w", err)
+		if err := s.cleanupFailedJob(ctx, job, agent.ID, abandonmentMessage, client.OrganizationID); err != nil {
+			return fmt.Errorf("failed to cleanup abandoned job %s: %w", jobID, err)
 		}
-		log.Printf("📤 Sent abandonment message to Slack thread %s", job.SlackThreadTS)
-
-		// Update the top-level message emoji to :x:
-		if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "x", jobSlackIntegrationID); err != nil {
-			log.Printf("❌ Failed to update slack message reaction to :x: for abandoned job %s: %v", job.ID, err)
-			return fmt.Errorf("failed to update slack message reaction to :x: for abandoned job %s: %w", job.ID, err)
-		}
-		log.Printf("🔄 Updated top-level message emoji to :x: for abandoned job %s", job.ID)
-
-		// Perform database operations within transaction
-		if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
-			// Unassign agent from job (use organization ID since agents are organization-scoped)
-			if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, client.OrganizationID); err != nil {
-				log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
-				return fmt.Errorf("failed to unassign agent %s from job %s: %w", agent.ID, jobID, err)
-			}
-			log.Printf("🔗 Unassigned agent %s from job %s", agent.ID, jobID)
-
-			// Delete the job (use the job's slack integration)
-			if err := s.jobsService.DeleteJob(ctx, jobID, jobSlackIntegrationID, client.OrganizationID); err != nil {
-				log.Printf("❌ Failed to delete abandoned job %s: %v", jobID, err)
-				return fmt.Errorf("failed to delete abandoned job %s: %w", jobID, err)
-			}
-			log.Printf("🗑️ Deleted abandoned job %s", jobID)
-
-			return nil
-		}); err != nil {
-			return fmt.Errorf("failed to cleanup job %s in transaction: %w", jobID, err)
-		}
+		log.Printf("✅ Cleaned up abandoned job %s", jobID)
 	}
 
 	// Delete the agent record (use organization ID since agents are organization-scoped)
@@ -1463,4 +1403,53 @@ func (s *CoreUseCase) ValidateAPIKey(ctx context.Context, apiKey string) (string
 
 	log.Printf("📋 Completed successfully - validated API key for organization %s", organization.ID)
 	return organization.ID, nil
+}
+
+// cleanupFailedJob handles the cleanup of a failed job including Slack notifications and database cleanup
+// This is used both when an agent encounters an error and when an agent is disconnected
+func (s *CoreUseCase) cleanupFailedJob(
+	ctx context.Context,
+	job *models.Job,
+	agentID string,
+	failureMessage string,
+	organizationID string,
+) error {
+	slackIntegrationID := job.SlackIntegrationID
+
+	// Send failure message to Slack thread
+	if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, failureMessage); err != nil {
+		log.Printf("❌ Failed to send failure message to Slack thread %s: %v", job.SlackThreadTS, err)
+		// Continue with cleanup even if Slack message fails
+	}
+
+	// Update the top-level message emoji to :x:
+	if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "x", slackIntegrationID); err != nil {
+		log.Printf("❌ Failed to update slack message reaction to :x: for failed job %s: %v", job.ID, err)
+		// Continue with cleanup even if reaction update fails
+	}
+
+	// Perform database operations within transaction
+	if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+		// If agent ID is provided, unassign agent from job
+		if agentID != "" {
+			if err := s.agentsService.UnassignAgentFromJob(ctx, agentID, job.ID, organizationID); err != nil {
+				log.Printf("❌ Failed to unassign agent %s from job %s: %v", agentID, job.ID, err)
+				return fmt.Errorf("failed to unassign agent from job: %w", err)
+			}
+			log.Printf("🔗 Unassigned agent %s from job %s", agentID, job.ID)
+		}
+
+		// Delete the job (use the job's slack integration)
+		if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
+			log.Printf("❌ Failed to delete job %s: %v", job.ID, err)
+			return fmt.Errorf("failed to delete job: %w", err)
+		}
+		log.Printf("🗑️ Deleted job %s", job.ID)
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to cleanup job %s in transaction: %w", job.ID, err)
+	}
+
+	return nil
 }
