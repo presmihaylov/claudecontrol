@@ -592,3 +592,82 @@ func (s *JobsService) GetLatestProcessedMessageForJob(
 	log.Printf("📋 Completed successfully - retrieved latest processed message with ID: %s", message.ID)
 	return mo.Some(message), nil
 }
+
+// GetJobWithIntegrationByID gets a job by ID using organization_id directly (optimization)
+func (s *JobsService) GetJobWithIntegrationByID(
+	ctx context.Context,
+	jobID string,
+	organizationID string,
+) (mo.Option[*services.JobWithIntegration], error) {
+	log.Printf("📋 Starting to get job with integration by ID: %s for organization: %s", jobID, organizationID)
+	if !core.IsValidULID(jobID) {
+		return mo.None[*services.JobWithIntegration](), fmt.Errorf("job ID must be a valid ULID")
+	}
+	if !core.IsValidULID(organizationID) {
+		return mo.None[*services.JobWithIntegration](), fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	maybeJob, err := s.jobsRepo.GetJobWithIntegrationByID(ctx, jobID, organizationID)
+	if err != nil {
+		return mo.None[*services.JobWithIntegration](), fmt.Errorf("failed to get job with integration: %w", err)
+	}
+	if !maybeJob.IsPresent() {
+		log.Printf("📋 Completed successfully - job not found")
+		return mo.None[*services.JobWithIntegration](), nil
+	}
+	job := maybeJob.MustGet()
+
+	result := &services.JobWithIntegration{
+		Job:                job,
+		SlackIntegrationID: job.SlackIntegrationID,
+	}
+
+	log.Printf("📋 Completed successfully - retrieved job with integration ID: %s", job.ID)
+	return mo.Some(result), nil
+}
+
+// GetProcessedSlackMessageWithIntegrationByID gets a processed slack message by ID using organization_id directly (optimization)
+func (s *JobsService) GetProcessedSlackMessageWithIntegrationByID(
+	ctx context.Context,
+	messageID string,
+	organizationID string,
+) (mo.Option[*services.ProcessedSlackMessageWithIntegration], error) {
+	log.Printf(
+		"📋 Starting to get processed slack message with integration by ID: %s for organization: %s",
+		messageID,
+		organizationID,
+	)
+	if !core.IsValidULID(messageID) {
+		return mo.None[*services.ProcessedSlackMessageWithIntegration](), fmt.Errorf("message ID must be a valid ULID")
+	}
+	if !core.IsValidULID(organizationID) {
+		return mo.None[*services.ProcessedSlackMessageWithIntegration](), fmt.Errorf(
+			"organization_id must be a valid ULID",
+		)
+	}
+
+	maybeMessage, err := s.processedSlackMessagesRepo.GetProcessedSlackMessageWithIntegrationByID(
+		ctx,
+		messageID,
+		organizationID,
+	)
+	if err != nil {
+		return mo.None[*services.ProcessedSlackMessageWithIntegration](), fmt.Errorf(
+			"failed to get processed slack message with integration: %w",
+			err,
+		)
+	}
+	if !maybeMessage.IsPresent() {
+		log.Printf("📋 Completed successfully - processed slack message not found")
+		return mo.None[*services.ProcessedSlackMessageWithIntegration](), nil
+	}
+	message := maybeMessage.MustGet()
+
+	result := &services.ProcessedSlackMessageWithIntegration{
+		Message:            message,
+		SlackIntegrationID: message.SlackIntegrationID,
+	}
+
+	log.Printf("📋 Completed successfully - retrieved processed slack message with integration ID: %s", message.ID)
+	return mo.Some(result), nil
+}

@@ -277,3 +277,28 @@ func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(
 
 	return jobs, nil
 }
+
+// GetJobWithIntegrationByID gets a job by ID using organization_id directly (optimization)
+func (r *PostgresJobsRepository) GetJobWithIntegrationByID(
+	ctx context.Context,
+	jobID string,
+	organizationID string,
+) (mo.Option[*models.Job], error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+	columnsStr := strings.Join(jobsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.jobs 
+		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
+
+	job := &models.Job{}
+	err := db.GetContext(ctx, job, query, jobID, organizationID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return mo.None[*models.Job](), nil
+		}
+		return mo.None[*models.Job](), fmt.Errorf("failed to get job with integration: %w", err)
+	}
+
+	return mo.Some(job), nil
+}

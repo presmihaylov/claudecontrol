@@ -9,6 +9,18 @@ import (
 	"ccbackend/models"
 )
 
+// JobWithIntegration represents a job along with its slack integration ID
+type JobWithIntegration struct {
+	Job                *models.Job
+	SlackIntegrationID string
+}
+
+// ProcessedSlackMessageWithIntegration represents a processed slack message along with its slack integration ID
+type ProcessedSlackMessageWithIntegration struct {
+	Message            *models.ProcessedSlackMessage
+	SlackIntegrationID string
+}
+
 // UsersService defines the interface for user-related operations
 type UsersService interface {
 	GetOrCreateUser(ctx context.Context, authProvider, authProviderID string) (*models.User, error)
@@ -158,6 +170,18 @@ type JobsService interface {
 		slackIntegrationID string,
 		organizationID string,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
+
+	// Optimized methods that use organization_id directly instead of looping through slack integrations
+	GetJobWithIntegrationByID(
+		ctx context.Context,
+		jobID string,
+		organizationID string,
+	) (mo.Option[*JobWithIntegration], error)
+	GetProcessedSlackMessageWithIntegrationByID(
+		ctx context.Context,
+		messageID string,
+		organizationID string,
+	) (mo.Option[*ProcessedSlackMessageWithIntegration], error)
 }
 
 // TransactionManager handles database transactions via context
