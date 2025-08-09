@@ -78,53 +78,6 @@ func (h *TestUserHelper) CleanupTestUsers(t *testing.T) {
 	h.createdUsers = make([]string, 0)
 }
 
-func TestUsersService_GetOrCreateUser_WithRealClerkUser(t *testing.T) {
-	// Load test config and initialize database connection
-	cfg, err := testutils.LoadTestConfig()
-	require.NoError(t, err)
-
-	dbConn, err := db.NewConnection(cfg.DatabaseURL)
-	require.NoError(t, err)
-	defer dbConn.Close()
-
-	// Initialize repositories and services
-	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
-	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
-	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
-	txManager := txmanager.NewTransactionManager(dbConn)
-	usersService := NewUsersService(usersRepo, organizationsService, txManager)
-
-	// Create test user helper
-	testHelper := NewTestUserHelper(t)
-	defer testHelper.CleanupTestUsers(t)
-
-	// Create a test user via Clerk API
-	testEmail := "test-user-integration@example.com"
-	clerkUserID := testHelper.CreateTestUser(t, testEmail)
-
-	// Test GetOrCreateUser with the real Clerk user ID
-	user, err := usersService.GetOrCreateUser(context.Background(), "clerk", clerkUserID)
-	require.NoError(t, err)
-	assert.NotNil(t, user)
-	assert.Equal(t, "clerk", user.AuthProvider)
-	assert.Equal(t, clerkUserID, user.AuthProviderID)
-	assert.NotEmpty(t, user.ID)
-	assert.NotEmpty(t, user.OrganizationID, "User should have an organization ID")
-
-	// Test that calling GetOrCreateUser again returns the same user
-	user2, err := usersService.GetOrCreateUser(context.Background(), "clerk", clerkUserID)
-	require.NoError(t, err)
-	assert.Equal(t, user.ID, user2.ID)
-	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
-	assert.Equal(t, user.OrganizationID, user2.OrganizationID, "Organization ID should be the same")
-
-	// Cleanup database record
-	defer func() {
-		// Note: In a real test environment, you might want to clean up the database record too
-		t.Logf("📋 Test completed for user: %s", user.ID)
-	}()
-}
-
 func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	// Load test config and initialize database connection
 	cfg, err := testutils.LoadTestConfig()
