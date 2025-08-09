@@ -169,11 +169,11 @@ func TestJobsService(t *testing.T) {
 			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
-			_, err := service.GetJobByID(context.Background(), core.NewID("j"), testIntegration.OrganizationID)
+		t.Run("EmptyOrganizationID", func(t *testing.T) {
+			_, err := service.GetJobByID(context.Background(), core.NewID("j"), "")
 
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
+			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
