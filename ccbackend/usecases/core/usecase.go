@@ -271,6 +271,13 @@ func (s *CoreUseCase) ProcessSystemMessage(
 		processedMessage.SlackChannelID,
 	)
 
+	// Check if this is an error message from ccagent
+	isErrorMessage := s.isSystemMessageAnError(payload.Message)
+	if isErrorMessage {
+		log.Printf("❌ Detected error from ccagent in job %s: %s", job.ID, payload.Message)
+		return s.markJobAsFailed(ctx, job, slackIntegrationID, organizationID, clientID, payload.Message)
+	}
+
 	// Send system message (gear emoji will be added automatically)
 	if err := s.sendSystemMessage(ctx, slackIntegrationID, processedMessage.SlackChannelID, job.SlackThreadTS, payload.Message); err != nil {
 		return fmt.Errorf("❌ Failed to send system message to Slack: %v", err)
@@ -1459,4 +1466,68 @@ func (s *CoreUseCase) ValidateAPIKey(ctx context.Context, apiKey string) (string
 
 	log.Printf("📋 Completed successfully - validated API key for organization %s", organization.ID)
 	return organization.ID, nil
+}
+
+func (s *CoreUseCase) markJobAsFailed(
+	ctx context.Context,
+	job *models.Job,
+	slackIntegrationID, organizationID, clientID, errorMessage string,
+) error {
+	log.Printf("📋 Starting to mark job %s as failed due to ccagent error", job.ID)
+
+	// Get the agent by WebSocket connection ID (agents are organization-scoped)
+	maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, organizationID)
+	if err != nil {
+		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
+		return fmt.Errorf("failed to find agent for client: %w", err)
+	}
+	if !maybeAgent.IsPresent() {
+		log.Printf("❌ No agent found for client %s", clientID)
+		return fmt.Errorf("no agent found for client: %s", clientID)
+	}
+	agent := maybeAgent.MustGet()
+
+	// Validate that this agent is actually assigned to this job
+	if err := s.validateJobBelongsToAgent(ctx, agent.ID, job.ID, organizationID); err != nil {
+		return err
+	}
+
+	// Send error message to Slack thread with x emoji
+	failureMessage := ":x: " + errorMessage
+	if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, failureMessage); err != nil {
+		log.Printf("❌ Failed to send failure message to Slack thread %s: %v", job.SlackThreadTS, err)
+		return fmt.Errorf("failed to send failure message to Slack: %w", err)
+	}
+	log.Printf("📤 Sent failure message to Slack thread %s", job.SlackThreadTS)
+
+	// Update the top-level message emoji to :x:
+	if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "x", slackIntegrationID); err != nil {
+		log.Printf("❌ Failed to update slack message reaction to :x: for failed job %s: %v", job.ID, err)
+		return fmt.Errorf("failed to update slack message reaction to :x: for failed job %s: %w", job.ID, err)
+	}
+	log.Printf("🔄 Updated top-level message emoji to :x: for failed job %s", job.ID)
+
+	// Perform database operations within transaction
+	if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+		// Unassign agent from job
+		if err := s.agentsService.UnassignAgentFromJob(ctx, agent.ID, job.ID, organizationID); err != nil {
+			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, job.ID, err)
+			return fmt.Errorf("failed to unassign agent %s from job %s: %w", agent.ID, job.ID, err)
+		}
+		log.Printf("🔗 Unassigned agent %s from failed job %s", agent.ID, job.ID)
+
+		// Delete the job
+		if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
+			log.Printf("❌ Failed to delete failed job %s: %v", job.ID, err)
+			return fmt.Errorf("failed to delete failed job %s: %w", job.ID, err)
+		}
+		log.Printf("🗑️ Deleted failed job %s", job.ID)
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to cleanup failed job %s in transaction: %w", job.ID, err)
+	}
+
+	log.Printf("📋 Completed successfully - marked job %s as failed and cleaned up resources", job.ID)
+	return nil
 }

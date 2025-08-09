@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 
 	"ccbackend/clients"
 	"ccbackend/models"
@@ -116,4 +117,25 @@ func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) 
 		utils.AssertInvariant(false, "invalid status received")
 		return ""
 	}
+}
+
+func (s *CoreUseCase) isSystemMessageAnError(message string) bool {
+	errorIndicators := []string{
+		"ccagent encountered error:",
+		"error continuing Claude session:",
+		"failed to continue Claude session:",
+		"Prompt is too long",
+		"Error:",
+		"Failed:",
+		"Exception:",
+		"Timeout:",
+		"Connection error:",
+	}
+
+	for _, indicator := range errorIndicators {
+		if strings.Contains(message, indicator) {
+			return true
+		}
+	}
+	return false
 }
