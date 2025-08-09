@@ -269,12 +269,6 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(
 ) error {
 	log.Printf("📋 Starting to process processing slack message notification from client %s", clientID)
 
-	// Validate ProcessedMessageID is provided
-	if payload.ProcessedMessageID == "" {
-		log.Printf("⚠️ Processing slack message notification has no ProcessedMessageID")
-		return fmt.Errorf("ProcessedMessageID is required")
-	}
-
 	messageID := payload.ProcessedMessageID
 
 	// Get processed slack message directly using organization_id (optimization)
