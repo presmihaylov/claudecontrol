@@ -63,7 +63,11 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 			return fmt.Errorf("failed to unmarshal system message payload: %w", err)
 		}
 
-		log.Printf("⚙️ Received system message from client %s: %s", client.ID, payload.Message)
+		if payload.JobID != "" {
+			log.Printf("⚙️ Received system message from client %s for job %s: %s", client.ID, payload.JobID, payload.Message)
+		} else {
+			log.Printf("⚙️ Received system message from client %s (no job ID): %s", client.ID, payload.Message)
+		}
 		if err := h.coreUseCase.ProcessSystemMessage(context.Background(), client.ID, payload, client.OrganizationID); err != nil {
 			log.Printf("❌ Failed to process system message from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process system message: %w", err)

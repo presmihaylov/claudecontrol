@@ -210,7 +210,11 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	payload models.SystemMessagePayload,
 	organizationID string,
 ) error {
-	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
+	if payload.JobID != "" {
+		log.Printf("📋 Starting to process system message from client %s for job %s: %s", clientID, payload.JobID, payload.Message)
+	} else {
+		log.Printf("📋 Starting to process system message from client %s (no job ID): %s", clientID, payload.Message)
+	}
 
 	// Validate SlackMessageID is provided
 	if payload.SlackMessageID == "" {

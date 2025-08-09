@@ -38,25 +38,29 @@ func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *so
 	switch msg.Type {
 	case models.MessageTypeStartConversation:
 		if err := mh.handleStartConversation(msg, socketClient); err != nil {
-			// Extract SlackMessageID from payload for error reporting
+			// Extract SlackMessageID and JobID from payload for error reporting
 			var payload models.StartConversationPayload
 			slackMessageID := ""
+			jobID := ""
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
+				jobID = payload.JobID
 			}
-			if sendErr := mh.sendErrorMessage(socketClient, err, slackMessageID); sendErr != nil {
+			if sendErr := mh.sendErrorMessage(socketClient, err, slackMessageID, jobID); sendErr != nil {
 				log.Error("Failed to send error message: %v", sendErr)
 			}
 		}
 	case models.MessageTypeUserMessage:
 		if err := mh.handleUserMessage(msg, socketClient); err != nil {
-			// Extract SlackMessageID from payload for error reporting
+			// Extract SlackMessageID and JobID from payload for error reporting
 			var payload models.UserMessagePayload
 			slackMessageID := ""
+			jobID := ""
 			if unmarshalErr := unmarshalPayload(msg.Payload, &payload); unmarshalErr == nil {
 				slackMessageID = payload.SlackMessageID
+				jobID = payload.JobID
 			}
-			if sendErr := mh.sendErrorMessage(socketClient, err, slackMessageID); sendErr != nil {
+			if sendErr := mh.sendErrorMessage(socketClient, err, slackMessageID, jobID); sendErr != nil {
 				log.Error("Failed to send error message: %v", sendErr)
 			}
 		}
@@ -105,6 +109,7 @@ func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socket
 			socketClient,
 			fmt.Sprintf("ccagent encountered error: %v", err),
 			payload.SlackMessageID,
+			payload.JobID,
 		)
 		if systemErr != nil {
 			log.Error("❌ Failed to send system message for Claude error: %v", systemErr)
@@ -162,7 +167,7 @@ func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socket
 	time.Sleep(200 * time.Millisecond)
 
 	// Send system message after assistant message for git activity
-	if err := mh.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID); err != nil {
+	if err := mh.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID, payload.JobID); err != nil {
 		log.Info("❌ Failed to send git activity system message: %v", err)
 		return fmt.Errorf("failed to send git activity system message: %w", err)
 	}
@@ -223,6 +228,7 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 			socketClient,
 			fmt.Sprintf("ccagent encountered error: %v", err),
 			payload.SlackMessageID,
+			payload.JobID,
 		)
 		if systemErr != nil {
 			log.Error("❌ Failed to send system message for Claude error: %v", systemErr)
@@ -280,7 +286,7 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 	time.Sleep(200 * time.Millisecond)
 
 	// Send system message after assistant message for git activity
-	if err := mh.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID); err != nil {
+	if err := mh.sendGitActivitySystemMessage(socketClient, commitResult, payload.SlackMessageID, payload.JobID); err != nil {
 		log.Info("❌ Failed to send git activity system message: %v", err)
 		return fmt.Errorf("failed to send git activity system message: %w", err)
 	}
@@ -426,10 +432,11 @@ func (mh *MessageHandler) sendJobCompleteMessage(socketClient *socket.Socket, jo
 	return nil
 }
 
-func (mh *MessageHandler) sendSystemMessage(socketClient *socket.Socket, message, slackMessageID string) error {
+func (mh *MessageHandler) sendSystemMessage(socketClient *socket.Socket, message, slackMessageID, jobID string) error {
 	payload := models.SystemMessagePayload{
 		Message:        message,
 		SlackMessageID: slackMessageID,
+		JobID:          jobID,
 	}
 
 	sysMsg := models.BaseMessage{
@@ -449,9 +456,9 @@ func (mh *MessageHandler) sendSystemMessage(socketClient *socket.Socket, message
 
 // sendErrorMessage sends an error as a system message. The Claude service handles
 // all error processing internally, so we just need to format and send the error.
-func (mh *MessageHandler) sendErrorMessage(socketClient *socket.Socket, err error, slackMessageID string) error {
+func (mh *MessageHandler) sendErrorMessage(socketClient *socket.Socket, err error, slackMessageID, jobID string) error {
 	messageToSend := fmt.Sprintf("ccagent encountered error: %v", err)
-	return mh.sendSystemMessage(socketClient, messageToSend, slackMessageID)
+	return mh.sendSystemMessage(socketClient, messageToSend, slackMessageID, jobID)
 }
 
 func (mh *MessageHandler) sendProcessingSlackMessage(socketClient *socket.Socket, slackMessageID string) error {
@@ -490,6 +497,7 @@ func (mh *MessageHandler) sendGitActivitySystemMessage(
 	socketClient *socket.Socket,
 	commitResult *usecases.AutoCommitResult,
 	slackMessageID string,
+	jobID string,
 ) error {
 	if commitResult == nil {
 		return nil
@@ -498,7 +506,7 @@ func (mh *MessageHandler) sendGitActivitySystemMessage(
 	if commitResult.JustCreatedPR && commitResult.PullRequestLink != "" {
 		// New PR created
 		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
-		if err := mh.sendSystemMessage(socketClient, message, slackMessageID); err != nil {
+		if err := mh.sendSystemMessage(socketClient, message, slackMessageID, jobID); err != nil {
 			log.Info("❌ Failed to send PR creation system message: %v", err)
 			return fmt.Errorf("failed to send PR creation system message: %w", err)
 		}
@@ -519,7 +527,7 @@ func (mh *MessageHandler) sendGitActivitySystemMessage(
 			}
 		}
 
-		if err := mh.sendSystemMessage(socketClient, message, slackMessageID); err != nil {
+		if err := mh.sendSystemMessage(socketClient, message, slackMessageID, jobID); err != nil {
 			log.Info("❌ Failed to send commit system message: %v", err)
 			return fmt.Errorf("failed to send commit system message: %w", err)
 		}
