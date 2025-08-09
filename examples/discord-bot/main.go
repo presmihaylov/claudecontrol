@@ -9,9 +9,17 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Printf("Warning: Error loading .env file: %v", err)
+		log.Printf("Continuing with system environment variables...")
+	}
+
 	// Get bot token from environment variable
 	token := os.Getenv("DISCORD_BOT_TOKEN")
 	if token == "" {
