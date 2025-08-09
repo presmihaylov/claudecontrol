@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"ccbackend/clients"
+	"ccbackend/clients/socketio"
 	"ccbackend/core"
 	"ccbackend/models"
 	"ccbackend/services"
@@ -271,20 +272,6 @@ func (m *MockTransactionManager) WithTransaction(ctx context.Context, fn func(ct
 	return fn(ctx)
 }
 
-type MockSocketIOClient struct {
-	mock.Mock
-}
-
-func (m *MockSocketIOClient) SendMessage(connectionID string, message any) error {
-	args := m.Called(connectionID, message)
-	return args.Error(0)
-}
-
-func (m *MockSocketIOClient) BroadcastMessage(message any) error {
-	args := m.Called(message)
-	return args.Error(0)
-}
-
 type MockAgentsUseCase struct {
 	mock.Mock
 }
@@ -306,12 +293,12 @@ func (m *MockAgentsUseCase) GetActiveAgentForOrganization(ctx context.Context, o
 }
 
 // Helper function to create a SlackUseCase with mocked dependencies
-func setupSlackUseCase(t *testing.T) (*SlackUseCase, *MockAgentsService, *MockJobsService, *MockSlackIntegrationsService, *MockTransactionManager, *MockSocketIOClient, *MockAgentsUseCase) {
+func setupSlackUseCase(t *testing.T) (*SlackUseCase, *MockAgentsService, *MockJobsService, *MockSlackIntegrationsService, *MockTransactionManager, *socketio.MockSocketIOClient, *MockAgentsUseCase) {
 	mockAgentsService := new(MockAgentsService)
 	mockJobsService := new(MockJobsService)
 	mockSlackIntegrationsService := new(MockSlackIntegrationsService)
 	mockTxManager := new(MockTransactionManager)
-	mockSocketClient := new(MockSocketIOClient)
+	mockSocketClient := new(socketio.MockSocketIOClient)
 	mockAgentsUseCase := new(MockAgentsUseCase)
 
 	useCase := &SlackUseCase{
@@ -368,7 +355,7 @@ func createTestProcessedMessage(jobID string, status models.ProcessedSlackMessag
 }
 
 // Helper function to assert that a Slack message was sent
-func assertSlackMessageSent(t *testing.T, mockSocketClient *MockSocketIOClient, connectionID string, messageType string) {
+func assertSlackMessageSent(t *testing.T, mockSocketClient *socketio.MockSocketIOClient, connectionID string, messageType string) {
 	require.NotNil(t, mockSocketClient)
 	
 	// Find the call with the expected message type
