@@ -73,14 +73,14 @@ func (s *CoreUseCase) ProcessReactionAdded(
 	)
 }
 
-// ProcessProcessingSlackMessage proxies to SlackUseCase
-func (s *CoreUseCase) ProcessProcessingSlackMessage(
+// ProcessProcessingMessage proxies to SlackUseCase
+func (s *CoreUseCase) ProcessProcessingMessage(
 	ctx context.Context,
 	clientID string,
-	payload models.ProcessingSlackMessagePayload,
+	payload models.ProcessingMessagePayload,
 	organizationID string,
 ) error {
-	return s.slackUseCase.ProcessProcessingSlackMessage(ctx, clientID, payload, organizationID)
+	return s.slackUseCase.ProcessProcessingMessage(ctx, clientID, payload, organizationID)
 }
 
 // ProcessAssistantMessage proxies to SlackUseCase
