@@ -10,10 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"ccbackend/clients/slack"
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
 	agents "ccbackend/services/agents"
+	slackintegrations "ccbackend/services/slack_integrations"
 	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
 )
@@ -49,7 +51,17 @@ func setupTestJobsService(t *testing.T) (*JobsService, *models.SlackIntegration,
 
 	// Initialize real transaction manager for tests
 	txManager := txmanager.NewTransactionManager(dbConn)
-	service := NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
+
+	// Create a mock slack client for testing
+	mockSlackClient := slack.NewMockSlackClient()
+	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(
+		slackIntegrationsRepo,
+		mockSlackClient,
+		"test-client-id",
+		"test-client-secret",
+	)
+
+	service := NewJobsService(jobsRepo, processedSlackMessagesRepo, slackIntegrationsService, txManager)
 
 	cleanup := func() {
 		// Clean up test data
@@ -344,7 +356,17 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	// Create both services using the same integration
 	txManager := txmanager.NewTransactionManager(dbConn)
-	jobsService := NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
+
+	// Create a mock slack client for testing
+	mockSlackClient := slack.NewMockSlackClient()
+	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(
+		slackIntegrationsRepo,
+		mockSlackClient,
+		"test-client-id",
+		"test-client-secret",
+	)
+
+	jobsService := NewJobsService(jobsRepo, processedSlackMessagesRepo, slackIntegrationsService, txManager)
 	agentsService := agents.NewAgentsService(agentsRepo)
 
 	// Use the shared integration ID
@@ -698,6 +720,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C2222222222",
 				"1234567890.111111",
 				"Hello world",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusInProgress,
 			)
@@ -729,6 +752,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C3333333333",
 				"1234567890.222222",
 				"Hello queued",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -760,6 +784,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C4444444444",
 				"1234567890.333333",
 				"Hello completed",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusCompleted,
 			)
@@ -811,6 +836,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C5555555555",
 				"1234567890.444444",
 				"Hello completed",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusCompleted,
 			)
@@ -823,6 +849,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C5555555555",
 				"1234567890.555555",
 				"Hello in progress",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusInProgress,
 			)
@@ -875,6 +902,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				slackChannelID,
 				slackTS,
 				textContent,
+				organizationID,
 				slackIntegrationID,
 				status,
 			)
@@ -897,6 +925,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C1234567890",
 				"1234567890.123456",
 				"Hello world",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -922,6 +951,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"",
 				"1234567890.123456",
 				"Hello world",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -947,6 +977,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C1234567890",
 				"",
 				"Hello world",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -972,6 +1003,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C1234567890",
 				"1234567890.123456",
 				"",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -1000,6 +1032,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C1234567890",
 				"1234567890.123456",
 				"Hello world",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -1122,6 +1155,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			"C9999999999",
 			"1234567890.111111",
 			"Hello world 1",
+			organizationID,
 			slackIntegrationID,
 			models.ProcessedSlackMessageStatusQueued,
 		)
@@ -1133,6 +1167,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			"C9999999999",
 			"1234567890.222222",
 			"Hello world 2",
+			organizationID,
 			slackIntegrationID,
 			models.ProcessedSlackMessageStatusInProgress,
 		)
@@ -1144,6 +1179,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			"C9999999999",
 			"1234567890.333333",
 			"Hello world 3",
+			organizationID,
 			slackIntegrationID,
 			models.ProcessedSlackMessageStatusCompleted,
 		)
@@ -1211,6 +1247,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			"C9999999999",
 			"1234567890.444444",
 			"Hello world transition",
+			organizationID,
 			slackIntegrationID,
 			models.ProcessedSlackMessageStatusQueued,
 		)
@@ -1285,6 +1322,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C1111111111",
 				"1234567890.111111",
 				"Queued message 1",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -1297,6 +1335,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C2222222222",
 				"1234567890.222222",
 				"In progress message",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusInProgress,
 			)
@@ -1309,6 +1348,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C3333333333",
 				"1234567890.333333",
 				"Completed message",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusCompleted,
 			)
@@ -1354,6 +1394,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C4444444444",
 				"1234567890.444444",
 				"Queued message job1",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -1365,6 +1406,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C5555555555",
 				"1234567890.555555",
 				"Queued message job2",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -1412,6 +1454,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C6666666666",
 				"1234567890.666666",
 				"Queued message",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusQueued,
 			)
@@ -1423,6 +1466,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C6666666666",
 				"1234567890.777777",
 				"In progress message",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusInProgress,
 			)
@@ -1434,6 +1478,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C6666666666",
 				"1234567890.888888",
 				"Completed message",
+				organizationID,
 				slackIntegrationID,
 				models.ProcessedSlackMessageStatusCompleted,
 			)
@@ -1487,6 +1532,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			}()
 
 			slackIntegrationID2 := testIntegration2.ID
+			organizationID2 := testUser2.OrganizationID
 
 			// Create a job with queued message in the second integration
 			job, err := jobsService.CreateJob(
@@ -1505,6 +1551,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"C7777777777",
 				"1234567890.999999",
 				"Queued message other integration",
+				organizationID2,
 				slackIntegrationID2,
 				models.ProcessedSlackMessageStatusQueued,
 			)

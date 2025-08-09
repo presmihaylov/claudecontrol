@@ -69,7 +69,6 @@ func run() error {
 	txManager := txmanager.NewTransactionManager(dbConn)
 
 	agentsService := agents.NewAgentsService(agentsRepo)
-	jobsService := jobs.NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
 	usersService := users.NewUsersService(usersRepo, organizationsService, txManager)
 	slackOAuthClient := slackclient.NewSlackOAuthClient()
@@ -79,6 +78,7 @@ func run() error {
 		cfg.SlackClientID,
 		cfg.SlackClientSecret,
 	)
+	jobsService := jobs.NewJobsService(jobsRepo, processedSlackMessagesRepo, slackIntegrationsService, txManager)
 
 	coreUseCase := core.NewCoreUseCase(
 		nil,

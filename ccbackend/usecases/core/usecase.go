@@ -420,6 +420,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 		event.Channel,
 		event.TS,
 		event.Text,
+		organizationID,
 		slackIntegrationID,
 		messageStatus,
 	)

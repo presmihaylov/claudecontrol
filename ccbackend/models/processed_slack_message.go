@@ -15,6 +15,7 @@ const (
 type ProcessedSlackMessage struct {
 	ID                 string                      `json:"id"                   db:"id"`
 	JobID              string                      `json:"job_id"               db:"job_id"`
+	OrganizationID     string                      `json:"organization_id"      db:"organization_id"`
 	SlackChannelID     string                      `json:"slack_channel_id"     db:"slack_channel_id"`
 	SlackTS            string                      `json:"slack_ts"             db:"slack_ts"`
 	TextContent        string                      `json:"text_content"         db:"text_content"`

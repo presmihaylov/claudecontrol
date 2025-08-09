@@ -9,11 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"ccbackend/clients/slack"
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
 	"ccbackend/services"
 	jobs "ccbackend/services/jobs"
+	slackintegrations "ccbackend/services/slack_integrations"
 	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
 )
@@ -40,7 +42,17 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 
 	txManager := txmanager.NewTransactionManager(dbConn)
 	agentsService := NewAgentsService(agentsRepo)
-	jobsService := jobs.NewJobsService(jobsRepo, messagesRepo, txManager)
+
+	// Create a mock slack client for testing
+	mockSlackClient := slack.NewMockSlackClient()
+	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(
+		slackIntegrationsRepo,
+		mockSlackClient,
+		"test-client-id",
+		"test-client-secret",
+	)
+
+	jobsService := jobs.NewJobsService(jobsRepo, messagesRepo, slackIntegrationsService, txManager)
 
 	cleanup := func() {
 		// Clean up test data
