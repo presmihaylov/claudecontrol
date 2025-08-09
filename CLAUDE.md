@@ -29,7 +29,7 @@ make build-prod             # Build production binaries for multiple platforms
 make lint                   # Run golangci-lint checks
 make lint-fix               # Run golangci-lint and fix issues automatically
 go run cmd/*.go             # Run agent directly (default: Claude)
-go run cmd/*.go --bypassPermissions  # Run with bypass permissions (sandbox only)
+go run cmd/*.go --claude-bypass-permissions  # Run with bypass permissions (sandbox only)
 go run cmd/*.go --agent claude       # Run with Claude agent (default)
 go run cmd/*.go --agent cursor       # Run with Cursor agent
 ```
