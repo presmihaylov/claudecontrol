@@ -94,9 +94,9 @@ func createCLIAgent(agentType, permissionMode, cursorModel, logDir string) (serv
 }
 
 type Options struct {
-	BypassPermissions bool `long:"claude-bypass-permissions" description:"Use bypassPermissions mode for Claude (only applies when --agent=claude) (WARNING: Only use in controlled sandbox environments)"`
 	//nolint
 	Agent string `long:"agent" description:"CLI agent to use (claude or cursor)" choice:"claude" choice:"cursor" default:"claude"`
+	BypassPermissions bool `long:"claude-bypass-permissions" description:"Use bypassPermissions mode for Claude (only applies when --agent=claude) (WARNING: Only use in controlled sandbox environments)"`
 	CursorModel string `long:"cursor-model" description:"Model to use with Cursor agent (only applies when --agent=cursor)" choice:"gpt-5" choice:"sonnet-4" choice:"sonnet-4-thinking"`
 }
 
