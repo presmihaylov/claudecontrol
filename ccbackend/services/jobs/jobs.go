@@ -105,21 +105,17 @@ func (s *JobsService) CreateJob(
 func (s *JobsService) GetJobByID(
 	ctx context.Context,
 	id string,
-	slackIntegrationID string,
 	organizationID string,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by ID: %s", id)
 	if !core.IsValidULID(id) {
 		return mo.None[*models.Job](), fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(slackIntegrationID) {
-		return mo.None[*models.Job](), fmt.Errorf("slack_integration_id must be a valid ULID")
-	}
 	if !core.IsValidULID(organizationID) {
 		return mo.None[*models.Job](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	maybeJob, err := s.jobsRepo.GetJobByID(ctx, id, slackIntegrationID, organizationID)
+	maybeJob, err := s.jobsRepo.GetJobByID(ctx, id, organizationID)
 	if err != nil {
 		return mo.None[*models.Job](), fmt.Errorf("failed to get job: %w", err)
 	}
@@ -432,15 +428,11 @@ func (s *JobsService) GetProcessedMessagesByJobIDAndStatus(
 func (s *JobsService) GetProcessedSlackMessageByID(
 	ctx context.Context,
 	id string,
-	slackIntegrationID string,
 	organizationID string,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	log.Printf("📋 Starting to get processed slack message by ID: %s", id)
 	if !core.IsValidULID(id) {
 		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf("processed slack message ID must be a valid ULID")
-	}
-	if !core.IsValidULID(slackIntegrationID) {
-		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 	if !core.IsValidULID(organizationID) {
 		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf("organization_id must be a valid ULID")
@@ -449,7 +441,6 @@ func (s *JobsService) GetProcessedSlackMessageByID(
 	maybeMsg, err := s.processedSlackMessagesRepo.GetProcessedSlackMessageByID(
 		ctx,
 		id,
-		slackIntegrationID,
 		organizationID,
 	)
 	if err != nil {
