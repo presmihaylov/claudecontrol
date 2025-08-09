@@ -11,9 +11,10 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DiscordIcon, SlackIcon } from "@/icons";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { Copy, Download, Key, RefreshCw, Slack, Trash2 } from "lucide-react";
+import { Copy, Download, Key, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface SlackIntegration {
@@ -21,6 +22,15 @@ interface SlackIntegration {
 	slack_team_id: string;
 	slack_team_name: string;
 	user_id: string;
+	created_at: string;
+	updated_at: string;
+}
+
+interface DiscordIntegration {
+	id: string;
+	discord_guild_id: string;
+	discord_guild_name: string;
+	organization_id: string;
 	created_at: string;
 	updated_at: string;
 }
@@ -40,6 +50,7 @@ interface CCAgentSecretKeyResponse {
 export default function Home() {
 	const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
 	const [integrations, setIntegrations] = useState<SlackIntegration[]>([]);
+	const [discordIntegrations, setDiscordIntegrations] = useState<DiscordIntegration[]>([]);
 	const [organization, setOrganization] = useState<Organization | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [backendAuthenticated, setBackendAuthenticated] = useState(false);
@@ -47,6 +58,9 @@ export default function Home() {
 	const [deleting, setDeleting] = useState<string | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [integrationToDelete, setIntegrationToDelete] = useState<SlackIntegration | null>(null);
+	const [discordDeleteDialogOpen, setDiscordDeleteDialogOpen] = useState(false);
+	const [discordIntegrationToDelete, setDiscordIntegrationToDelete] =
+		useState<DiscordIntegration | null>(null);
 	const [generatingKey, setGeneratingKey] = useState(false);
 	const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
 	const [secretKeyDialogOpen, setSecretKeyDialogOpen] = useState(false);
@@ -83,8 +97,9 @@ export default function Home() {
 				setBackendAuthenticated(true);
 				setAuthError(null);
 
-				// Then fetch their Slack integrations and organization
+				// Then fetch their integrations and organization
 				await fetchIntegrations();
+				await fetchDiscordIntegrations();
 				await fetchOrganization();
 			} catch (error) {
 				console.error("Error authenticating user:", error);
@@ -123,6 +138,31 @@ export default function Home() {
 		}
 	};
 
+	const fetchDiscordIntegrations = async () => {
+		try {
+			const token = await getToken();
+			if (!token) return;
+
+			const response = await fetch(`${env.CCBACKEND_BASE_URL}/discord/integrations`, {
+				method: "GET",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+			});
+
+			if (!response.ok) {
+				console.error("Failed to fetch Discord integrations:", response.statusText);
+				return;
+			}
+
+			const integrationsData = await response.json();
+			setDiscordIntegrations(integrationsData || []);
+		} catch (error) {
+			console.error("Error fetching Discord integrations:", error);
+		}
+	};
+
 	const fetchOrganization = async () => {
 		try {
 			const token = await getToken();
@@ -156,6 +196,12 @@ export default function Home() {
 		const slackAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${env.SLACK_CLIENT_ID}&scope=${encodeURIComponent(scope)}&user_scope=${encodeURIComponent(userScope)}&redirect_uri=${encodeURIComponent(env.SLACK_REDIRECT_URI)}`;
 
 		window.location.href = slackAuthUrl;
+	};
+
+	const handleAddToDiscord = () => {
+		const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1403408262338187264&permissions=34359740480&integration_type=0&scope=bot&redirect_uri=${encodeURIComponent(env.DISCORD_REDIRECT_URI)}&response_type=code`;
+
+		window.location.href = discordAuthUrl;
 	};
 
 	const handleDeleteIntegration = (integration: SlackIntegration) => {
@@ -200,6 +246,51 @@ export default function Home() {
 		} finally {
 			setDeleting(null);
 			setIntegrationToDelete(null);
+		}
+	};
+
+	const handleDeleteDiscordIntegration = (integration: DiscordIntegration) => {
+		setDiscordIntegrationToDelete(integration);
+		setDiscordDeleteDialogOpen(true);
+	};
+
+	const confirmDeleteDiscordIntegration = async () => {
+		if (!discordIntegrationToDelete) return;
+
+		setDeleting(discordIntegrationToDelete.id);
+		setDiscordDeleteDialogOpen(false);
+
+		try {
+			const token = await getToken();
+			if (!token) return;
+
+			const response = await fetch(
+				`${env.CCBACKEND_BASE_URL}/discord/integrations/${discordIntegrationToDelete.id}`,
+				{
+					method: "DELETE",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+				},
+			);
+
+			if (!response.ok) {
+				console.error("Failed to delete Discord integration:", response.statusText);
+				alert("Failed to delete Discord integration. Please try again.");
+				return;
+			}
+
+			// Remove the integration from local state
+			setDiscordIntegrations((prev) =>
+				prev.filter((integration) => integration.id !== discordIntegrationToDelete.id),
+			);
+		} catch (error) {
+			console.error("Error deleting Discord integration:", error);
+			alert("Failed to delete Discord integration. Please try again.");
+		} finally {
+			setDeleting(null);
+			setDiscordIntegrationToDelete(null);
 		}
 	};
 
@@ -337,7 +428,7 @@ export default function Home() {
 				</div>
 			</header>
 			<div className="container mx-auto px-4 py-8 max-w-4xl">
-				{integrations.length === 0 ? (
+				{integrations.length === 0 && discordIntegrations.length === 0 ? (
 					// Show ccagent Secret Key section first, then "Add to Slack"
 					<div className="space-y-6">
 						{/* ccagent Secret Key Section - always show */}
@@ -430,16 +521,26 @@ export default function Home() {
 
 						<div className="flex flex-col items-center justify-center">
 							<p className="text-lg text-muted-foreground mb-6 text-center">
-								Connect your Slack workspace to get started with Claude Control
+								Connect your workspace to get started with Claude Control
 							</p>
-							<Button
-								size="lg"
-								className="flex items-center gap-2 cursor-pointer"
-								onClick={handleAddToSlack}
-							>
-								<Slack className="h-5 w-5" />
-								Add to Slack
-							</Button>
+							<div className="flex gap-4">
+								<Button
+									size="lg"
+									className="flex items-center gap-2 cursor-pointer"
+									onClick={handleAddToSlack}
+								>
+									<SlackIcon className="h-5 w-5" color="white" />
+									Add to Slack
+								</Button>
+								<Button
+									size="lg"
+									className="flex items-center gap-2 cursor-pointer"
+									onClick={handleAddToDiscord}
+								>
+									<DiscordIcon className="h-5 w-5" color="white" />
+									Add to Discord
+								</Button>
+							</div>
 						</div>
 					</div>
 				) : (
@@ -540,11 +641,12 @@ export default function Home() {
 									<Card key={integration.id} className="p-4">
 										<div className="flex items-center justify-between w-full">
 											<div className="flex items-center gap-3">
-												<Slack className="h-6 w-6 text-black" />
+												<SlackIcon className="h-6 w-6" color="black" />
 												<div>
 													<h3 className="font-semibold">{integration.slack_team_name}</h3>
 													<p className="text-sm text-muted-foreground">
-														Connected on {new Date(integration.created_at).toLocaleDateString()}
+														Slack • Connected on{" "}
+														{new Date(integration.created_at).toLocaleDateString()}
 													</p>
 												</div>
 											</div>
@@ -563,24 +665,58 @@ export default function Home() {
 										</div>
 									</Card>
 								))}
+								{discordIntegrations.map((integration) => (
+									<Card key={integration.id} className="p-4">
+										<div className="flex items-center justify-between w-full">
+											<div className="flex items-center gap-3">
+												<DiscordIcon className="h-6 w-6" color="black" />
+												<div>
+													<h3 className="font-semibold">{integration.discord_guild_name}</h3>
+													<p className="text-sm text-muted-foreground">
+														Discord • Connected on{" "}
+														{new Date(integration.created_at).toLocaleDateString()}
+													</p>
+												</div>
+											</div>
+											<div className="flex items-center gap-2">
+												<Button
+													variant="secondary"
+													size="sm"
+													onClick={() => handleDeleteDiscordIntegration(integration)}
+													disabled={deleting === integration.id}
+													className="flex items-center gap-2"
+												>
+													<Trash2 className="h-4 w-4" />
+													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
+												</Button>
+											</div>
+										</div>
+									</Card>
+								))}
 							</div>
 						</div>
 
-						{/* Connect another workspace button */}
+						{/* Connect another workspace buttons */}
 						<div className="flex justify-center pt-4">
-							<Button size="lg" className="flex items-center gap-2" onClick={handleAddToSlack}>
-								<Slack className="h-5 w-5" />
-								Connect another workspace
-							</Button>
+							<div className="flex gap-4">
+								<Button size="lg" className="flex items-center gap-2" onClick={handleAddToSlack}>
+									<SlackIcon className="h-5 w-5" color="white" />
+									Connect Slack
+								</Button>
+								<Button size="lg" className="flex items-center gap-2" onClick={handleAddToDiscord}>
+									<DiscordIcon className="h-5 w-5" color="white" />
+									Connect Discord
+								</Button>
+							</div>
 						</div>
 					</div>
 				)}
 
-				{/* Delete confirmation dialog */}
+				{/* Delete confirmation dialogs */}
 				<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>Disconnect Workspace</DialogTitle>
+							<DialogTitle>Disconnect Slack Workspace</DialogTitle>
 							<DialogDescription>
 								Are you sure you want to disconnect "{integrationToDelete?.slack_team_name}" from
 								Claude Control? This action cannot be undone.
@@ -596,6 +732,31 @@ export default function Home() {
 								disabled={deleting === integrationToDelete?.id}
 							>
 								{deleting === integrationToDelete?.id ? "Disconnecting..." : "Disconnect"}
+							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+
+				<Dialog open={discordDeleteDialogOpen} onOpenChange={setDiscordDeleteDialogOpen}>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Disconnect Discord Server</DialogTitle>
+							<DialogDescription>
+								Are you sure you want to disconnect "
+								{discordIntegrationToDelete?.discord_guild_name}" from Claude Control? This action
+								cannot be undone.
+							</DialogDescription>
+						</DialogHeader>
+						<DialogFooter>
+							<Button variant="outline" onClick={() => setDiscordDeleteDialogOpen(false)}>
+								Cancel
+							</Button>
+							<Button
+								variant="secondary"
+								onClick={confirmDeleteDiscordIntegration}
+								disabled={deleting === discordIntegrationToDelete?.id}
+							>
+								{deleting === discordIntegrationToDelete?.id ? "Disconnecting..." : "Disconnect"}
 							</Button>
 						</DialogFooter>
 					</DialogContent>

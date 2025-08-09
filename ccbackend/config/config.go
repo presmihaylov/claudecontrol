@@ -11,6 +11,9 @@ type AppConfig struct {
 	SlackSigningSecret   string
 	SlackClientID        string
 	SlackClientSecret    string
+	DiscordClientID      string
+	DiscordClientSecret  string
+	DiscordBotToken      string
 	Port                 string
 	DatabaseURL          string
 	DatabaseSchema       string
@@ -37,6 +40,21 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	slackClientSecret, err := getEnvRequired("SLACK_CLIENT_SECRET")
+	if err != nil {
+		return nil, err
+	}
+
+	discordClientID, err := getEnvRequired("DISCORD_CLIENT_ID")
+	if err != nil {
+		return nil, err
+	}
+
+	discordClientSecret, err := getEnvRequired("DISCORD_CLIENT_SECRET")
+	if err != nil {
+		return nil, err
+	}
+
+	discordBotToken, err := getEnvRequired("DISCORD_BOT_TOKEN")
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +88,9 @@ func LoadConfig() (*AppConfig, error) {
 		SlackSigningSecret:   slackSigningSecret,
 		SlackClientID:        slackClientID,
 		SlackClientSecret:    slackClientSecret,
+		DiscordClientID:      discordClientID,
+		DiscordClientSecret:  discordClientSecret,
+		DiscordBotToken:      discordBotToken,
 		Port:                 port,
 		DatabaseURL:          databaseURL,
 		DatabaseSchema:       databaseSchema,

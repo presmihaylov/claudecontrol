@@ -2,6 +2,7 @@
 const requiredEnvVars = {
 	NEXT_PUBLIC_SLACK_CLIENT_ID: process.env.NEXT_PUBLIC_SLACK_CLIENT_ID,
 	NEXT_PUBLIC_SLACK_REDIRECT_URI: process.env.NEXT_PUBLIC_SLACK_REDIRECT_URI,
+	NEXT_PUBLIC_DISCORD_REDIRECT_URI: process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI,
 	NEXT_PUBLIC_CCBACKEND_BASE_URL: process.env.NEXT_PUBLIC_CCBACKEND_BASE_URL,
 } as const;
 
@@ -16,5 +17,6 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
 export const env = {
 	SLACK_CLIENT_ID: requiredEnvVars.NEXT_PUBLIC_SLACK_CLIENT_ID as string,
 	SLACK_REDIRECT_URI: requiredEnvVars.NEXT_PUBLIC_SLACK_REDIRECT_URI as string,
+	DISCORD_REDIRECT_URI: requiredEnvVars.NEXT_PUBLIC_DISCORD_REDIRECT_URI as string,
 	CCBACKEND_BASE_URL: requiredEnvVars.NEXT_PUBLIC_CCBACKEND_BASE_URL as string,
 } as const;

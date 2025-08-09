@@ -10,6 +10,7 @@ require (
 require github.com/lib/pq v1.10.9
 
 require (
+	github.com/bwmarrin/discordgo v0.29.0
 	github.com/clerk/clerk-sdk-go/v2 v2.3.1
 	github.com/gorilla/mux v1.8.1
 	github.com/jmoiron/sqlx v1.4.0
