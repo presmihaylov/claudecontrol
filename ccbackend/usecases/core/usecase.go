@@ -104,11 +104,11 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	jobID := payload.JobID
 
 	// Get job directly using organization_id (optimization)
-	maybeJobWithIntegration, err := s.jobsService.GetJobWithIntegrationByID(ctx, jobID, organizationID)
+	maybeJob, err := s.jobsService.GetJobWithIntegrationByID(ctx, jobID, organizationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
-	if !maybeJobWithIntegration.IsPresent() {
+	if !maybeJob.IsPresent() {
 		log.Printf(
 			"⚠️ Job %s not found - already completed manually or by another agent, skipping assistant message",
 			jobID,
@@ -116,9 +116,8 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 		return nil
 	}
 
-	jobWithIntegration := maybeJobWithIntegration.MustGet()
-	job := jobWithIntegration.Job
-	slackIntegrationID := jobWithIntegration.SlackIntegrationID
+	job := maybeJob.MustGet()
+	slackIntegrationID := job.SlackIntegrationID
 
 	// Validate that this agent is actually assigned to this job
 	if err := s.validateJobBelongsToAgent(ctx, agent.ID, jobID, organizationID); err != nil {
@@ -213,7 +212,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	messageID := payload.SlackMessageID
 
 	// Get processed slack message directly using organization_id (optimization)
-	maybeMessageWithIntegration, err := s.jobsService.GetProcessedSlackMessageWithIntegrationByID(
+	maybeMessage, err := s.jobsService.GetProcessedSlackMessageWithIntegrationByID(
 		ctx,
 		messageID,
 		organizationID,
@@ -221,7 +220,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	if err != nil {
 		return fmt.Errorf("failed to get processed slack message: %w", err)
 	}
-	if !maybeMessageWithIntegration.IsPresent() {
+	if !maybeMessage.IsPresent() {
 		log.Printf(
 			"⚠️ Processed slack message %s not found - job may have been completed manually, skipping system message",
 			messageID,
@@ -229,9 +228,8 @@ func (s *CoreUseCase) ProcessSystemMessage(
 		return nil
 	}
 
-	messageWithIntegration := maybeMessageWithIntegration.MustGet()
-	processedMessage := messageWithIntegration.Message
-	slackIntegrationID := messageWithIntegration.SlackIntegrationID
+	processedMessage := maybeMessage.MustGet()
+	slackIntegrationID := processedMessage.SlackIntegrationID
 
 	// Get the job to find the thread timestamp (should be in the same slack integration)
 	maybeJob, err := s.jobsService.GetJobByID(ctx, processedMessage.JobID, slackIntegrationID, organizationID)
@@ -286,7 +284,7 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(
 	messageID := payload.SlackMessageID
 
 	// Get processed slack message directly using organization_id (optimization)
-	maybeMessageWithIntegration, err := s.jobsService.GetProcessedSlackMessageWithIntegrationByID(
+	maybeMessage, err := s.jobsService.GetProcessedSlackMessageWithIntegrationByID(
 		ctx,
 		messageID,
 		organizationID,
@@ -294,7 +292,7 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(
 	if err != nil {
 		return fmt.Errorf("failed to get processed slack message: %w", err)
 	}
-	if !maybeMessageWithIntegration.IsPresent() {
+	if !maybeMessage.IsPresent() {
 		log.Printf(
 			"⚠️ Processed slack message %s not found - job may have been completed manually, skipping processing message",
 			messageID,
@@ -302,9 +300,8 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(
 		return nil
 	}
 
-	messageWithIntegration := maybeMessageWithIntegration.MustGet()
-	processedMessage := messageWithIntegration.Message
-	slackIntegrationID := messageWithIntegration.SlackIntegrationID
+	processedMessage := maybeMessage.MustGet()
+	slackIntegrationID := processedMessage.SlackIntegrationID
 
 	// Update the slack message reaction to show agent is now processing (eyes emoji)
 	if err := s.updateSlackMessageReaction(ctx, processedMessage.SlackChannelID, processedMessage.SlackTS, "eyes", slackIntegrationID); err != nil {
@@ -773,19 +770,18 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	// Process each job: update Slack, unassign agent, delete job
 	for _, jobID := range jobs {
 		// Get job directly using organization_id (optimization)
-		maybeJobWithIntegration, err := s.jobsService.GetJobWithIntegrationByID(ctx, jobID, client.OrganizationID)
+		maybeJob, err := s.jobsService.GetJobWithIntegrationByID(ctx, jobID, client.OrganizationID)
 		if err != nil {
 			log.Printf("❌ Failed to get job %s for cleanup: %v", jobID, err)
 			return fmt.Errorf("failed to get job for cleanup: %w", err)
 		}
-		if !maybeJobWithIntegration.IsPresent() {
+		if !maybeJob.IsPresent() {
 			log.Printf("❌ Job %s not found for cleanup", jobID)
 			continue // Skip this job, it may have been deleted already
 		}
 
-		jobWithIntegration := maybeJobWithIntegration.MustGet()
-		job := jobWithIntegration.Job
-		jobSlackIntegrationID := jobWithIntegration.SlackIntegrationID
+		job := maybeJob.MustGet()
+		jobSlackIntegrationID := job.SlackIntegrationID
 
 		// Send abandonment message to Slack thread
 		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
@@ -931,18 +927,17 @@ func (s *CoreUseCase) ProcessJobComplete(
 	jobID := payload.JobID
 
 	// Get job directly using organization_id (optimization)
-	maybeJobWithIntegration, err := s.jobsService.GetJobWithIntegrationByID(ctx, jobID, organizationID)
+	maybeJob, err := s.jobsService.GetJobWithIntegrationByID(ctx, jobID, organizationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
-	if !maybeJobWithIntegration.IsPresent() {
+	if !maybeJob.IsPresent() {
 		log.Printf("⚠️ Job %s not found - already completed manually or by another agent, skipping", jobID)
 		return nil
 	}
 
-	jobWithIntegration := maybeJobWithIntegration.MustGet()
-	job := jobWithIntegration.Job
-	slackIntegrationID := jobWithIntegration.SlackIntegrationID
+	job := maybeJob.MustGet()
+	slackIntegrationID := job.SlackIntegrationID
 
 	// Get the agent by WebSocket connection ID to verify ownership (agents are organization-scoped)
 	maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, organizationID)

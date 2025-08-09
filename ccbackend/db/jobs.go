@@ -15,7 +15,6 @@ import (
 
 	dbtx "ccbackend/db/tx"
 	"ccbackend/models"
-	"ccbackend/services"
 )
 
 type PostgresJobsRepository struct {
@@ -284,7 +283,7 @@ func (r *PostgresJobsRepository) GetJobWithIntegrationByID(
 	ctx context.Context,
 	jobID string,
 	organizationID string,
-) (mo.Option[*services.JobWithIntegration], error) {
+) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(jobsColumns, ", ")
 	query := fmt.Sprintf(`
@@ -296,15 +295,10 @@ func (r *PostgresJobsRepository) GetJobWithIntegrationByID(
 	err := db.GetContext(ctx, job, query, jobID, organizationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return mo.None[*services.JobWithIntegration](), nil
+			return mo.None[*models.Job](), nil
 		}
-		return mo.None[*services.JobWithIntegration](), fmt.Errorf("failed to get job with integration: %w", err)
+		return mo.None[*models.Job](), fmt.Errorf("failed to get job with integration: %w", err)
 	}
 
-	result := &services.JobWithIntegration{
-		Job:                job,
-		SlackIntegrationID: job.SlackIntegrationID,
-	}
-
-	return mo.Some(result), nil
+	return mo.Some(job), nil
 }
