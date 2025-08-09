@@ -64,7 +64,11 @@ type MockAgentsService struct {
 	mock.Mock
 }
 
-func (m *MockAgentsService) UpsertActiveAgent(ctx context.Context, wsConnectionID, organizationID string, agentID string) (*models.ActiveAgent, error) {
+func (m *MockAgentsService) UpsertActiveAgent(
+	ctx context.Context,
+	wsConnectionID, organizationID string,
+	agentID string,
+) (*models.ActiveAgent, error) {
 	args := m.Called(ctx, wsConnectionID, organizationID, agentID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -72,7 +76,10 @@ func (m *MockAgentsService) UpsertActiveAgent(ctx context.Context, wsConnectionI
 	return args.Get(0).(*models.ActiveAgent), args.Error(1)
 }
 
-func (m *MockAgentsService) DeleteActiveAgentByWsConnectionID(ctx context.Context, wsConnectionID, organizationID string) error {
+func (m *MockAgentsService) DeleteActiveAgentByWsConnectionID(
+	ctx context.Context,
+	wsConnectionID, organizationID string,
+) error {
 	args := m.Called(ctx, wsConnectionID, organizationID)
 	return args.Error(0)
 }
@@ -82,7 +89,11 @@ func (m *MockAgentsService) DeleteActiveAgent(ctx context.Context, id string, or
 	return args.Error(0)
 }
 
-func (m *MockAgentsService) GetAgentByID(ctx context.Context, id string, organizationID string) (mo.Option[*models.ActiveAgent], error) {
+func (m *MockAgentsService) GetAgentByID(
+	ctx context.Context,
+	id string,
+	organizationID string,
+) (mo.Option[*models.ActiveAgent], error) {
 	args := m.Called(ctx, id, organizationID)
 	if args.Get(0) == nil {
 		return mo.None[*models.ActiveAgent](), args.Error(1)
@@ -90,7 +101,10 @@ func (m *MockAgentsService) GetAgentByID(ctx context.Context, id string, organiz
 	return args.Get(0).(mo.Option[*models.ActiveAgent]), args.Error(1)
 }
 
-func (m *MockAgentsService) GetAvailableAgents(ctx context.Context, organizationID string) ([]*models.ActiveAgent, error) {
+func (m *MockAgentsService) GetAvailableAgents(
+	ctx context.Context,
+	organizationID string,
+) ([]*models.ActiveAgent, error) {
 	args := m.Called(ctx, organizationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -98,7 +112,11 @@ func (m *MockAgentsService) GetAvailableAgents(ctx context.Context, organization
 	return args.Get(0).([]*models.ActiveAgent), args.Error(1)
 }
 
-func (m *MockAgentsService) GetConnectedActiveAgents(ctx context.Context, organizationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
+func (m *MockAgentsService) GetConnectedActiveAgents(
+	ctx context.Context,
+	organizationID string,
+	connectedClientIDs []string,
+) ([]*models.ActiveAgent, error) {
 	args := m.Called(ctx, organizationID, connectedClientIDs)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -106,7 +124,11 @@ func (m *MockAgentsService) GetConnectedActiveAgents(ctx context.Context, organi
 	return args.Get(0).([]*models.ActiveAgent), args.Error(1)
 }
 
-func (m *MockAgentsService) GetConnectedAvailableAgents(ctx context.Context, organizationID string, connectedClientIDs []string) ([]*models.ActiveAgent, error) {
+func (m *MockAgentsService) GetConnectedAvailableAgents(
+	ctx context.Context,
+	organizationID string,
+	connectedClientIDs []string,
+) ([]*models.ActiveAgent, error) {
 	args := m.Called(ctx, organizationID, connectedClientIDs)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -124,12 +146,20 @@ func (m *MockAgentsService) AssignAgentToJob(ctx context.Context, agentID, jobID
 	return args.Error(0)
 }
 
-func (m *MockAgentsService) UnassignAgentFromJob(ctx context.Context, agentID, jobID string, organizationID string) error {
+func (m *MockAgentsService) UnassignAgentFromJob(
+	ctx context.Context,
+	agentID, jobID string,
+	organizationID string,
+) error {
 	args := m.Called(ctx, agentID, jobID, organizationID)
 	return args.Error(0)
 }
 
-func (m *MockAgentsService) GetAgentByJobID(ctx context.Context, jobID string, organizationID string) (mo.Option[*models.ActiveAgent], error) {
+func (m *MockAgentsService) GetAgentByJobID(
+	ctx context.Context,
+	jobID string,
+	organizationID string,
+) (mo.Option[*models.ActiveAgent], error) {
 	args := m.Called(ctx, jobID, organizationID)
 	if args.Get(0) == nil {
 		return mo.None[*models.ActiveAgent](), args.Error(1)
@@ -137,7 +167,10 @@ func (m *MockAgentsService) GetAgentByJobID(ctx context.Context, jobID string, o
 	return args.Get(0).(mo.Option[*models.ActiveAgent]), args.Error(1)
 }
 
-func (m *MockAgentsService) GetAgentByWSConnectionID(ctx context.Context, wsConnectionID, organizationID string) (mo.Option[*models.ActiveAgent], error) {
+func (m *MockAgentsService) GetAgentByWSConnectionID(
+	ctx context.Context,
+	wsConnectionID, organizationID string,
+) (mo.Option[*models.ActiveAgent], error) {
 	args := m.Called(ctx, wsConnectionID, organizationID)
 	if args.Get(0) == nil {
 		return mo.None[*models.ActiveAgent](), args.Error(1)
@@ -145,7 +178,11 @@ func (m *MockAgentsService) GetAgentByWSConnectionID(ctx context.Context, wsConn
 	return args.Get(0).(mo.Option[*models.ActiveAgent]), args.Error(1)
 }
 
-func (m *MockAgentsService) GetActiveAgentJobAssignments(ctx context.Context, agentID string, organizationID string) ([]string, error) {
+func (m *MockAgentsService) GetActiveAgentJobAssignments(
+	ctx context.Context,
+	agentID string,
+	organizationID string,
+) ([]string, error) {
 	args := m.Called(ctx, agentID, organizationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -158,7 +195,11 @@ func (m *MockAgentsService) UpdateAgentLastActiveAt(ctx context.Context, wsConne
 	return args.Error(0)
 }
 
-func (m *MockAgentsService) GetInactiveAgents(ctx context.Context, organizationID string, inactiveThresholdMinutes int) ([]*models.ActiveAgent, error) {
+func (m *MockAgentsService) GetInactiveAgents(
+	ctx context.Context,
+	organizationID string,
+	inactiveThresholdMinutes int,
+) ([]*models.ActiveAgent, error) {
 	args := m.Called(ctx, organizationID, inactiveThresholdMinutes)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -214,7 +255,7 @@ func TestGetOrAssignAgentForJob(t *testing.T) {
 		mockAgents := &MockAgentsService{}
 
 		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
-		
+
 		// Setup expectations
 		mockAgents.On("GetAgentByJobID", ctx, job.ID, organizationID).
 			Return(mo.Some(agent), nil)
@@ -236,7 +277,7 @@ func TestGetOrAssignAgentForJob(t *testing.T) {
 		mockAgents := &MockAgentsService{}
 
 		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
-		
+
 		// Setup expectations
 		mockAgents.On("GetAgentByJobID", ctx, job.ID, organizationID).
 			Return(mo.Some(agent), nil)
@@ -259,11 +300,11 @@ func TestGetOrAssignAgentForJob(t *testing.T) {
 		mockAgents := &MockAgentsService{}
 
 		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
-		
+
 		// Setup expectations for no existing assignment
 		mockAgents.On("GetAgentByJobID", ctx, job.ID, organizationID).
 			Return(mo.None[*models.ActiveAgent](), nil).Once()
-		
+
 		// Setup expectations for assignment flow
 		mockAgents.On("GetAgentByJobID", ctx, job.ID, organizationID).
 			Return(mo.None[*models.ActiveAgent](), nil).Once()
@@ -314,7 +355,7 @@ func TestAssignJobToAvailableAgent(t *testing.T) {
 		mockAgents := &MockAgentsService{}
 
 		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
-		
+
 		// Setup expectations
 		mockAgents.On("GetAgentByJobID", ctx, job.ID, organizationID).
 			Return(mo.None[*models.ActiveAgent](), nil)
@@ -386,7 +427,7 @@ func TestTryAssignJobToAgent(t *testing.T) {
 		mockAgents := &MockAgentsService{}
 
 		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
-		
+
 		// Setup expectations
 		mockAgents.On("GetAgentByJobID", ctx, jobID, organizationID).
 			Return(mo.Some(agent), nil)
@@ -409,7 +450,7 @@ func TestTryAssignJobToAgent(t *testing.T) {
 		mockAgents := &MockAgentsService{}
 
 		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
-		
+
 		// Setup expectations
 		mockAgents.On("GetAgentByJobID", ctx, jobID, organizationID).
 			Return(mo.Some(agent), nil)
@@ -433,7 +474,7 @@ func TestTryAssignJobToAgent(t *testing.T) {
 
 		agent1 := createTestAgent("agent_1", "ws_conn_1", organizationID)
 		agent2 := createTestAgent("agent_2", "ws_conn_2", organizationID)
-		
+
 		// Setup expectations
 		mockAgents.On("GetAgentByJobID", ctx, jobID, organizationID).
 			Return(mo.None[*models.ActiveAgent](), nil)
@@ -525,7 +566,7 @@ func TestTryAssignJobToAgent(t *testing.T) {
 
 		agent := createTestAgent("agent_1", "ws_conn_1", organizationID)
 		loadErr := errors.New("failed to get job assignments")
-		
+
 		// Setup expectations
 		mockAgents.On("GetAgentByJobID", ctx, jobID, organizationID).
 			Return(mo.None[*models.ActiveAgent](), nil)
@@ -552,7 +593,7 @@ func TestTryAssignJobToAgent(t *testing.T) {
 
 		agent := createTestAgent("agent_1", "ws_conn_1", organizationID)
 		assignErr := errors.New("assignment failed")
-		
+
 		// Setup expectations
 		mockAgents.On("GetAgentByJobID", ctx, jobID, organizationID).
 			Return(mo.None[*models.ActiveAgent](), nil)
@@ -670,7 +711,7 @@ func TestSortAgentsByLoad(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Len(t, sorted, 3)
-		
+
 		// Should be sorted: agent2 (1 job), agent3 (2 jobs), agent1 (3 jobs)
 		assert.Equal(t, agent2.ID, sorted[0].agent.ID)
 		assert.Equal(t, 1, sorted[0].load)
@@ -678,7 +719,7 @@ func TestSortAgentsByLoad(t *testing.T) {
 		assert.Equal(t, 2, sorted[1].load)
 		assert.Equal(t, agent1.ID, sorted[2].agent.ID)
 		assert.Equal(t, 3, sorted[2].load)
-		
+
 		mockAgents.AssertExpectations(t)
 	})
 
