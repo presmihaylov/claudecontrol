@@ -190,37 +190,13 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 					continue
 				}
 
-				// Determine if this is the first message in the job (new conversation)
-				allMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(
-					ctx,
-					job.ID,
-					models.ProcessedSlackMessageStatusCompleted,
-					slackIntegrationID,
-					integration.OrganizationID,
-				)
-				if err != nil {
+				// Send work to assigned agent - queued messages are always for existing jobs, so always continue conversation
+				if err := s.sendUserMessageToAgent(ctx, clientID, updatedMessage); err != nil {
 					processingErrors = append(
 						processingErrors,
-						fmt.Sprintf("failed to check for existing messages in job %s: %v", job.ID, err),
+						fmt.Sprintf("failed to send user message %s: %v", message.ID, err),
 					)
 					continue
-				}
-				isNewConversation := len(allMessages) == 0
-
-				// Send work to assigned agent
-				if isNewConversation {
-					if err := s.sendStartConversationToAgent(ctx, clientID, updatedMessage); err != nil {
-						processingErrors = append(
-							processingErrors,
-							fmt.Sprintf("failed to send start conversation for message %s: %v", message.ID, err),
-						)
-						continue
-					}
-				} else {
-					if err := s.sendUserMessageToAgent(ctx, clientID, updatedMessage); err != nil {
-						processingErrors = append(processingErrors, fmt.Sprintf("failed to send user message %s: %v", message.ID, err))
-						continue
-					}
 				}
 
 				log.Printf("✅ Successfully assigned and sent queued message %s to agent", message.ID)
