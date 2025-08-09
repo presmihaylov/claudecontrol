@@ -61,12 +61,15 @@ func TestTransactionManager_WithTransaction_Success(t *testing.T) {
 	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create a job within the transaction
 		job := &models.Job{
-			ID:                 core.NewID("j"),
-			SlackThreadTS:      "test-thread-ts",
-			SlackChannelID:     "test-channel",
-			SlackUserID:        "test-user",
-			SlackIntegrationID: testIntegration.ID,
-			OrganizationID:     testIntegration.OrganizationID,
+			ID:             core.NewID("j"),
+			JobType:        models.JobTypeSlack,
+			OrganizationID: testIntegration.OrganizationID,
+			SlackPayload: &models.SlackJobPayload{
+				ThreadTS:      "test-thread-ts",
+				ChannelID:     "test-channel",
+				UserID:        "test-user",
+				IntegrationID: testIntegration.ID,
+			},
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job); err != nil {
@@ -85,7 +88,9 @@ func TestTransactionManager_WithTransaction_Success(t *testing.T) {
 	maybeJob, err := jobsRepo.GetJobByID(ctx, createdJob.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
 	assert.Equal(t, createdJob.ID, maybeJob.OrEmpty().ID)
-	assert.Equal(t, createdJob.SlackThreadTS, maybeJob.OrEmpty().SlackThreadTS)
+	if createdJob.SlackPayload != nil && maybeJob.OrEmpty().SlackPayload != nil {
+		assert.Equal(t, createdJob.SlackPayload.ThreadTS, maybeJob.OrEmpty().SlackPayload.ThreadTS)
+	}
 
 	// Clean up
 	jobsRepo.DeleteJob(ctx, createdJob.ID, testIntegration.ID, testIntegration.OrganizationID)
@@ -103,12 +108,15 @@ func TestTransactionManager_WithTransaction_Rollback_OnError(t *testing.T) {
 	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create a job within the transaction
 		job := &models.Job{
-			ID:                 core.NewID("j"),
-			SlackThreadTS:      "test-thread-ts-rollback",
-			SlackChannelID:     "test-channel",
-			SlackUserID:        "test-user",
-			SlackIntegrationID: testIntegration.ID,
-			OrganizationID:     testIntegration.OrganizationID,
+			ID:             core.NewID("j"),
+			JobType:        models.JobTypeSlack,
+			OrganizationID: testIntegration.OrganizationID,
+			SlackPayload: &models.SlackJobPayload{
+				ThreadTS:      "test-thread-ts-rollback",
+				ChannelID:     "test-channel",
+				UserID:        "test-user",
+				IntegrationID: testIntegration.ID,
+			},
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job); err != nil {
@@ -151,12 +159,15 @@ func TestTransactionManager_WithTransaction_Rollback_OnPanic(t *testing.T) {
 		txManager.WithTransaction(ctx, func(ctx context.Context) error {
 			// Create a job within the transaction
 			job := &models.Job{
-				ID:                 core.NewID("j"),
-				SlackThreadTS:      "test-thread-ts-panic",
-				SlackChannelID:     "test-channel",
-				SlackUserID:        "test-user",
-				SlackIntegrationID: testIntegration.ID,
-				OrganizationID:     testIntegration.OrganizationID,
+				ID:             core.NewID("j"),
+				JobType:        models.JobTypeSlack,
+				OrganizationID: testIntegration.OrganizationID,
+				SlackPayload: &models.SlackJobPayload{
+					ThreadTS:      "test-thread-ts-panic",
+					ChannelID:     "test-channel",
+					UserID:        "test-user",
+					IntegrationID: testIntegration.ID,
+				},
 			}
 
 			if err := jobsRepo.CreateJob(ctx, job); err != nil {
@@ -188,12 +199,15 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create first job
 		job1 := &models.Job{
-			ID:                 core.NewID("j"),
-			SlackThreadTS:      "test-thread-1",
-			SlackChannelID:     "test-channel-1",
-			SlackUserID:        "test-user",
-			SlackIntegrationID: testIntegration.ID,
-			OrganizationID:     testIntegration.OrganizationID,
+			ID:             core.NewID("j"),
+			JobType:        models.JobTypeSlack,
+			OrganizationID: testIntegration.OrganizationID,
+			SlackPayload: &models.SlackJobPayload{
+				ThreadTS:      "test-thread-1",
+				ChannelID:     "test-channel-1",
+				UserID:        "test-user",
+				IntegrationID: testIntegration.ID,
+			},
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job1); err != nil {
@@ -203,12 +217,15 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 
 		// Create second job
 		job2 := &models.Job{
-			ID:                 core.NewID("j"),
-			SlackThreadTS:      "test-thread-2",
-			SlackChannelID:     "test-channel-2",
-			SlackUserID:        "test-user",
-			SlackIntegrationID: testIntegration.ID,
-			OrganizationID:     testIntegration.OrganizationID,
+			ID:             core.NewID("j"),
+			JobType:        models.JobTypeSlack,
+			OrganizationID: testIntegration.OrganizationID,
+			SlackPayload: &models.SlackJobPayload{
+				ThreadTS:      "test-thread-2",
+				ChannelID:     "test-channel-2",
+				UserID:        "test-user",
+				IntegrationID: testIntegration.ID,
+			},
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job2); err != nil {
@@ -236,11 +253,15 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 	// Both jobs should exist after commit
 	maybeJob1, err := jobsRepo.GetJobByID(ctx, job1ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
-	assert.Equal(t, "test-thread-1", maybeJob1.OrEmpty().SlackThreadTS)
+	if maybeJob1.OrEmpty().SlackPayload != nil {
+		assert.Equal(t, "test-thread-1", maybeJob1.OrEmpty().SlackPayload.ThreadTS)
+	}
 
 	maybeJob2, err := jobsRepo.GetJobByID(ctx, job2ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
-	assert.Equal(t, "test-thread-2", maybeJob2.OrEmpty().SlackThreadTS)
+	if maybeJob2.OrEmpty().SlackPayload != nil {
+		assert.Equal(t, "test-thread-2", maybeJob2.OrEmpty().SlackPayload.ThreadTS)
+	}
 
 	// Clean up
 	jobsRepo.DeleteJob(ctx, job1ID, testIntegration.ID, testIntegration.OrganizationID)
@@ -259,12 +280,15 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRo
 	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create first job
 		job1 := &models.Job{
-			ID:                 core.NewID("j"),
-			SlackThreadTS:      "test-thread-rollback-1",
-			SlackChannelID:     "test-channel-1",
-			SlackUserID:        "test-user",
-			SlackIntegrationID: testIntegration.ID,
-			OrganizationID:     testIntegration.OrganizationID,
+			ID:             core.NewID("j"),
+			JobType:        models.JobTypeSlack,
+			OrganizationID: testIntegration.OrganizationID,
+			SlackPayload: &models.SlackJobPayload{
+				ThreadTS:      "test-thread-rollback-1",
+				ChannelID:     "test-channel-1",
+				UserID:        "test-user",
+				IntegrationID: testIntegration.ID,
+			},
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job1); err != nil {
@@ -274,12 +298,15 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRo
 
 		// Create second job
 		job2 := &models.Job{
-			ID:                 core.NewID("j"),
-			SlackThreadTS:      "test-thread-rollback-2",
-			SlackChannelID:     "test-channel-2",
-			SlackUserID:        "test-user",
-			SlackIntegrationID: testIntegration.ID,
-			OrganizationID:     testIntegration.OrganizationID,
+			ID:             core.NewID("j"),
+			JobType:        models.JobTypeSlack,
+			OrganizationID: testIntegration.OrganizationID,
+			SlackPayload: &models.SlackJobPayload{
+				ThreadTS:      "test-thread-rollback-2",
+				ChannelID:     "test-channel-2",
+				UserID:        "test-user",
+				IntegrationID: testIntegration.ID,
+			},
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job2); err != nil {
@@ -317,12 +344,15 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 	err := txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Create job in outer transaction
 		job := &models.Job{
-			ID:                 core.NewID("j"),
-			SlackThreadTS:      "test-nested-thread",
-			SlackChannelID:     "test-channel",
-			SlackUserID:        "test-user",
-			SlackIntegrationID: testIntegration.ID,
-			OrganizationID:     testIntegration.OrganizationID,
+			ID:             core.NewID("j"),
+			JobType:        models.JobTypeSlack,
+			OrganizationID: testIntegration.OrganizationID,
+			SlackPayload: &models.SlackJobPayload{
+				ThreadTS:      "test-nested-thread",
+				ChannelID:     "test-channel",
+				UserID:        "test-user",
+				IntegrationID: testIntegration.ID,
+			},
 		}
 
 		if err := jobsRepo.CreateJob(ctx, job); err != nil {
@@ -349,7 +379,9 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 	// Job should exist after both transactions
 	maybeJob, err := jobsRepo.GetJobByID(ctx, jobID, testIntegration.OrganizationID)
 	require.NoError(t, err)
-	assert.Equal(t, "test-nested-thread", maybeJob.OrEmpty().SlackThreadTS)
+	if maybeJob.OrEmpty().SlackPayload != nil {
+		assert.Equal(t, "test-nested-thread", maybeJob.OrEmpty().SlackPayload.ThreadTS)
+	}
 
 	// Clean up
 	jobsRepo.DeleteJob(ctx, jobID, testIntegration.ID, testIntegration.OrganizationID)
@@ -367,12 +399,15 @@ func TestTransactionManager_ManualTransaction_Success(t *testing.T) {
 
 	// Create job within manual transaction
 	job := &models.Job{
-		ID:                 core.NewID("j"),
-		SlackThreadTS:      "test-manual-thread",
-		SlackChannelID:     "test-channel",
-		SlackUserID:        "test-user",
-		SlackIntegrationID: testIntegration.ID,
-		OrganizationID:     testIntegration.OrganizationID,
+		ID:             core.NewID("j"),
+		JobType:        models.JobTypeSlack,
+		OrganizationID: testIntegration.OrganizationID,
+		SlackPayload: &models.SlackJobPayload{
+			ThreadTS:      "test-manual-thread",
+			ChannelID:     "test-channel",
+			UserID:        "test-user",
+			IntegrationID: testIntegration.ID,
+		},
 	}
 
 	err = jobsRepo.CreateJob(txCtx, job)
@@ -385,7 +420,9 @@ func TestTransactionManager_ManualTransaction_Success(t *testing.T) {
 	// Job should exist after commit
 	maybeRetrievedJob, err := jobsRepo.GetJobByID(ctx, job.ID, testIntegration.OrganizationID)
 	require.NoError(t, err)
-	assert.Equal(t, job.SlackThreadTS, maybeRetrievedJob.OrEmpty().SlackThreadTS)
+	if job.SlackPayload != nil && maybeRetrievedJob.OrEmpty().SlackPayload != nil {
+		assert.Equal(t, job.SlackPayload.ThreadTS, maybeRetrievedJob.OrEmpty().SlackPayload.ThreadTS)
+	}
 
 	// Clean up
 	jobsRepo.DeleteJob(ctx, job.ID, testIntegration.ID, testIntegration.OrganizationID)
@@ -403,12 +440,15 @@ func TestTransactionManager_ManualTransaction_Rollback(t *testing.T) {
 
 	// Create job within manual transaction
 	job := &models.Job{
-		ID:                 core.NewID("j"),
-		SlackThreadTS:      "test-manual-rollback-thread",
-		SlackChannelID:     "test-channel",
-		SlackUserID:        "test-user",
-		SlackIntegrationID: testIntegration.ID,
-		OrganizationID:     testIntegration.OrganizationID,
+		ID:             core.NewID("j"),
+		JobType:        models.JobTypeSlack,
+		OrganizationID: testIntegration.OrganizationID,
+		SlackPayload: &models.SlackJobPayload{
+			ThreadTS:      "test-manual-rollback-thread",
+			ChannelID:     "test-channel",
+			UserID:        "test-user",
+			IntegrationID: testIntegration.ID,
+		},
 	}
 
 	err = jobsRepo.CreateJob(txCtx, job)

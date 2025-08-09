@@ -86,12 +86,15 @@ func (s *JobsService) CreateJob(
 	}
 
 	job := &models.Job{
-		ID:                 core.NewID("j"),
-		SlackThreadTS:      slackThreadTS,
-		SlackChannelID:     slackChannelID,
-		SlackUserID:        slackUserID,
-		SlackIntegrationID: slackIntegrationID,
-		OrganizationID:     organizationID,
+		ID:             core.NewID("j"),
+		JobType:        models.JobTypeSlack,
+		OrganizationID: organizationID,
+		SlackPayload: &models.SlackJobPayload{
+			ThreadTS:      slackThreadTS,
+			ChannelID:     slackChannelID,
+			UserID:        slackUserID,
+			IntegrationID: slackIntegrationID,
+		},
 	}
 
 	if err := s.jobsRepo.CreateJob(ctx, job); err != nil {
