@@ -410,7 +410,7 @@ export default function Home() {
 										<div className="space-y-1">
 											<h4 className="font-medium">Setup Tutorial</h4>
 											<p className="text-sm text-muted-foreground">
-												How to get started
+												Watch the complete guide on getting started
 											</p>
 										</div>
 										<Button
@@ -537,8 +537,7 @@ export default function Home() {
 										<div className="space-y-1">
 											<h4 className="font-medium">Setup Tutorial</h4>
 											<p className="text-sm text-muted-foreground">
-												Watch the complete setup guide to get started with
-												Claude Control
+												Watch the complete guide on getting started
 											</p>
 										</div>
 										<Button
