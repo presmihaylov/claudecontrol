@@ -222,26 +222,56 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 
 ## Development Workflow
 
-### After Completing Tasks
-**MANDATORY: Always build and lint-fix to ensure code quality:**
+### CRITICAL WORKFLOW RESTRICTIONS
+
+**STRICT REQUIREMENT - NEVER PROACTIVELY RUN THE FOLLOWING:**
+
+#### Testing - STRICTLY PROHIBITED Unless Explicitly Requested
+- **NEVER run tests proactively** - Do not run `make test`, `go test`, `bun test`, or any testing commands
+- **NEVER invoke the TestFixer subagent proactively** - Do not attempt to fix tests unless explicitly asked
+- **NEVER run test-verbose or any test variants** - Testing is completely off-limits unless user explicitly requests
+- **Tests should only be executed when the user specifically asks** with phrases like "run tests", "test this", "fix the tests"
+- **Test failures should only be addressed when explicitly requested** - Ignore any test issues unless directly asked to fix them
+- **This is a STRICT requirement** - Violation of this rule is unacceptable
+
+#### Linting - STRICTLY PROHIBITED Unless Explicitly Requested  
+- **NEVER run linting proactively** - Do not run `make lint`, `make lint-fix`, `bun run lint`, or `bun run lint:fix`
+- **NEVER attempt to fix linting issues autonomously** - Linting is only allowed when explicitly requested
+- **Ignore all linting concerns** unless the user specifically asks to "lint the code" or "fix linting issues"
+- **Do not mention linting issues** in your responses unless directly asked about them
+
+#### Code Quality Checks - STRICTLY PROHIBITED Unless Explicitly Requested
+- **NEVER run formatting commands proactively** - No `go fmt`, `bun run format`, etc.
+- **NEVER run code analysis tools** unless explicitly requested
+- **Focus ONLY on functional code changes** within the main codebase
+
+### After Completing Tasks - MANDATORY BUILD VERIFICATION ONLY
+
+**MANDATORY: Only verify that the build succeeds:**
 ```bash
-cd ccbackend && make build  # Build first to catch compilation issues
-cd ccbackend && make lint-fix  # REQUIRED: Fix linting issues automatically
-cd ccagent && make build    # Build ccagent to catch compilation issues
-cd ccagent && make lint-fix  # REQUIRED: Fix linting issues automatically
-cd ccfrontend && bun run build && bun run lint:fix  # Build and fix frontend linting issues automatically
+cd ccbackend && make build     # REQUIRED: Verify backend builds successfully
+cd ccagent && make build       # REQUIRED: Verify agent builds successfully  
+cd ccfrontend && bun run build # REQUIRED: Verify frontend builds successfully
 ```
 
-**CRITICAL**: `make lint-fix` must ALWAYS be run in both ccbackend and ccagent after making any
-code changes. Similarly, `bun run lint:fix` must ALWAYS be run in ccfrontend after making any
-frontend changes. These commands automatically fix formatting, imports, and other linting issues to maintain
-code quality standards.
+**CRITICAL INSTRUCTIONS:**
+- **ONLY run build commands** - This is the ONLY verification step allowed
+- **BUILD SUCCESS is the ONLY requirement** - If it builds, your task is complete
+- **DO NOT run lint, lint-fix, test, or any other commands** unless explicitly requested
+- **IGNORE any suggestions or warnings** from build output about linting or testing
+- **Your responsibility ends when the build succeeds** - Nothing more, nothing less
 
-### Test Guidelines
-**NEVER run tests or attempt to fix test failures autonomously unless explicitly requested by the user.**
-- Tests should only be executed when the user specifically asks for them to be run
-- Test failures should only be addressed when the user explicitly requests test fixes
-- This prevents unnecessary work and allows the user to control when testing occurs
+### Summary of Workflow Restrictions
+1. **BUILD ONLY** - Only verify builds succeed, nothing else
+2. **NO TESTING** - Never run tests or test fixers proactively
+3. **NO LINTING** - Never run linters or fix linting issues proactively
+4. **NO FORMATTING** - Never run formatters proactively
+5. **EXPLICIT REQUESTS ONLY** - Only perform these actions when explicitly asked by the user
+
+This is a **STRICT REQUIREMENT** and must be followed without exception. Focus solely on:
+- Making the requested code changes
+- Ensuring the build succeeds
+- Nothing more
 
 ### Database Migrations
 - **Apply Pending Migrations**: `supabase migration up` to apply only new migrations
@@ -548,12 +578,13 @@ Claude Code has access to specialized subagents for specific tasks. These should
 
 ### Code Reviewer Subagent  
 - **Purpose**: Comprehensive code review of all changes on current branch vs main branch
-- **When to Use**: After significant code changes or before creating pull requests
+- **When to Use**: ONLY when explicitly requested by the user or before creating pull requests if requested
 - **Capabilities**: Reviews Go backend, CLI agent, and Next.js frontend code for bugs, performance, security, and adherence to project conventions
-- **Usage**: Proactive use after completing major development tasks
+- **Usage**: Only use when user asks for code review - do NOT use proactively
 
 ### TestFixer Subagent
 - **Purpose**: Automatically fixes broken tests and suggests new test coverage
-- **When to Use**: After source code changes that may have broken existing tests
+- **CRITICAL - NEVER USE PROACTIVELY**: This subagent must NEVER be invoked unless the user explicitly requests test fixes
+- **When to Use**: ONLY when the user explicitly asks to "fix tests", "run tests", or "update tests"
 - **Capabilities**: Fixes Go tests in ccbackend and ccagent, suggests new test coverage, runs test suites autonomously
-- **Usage**: Follow-up to code modifications to ensure test suite integrity
+- **STRICT PROHIBITION**: Do NOT use this subagent proactively after code changes. Wait for explicit user request
