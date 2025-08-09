@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"ccbackend/clients"
+	"ccbackend/models"
 )
 
 // RegisterAgent registers a new agent connection in the system
@@ -54,7 +55,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	// Clean up all job assignments - handle each job consistently
 	log.Printf("🧹 Agent %s has %d assigned job(s), cleaning up all assignments", agent.ID, len(jobs))
 
-	// Process each job: update Slack, unassign agent, delete job
+	// Process each job: route cleanup based on job type
 	for _, jobID := range jobs {
 		// Get job directly using organization_id (optimization)
 		maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, client.OrganizationID)
@@ -69,11 +70,20 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 
 		job := maybeJob.MustGet()
 
-		// Clean up the abandoned job
+		// Route cleanup based on job type
 		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
-		if err := s.cleanupFailedJob(ctx, job, agent.ID, abandonmentMessage); err != nil {
-			return fmt.Errorf("failed to cleanup abandoned job %s: %w", jobID, err)
+		switch job.JobType {
+		case models.JobTypeSlack:
+			if err := s.slackUseCase.CleanupFailedSlackJob(ctx, job, agent.ID, abandonmentMessage); err != nil {
+				return fmt.Errorf("failed to cleanup abandoned Slack job %s: %w", jobID, err)
+			}
+		// Future: case models.JobTypeEmail:
+		//     err = s.emailUseCase.CleanupFailedEmailJob(ctx, job, agent.ID, abandonmentMessage)
+		default:
+			log.Printf("⚠️ Unknown job type %s for job %s, skipping cleanup", job.JobType, jobID)
+			continue
 		}
+
 		log.Printf("✅ Cleaned up abandoned job %s", jobID)
 	}
 
