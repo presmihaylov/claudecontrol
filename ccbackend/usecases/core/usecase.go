@@ -246,6 +246,62 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	}
 	job := maybeJob.MustGet()
 
+	// Check if this is an error message from the agent
+	if IsAgentErrorMessage(payload.Message) {
+		log.Printf("❌ Detected agent error message for job %s: %s", job.ID, payload.Message)
+
+		// Get the agent that encountered the error
+		maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, clientID, organizationID)
+		if err != nil {
+			log.Printf("❌ Failed to find agent for error handling: %v", err)
+			return fmt.Errorf("failed to find agent for error handling: %w", err)
+		}
+
+		var agentID string
+		if maybeAgent.IsPresent() {
+			agentID = maybeAgent.MustGet().ID
+		}
+
+		// Send error message to Slack first (before cleanup)
+		errorMessage := fmt.Sprintf(":x: Agent encountered an error and cannot continue:\n%s", payload.Message)
+		if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackChannelID, job.SlackThreadTS, errorMessage); err != nil {
+			log.Printf("❌ Failed to send error message to Slack: %v", err)
+			// Continue with cleanup even if Slack message fails
+		}
+
+		// Update the top-level message emoji to :x: to indicate failure
+		if err := s.updateSlackMessageReaction(ctx, job.SlackChannelID, job.SlackThreadTS, "x", slackIntegrationID); err != nil {
+			log.Printf("⚠️ Failed to update slack message reaction to :x: for failed job %s: %v", job.ID, err)
+			// Continue with cleanup even if reaction update fails
+		}
+
+		// Clean up the failed job in a transaction
+		if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+			// If agent exists, unassign it from the job
+			if agentID != "" {
+				if err := s.agentsService.UnassignAgentFromJob(ctx, agentID, job.ID, organizationID); err != nil {
+					log.Printf("❌ Failed to unassign agent %s from failed job %s: %v", agentID, job.ID, err)
+					return fmt.Errorf("failed to unassign agent from failed job: %w", err)
+				}
+				log.Printf("🔗 Unassigned agent %s from failed job %s", agentID, job.ID)
+			}
+
+			// Delete the failed job and its associated processed messages
+			if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
+				log.Printf("❌ Failed to delete failed job %s: %v", job.ID, err)
+				return fmt.Errorf("failed to delete failed job: %w", err)
+			}
+			log.Printf("🗑️ Deleted failed job %s due to agent error", job.ID)
+
+			return nil
+		}); err != nil {
+			return fmt.Errorf("failed to clean up failed job in transaction: %w", err)
+		}
+
+		log.Printf("📋 Completed error handling - cleaned up failed job %s", job.ID)
+		return nil
+	}
+
 	log.Printf(
 		"📤 Sending system message to Slack thread %s in channel %s",
 		job.SlackThreadTS,
