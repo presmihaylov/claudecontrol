@@ -8,7 +8,6 @@ type JobType string
 
 const (
 	JobTypeSlack JobType = "slack"
-	// Future: JobTypeDiscord JobType = "discord"
 )
 
 type Job struct {
@@ -21,7 +20,6 @@ type Job struct {
 
 	// Polymorphic payload - only one populated based on JobType
 	SlackPayload *SlackJobPayload `json:"slack_payload,omitempty"`
-	// Future: DiscordPayload *DiscordJobPayload `json:"discord_payload,omitempty"`
 }
 
 type SlackJobPayload struct {
