@@ -32,6 +32,14 @@ func main() {
 		log.Fatal("Error creating Discord session:", err)
 	}
 
+	guild, err := dg.Guild("1403705744884367360")
+	if err != nil {
+		log.Fatalf("Error retrieving guild: %v", err)
+		return
+	}
+
+	log.Printf("Connected to guild: %s (ID: %s)", guild.Name, guild.ID)
+
 	// Register the messageCreate func as a callback for MessageCreate events
 	dg.AddHandler(messageCreate)
 
@@ -131,9 +139,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if !isThreadChannel(channel.Type) {
 			// Greet the first mentioned user
 			mentionedUser := m.Mentions[0]
-			greetMessage := fmt.Sprintf("Hello %s! 👋 You were greeted by %s", 
+			greetMessage := fmt.Sprintf("Hello %s! 👋 You were greeted by %s",
 				mentionedUser.Mention(), m.Author.Mention())
-			
+
 			_, err := s.ChannelMessageSend(m.ChannelID, greetMessage)
 			if err != nil {
 				log.Printf("Error sending greet message: %v", err)
@@ -151,6 +159,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 // isThreadChannel checks if the given channel type is a thread
 func isThreadChannel(channelType discordgo.ChannelType) bool {
 	return channelType == discordgo.ChannelTypeGuildPublicThread ||
-		   channelType == discordgo.ChannelTypeGuildPrivateThread ||
-		   channelType == discordgo.ChannelTypeGuildNewsThread
+		channelType == discordgo.ChannelTypeGuildPrivateThread ||
+		channelType == discordgo.ChannelTypeGuildNewsThread
 }
+

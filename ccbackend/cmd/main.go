@@ -14,6 +14,7 @@ import (
 	"github.com/rs/cors"
 
 	"ccbackend/clients"
+	discordclient "ccbackend/clients/discord"
 	slackclient "ccbackend/clients/slack"
 	socketioclient "ccbackend/clients/socketio"
 	"ccbackend/config"
@@ -21,12 +22,14 @@ import (
 	"ccbackend/handlers"
 	"ccbackend/middleware"
 	agents "ccbackend/services/agents"
+	discordintegrations "ccbackend/services/discord_integrations"
 	jobs "ccbackend/services/jobs"
 	organizations "ccbackend/services/organizations"
 	slackintegrations "ccbackend/services/slack_integrations"
 	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
 	"ccbackend/usecases/core"
+	"ccbackend/utils"
 )
 
 func main() {
@@ -64,6 +67,7 @@ func run() error {
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+	discordIntegrationsRepo := db.NewPostgresDiscordIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
@@ -78,6 +82,15 @@ func run() error {
 		slackOAuthClient,
 		cfg.SlackClientID,
 		cfg.SlackClientSecret,
+	)
+	discordClient, err := discordclient.NewDiscordClient(&http.Client{}, cfg.DiscordBotToken)
+	utils.AssertInvariant(err == nil, "Failed to create Discord client: "+err.Error())
+
+	discordIntegrationsService := discordintegrations.NewDiscordIntegrationsService(
+		discordIntegrationsRepo,
+		discordClient,
+		cfg.DiscordClientID,
+		cfg.DiscordClientSecret,
 	)
 
 	coreUseCase := core.NewCoreUseCase(
@@ -107,7 +120,12 @@ func run() error {
 	)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
 	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
-	dashboardHandler := handlers.NewDashboardAPIHandler(usersService, slackIntegrationsService, organizationsService)
+	dashboardHandler := handlers.NewDashboardAPIHandler(
+		usersService,
+		slackIntegrationsService,
+		discordIntegrationsService,
+		organizationsService,
+	)
 	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkSecretKey)
 

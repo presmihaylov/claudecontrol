@@ -229,11 +229,12 @@ cd ccbackend && make build  # Build first to catch compilation issues
 cd ccbackend && make lint-fix  # REQUIRED: Fix linting issues automatically
 cd ccagent && make build    # Build ccagent to catch compilation issues
 cd ccagent && make lint-fix  # REQUIRED: Fix linting issues automatically
-cd ccfrontend && bun run build && bun run lint  # Build and lint frontend with Biome
+cd ccfrontend && bun run build && bun run lint:fix  # Build and fix frontend linting issues automatically
 ```
 
 **CRITICAL**: `make lint-fix` must ALWAYS be run in both ccbackend and ccagent after making any
-code changes. This automatically fixes formatting, imports, and other linting issues to maintain
+code changes. Similarly, `bun run lint:fix` must ALWAYS be run in ccfrontend after making any
+frontend changes. These commands automatically fix formatting, imports, and other linting issues to maintain
 code quality standards.
 
 ### Test Guidelines
