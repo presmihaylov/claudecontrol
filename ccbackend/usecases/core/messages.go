@@ -78,9 +78,9 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	}
 
 	// Update the ProcessedSlackMessage status to COMPLETED
-	utils.AssertInvariant(payload.SlackMessageID != "", "SlackMessageID is empty")
+	utils.AssertInvariant(payload.ProcessedMessageID != "", "ProcessedMessageID is empty")
 
-	messageID := payload.SlackMessageID
+	messageID := payload.ProcessedMessageID
 
 	updatedMessage, err := s.jobsService.UpdateProcessedSlackMessage(
 		ctx,

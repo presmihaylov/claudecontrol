@@ -18,33 +18,33 @@ type BaseMessage struct {
 }
 
 type StartConversationPayload struct {
-	JobID            string `json:"job_id"`
-	Message          string `json:"message"`
-	SlackMessageID   string `json:"slack_message_id"`
-	SlackMessageLink string `json:"slack_message_link"`
+	JobID              string `json:"job_id"`
+	Message            string `json:"message"`
+	ProcessedMessageID string `json:"processed_message_id"`
+	MessageLink        string `json:"message_link"`
 }
 
 type UserMessagePayload struct {
-	JobID            string `json:"job_id"`
-	Message          string `json:"message"`
-	SlackMessageID   string `json:"slack_message_id"`
-	SlackMessageLink string `json:"slack_message_link"`
+	JobID              string `json:"job_id"`
+	Message            string `json:"message"`
+	ProcessedMessageID string `json:"processed_message_id"`
+	MessageLink        string `json:"message_link"`
 }
 
 type AssistantMessagePayload struct {
-	JobID          string `json:"job_id"`
-	Message        string `json:"message"`
-	SlackMessageID string `json:"slack_message_id"`
+	JobID              string `json:"job_id"`
+	Message            string `json:"message"`
+	ProcessedMessageID string `json:"processed_message_id"`
 }
 
 type SystemMessagePayload struct {
-	Message        string `json:"message"`
-	SlackMessageID string `json:"slack_message_id"`
-	JobID          string `json:"job_id"`
+	Message            string `json:"message"`
+	ProcessedMessageID string `json:"processed_message_id"`
+	JobID              string `json:"job_id"`
 }
 
 type ProcessingSlackMessagePayload struct {
-	SlackMessageID string `json:"slack_message_id"`
+	ProcessedMessageID string `json:"processed_message_id"`
 }
 
 type CheckIdleJobsPayload struct {
