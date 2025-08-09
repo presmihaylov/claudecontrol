@@ -417,10 +417,7 @@ export default function Home() {
 									{/* CCAgent API Key Section */}
 									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
 										<div className="space-y-1">
-											<h4 className="font-medium flex items-center gap-2">
-												<Key className="h-4 w-4" />
-												CCAgent API Key
-											</h4>
+											<h4 className="font-medium">CCAgent API Key</h4>
 											<p className="text-sm text-muted-foreground">
 												The secret key used to authenticate ccagent against your
 												organization
@@ -457,7 +454,7 @@ export default function Home() {
 							</Card>
 						)}
 
-						<div className="flex flex-col items-center justify-center min-h-[40vh]">
+						<div className="flex flex-col items-center justify-center">
 							<p className="text-lg text-muted-foreground mb-6 text-center">
 								Connect your Slack workspace to get started with Claude Control
 							</p>
@@ -530,10 +527,7 @@ export default function Home() {
 									{/* CCAgent API Key Section */}
 									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
 										<div className="space-y-1">
-											<h4 className="font-medium flex items-center gap-2">
-												<Key className="h-4 w-4" />
-												CCAgent API Key
-											</h4>
+											<h4 className="font-medium">CCAgent API Key</h4>
 											<p className="text-sm text-muted-foreground">
 												The secret key used to authenticate ccagent against your
 												organization
@@ -594,7 +588,7 @@ export default function Home() {
 											</div>
 											<div className="flex items-center gap-2">
 												<Button
-													variant="destructive"
+													variant="secondary"
 													size="sm"
 													onClick={() => handleDeleteIntegration(integration)}
 													disabled={deleting === integration.id}
@@ -645,7 +639,7 @@ export default function Home() {
 								Cancel
 							</Button>
 							<Button
-								variant="destructive"
+								variant="secondary"
 								onClick={confirmDeleteIntegration}
 								disabled={deleting === integrationToDelete?.id}
 							>
