@@ -28,14 +28,14 @@ type DiscordIntegrationsRepository interface {
 
 type DiscordIntegrationsService struct {
 	discordIntegrationsRepo DiscordIntegrationsRepository
-	discordClient           clients.DiscordOAuthClient
+	discordClient           clients.DiscordClient
 	discordClientID         string
 	discordClientSecret     string
 }
 
 func NewDiscordIntegrationsService(
 	repo DiscordIntegrationsRepository,
-	discordClient clients.DiscordOAuthClient,
+	discordClient clients.DiscordClient,
 	discordClientID, discordClientSecret string,
 ) *DiscordIntegrationsService {
 	return &DiscordIntegrationsService{

@@ -8,7 +8,7 @@ import (
 	"ccbackend/clients"
 )
 
-// MockDiscordClient implements the clients.DiscordOAuthClient interface for testing
+// MockDiscordClient implements the clients.DiscordClient interface for testing
 type MockDiscordClient struct {
 	mock.Mock
 }

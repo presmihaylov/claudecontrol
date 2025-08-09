@@ -37,8 +37,8 @@ type SlackOAuthClient interface {
 	) (*OAuthV2Response, error)
 }
 
-// DiscordOAuthClient defines the interface for Discord OAuth operations
-type DiscordOAuthClient interface {
+// DiscordClient defines the interface for Discord OAuth operations
+type DiscordClient interface {
 	ExchangeCodeForToken(
 		httpClient *http.Client,
 		clientID, clientSecret, code, redirectURL string,

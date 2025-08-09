@@ -18,11 +18,11 @@ var (
 	discordGuildsURL = discordAPIBase + "/users/@me/guilds"
 )
 
-// DiscordClient implements the clients.DiscordOAuthClient interface
+// DiscordClient implements the clients.DiscordClient interface
 type DiscordClient struct{}
 
-// NewDiscordOAuthClient creates a new Discord client for OAuth operations
-func NewDiscordOAuthClient() clients.DiscordOAuthClient {
+// NewDiscordClient creates a new Discord client for OAuth operations
+func NewDiscordClient() clients.DiscordClient {
 	return &DiscordClient{}
 }
 

@@ -82,10 +82,10 @@ func run() error {
 		cfg.SlackClientID,
 		cfg.SlackClientSecret,
 	)
-	discordOAuthClient := discordclient.NewDiscordOAuthClient()
+	discordClient := discordclient.NewDiscordClient()
 	discordIntegrationsService := discordintegrations.NewDiscordIntegrationsService(
 		discordIntegrationsRepo,
-		discordOAuthClient,
+		discordClient,
 		cfg.DiscordClientID,
 		cfg.DiscordClientSecret,
 	)

@@ -48,7 +48,7 @@ func TestDiscordClient_ExchangeCodeForToken_Success(t *testing.T) {
 	discordOAuthURL = server.URL + "/oauth2/token"
 	defer func() { discordOAuthURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	// Test the OAuth code exchange
@@ -81,7 +81,7 @@ func TestDiscordClient_ExchangeCodeForToken_HTTPError(t *testing.T) {
 	discordOAuthURL = server.URL + "/oauth2/token"
 	defer func() { discordOAuthURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	response, err := client.ExchangeCodeForToken(
@@ -111,7 +111,7 @@ func TestDiscordClient_ExchangeCodeForToken_InvalidJSON(t *testing.T) {
 	discordOAuthURL = server.URL + "/oauth2/token"
 	defer func() { discordOAuthURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	response, err := client.ExchangeCodeForToken(
@@ -152,7 +152,7 @@ func TestDiscordClient_GetGuildInfo_Success(t *testing.T) {
 	discordGuildsURL = server.URL + "/users/@me/guilds"
 	defer func() { discordGuildsURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guilds, err := client.GetGuildInfo(httpClient, "test-access-token")
@@ -178,7 +178,7 @@ func TestDiscordClient_GetGuildInfo_HTTPError(t *testing.T) {
 	discordGuildsURL = server.URL + "/users/@me/guilds"
 	defer func() { discordGuildsURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guilds, err := client.GetGuildInfo(httpClient, "invalid-token")
@@ -202,7 +202,7 @@ func TestDiscordClient_GetGuildInfo_InvalidJSON(t *testing.T) {
 	discordGuildsURL = server.URL + "/users/@me/guilds"
 	defer func() { discordGuildsURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guilds, err := client.GetGuildInfo(httpClient, "test-access-token")
@@ -239,7 +239,7 @@ func TestDiscordClient_GetGuildByID_Success(t *testing.T) {
 	discordAPIBase = server.URL
 	defer func() { discordAPIBase = originalAPIBase }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guild, err := client.GetGuildByID(httpClient, "test-access-token", guildID)
@@ -265,7 +265,7 @@ func TestDiscordClient_GetGuildByID_NotFound(t *testing.T) {
 	discordAPIBase = server.URL
 	defer func() { discordAPIBase = originalAPIBase }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guild, err := client.GetGuildByID(httpClient, "test-access-token", guildID)
@@ -291,7 +291,7 @@ func TestDiscordClient_GetGuildByID_Unauthorized(t *testing.T) {
 	discordAPIBase = server.URL
 	defer func() { discordAPIBase = originalAPIBase }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guild, err := client.GetGuildByID(httpClient, "test-access-token", guildID)
@@ -317,7 +317,7 @@ func TestDiscordClient_GetGuildByID_InvalidJSON(t *testing.T) {
 	discordAPIBase = server.URL
 	defer func() { discordAPIBase = originalAPIBase }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guild, err := client.GetGuildByID(httpClient, "test-access-token", guildID)
@@ -333,7 +333,7 @@ func TestDiscordClient_GetGuildByID_NetworkError(t *testing.T) {
 	discordAPIBase = "http://invalid-url-that-does-not-exist"
 	defer func() { discordAPIBase = originalAPIBase }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guild, err := client.GetGuildByID(httpClient, "test-access-token", "123456789012345678")
@@ -349,7 +349,7 @@ func TestDiscordClient_ExchangeCodeForToken_NetworkError(t *testing.T) {
 	discordOAuthURL = "http://invalid-url-that-does-not-exist/oauth2/token"
 	defer func() { discordOAuthURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	response, err := client.ExchangeCodeForToken(
@@ -371,7 +371,7 @@ func TestDiscordClient_GetGuildInfo_NetworkError(t *testing.T) {
 	discordGuildsURL = "http://invalid-url-that-does-not-exist/users/@me/guilds"
 	defer func() { discordGuildsURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guilds, err := client.GetGuildInfo(httpClient, "test-access-token")
@@ -383,8 +383,8 @@ func TestDiscordClient_GetGuildInfo_NetworkError(t *testing.T) {
 
 // Test that client implements the interface correctly
 func TestDiscordClient_ImplementsInterface(t *testing.T) {
-	var _ clients.DiscordOAuthClient = &DiscordClient{}
-	var _ clients.DiscordOAuthClient = NewDiscordOAuthClient()
+	var _ clients.DiscordClient = &DiscordClient{}
+	var _ clients.DiscordClient = NewDiscordClient()
 }
 
 // Test context handling in requests
@@ -411,7 +411,7 @@ func TestDiscordClient_ContextHandling(t *testing.T) {
 	discordOAuthURL = server.URL + "/oauth2/token"
 	defer func() { discordOAuthURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	response, err := client.ExchangeCodeForToken(
@@ -444,7 +444,7 @@ func TestDiscordClient_RateLimit(t *testing.T) {
 	discordOAuthURL = server.URL + "/oauth2/token"
 	defer func() { discordOAuthURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	response, err := client.ExchangeCodeForToken(
@@ -476,7 +476,7 @@ func TestDiscordClient_GetGuildInfo_EmptyList(t *testing.T) {
 	discordGuildsURL = server.URL + "/users/@me/guilds"
 	defer func() { discordGuildsURL = originalURL }()
 
-	client := NewDiscordOAuthClient()
+	client := NewDiscordClient()
 	httpClient := &http.Client{}
 
 	guilds, err := client.GetGuildInfo(httpClient, "test-access-token")
