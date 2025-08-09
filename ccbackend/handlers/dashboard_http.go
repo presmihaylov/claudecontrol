@@ -31,6 +31,7 @@ type SlackIntegrationRequest struct {
 
 type DiscordIntegrationRequest struct {
 	DiscordAuthCode string `json:"code"`
+	GuildID         string `json:"guild_id"`
 	RedirectURL     string `json:"redirect_url"`
 }
 
@@ -201,7 +202,19 @@ func (h *DashboardHTTPHandler) HandleCreateDiscordIntegration(w http.ResponseWri
 		return
 	}
 
-	integration, err := h.handler.CreateDiscordIntegration(r.Context(), req.DiscordAuthCode, req.RedirectURL, user)
+	if req.GuildID == "" {
+		log.Printf("❌ Missing guild_id in request")
+		http.Error(w, "guild_id is required", http.StatusBadRequest)
+		return
+	}
+
+	integration, err := h.handler.CreateDiscordIntegration(
+		r.Context(),
+		req.DiscordAuthCode,
+		req.GuildID,
+		req.RedirectURL,
+		user,
+	)
 	if err != nil {
 		log.Printf("❌ Failed to create Discord integration: %v", err)
 		http.Error(w, "failed to create discord integration", http.StatusInternalServerError)

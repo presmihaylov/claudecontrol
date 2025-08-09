@@ -48,6 +48,12 @@ type DiscordOAuthClient interface {
 		httpClient *http.Client,
 		accessToken string,
 	) ([]*DiscordGuild, error)
+
+	GetGuildByID(
+		httpClient *http.Client,
+		accessToken string,
+		guildID string,
+	) (*DiscordGuild, error)
 }
 
 // SlackClient defines the interface for Slack API operations

@@ -147,9 +147,9 @@ type MockDiscordIntegrationsService struct {
 
 func (m *MockDiscordIntegrationsService) CreateDiscordIntegration(
 	ctx context.Context,
-	organizationID, discordAuthCode, redirectURL string,
+	organizationID, discordAuthCode, guildID, redirectURL string,
 ) (*models.DiscordIntegration, error) {
-	args := m.Called(ctx, organizationID, discordAuthCode, redirectURL)
+	args := m.Called(ctx, organizationID, discordAuthCode, guildID, redirectURL)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

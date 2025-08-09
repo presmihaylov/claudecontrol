@@ -40,7 +40,7 @@ type SlackIntegrationsService interface {
 type DiscordIntegrationsService interface {
 	CreateDiscordIntegration(
 		ctx context.Context,
-		organizationID, discordAuthCode, redirectURL string,
+		organizationID, discordAuthCode, guildID, redirectURL string,
 	) (*models.DiscordIntegration, error)
 	GetDiscordIntegrationsByOrganizationID(
 		ctx context.Context,

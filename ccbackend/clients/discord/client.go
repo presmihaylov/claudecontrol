@@ -12,7 +12,7 @@ import (
 	"ccbackend/clients"
 )
 
-const (
+var (
 	discordAPIBase   = "https://discord.com/api"
 	discordOAuthURL  = discordAPIBase + "/oauth2/token"
 	discordGuildsURL = discordAPIBase + "/users/@me/guilds"
@@ -99,4 +99,39 @@ func (c *DiscordClient) GetGuildInfo(
 	}
 
 	return guilds, nil
+}
+
+// GetGuildByID fetches specific guild information using the access token and guild ID
+func (c *DiscordClient) GetGuildByID(
+	httpClient *http.Client,
+	accessToken string,
+	guildID string,
+) (*clients.DiscordGuild, error) {
+	guildURL := fmt.Sprintf("%s/guilds/%s", discordAPIBase, guildID)
+
+	req, err := http.NewRequestWithContext(context.Background(), "GET", guildURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create guild request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bot "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute guild request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("guild request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var guild clients.DiscordGuild
+	if err := json.NewDecoder(resp.Body).Decode(&guild); err != nil {
+		return nil, fmt.Errorf("failed to decode guild response: %w", err)
+	}
+
+	return &guild, nil
 }

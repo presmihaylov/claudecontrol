@@ -15,8 +15,9 @@ function DiscordRedirectContent() {
 	useEffect(() => {
 		const handleDiscordIntegration = async () => {
 			try {
-				// Get the OAuth code from URL parameters
+				// Get the OAuth parameters from URL
 				const code = searchParams.get("code");
+				const guildId = searchParams.get("guild_id");
 				const error = searchParams.get("error");
 
 				if (error) {
@@ -28,6 +29,12 @@ function DiscordRedirectContent() {
 				if (!code) {
 					setStatus("error");
 					setErrorMessage("No authorization code received from Discord.");
+					return;
+				}
+
+				if (!guildId) {
+					setStatus("error");
+					setErrorMessage("No guild ID received from Discord.");
 					return;
 				}
 
@@ -48,6 +55,7 @@ function DiscordRedirectContent() {
 					},
 					body: JSON.stringify({
 						code: code,
+						guild_id: guildId,
 						redirect_url: window.location.origin + "/discord/redirect",
 					}),
 				});

@@ -10,19 +10,31 @@ import (
 
 	"ccbackend/clients"
 	"ccbackend/core"
-	"ccbackend/db"
 	"ccbackend/models"
 )
 
+// DiscordIntegrationsRepository defines the interface for Discord integration repository operations
+type DiscordIntegrationsRepository interface {
+	CreateDiscordIntegration(ctx context.Context, integration *models.DiscordIntegration) error
+	GetDiscordIntegrationsByOrganizationID(
+		ctx context.Context,
+		organizationID string,
+	) ([]*models.DiscordIntegration, error)
+	GetAllDiscordIntegrations(ctx context.Context) ([]*models.DiscordIntegration, error)
+	DeleteDiscordIntegrationByID(ctx context.Context, integrationID, organizationID string) (bool, error)
+	GetDiscordIntegrationByGuildID(ctx context.Context, guildID string) (mo.Option[*models.DiscordIntegration], error)
+	GetDiscordIntegrationByID(ctx context.Context, id string) (mo.Option[*models.DiscordIntegration], error)
+}
+
 type DiscordIntegrationsService struct {
-	discordIntegrationsRepo *db.PostgresDiscordIntegrationsRepository
+	discordIntegrationsRepo DiscordIntegrationsRepository
 	discordClient           clients.DiscordOAuthClient
 	discordClientID         string
 	discordClientSecret     string
 }
 
 func NewDiscordIntegrationsService(
-	repo *db.PostgresDiscordIntegrationsRepository,
+	repo DiscordIntegrationsRepository,
 	discordClient clients.DiscordOAuthClient,
 	discordClientID, discordClientSecret string,
 ) *DiscordIntegrationsService {
@@ -36,7 +48,7 @@ func NewDiscordIntegrationsService(
 
 func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 	ctx context.Context,
-	organizationID, discordAuthCode, redirectURL string,
+	organizationID, discordAuthCode, guildID, redirectURL string,
 ) (*models.DiscordIntegration, error) {
 	log.Printf("📋 Starting to create Discord integration for organization: %s", organizationID)
 	if !core.IsValidULID(organizationID) {
@@ -45,7 +57,11 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 	if discordAuthCode == "" {
 		return nil, fmt.Errorf("discord auth code cannot be empty")
 	}
+	if guildID == "" {
+		return nil, fmt.Errorf("discord guild ID cannot be empty")
+	}
 
+	// Exchange OAuth code for access token to validate the request
 	oauthResponse, err := s.discordClient.ExchangeCodeForToken(
 		&http.Client{},
 		s.discordClientID,
@@ -61,28 +77,25 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 		return nil, fmt.Errorf("access token not found in Discord OAuth response")
 	}
 
-	guilds, err := s.discordClient.GetGuildInfo(&http.Client{}, oauthResponse.AccessToken)
+	// Fetch guild information to get the guild name
+	guildInfo, err := s.discordClient.GetGuildByID(&http.Client{}, oauthResponse.AccessToken, guildID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch Discord guild information: %w", err)
 	}
 
-	if len(guilds) == 0 {
-		return nil, fmt.Errorf("no Discord guilds found for this integration")
+	if guildInfo == nil {
+		return nil, fmt.Errorf("guild not found or bot not added to guild")
 	}
 
-	firstGuild := guilds[0]
-	if firstGuild.ID == "" {
-		return nil, fmt.Errorf("guild ID not found in Discord API response")
-	}
-	if firstGuild.Name == "" {
+	if guildInfo.Name == "" {
 		return nil, fmt.Errorf("guild name not found in Discord API response")
 	}
 
 	integration := &models.DiscordIntegration{
 		ID:               core.NewID("di"),
-		DiscordGuildID:   firstGuild.ID,
+		DiscordGuildID:   guildID,
 		DiscordAuthToken: oauthResponse.AccessToken,
-		DiscordGuildName: firstGuild.Name,
+		DiscordGuildName: guildInfo.Name,
 		OrganizationID:   organizationID,
 	}
 	if err := s.discordIntegrationsRepo.CreateDiscordIntegration(ctx, integration); err != nil {
@@ -92,7 +105,7 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 	log.Printf(
 		"📋 Completed successfully - created Discord integration with ID: %s for guild: %s",
 		integration.ID,
-		firstGuild.Name,
+		guildInfo.Name,
 	)
 	return integration, nil
 }

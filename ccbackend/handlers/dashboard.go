@@ -115,7 +115,7 @@ func (h *DashboardAPIHandler) ListDiscordIntegrations(
 // CreateDiscordIntegration creates a new Discord integration for an organization
 func (h *DashboardAPIHandler) CreateDiscordIntegration(
 	ctx context.Context,
-	discordAuthCode, redirectURL string,
+	discordAuthCode, guildID, redirectURL string,
 	user *models.User,
 ) (*models.DiscordIntegration, error) {
 	log.Printf("➕ Creating Discord integration for organization: %s", user.OrganizationID)
@@ -123,6 +123,7 @@ func (h *DashboardAPIHandler) CreateDiscordIntegration(
 		ctx,
 		user.OrganizationID,
 		discordAuthCode,
+		guildID,
 		redirectURL,
 	)
 	if err != nil {
