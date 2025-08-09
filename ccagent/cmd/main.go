@@ -94,7 +94,7 @@ func createCLIAgent(agentType, permissionMode, cursorModel, logDir string) (serv
 }
 
 type Options struct {
-	BypassPermissions bool `long:"bypassPermissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
+	BypassPermissions bool `long:"claude-bypass-permissions" description:"Use bypassPermissions mode for Claude (WARNING: Only use in controlled sandbox environments)"`
 	//nolint
 	Agent string `long:"agent" description:"CLI agent to use (claude or cursor)" choice:"claude" choice:"cursor" default:"claude"`
 	CursorModel string `long:"cursor-model" description:"Model to use with Cursor agent (only applies when --agent=cursor)"`
@@ -148,7 +148,7 @@ func main() {
 		permissionMode = "bypassPermissions"
 		fmt.Fprintf(
 			os.Stderr,
-			"Warning: --bypassPermissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n",
+			"Warning: --claude-bypass-permissions flag should only be used in a controlled, sandbox environment. Otherwise, anyone from Slack will have access to your entire system\n",
 		)
 	}
 
