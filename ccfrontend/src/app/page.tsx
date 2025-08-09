@@ -408,9 +408,9 @@ export default function Home() {
 									{/* Setup Tutorial Link */}
 									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
 										<div className="space-y-1">
-											<h4 className="font-medium">Setup Tutorial</h4>
+											<h4 className="font-medium">Getting Started</h4>
 											<p className="text-sm text-muted-foreground">
-												Watch the complete guide on getting started
+												How to set up and use Claude Control
 											</p>
 										</div>
 										<Button
@@ -535,9 +535,9 @@ export default function Home() {
 									{/* Setup Tutorial Link */}
 									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
 										<div className="space-y-1">
-											<h4 className="font-medium">Setup Tutorial</h4>
+											<h4 className="font-medium">Getting Started</h4>
 											<p className="text-sm text-muted-foreground">
-												Watch the complete guide on getting started
+												How to set up and use Claude Control
 											</p>
 										</div>
 										<Button
