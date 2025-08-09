@@ -269,13 +269,7 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(
 ) error {
 	log.Printf("📋 Starting to process processing slack message notification from client %s", clientID)
 
-	// Validate SlackMessageID is provided
-	if payload.SlackMessageID == "" {
-		log.Printf("⚠️ Processing slack message notification has no SlackMessageID")
-		return fmt.Errorf("SlackMessageID is required")
-	}
-
-	messageID := payload.SlackMessageID
+	messageID := payload.ProcessedMessageID
 
 	// Get processed slack message directly using organization_id (optimization)
 	maybeMessage, err := s.jobsService.GetProcessedSlackMessageByID(
@@ -358,10 +352,10 @@ func (s *CoreUseCase) sendStartConversationToAgent(
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeStartConversation,
 		Payload: models.StartConversationPayload{
-			JobID:            message.JobID,
-			Message:          resolvedText,
-			SlackMessageID:   message.ID,
-			SlackMessageLink: permalink,
+			JobID:              message.JobID,
+			Message:            resolvedText,
+			ProcessedMessageID: message.ID,
+			MessageLink:        permalink,
 		},
 	}
 
@@ -408,10 +402,10 @@ func (s *CoreUseCase) sendUserMessageToAgent(
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeUserMessage,
 		Payload: models.UserMessagePayload{
-			JobID:            message.JobID,
-			Message:          resolvedText,
-			SlackMessageID:   message.ID,
-			SlackMessageLink: permalink,
+			JobID:              message.JobID,
+			Message:            resolvedText,
+			ProcessedMessageID: message.ID,
+			MessageLink:        permalink,
 		},
 	}
 
