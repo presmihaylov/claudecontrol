@@ -1,4 +1,4 @@
-package core
+package slack
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 // ProcessAssistantMessage handles assistant messages from agents and updates Slack accordingly
-func (s *CoreUseCase) ProcessAssistantMessage(
+func (s *SlackUseCase) ProcessAssistantMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.AssistantMessagePayload,
@@ -57,7 +57,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	slackIntegrationID := job.SlackPayload.IntegrationID
 
 	// Validate that this agent is actually assigned to this job
-	if err := s.validateJobBelongsToAgent(ctx, agent.ID, jobID, organizationID); err != nil {
+	if err := s.agentsUseCase.ValidateJobBelongsToAgent(ctx, agent.ID, jobID, organizationID); err != nil {
 		return err
 	}
 
@@ -137,7 +137,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 }
 
 // ProcessSystemMessage handles system messages from agents and sends them to Slack
-func (s *CoreUseCase) ProcessSystemMessage(
+func (s *SlackUseCase) ProcessSystemMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.SystemMessagePayload,
@@ -182,7 +182,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 
 		// Clean up the failed job
 		errorMessage := fmt.Sprintf(":x: Agent encountered an error and cannot continue:\n%s", payload.Message)
-		if err := s.cleanupFailedJob(ctx, job, agentID, errorMessage); err != nil {
+		if err := s.CleanupFailedSlackJob(ctx, job, agentID, errorMessage); err != nil {
 			return fmt.Errorf("failed to cleanup failed job: %w", err)
 		}
 
@@ -209,4 +209,10 @@ func (s *CoreUseCase) ProcessSystemMessage(
 
 	log.Printf("📋 Completed successfully - sent system message to Slack thread %s", job.SlackPayload.ThreadTS)
 	return nil
+}
+
+// IsAgentErrorMessage determines if a system message from ccagent indicates an error or failure
+func IsAgentErrorMessage(message string) bool {
+	// Check if message starts with the specific error prefix from ccagent
+	return strings.HasPrefix(message, "ccagent encountered error:")
 }

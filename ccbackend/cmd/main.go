@@ -21,14 +21,16 @@ import (
 	"ccbackend/db"
 	"ccbackend/handlers"
 	"ccbackend/middleware"
-	agents "ccbackend/services/agents"
+	agentsservice "ccbackend/services/agents"
 	discordintegrations "ccbackend/services/discord_integrations"
 	jobs "ccbackend/services/jobs"
 	organizations "ccbackend/services/organizations"
 	slackintegrations "ccbackend/services/slack_integrations"
 	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
+	"ccbackend/usecases/agents"
 	"ccbackend/usecases/core"
+	"ccbackend/usecases/slack"
 	"ccbackend/utils"
 )
 
@@ -72,7 +74,7 @@ func run() error {
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
 
-	agentsService := agents.NewAgentsService(agentsRepo)
+	agentsService := agentsservice.NewAgentsService(agentsRepo)
 	jobsService := jobs.NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
 	usersService := users.NewUsersService(usersRepo, organizationsService, txManager)
@@ -93,30 +95,40 @@ func run() error {
 		cfg.DiscordClientSecret,
 	)
 
-	coreUseCase := core.NewCoreUseCase(
-		nil,
-		agentsService,
-		jobsService,
-		slackIntegrationsService,
-		organizationsService,
-		txManager,
-	)
-
-	// Create API key validator using the core usecase
+	// Create API key validator using organizationsService directly
 	apiKeyValidator := func(apiKey string) (string, error) {
-		return coreUseCase.ValidateAPIKey(context.Background(), apiKey)
+		maybeOrg, err := organizationsService.GetOrganizationBySecretKey(context.Background(), apiKey)
+		if err != nil {
+			return "", err
+		}
+		if !maybeOrg.IsPresent() {
+			return "", err
+		}
+		return maybeOrg.MustGet().ID, nil
 	}
 
 	wsClient := socketioclient.NewSocketIOClient(apiKeyValidator)
 
-	// Update the core usecase with the wsClient after initialization
-	coreUseCase = core.NewCoreUseCase(
+	// Create use cases in dependency order
+	agentsUseCase := agents.NewAgentsUseCase(wsClient, agentsService)
+
+	slackUseCase := slack.NewSlackUseCase(
+		wsClient,
+		agentsService,
+		jobsService,
+		slackIntegrationsService,
+		txManager,
+		agentsUseCase,
+	)
+
+	coreUseCase := core.NewCoreUseCase(
 		wsClient,
 		agentsService,
 		jobsService,
 		slackIntegrationsService,
 		organizationsService,
-		txManager,
+		agentsUseCase,
+		slackUseCase,
 	)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
 	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
