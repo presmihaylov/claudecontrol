@@ -8,18 +8,20 @@ import (
 	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 
+	"ccbackend/clients"
 	"ccbackend/models"
+	"ccbackend/services"
 )
 
 func TestValidateAPIKey(t *testing.T) {
 	t.Run("valid_api_key", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -53,11 +55,11 @@ func TestValidateAPIKey(t *testing.T) {
 	t.Run("invalid_api_key", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -88,11 +90,11 @@ func TestValidateAPIKey(t *testing.T) {
 	t.Run("service_error", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -123,11 +125,11 @@ func TestValidateAPIKey(t *testing.T) {
 	t.Run("empty_api_key", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -158,11 +160,11 @@ func TestValidateAPIKey(t *testing.T) {
 	t.Run("concurrent_validation", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,

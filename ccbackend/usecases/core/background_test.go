@@ -8,18 +8,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"ccbackend/clients"
 	"ccbackend/models"
+	"ccbackend/services"
 )
 
 func TestBroadcastCheckIdleJobs(t *testing.T) {
 	t.Run("no_organizations", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -46,11 +48,11 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 	t.Run("multiple_connected_agents", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -121,11 +123,11 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 	t.Run("websocket_send_failure", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -175,11 +177,11 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 	t.Run("get_organizations_error", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -207,11 +209,11 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 	t.Run("get_connected_agents_error", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -251,11 +253,11 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 	t.Run("no_connected_agents", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,
@@ -294,11 +296,11 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 	t.Run("mixed_success_and_no_agents", func(t *testing.T) {
 		// Setup
 		ctx := context.Background()
-		mockAgentsService := new(MockAgentsService)
-		mockWSClient := new(MockSocketIOClient)
-		mockJobsService := new(MockJobsService)
-		mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-		mockOrganizationsService := new(MockOrganizationsService)
+		mockAgentsService := new(services.MockAgentsService)
+		mockWSClient := new(clients.MockSocketIOClient)
+		mockJobsService := new(services.MockJobsService)
+		mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+		mockOrganizationsService := new(services.MockOrganizationsService)
 		// Pass nil for use cases that aren't used in this test
 		useCase := NewCoreUseCase(
 			mockWSClient,

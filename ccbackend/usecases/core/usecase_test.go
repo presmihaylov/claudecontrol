@@ -5,17 +5,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"ccbackend/clients"
+	"ccbackend/services"
 	"ccbackend/usecases/agents"
 	"ccbackend/usecases/slack"
 )
 
 func TestNewCoreUseCase(t *testing.T) {
 	// Test that NewCoreUseCase properly initializes the struct
-	mockAgentsService := new(MockAgentsService)
-	mockWSClient := new(MockSocketIOClient)
-	mockJobsService := new(MockJobsService)
-	mockSlackIntegrationsService := new(MockSlackIntegrationsService)
-	mockOrganizationsService := new(MockOrganizationsService)
+	mockAgentsService := new(services.MockAgentsService)
+	mockWSClient := new(clients.MockSocketIOClient)
+	mockJobsService := new(services.MockJobsService)
+	mockSlackIntegrationsService := new(services.MockSlackIntegrationsService)
+	mockOrganizationsService := new(services.MockOrganizationsService)
 	mockAgentsUseCase := &agents.AgentsUseCase{}
 	mockSlackUseCase := &slack.SlackUseCase{}
 
