@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 
 	"ccbackend/clients"
 	"ccbackend/models"
@@ -116,4 +117,10 @@ func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) 
 		utils.AssertInvariant(false, "invalid status received")
 		return ""
 	}
+}
+
+// IsAgentErrorMessage determines if a system message from ccagent indicates an error or failure
+func IsAgentErrorMessage(message string) bool {
+	// Check if message starts with the specific error prefix from ccagent
+	return strings.HasPrefix(message, "ccagent encountered error:")
 }
