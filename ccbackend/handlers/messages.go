@@ -79,7 +79,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 		log.Printf(
 			"🔔 Received processing slack message notification from client %s for message: %s",
 			client.ID,
-			payload.SlackMessageID,
+			payload.ProcessedMessageID,
 		)
 		if err := h.coreUseCase.ProcessProcessingSlackMessage(context.Background(), client.ID, payload, client.OrganizationID); err != nil {
 			log.Printf("❌ Failed to process processing slack message notification from client %s: %v", client.ID, err)
