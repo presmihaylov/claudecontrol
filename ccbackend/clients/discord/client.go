@@ -26,13 +26,31 @@ type DiscordClient struct {
 	httpClient *http.Client
 	// botToken is the Discord bot token used for API requests
 	botToken string
+	// sdkClient is the discordgo session initialized once for reuse
+	sdkClient *discordgo.Session
 }
 
 // NewDiscordClient creates a new Discord client for OAuth operations
 func NewDiscordClient(httpClient *http.Client, botToken string) clients.DiscordClient {
+	// Initialize the Discord SDK client once during construction
+	sdkClient, err := discordgo.New("Bot " + botToken)
+	if err != nil {
+		// If we can't create the SDK client, log the error but still return a client
+		// The OAuth functionality will still work, but guild operations will fail
+		return &DiscordClient{
+			httpClient: httpClient,
+			botToken:   botToken,
+			sdkClient:  nil,
+		}
+	}
+
+	// Use our HTTP client
+	sdkClient.Client = httpClient
+
 	return &DiscordClient{
 		httpClient: httpClient,
 		botToken:   botToken,
+		sdkClient:  sdkClient,
 	}
 }
 
@@ -86,17 +104,8 @@ func (c *DiscordClient) ExchangeCodeForToken(
 
 // GetGuildByID fetches specific guild information using the bot token
 func (c *DiscordClient) GetGuildByID(guildID string) (*clients.DiscordGuild, error) {
-	// Create a new Discord sdkClient using the bot token
-	sdkClient, err := discordgo.New("Bot " + c.botToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Discord session: %w", err)
-	}
-
-	// Use our HTTP client
-	sdkClient.Client = c.httpClient
-
-	// Get the guild using discordgo
-	discordGuild, err := sdkClient.Guild(guildID, discordgo.WithContext(context.Background()))
+	// Get the guild using the pre-initialized discordgo client
+	discordGuild, err := c.sdkClient.Guild(guildID, discordgo.WithContext(context.Background()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch guild: %w", err)
 	}
