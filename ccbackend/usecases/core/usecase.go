@@ -112,7 +112,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	var job *models.Job
 	var slackIntegrationID string
 	for _, integration := range slackIntegrations {
-		maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, integration.ID)
+		maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, integration.ID, organizationID)
 		if err == nil && maybeJob.IsPresent() {
 			job = maybeJob.MustGet()
 			slackIntegrationID = integration.ID
@@ -148,7 +148,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	}
 
 	// Update job timestamp to track activity
-	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, slackIntegrationID); err != nil {
+	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
 		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
@@ -163,6 +163,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 		messageID,
 		models.ProcessedSlackMessageStatusCompleted,
 		slackIntegrationID,
+		organizationID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update processed slack message status: %w", err)
@@ -180,7 +181,12 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	}
 
 	// Check if this is the latest message in the job and add hand emoji if waiting for next steps
-	maybeLatestMsg, err := s.jobsService.GetLatestProcessedMessageForJob(ctx, job.ID, slackIntegrationID)
+	maybeLatestMsg, err := s.jobsService.GetLatestProcessedMessageForJob(
+		ctx,
+		job.ID,
+		slackIntegrationID,
+		organizationID,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to get latest message for job: %w", err)
 	}
@@ -223,7 +229,12 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	var processedMessage *models.ProcessedSlackMessage
 	var slackIntegrationID string
 	for _, integration := range slackIntegrations {
-		maybeProcessedMsg, err := s.jobsService.GetProcessedSlackMessageByID(ctx, messageID, integration.ID)
+		maybeProcessedMsg, err := s.jobsService.GetProcessedSlackMessageByID(
+			ctx,
+			messageID,
+			integration.ID,
+			organizationID,
+		)
 		if err == nil && maybeProcessedMsg.IsPresent() {
 			processedMessage = maybeProcessedMsg.MustGet()
 			slackIntegrationID = integration.ID
@@ -240,7 +251,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	}
 
 	// Get the job to find the thread timestamp (should be in the same slack integration)
-	maybeJob, err := s.jobsService.GetJobByID(ctx, processedMessage.JobID, slackIntegrationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, processedMessage.JobID, slackIntegrationID, organizationID)
 	if err != nil {
 		log.Printf("❌ Failed to get job %s: %v", processedMessage.JobID, err)
 		return fmt.Errorf("failed to get job: %w", err)
@@ -266,7 +277,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	}
 
 	// Update job timestamp to track activity
-	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, slackIntegrationID); err != nil {
+	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
 		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
@@ -300,7 +311,12 @@ func (s *CoreUseCase) ProcessProcessingSlackMessage(
 	var processedMessage *models.ProcessedSlackMessage
 	var slackIntegrationID string
 	for _, integration := range slackIntegrations {
-		maybeProcessedMsg, err := s.jobsService.GetProcessedSlackMessageByID(ctx, messageID, integration.ID)
+		maybeProcessedMsg, err := s.jobsService.GetProcessedSlackMessageByID(
+			ctx,
+			messageID,
+			integration.ID,
+			organizationID,
+		)
 		if err == nil && maybeProcessedMsg.IsPresent() {
 			processedMessage = maybeProcessedMsg.MustGet()
 			slackIntegrationID = integration.ID
@@ -329,6 +345,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 	ctx context.Context,
 	event models.SlackMessageEvent,
 	slackIntegrationID string,
+	organizationID string,
 ) error {
 	log.Printf("📋 Starting to process Slack message event from %s in %s: %s", event.User, event.Channel, event.Text)
 
@@ -337,7 +354,13 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 		log.Printf("💬 Bot mentioned in ongoing thread %s in channel %s", event.ThreadTS, event.Channel)
 
 		// Check if job exists for this thread - thread replies cannot create new jobs
-		maybeJob, err := s.jobsService.GetJobBySlackThread(ctx, event.ThreadTS, event.Channel, slackIntegrationID)
+		maybeJob, err := s.jobsService.GetJobBySlackThread(
+			ctx,
+			event.ThreadTS,
+			event.Channel,
+			slackIntegrationID,
+			organizationID,
+		)
 		if err != nil {
 			// Error occurred - propagate upstream
 			log.Printf("❌ Failed to get job for thread reply in %s: %v", event.Channel, err)
@@ -366,6 +389,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 		event.Channel,
 		event.User,
 		slackIntegrationID,
+		organizationID,
 	)
 	if err != nil {
 		log.Printf("❌ Failed to get or create job for slack thread: %v", err)
@@ -385,7 +409,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 		log.Printf("❌ Slack integration not found: %s", slackIntegrationID)
 		return fmt.Errorf("slack integration not found: %s", slackIntegrationID)
 	}
-	organizationID := maybeSlackIntegration.MustGet().OrganizationID
+	organizationID = maybeSlackIntegration.MustGet().OrganizationID
 
 	// Check if agents are available first
 	connectedClientIDs := s.wsClient.GetClientIDs()
@@ -421,6 +445,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 		event.TS,
 		event.Text,
 		slackIntegrationID,
+		organizationID,
 		messageStatus,
 	)
 	if err != nil {
@@ -473,7 +498,7 @@ func (s *CoreUseCase) sendStartConversationToAgent(
 	}
 
 	// Get job to access thread timestamp
-	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.SlackIntegrationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.SlackIntegrationID, message.OrganizationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -523,7 +548,7 @@ func (s *CoreUseCase) sendUserMessageToAgent(
 	}
 
 	// Get job to access thread timestamp
-	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.SlackIntegrationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.SlackIntegrationID, message.OrganizationID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -788,7 +813,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 		var job *models.Job
 		var jobSlackIntegrationID string
 		for _, integration := range slackIntegrations {
-			maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, integration.ID)
+			maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, integration.ID, client.OrganizationID)
 			if err == nil && maybeJob.IsPresent() {
 				job = maybeJob.MustGet()
 				jobSlackIntegrationID = integration.ID
@@ -826,7 +851,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 			log.Printf("🔗 Unassigned agent %s from job %s", agent.ID, jobID)
 
 			// Delete the job (use the job's slack integration)
-			if err := s.jobsService.DeleteJob(ctx, jobID, jobSlackIntegrationID); err != nil {
+			if err := s.jobsService.DeleteJob(ctx, jobID, jobSlackIntegrationID, client.OrganizationID); err != nil {
 				log.Printf("❌ Failed to delete abandoned job %s: %v", jobID, err)
 				return fmt.Errorf("failed to delete abandoned job %s: %w", jobID, err)
 			}
@@ -953,7 +978,7 @@ func (s *CoreUseCase) ProcessJobComplete(
 	var job *models.Job
 	var slackIntegrationID string
 	for _, integration := range slackIntegrations {
-		maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, integration.ID)
+		maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, integration.ID, organizationID)
 		if err == nil && maybeJob.IsPresent() {
 			job = maybeJob.MustGet()
 			slackIntegrationID = integration.ID
@@ -1000,7 +1025,7 @@ func (s *CoreUseCase) ProcessJobComplete(
 		log.Printf("✅ Unassigned agent %s from completed job %s", agent.ID, jobID)
 
 		// Delete the job and its associated processed messages
-		if err := s.jobsService.DeleteJob(ctx, jobID, slackIntegrationID); err != nil {
+		if err := s.jobsService.DeleteJob(ctx, jobID, slackIntegrationID, organizationID); err != nil {
 			log.Printf("❌ Failed to delete completed job %s: %v", jobID, err)
 			return fmt.Errorf("failed to delete completed job: %w", err)
 		}
@@ -1043,7 +1068,7 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 		slackIntegrationID := integration.ID
 
 		// Get jobs with queued messages for this integration
-		queuedJobs, err := s.jobsService.GetJobsWithQueuedMessages(ctx, slackIntegrationID)
+		queuedJobs, err := s.jobsService.GetJobsWithQueuedMessages(ctx, slackIntegrationID, integration.OrganizationID)
 		if err != nil {
 			processingErrors = append(
 				processingErrors,
@@ -1086,6 +1111,7 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 				job.ID,
 				models.ProcessedSlackMessageStatusQueued,
 				slackIntegrationID,
+				integration.OrganizationID,
 			)
 			if err != nil {
 				processingErrors = append(
@@ -1105,6 +1131,7 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 					message.ID,
 					models.ProcessedSlackMessageStatusInProgress,
 					slackIntegrationID,
+					organizationID,
 				)
 				if err != nil {
 					processingErrors = append(
@@ -1129,6 +1156,7 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 					job.ID,
 					models.ProcessedSlackMessageStatusCompleted,
 					slackIntegrationID,
+					integration.OrganizationID,
 				)
 				if err != nil {
 					processingErrors = append(
@@ -1279,6 +1307,7 @@ func (s *CoreUseCase) ProcessPing(ctx context.Context, client *clients.Client) e
 func (s *CoreUseCase) ProcessReactionAdded(
 	ctx context.Context,
 	reactionName, userID, channelID, messageTS, slackIntegrationID string,
+	organizationID string,
 ) error {
 	log.Printf(
 		"📋 Starting to process reaction %s added by %s on message %s in channel %s",
@@ -1295,7 +1324,7 @@ func (s *CoreUseCase) ProcessReactionAdded(
 	}
 
 	// Find the job by thread TS and channel - the messageTS is the thread root
-	maybeJob, err := s.jobsService.GetJobBySlackThread(ctx, messageTS, channelID, slackIntegrationID)
+	maybeJob, err := s.jobsService.GetJobBySlackThread(ctx, messageTS, channelID, slackIntegrationID, organizationID)
 	if err != nil {
 		log.Printf("❌ Failed to get job for message %s in channel %s: %v", messageTS, channelID, err)
 		return fmt.Errorf("failed to get job for reaction: %w", err)
@@ -1325,7 +1354,7 @@ func (s *CoreUseCase) ProcessReactionAdded(
 		log.Printf("❌ Slack integration not found: %s", slackIntegrationID)
 		return fmt.Errorf("slack integration not found: %s", slackIntegrationID)
 	}
-	organizationID := maybeSlackIntegration.MustGet().OrganizationID
+	organizationID = maybeSlackIntegration.MustGet().OrganizationID
 
 	// Get the assigned agent for this job to unassign them
 	maybeAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, organizationID)
@@ -1347,7 +1376,7 @@ func (s *CoreUseCase) ProcessReactionAdded(
 		}
 
 		// Delete the job and its associated processed messages
-		if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID); err != nil {
+		if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
 			log.Printf("❌ Failed to delete completed job %s: %v", job.ID, err)
 			return fmt.Errorf("failed to delete completed job: %w", err)
 		}

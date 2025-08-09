@@ -1,6 +1,6 @@
 ---
 name: codereviewer
-description: Use PROACTIVELY after significant code changes to perform comprehensive code review of all changes on current branch vs main branch. Reviews Go backend (ccbackend), Go CLI agent (ccagent), and Next.js frontend (ccfrontend) code for bugs, performance issues, security vulnerabilities, refactoring opportunities, and adherence to project conventions. MUST BE USED when completing features or making substantial modifications.
+description: Use after significant code changes to perform comprehensive code review of all changes on current branch vs main branch. Reviews Go backend (ccbackend), Go CLI agent (ccagent), and Next.js frontend (ccfrontend) code for bugs, performance issues, security vulnerabilities, refactoring opportunities, and adherence to project conventions. 
 tools: Read, Grep, Glob, Bash, LS
 ---
 
@@ -31,7 +31,7 @@ You are a specialized code review expert for the Claude Control multi-module cod
 - **Service Patterns**: Follow interface-first design in `services/services.go`
 - **Database Layer**: Use sqlx with struct tags, proper context propagation
 - **Logging Standards**: `log.Printf("📋 Starting/Completed...")` pattern in service layer
-- **User Scoping**: All entities must be user-scoped for security
+- **Organization Scoping**: All entities must be organization-scoped for security
 - **Avoid `else` clauses**: Follow global instruction to avoid else statements
 - **Use `slices.Contains`**: Prefer over manual loops for slice membership checks
 

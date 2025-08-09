@@ -163,11 +163,11 @@ func (h *SlackEventsHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Req
 
 	switch eventType {
 	case "app_mention":
-		if err := h.handleAppMention(r.Context(), event, slackIntegration.ID); err != nil {
+		if err := h.handleAppMention(r.Context(), event, slackIntegration.ID, slackIntegration.OrganizationID); err != nil {
 			log.Printf("❌ Failed to handle app mention: %v", err)
 		}
 	case "reaction_added":
-		if err := h.handleReactionAdded(r.Context(), event, slackIntegration.ID); err != nil {
+		if err := h.handleReactionAdded(r.Context(), event, slackIntegration.ID, slackIntegration.OrganizationID); err != nil {
 			log.Printf("❌ Failed to handle reaction added: %v", err)
 		}
 	default:
@@ -192,6 +192,7 @@ func (h *SlackEventsHandler) handleAppMention(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
+	organizationID string,
 ) error {
 	channel := event["channel"].(string)
 	user := event["user"].(string)
@@ -213,13 +214,14 @@ func (h *SlackEventsHandler) handleAppMention(
 		ThreadTS: threadTS,
 	}
 
-	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID)
+	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID, organizationID)
 }
 
 func (h *SlackEventsHandler) handleReactionAdded(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
+	organizationID string,
 ) error {
 	reactionName := event["reaction"].(string)
 	user := event["user"].(string)
@@ -237,5 +239,5 @@ func (h *SlackEventsHandler) handleReactionAdded(
 
 	log.Printf("📨 Reaction %s added by %s on message %s in %s", reactionName, user, ts, channel)
 
-	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID)
+	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID, organizationID)
 }
