@@ -38,6 +38,7 @@ type AssistantMessagePayload struct {
 }
 
 type SystemMessagePayload struct {
+	JobID          string `json:"job_id"`
 	Message        string `json:"message"`
 	SlackMessageID string `json:"slack_message_id"`
 }
