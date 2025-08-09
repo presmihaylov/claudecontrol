@@ -16,6 +16,11 @@ import (
 	"ccagent/utils"
 )
 
+const (
+	// ErrorMessageFormat is the standard format for agent error messages
+	ErrorMessageFormat = "ccagent encountered error: %v"
+)
+
 type MessageHandler struct {
 	claudeService services.CLIAgent
 	gitUseCase    *usecases.GitUseCase
@@ -45,7 +50,7 @@ func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *so
 				slackMessageID = payload.SlackMessageID
 			}
 			if sendErr := mh.sendErrorMessage(socketClient, payload.JobID, err, slackMessageID); sendErr != nil {
-				log.Error("Failed to send error message: %v", sendErr)
+				log.Error("Failed to send error message for job %s: %v (original error: %v)", payload.JobID, sendErr, err)
 			}
 		}
 	case models.MessageTypeUserMessage:
@@ -57,7 +62,7 @@ func (mh *MessageHandler) HandleMessage(msg models.BaseMessage, socketClient *so
 				slackMessageID = payload.SlackMessageID
 			}
 			if sendErr := mh.sendErrorMessage(socketClient, payload.JobID, err, slackMessageID); sendErr != nil {
-				log.Error("Failed to send error message: %v", sendErr)
+				log.Error("Failed to send error message for job %s: %v (original error: %v)", payload.JobID, sendErr, err)
 			}
 		}
 	case models.MessageTypeCheckIdleJobs:
@@ -104,7 +109,7 @@ func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socket
 		systemErr := mh.sendSystemMessage(
 			socketClient,
 			payload.JobID,
-			fmt.Sprintf("ccagent encountered error: %v", err),
+			fmt.Sprintf(ErrorMessageFormat, err),
 			payload.SlackMessageID,
 		)
 		if systemErr != nil {
@@ -223,7 +228,7 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 		systemErr := mh.sendSystemMessage(
 			socketClient,
 			payload.JobID,
-			fmt.Sprintf("ccagent encountered error: %v", err),
+			fmt.Sprintf(ErrorMessageFormat, err),
 			payload.SlackMessageID,
 		)
 		if systemErr != nil {
@@ -453,7 +458,7 @@ func (mh *MessageHandler) sendSystemMessage(socketClient *socket.Socket, jobID, 
 // sendErrorMessage sends an error as a system message. The Claude service handles
 // all error processing internally, so we just need to format and send the error.
 func (mh *MessageHandler) sendErrorMessage(socketClient *socket.Socket, jobID string, err error, slackMessageID string) error {
-	messageToSend := fmt.Sprintf("ccagent encountered error: %v", err)
+	messageToSend := fmt.Sprintf(ErrorMessageFormat, err)
 	return mh.sendSystemMessage(socketClient, jobID, messageToSend, slackMessageID)
 }
 

@@ -214,6 +214,11 @@ func (s *CoreUseCase) ProcessSystemMessage(
 
 	// Try to use JobID directly if provided
 	if payload.JobID != "" {
+		// Validate JobID format
+		if !core.IsValidULID(payload.JobID) {
+			log.Printf("❌ Invalid JobID format: %s", payload.JobID)
+			return fmt.Errorf("JobID must be a valid ULID: %s", payload.JobID)
+		}
 		log.Printf("📋 Using direct Job ID %s from payload", payload.JobID)
 		maybeJob, err := s.jobsService.GetJobByID(ctx, payload.JobID, organizationID)
 		if err != nil {
@@ -232,7 +237,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 		slackChannelID = job.SlackChannelID
 	} else if payload.SlackMessageID != "" {
 		// Fall back to SlackMessageID for backward compatibility
-		log.Printf("⚠️ No Job ID provided, falling back to SlackMessageID lookup")
+		log.Printf("⚠️ No Job ID provided, falling back to deprecated SlackMessageID lookup - consider updating client to send JobID")
 		messageID := payload.SlackMessageID
 
 		// Get processed slack message directly using organization_id (optimization)
