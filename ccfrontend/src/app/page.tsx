@@ -652,6 +652,7 @@ export default function Home() {
 											</div>
 											<div className="flex items-center gap-2">
 												<Button
+													variant="destructive"
 													size="sm"
 													onClick={() => handleDeleteIntegration(integration)}
 													disabled={deleting === integration.id}
@@ -726,6 +727,7 @@ export default function Home() {
 								Cancel
 							</Button>
 							<Button
+								variant="destructive"
 								onClick={confirmDeleteIntegration}
 								disabled={deleting === integrationToDelete?.id}
 							>
