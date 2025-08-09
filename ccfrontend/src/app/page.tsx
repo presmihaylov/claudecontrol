@@ -1,7 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -48,7 +54,8 @@ export default function Home() {
 	const [authError, setAuthError] = useState<string | null>(null);
 	const [deleting, setDeleting] = useState<string | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [integrationToDelete, setIntegrationToDelete] = useState<SlackIntegration | null>(null);
+	const [integrationToDelete, setIntegrationToDelete] =
+		useState<SlackIntegration | null>(null);
 	const [generatingKey, setGeneratingKey] = useState(false);
 	const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
 	const [secretKeyDialogOpen, setSecretKeyDialogOpen] = useState(false);
@@ -65,16 +72,22 @@ export default function Home() {
 				if (!token) return;
 
 				// First authenticate the user
-				const authResponse = await fetch(`${env.CCBACKEND_BASE_URL}/users/authenticate`, {
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${token}`,
-						"Content-Type": "application/json",
+				const authResponse = await fetch(
+					`${env.CCBACKEND_BASE_URL}/users/authenticate`,
+					{
+						method: "POST",
+						headers: {
+							Authorization: `Bearer ${token}`,
+							"Content-Type": "application/json",
+						},
 					},
-				});
+				);
 
 				if (!authResponse.ok) {
-					console.error("Failed to authenticate user:", authResponse.statusText);
+					console.error(
+						"Failed to authenticate user:",
+						authResponse.statusText,
+					);
 					setAuthError(`Authentication failed: ${authResponse.statusText}`);
 					setBackendAuthenticated(false);
 					return;
@@ -105,13 +118,16 @@ export default function Home() {
 			const token = await getToken();
 			if (!token) return;
 
-			const response = await fetch(`${env.CCBACKEND_BASE_URL}/slack/integrations`, {
-				method: "GET",
-				headers: {
-					Authorization: `Bearer ${token}`,
-					"Content-Type": "application/json",
+			const response = await fetch(
+				`${env.CCBACKEND_BASE_URL}/slack/integrations`,
+				{
+					method: "GET",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
 				},
-			});
+			);
 
 			if (!response.ok) {
 				console.error("Failed to fetch integrations:", response.statusText);
@@ -213,13 +229,16 @@ export default function Home() {
 			const token = await getToken();
 			if (!token) return;
 
-			const response = await fetch(`${env.CCBACKEND_BASE_URL}/organizations/ccagent_secret_key`, {
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${token}`,
-					"Content-Type": "application/json",
+			const response = await fetch(
+				`${env.CCBACKEND_BASE_URL}/organizations/ccagent_secret_key`,
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
 				},
-			});
+			);
 
 			if (!response.ok) {
 				console.error("Failed to generate secret key:", response.statusText);
@@ -297,16 +316,20 @@ export default function Home() {
 				<div className="container mx-auto px-4 py-8 max-w-4xl">
 					<div className="flex flex-col items-center justify-center min-h-[60vh]">
 						<div className="text-center space-y-4">
-							<h2 className="text-xl font-semibold text-destructive">Authentication Failed</h2>
+							<h2 className="text-xl font-semibold text-destructive">
+								Authentication Failed
+							</h2>
 							<p className="text-muted-foreground max-w-md">
-								Unable to authenticate with the backend server. Please try refreshing the page or
-								contact support if the issue persists.
+								Unable to authenticate with the backend server. Please try
+								refreshing the page or contact support if the issue persists.
 							</p>
 							<div className="text-sm text-muted-foreground bg-muted p-3 rounded-md font-mono">
 								{authError}
 							</div>
 							<div className="space-x-2">
-								<Button onClick={() => window.location.reload()}>Refresh Page</Button>
+								<Button onClick={() => window.location.reload()}>
+									Refresh Page
+								</Button>
 								<Button variant="outline" onClick={() => signOut()}>
 									Sign Out
 								</Button>
@@ -322,7 +345,9 @@ export default function Home() {
 	if (!loading && !backendAuthenticated) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-muted-foreground">Authenticating with backend...</div>
+				<div className="text-muted-foreground">
+					Authenticating with backend...
+				</div>
 			</div>
 		);
 	}
@@ -351,8 +376,8 @@ export default function Home() {
 										ccagent Secret Key
 									</CardTitle>
 									<CardDescription>
-										This secret key is used by the ccagent CLI to authenticate with all your Slack
-										workspaces in this organization.
+										This secret key is used by the ccagent CLI to authenticate
+										with all your Slack workspaces in this organization.
 									</CardDescription>
 								</CardHeader>
 								<CardContent className="space-y-4">
@@ -361,8 +386,8 @@ export default function Home() {
 										<div className="space-y-1">
 											<h4 className="font-medium">Download ccagent</h4>
 											<p className="text-sm text-muted-foreground">
-												Download the ccagent CLI tool to start using Claude Control with your Slack
-												workspaces.
+												Download the ccagent CLI tool to start using Claude
+												Control with your Slack workspaces.
 											</p>
 										</div>
 										<Button
@@ -379,6 +404,29 @@ export default function Home() {
 											Download
 										</Button>
 									</div>
+
+									{/* Setup Tutorial Link */}
+									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+										<div className="space-y-1">
+											<h4 className="font-medium">Setup Tutorial</h4>
+											<p className="text-sm text-muted-foreground">
+												How to get started
+											</p>
+										</div>
+										<Button
+											variant="outline"
+											onClick={() =>
+												window.open(
+													"https://drive.google.com/file/d/11G1btpviFYzehqx0-ji3o1QhKmTR991U/view?usp=sharing",
+													"_blank",
+												)
+											}
+											className="flex items-center gap-2"
+										>
+											📺 Watch Tutorial
+										</Button>
+									</div>
+
 									{organization.ccagent_secret_key_generated_at ? (
 										<div className="space-y-2">
 											<p className="text-sm text-muted-foreground">
@@ -397,23 +445,31 @@ export default function Home() {
 												disabled={generatingKey}
 												className="flex items-center gap-2"
 											>
-												<RefreshCw className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
-												{generatingKey ? "Regenerating..." : "Regenerate Secret Key"}
+												<RefreshCw
+													className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
+												/>
+												{generatingKey
+													? "Regenerating..."
+													: "Regenerate Secret Key"}
 											</Button>
 										</div>
 									) : (
 										<div className="space-y-2">
 											<p className="text-sm text-muted-foreground">
-												No secret key has been generated yet. Generate one to start using ccagent
-												with all your Slack workspaces.
+												No secret key has been generated yet. Generate one to
+												start using ccagent with all your Slack workspaces.
 											</p>
 											<Button
 												onClick={handleGenerateSecretKey}
 												disabled={generatingKey}
 												className="flex items-center gap-2"
 											>
-												<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
-												{generatingKey ? "Generating..." : "Generate Secret Key"}
+												<Key
+													className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
+												/>
+												{generatingKey
+													? "Generating..."
+													: "Generate Secret Key"}
 											</Button>
 										</div>
 									)}
@@ -447,8 +503,8 @@ export default function Home() {
 										ccagent Secret Key
 									</CardTitle>
 									<CardDescription>
-										This secret key is used by the ccagent CLI to authenticate with all your Slack
-										workspaces in this organization.
+										This secret key is used by the ccagent CLI to authenticate
+										with all your Slack workspaces in this organization.
 									</CardDescription>
 								</CardHeader>
 								<CardContent className="space-y-4">
@@ -457,8 +513,8 @@ export default function Home() {
 										<div className="space-y-1">
 											<h4 className="font-medium">Download ccagent</h4>
 											<p className="text-sm text-muted-foreground">
-												Download the ccagent CLI tool to start using Claude Control with your Slack
-												workspaces.
+												Download the ccagent CLI tool to start using Claude
+												Control with your Slack workspaces.
 											</p>
 										</div>
 										<Button
@@ -475,6 +531,30 @@ export default function Home() {
 											Download
 										</Button>
 									</div>
+
+									{/* Setup Tutorial Link */}
+									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+										<div className="space-y-1">
+											<h4 className="font-medium">Setup Tutorial</h4>
+											<p className="text-sm text-muted-foreground">
+												Watch the complete setup guide to get started with
+												Claude Control
+											</p>
+										</div>
+										<Button
+											variant="outline"
+											onClick={() =>
+												window.open(
+													"https://drive.google.com/file/d/11G1btpviFYzehqx0-ji3o1QhKmTR991U/view?usp=sharing",
+													"_blank",
+												)
+											}
+											className="flex items-center gap-2"
+										>
+											📺 Watch Tutorial
+										</Button>
+									</div>
+
 									{organization.ccagent_secret_key_generated_at ? (
 										<div className="space-y-2">
 											<p className="text-sm text-muted-foreground">
@@ -493,23 +573,31 @@ export default function Home() {
 												disabled={generatingKey}
 												className="flex items-center gap-2"
 											>
-												<RefreshCw className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
-												{generatingKey ? "Regenerating..." : "Regenerate Secret Key"}
+												<RefreshCw
+													className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
+												/>
+												{generatingKey
+													? "Regenerating..."
+													: "Regenerate Secret Key"}
 											</Button>
 										</div>
 									) : (
 										<div className="space-y-2">
 											<p className="text-sm text-muted-foreground">
-												No secret key has been generated yet. Generate one to start using ccagent
-												with all your Slack workspaces.
+												No secret key has been generated yet. Generate one to
+												start using ccagent with all your Slack workspaces.
 											</p>
 											<Button
 												onClick={handleGenerateSecretKey}
 												disabled={generatingKey}
 												className="flex items-center gap-2"
 											>
-												<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
-												{generatingKey ? "Generating..." : "Generate Secret Key"}
+												<Key
+													className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`}
+												/>
+												{generatingKey
+													? "Generating..."
+													: "Generate Secret Key"}
 											</Button>
 										</div>
 									)}
@@ -518,7 +606,9 @@ export default function Home() {
 						)}
 
 						<div>
-							<h2 className="text-2xl font-semibold mb-4">Connected Workspaces</h2>
+							<h2 className="text-2xl font-semibold mb-4">
+								Connected Workspaces
+							</h2>
 							<div className="grid gap-4">
 								{integrations.map((integration) => (
 									<Card key={integration.id} className="p-4">
@@ -526,9 +616,14 @@ export default function Home() {
 											<div className="flex items-center gap-3">
 												<Slack className="h-6 w-6 text-black" />
 												<div>
-													<h3 className="font-semibold">{integration.slack_team_name}</h3>
+													<h3 className="font-semibold">
+														{integration.slack_team_name}
+													</h3>
 													<p className="text-sm text-muted-foreground">
-														Connected on {new Date(integration.created_at).toLocaleDateString()}
+														Connected on{" "}
+														{new Date(
+															integration.created_at,
+														).toLocaleDateString()}
 													</p>
 												</div>
 											</div>
@@ -541,7 +636,9 @@ export default function Home() {
 													className="flex items-center gap-2"
 												>
 													<Trash2 className="h-4 w-4" />
-													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
+													{deleting === integration.id
+														? "Disconnecting..."
+														: "Disconnect"}
 												</Button>
 											</div>
 										</div>
@@ -552,7 +649,11 @@ export default function Home() {
 
 						{/* Connect another workspace button */}
 						<div className="flex justify-center pt-4">
-							<Button size="lg" className="flex items-center gap-2" onClick={handleAddToSlack}>
+							<Button
+								size="lg"
+								className="flex items-center gap-2"
+								onClick={handleAddToSlack}
+							>
 								<Slack className="h-5 w-5" />
 								Connect another workspace
 							</Button>
@@ -566,12 +667,16 @@ export default function Home() {
 						<DialogHeader>
 							<DialogTitle>Disconnect Workspace</DialogTitle>
 							<DialogDescription>
-								Are you sure you want to disconnect "{integrationToDelete?.slack_team_name}" from
-								Claude Control? This action cannot be undone.
+								Are you sure you want to disconnect "
+								{integrationToDelete?.slack_team_name}" from Claude Control?
+								This action cannot be undone.
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter>
-							<Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+							<Button
+								variant="outline"
+								onClick={() => setDeleteDialogOpen(false)}
+							>
 								Cancel
 							</Button>
 							<Button
@@ -579,31 +684,43 @@ export default function Home() {
 								onClick={confirmDeleteIntegration}
 								disabled={deleting === integrationToDelete?.id}
 							>
-								{deleting === integrationToDelete?.id ? "Disconnecting..." : "Disconnect"}
+								{deleting === integrationToDelete?.id
+									? "Disconnecting..."
+									: "Disconnect"}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
 
 				{/* Regenerate Warning Dialog */}
-				<Dialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
+				<Dialog
+					open={regenerateDialogOpen}
+					onOpenChange={setRegenerateDialogOpen}
+				>
 					<DialogContent>
 						<DialogHeader>
 							<DialogTitle>Regenerate Secret Key</DialogTitle>
 							<DialogDescription>
-								Are you sure you want to regenerate the secret key for your organization?
+								Are you sure you want to regenerate the secret key for your
+								organization?
 								<br />
 								<br />
-								<strong>Warning:</strong> This will invalidate the old key and any running ccagent
-								instances using the old key will stop working until you update them with the new
-								key.
+								<strong>Warning:</strong> This will invalidate the old key and
+								any running ccagent instances using the old key will stop
+								working until you update them with the new key.
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter>
-							<Button variant="outline" onClick={() => setRegenerateDialogOpen(false)}>
+							<Button
+								variant="outline"
+								onClick={() => setRegenerateDialogOpen(false)}
+							>
 								Cancel
 							</Button>
-							<Button onClick={handleGenerateSecretKey} disabled={generatingKey}>
+							<Button
+								onClick={handleGenerateSecretKey}
+								disabled={generatingKey}
+							>
 								{generatingKey ? "Regenerating..." : "Regenerate Key"}
 							</Button>
 						</DialogFooter>
@@ -611,18 +728,24 @@ export default function Home() {
 				</Dialog>
 
 				{/* Secret Key Display Dialog */}
-				<Dialog open={secretKeyDialogOpen} onOpenChange={setSecretKeyDialogOpen}>
+				<Dialog
+					open={secretKeyDialogOpen}
+					onOpenChange={setSecretKeyDialogOpen}
+				>
 					<DialogContent>
 						<DialogHeader>
 							<DialogTitle>Your ccagent Secret Key</DialogTitle>
 							<DialogDescription>
-								Copy this secret key and save it somewhere safe. You won't be able to see it again
-								after closing this dialog.
+								Copy this secret key and save it somewhere safe. You won't be
+								able to see it again after closing this dialog.
 							</DialogDescription>
 						</DialogHeader>
 						<div className="space-y-4">
 							<div className="space-y-2">
-								<label htmlFor="secret-key-input" className="text-sm font-medium">
+								<label
+									htmlFor="secret-key-input"
+									className="text-sm font-medium"
+								>
 									Secret Key
 								</label>
 								<div className="flex gap-2">
