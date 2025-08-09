@@ -10,15 +10,15 @@ import (
 	"strings"
 
 	"ccbackend/clients"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 var (
-	discordAPIBase   = "https://discord.com/api"
-	discordOAuthURL  = discordAPIBase + "/oauth2/token"
-	discordGuildsURL = discordAPIBase + "/users/@me/guilds"
+	discordOAuthURL = "https://discord.com/api/oauth2/token"
 )
 
-// DiscordClient implements the clients.DiscordClient interface
+// DiscordClient implements the clients.DiscordClient interface using the Discord Go SDK
 type DiscordClient struct{}
 
 // NewDiscordClient creates a new Discord client for OAuth operations
@@ -27,6 +27,7 @@ func NewDiscordClient() clients.DiscordClient {
 }
 
 // ExchangeCodeForToken exchanges an OAuth authorization code for access tokens
+// Note: OAuth token exchange still uses HTTP directly as discordgo doesn't provide this
 func (c *DiscordClient) ExchangeCodeForToken(
 	httpClient *http.Client,
 	clientID, clientSecret, code, redirectURL string,
@@ -69,69 +70,72 @@ func (c *DiscordClient) ExchangeCodeForToken(
 	return &oauthResp, nil
 }
 
-// GetGuildInfo fetches guild information using the access token
+// GetGuildInfo fetches guild information using the Discord SDK with OAuth2 Bearer token
 func (c *DiscordClient) GetGuildInfo(
 	httpClient *http.Client,
 	accessToken string,
 ) ([]*clients.DiscordGuild, error) {
-	req, err := http.NewRequestWithContext(context.Background(), "GET", discordGuildsURL, nil)
+	// Create a Discord session using the OAuth2 Bearer token
+	// For OAuth2 tokens from user auth flow, we use Bearer token without "Bot " prefix
+	session, err := discordgo.New("Bearer " + accessToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create guilds request: %w", err)
+		return nil, fmt.Errorf("failed to create Discord session: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Content-Type", "application/json")
+	// Use the provided HTTP client if available
+	if httpClient != nil {
+		session.Client = httpClient
+	}
 
-	resp, err := httpClient.Do(req)
+	// Get user's guilds using the SDK
+	// Parameters: limit, before, after, withCounts, options...
+	discordGuilds, err := session.UserGuilds(100, "", "", false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute guilds request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("guilds request failed with status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("failed to fetch user guilds: %w", err)
 	}
 
-	var guilds []*clients.DiscordGuild
-	if err := json.NewDecoder(resp.Body).Decode(&guilds); err != nil {
-		return nil, fmt.Errorf("failed to decode guilds response: %w", err)
+	// Convert discordgo guilds to our client guild type
+	guilds := make([]*clients.DiscordGuild, 0, len(discordGuilds))
+	for _, dg := range discordGuilds {
+		guilds = append(guilds, &clients.DiscordGuild{
+			ID:   dg.ID,
+			Name: dg.Name,
+		})
 	}
 
 	return guilds, nil
 }
 
-// GetGuildByID fetches specific guild information using the access token and guild ID
+// GetGuildByID fetches specific guild information using the Discord SDK
+// Note: This requires a Bot token with access to the guild
 func (c *DiscordClient) GetGuildByID(
 	httpClient *http.Client,
 	accessToken string,
 	guildID string,
 ) (*clients.DiscordGuild, error) {
-	guildURL := fmt.Sprintf("%s/guilds/%s", discordAPIBase, guildID)
-
-	req, err := http.NewRequestWithContext(context.Background(), "GET", guildURL, nil)
+	// Create a Discord session using Bot token
+	// This method requires Bot token as user tokens cannot directly fetch guild details
+	session, err := discordgo.New("Bot " + accessToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create guild request: %w", err)
+		return nil, fmt.Errorf("failed to create Discord session: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bot "+accessToken)
-	req.Header.Set("Content-Type", "application/json")
+	// Use the provided HTTP client if available
+	if httpClient != nil {
+		session.Client = httpClient
+	}
 
-	resp, err := httpClient.Do(req)
+	// Get guild information using the SDK
+	discordGuild, err := session.Guild(guildID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute guild request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("guild request failed with status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("failed to fetch guild by ID: %w", err)
 	}
 
-	var guild clients.DiscordGuild
-	if err := json.NewDecoder(resp.Body).Decode(&guild); err != nil {
-		return nil, fmt.Errorf("failed to decode guild response: %w", err)
+	// Convert discordgo guild to our client guild type
+	guild := &clients.DiscordGuild{
+		ID:   discordGuild.ID,
+		Name: discordGuild.Name,
 	}
 
-	return &guild, nil
+	return guild, nil
 }
