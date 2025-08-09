@@ -368,30 +368,6 @@ export default function Home() {
 									<CardTitle>Control Panel</CardTitle>
 								</CardHeader>
 								<CardContent className="space-y-4">
-									{/* Download ccagent Button */}
-									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-										<div className="space-y-1">
-											<h4 className="font-medium">Download ccagent</h4>
-											<p className="text-sm text-muted-foreground">
-												Download the ccagent CLI tool to start using Claude
-												Control with your Slack workspaces.
-											</p>
-										</div>
-										<Button
-											variant="outline"
-											onClick={() =>
-												window.open(
-													"https://github.com/presmihaylov/ccagent/blob/main/ccagent-beta.zip",
-													"_blank",
-												)
-											}
-											className="flex items-center gap-2"
-										>
-											<Download className="h-4 w-4" />
-											Download
-										</Button>
-									</div>
-
 									{/* Setup Tutorial Link */}
 									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
 										<div className="space-y-1">
@@ -411,6 +387,30 @@ export default function Home() {
 											className="flex items-center gap-2"
 										>
 											📺 Watch Tutorial
+										</Button>
+									</div>
+
+									{/* Download ccagent Button */}
+									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+										<div className="space-y-1">
+											<h4 className="font-medium">Download CCAgent</h4>
+											<p className="text-sm text-muted-foreground">
+												Download the ccagent CLI tool to start using Claude
+												Control with your Slack workspaces.
+											</p>
+										</div>
+										<Button
+											variant="outline"
+											onClick={() =>
+												window.open(
+													"https://github.com/presmihaylov/ccagent/blob/main/ccagent-beta.zip",
+													"_blank",
+												)
+											}
+											className="flex items-center gap-2"
+										>
+											<Download className="h-4 w-4" />
+											Download
 										</Button>
 									</div>
 
@@ -481,30 +481,6 @@ export default function Home() {
 									<CardTitle>Control Panel</CardTitle>
 								</CardHeader>
 								<CardContent className="space-y-4">
-									{/* Download ccagent Button */}
-									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-										<div className="space-y-1">
-											<h4 className="font-medium">Download ccagent</h4>
-											<p className="text-sm text-muted-foreground">
-												Download the ccagent CLI tool to start using Claude
-												Control with your Slack workspaces.
-											</p>
-										</div>
-										<Button
-											variant="outline"
-											onClick={() =>
-												window.open(
-													"https://github.com/presmihaylov/ccagent/blob/main/ccagent-beta.zip",
-													"_blank",
-												)
-											}
-											className="flex items-center gap-2"
-										>
-											<Download className="h-4 w-4" />
-											Download
-										</Button>
-									</div>
-
 									{/* Setup Tutorial Link */}
 									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
 										<div className="space-y-1">
@@ -524,6 +500,30 @@ export default function Home() {
 											className="flex items-center gap-2"
 										>
 											📺 Watch Tutorial
+										</Button>
+									</div>
+
+									{/* Download ccagent Button */}
+									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+										<div className="space-y-1">
+											<h4 className="font-medium">Download CCAgent</h4>
+											<p className="text-sm text-muted-foreground">
+												Download the ccagent CLI tool to start using Claude
+												Control with your Slack workspaces.
+											</p>
+										</div>
+										<Button
+											variant="outline"
+											onClick={() =>
+												window.open(
+													"https://github.com/presmihaylov/ccagent/blob/main/ccagent-beta.zip",
+													"_blank",
+												)
+											}
+											className="flex items-center gap-2"
+										>
+											<Download className="h-4 w-4" />
+											Download
 										</Button>
 									</div>
 
