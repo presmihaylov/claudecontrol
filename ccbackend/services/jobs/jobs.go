@@ -607,23 +607,18 @@ func (s *JobsService) GetJobWithIntegrationByID(
 		return mo.None[*services.JobWithIntegration](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	maybeJob, err := s.jobsRepo.GetJobWithIntegrationByID(ctx, jobID, organizationID)
+	maybeJobWithIntegration, err := s.jobsRepo.GetJobWithIntegrationByID(ctx, jobID, organizationID)
 	if err != nil {
 		return mo.None[*services.JobWithIntegration](), fmt.Errorf("failed to get job with integration: %w", err)
 	}
-	if !maybeJob.IsPresent() {
+	if !maybeJobWithIntegration.IsPresent() {
 		log.Printf("📋 Completed successfully - job not found")
 		return mo.None[*services.JobWithIntegration](), nil
 	}
-	job := maybeJob.MustGet()
+	jobWithIntegration := maybeJobWithIntegration.MustGet()
 
-	result := &services.JobWithIntegration{
-		Job:                job,
-		SlackIntegrationID: job.SlackIntegrationID,
-	}
-
-	log.Printf("📋 Completed successfully - retrieved job with integration ID: %s", job.ID)
-	return mo.Some(result), nil
+	log.Printf("📋 Completed successfully - retrieved job with integration ID: %s", jobWithIntegration.Job.ID)
+	return mo.Some(jobWithIntegration), nil
 }
 
 // GetProcessedSlackMessageWithIntegrationByID gets a processed slack message by ID using organization_id directly (optimization)
@@ -646,7 +641,7 @@ func (s *JobsService) GetProcessedSlackMessageWithIntegrationByID(
 		)
 	}
 
-	maybeMessage, err := s.processedSlackMessagesRepo.GetProcessedSlackMessageWithIntegrationByID(
+	maybeMessageWithIntegration, err := s.processedSlackMessagesRepo.GetProcessedSlackMessageWithIntegrationByID(
 		ctx,
 		messageID,
 		organizationID,
@@ -657,17 +652,15 @@ func (s *JobsService) GetProcessedSlackMessageWithIntegrationByID(
 			err,
 		)
 	}
-	if !maybeMessage.IsPresent() {
+	if !maybeMessageWithIntegration.IsPresent() {
 		log.Printf("📋 Completed successfully - processed slack message not found")
 		return mo.None[*services.ProcessedSlackMessageWithIntegration](), nil
 	}
-	message := maybeMessage.MustGet()
+	messageWithIntegration := maybeMessageWithIntegration.MustGet()
 
-	result := &services.ProcessedSlackMessageWithIntegration{
-		Message:            message,
-		SlackIntegrationID: message.SlackIntegrationID,
-	}
-
-	log.Printf("📋 Completed successfully - retrieved processed slack message with integration ID: %s", message.ID)
-	return mo.Some(result), nil
+	log.Printf(
+		"📋 Completed successfully - retrieved processed slack message with integration ID: %s",
+		messageWithIntegration.Message.ID,
+	)
+	return mo.Some(messageWithIntegration), nil
 }

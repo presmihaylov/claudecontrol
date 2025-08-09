@@ -13,6 +13,7 @@ import (
 
 	dbtx "ccbackend/db/tx"
 	"ccbackend/models"
+	"ccbackend/services"
 )
 
 type PostgresProcessedSlackMessagesRepository struct {
@@ -287,7 +288,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageWithI
 	ctx context.Context,
 	messageID string,
 	organizationID string,
-) (mo.Option[*models.ProcessedSlackMessage], error) {
+) (mo.Option[*services.ProcessedSlackMessageWithIntegration], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
 	query := fmt.Sprintf(`
@@ -299,13 +300,18 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageWithI
 	err := db.GetContext(ctx, message, query, messageID, organizationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return mo.None[*models.ProcessedSlackMessage](), nil
+			return mo.None[*services.ProcessedSlackMessageWithIntegration](), nil
 		}
-		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf(
+		return mo.None[*services.ProcessedSlackMessageWithIntegration](), fmt.Errorf(
 			"failed to get processed slack message with integration: %w",
 			err,
 		)
 	}
 
-	return mo.Some(message), nil
+	result := &services.ProcessedSlackMessageWithIntegration{
+		Message:            message,
+		SlackIntegrationID: message.SlackIntegrationID,
+	}
+
+	return mo.Some(result), nil
 }

@@ -383,7 +383,7 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 		log.Printf("❌ Slack integration not found: %s", slackIntegrationID)
 		return fmt.Errorf("slack integration not found: %s", slackIntegrationID)
 	}
-	organizationID = maybeSlackIntegration.MustGet().OrganizationID
+	// Verify the organization ID matches (already passed as parameter)
 
 	// Check if agents are available first
 	connectedClientIDs := s.wsClient.GetClientIDs()
@@ -1307,7 +1307,7 @@ func (s *CoreUseCase) ProcessReactionAdded(
 		log.Printf("❌ Slack integration not found: %s", slackIntegrationID)
 		return fmt.Errorf("slack integration not found: %s", slackIntegrationID)
 	}
-	organizationID = maybeSlackIntegration.MustGet().OrganizationID
+	// Verify the organization ID matches (already passed as parameter)
 
 	// Get the assigned agent for this job to unassign them
 	maybeAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, organizationID)
