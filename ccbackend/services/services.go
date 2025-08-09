@@ -80,27 +80,37 @@ type AgentsService interface {
 
 // JobsService defines the interface for job-related operations
 type JobsService interface {
-	GetActiveMessageCountForJobs(ctx context.Context, jobIDs []string, slackIntegrationID string) (int, error)
+	GetActiveMessageCountForJobs(
+		ctx context.Context,
+		jobIDs []string,
+		slackIntegrationID string,
+		organizationID string,
+	) (int, error)
 	CreateJob(
 		ctx context.Context,
-		slackThreadTS, slackChannelID, slackUserID, slackIntegrationID string,
+		slackThreadTS, slackChannelID, slackUserID, slackIntegrationID, organizationID string,
 	) (*models.Job, error)
-	GetJobByID(ctx context.Context, id string, slackIntegrationID string) (mo.Option[*models.Job], error)
+	GetJobByID(
+		ctx context.Context,
+		id string,
+		slackIntegrationID string,
+		organizationID string,
+	) (mo.Option[*models.Job], error)
 	GetJobBySlackThread(
 		ctx context.Context,
-		threadTS, channelID, slackIntegrationID string,
+		threadTS, channelID, slackIntegrationID, organizationID string,
 	) (mo.Option[*models.Job], error)
 	GetOrCreateJobForSlackThread(
 		ctx context.Context,
-		threadTS, channelID, slackUserID, slackIntegrationID string,
+		threadTS, channelID, slackUserID, slackIntegrationID, organizationID string,
 	) (*models.JobCreationResult, error)
-	UpdateJobTimestamp(ctx context.Context, jobID string, slackIntegrationID string) error
-	GetIdleJobs(ctx context.Context, idleMinutes int) ([]*models.Job, error)
-	DeleteJob(ctx context.Context, id string, slackIntegrationID string) error
+	UpdateJobTimestamp(ctx context.Context, jobID string, slackIntegrationID string, organizationID string) error
+	GetIdleJobs(ctx context.Context, idleMinutes int, organizationID string) ([]*models.Job, error)
+	DeleteJob(ctx context.Context, id string, slackIntegrationID string, organizationID string) error
 	CreateProcessedSlackMessage(
 		ctx context.Context,
 		jobID string,
-		slackChannelID, slackTS, textContent, slackIntegrationID string,
+		slackChannelID, slackTS, textContent, slackIntegrationID, organizationID string,
 		status models.ProcessedSlackMessageStatus,
 	) (*models.ProcessedSlackMessage, error)
 	UpdateProcessedSlackMessage(
@@ -108,30 +118,45 @@ type JobsService interface {
 		id string,
 		status models.ProcessedSlackMessageStatus,
 		slackIntegrationID string,
+		organizationID string,
 	) (*models.ProcessedSlackMessage, error)
 	GetProcessedMessagesByJobIDAndStatus(
 		ctx context.Context,
 		jobID string,
 		status models.ProcessedSlackMessageStatus,
 		slackIntegrationID string,
+		organizationID string,
 	) ([]*models.ProcessedSlackMessage, error)
 	GetProcessedSlackMessageByID(
 		ctx context.Context,
 		id string,
 		slackIntegrationID string,
+		organizationID string,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
-	TESTS_UpdateJobUpdatedAt(ctx context.Context, id string, updatedAt time.Time, slackIntegrationID string) error
+	TESTS_UpdateJobUpdatedAt(
+		ctx context.Context,
+		id string,
+		updatedAt time.Time,
+		slackIntegrationID string,
+		organizationID string,
+	) error
 	TESTS_UpdateProcessedSlackMessageUpdatedAt(
 		ctx context.Context,
 		id string,
 		updatedAt time.Time,
 		slackIntegrationID string,
+		organizationID string,
 	) error
-	GetJobsWithQueuedMessages(ctx context.Context, slackIntegrationID string) ([]*models.Job, error)
+	GetJobsWithQueuedMessages(
+		ctx context.Context,
+		slackIntegrationID string,
+		organizationID string,
+	) ([]*models.Job, error)
 	GetLatestProcessedMessageForJob(
 		ctx context.Context,
 		jobID string,
 		slackIntegrationID string,
+		organizationID string,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
 }
 
