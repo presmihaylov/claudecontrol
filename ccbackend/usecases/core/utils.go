@@ -120,20 +120,24 @@ func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) 
 }
 
 func (s *CoreUseCase) isSystemMessageAnError(message string) bool {
+	// Convert message to lowercase for case-insensitive comparison
+	lowerMessage := strings.ToLower(message)
+
 	errorIndicators := []string{
 		"ccagent encountered error:",
-		"error continuing Claude session:",
-		"failed to continue Claude session:",
-		"Prompt is too long",
-		"Error:",
-		"Failed:",
-		"Exception:",
-		"Timeout:",
-		"Connection error:",
+		"error continuing claude session:",
+		"failed to continue claude session:",
+		"prompt is too long",
+		// More specific patterns to avoid false positives
+		"error occurred:",
+		"failed to ",
+		"exception occurred:",
+		"timeout:",
+		"connection error:",
 	}
 
 	for _, indicator := range errorIndicators {
-		if strings.Contains(message, indicator) {
+		if strings.Contains(lowerMessage, indicator) {
 			return true
 		}
 	}
