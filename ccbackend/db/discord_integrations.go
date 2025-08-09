@@ -24,7 +24,6 @@ type PostgresDiscordIntegrationsRepository struct {
 var discordIntegrationsColumns = []string{
 	"id",
 	"discord_guild_id",
-	"discord_auth_token",
 	"discord_guild_name",
 	"organization_id",
 	"created_at",
@@ -42,7 +41,6 @@ func (r *PostgresDiscordIntegrationsRepository) CreateDiscordIntegration(
 	insertColumns := []string{
 		"id",
 		"discord_guild_id",
-		"discord_auth_token",
 		"discord_guild_name",
 		"organization_id",
 		"created_at",
@@ -53,10 +51,10 @@ func (r *PostgresDiscordIntegrationsRepository) CreateDiscordIntegration(
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.discord_integrations (%s) 
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.DiscordGuildID, integration.DiscordAuthToken, integration.DiscordGuildName, integration.OrganizationID).
+	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.DiscordGuildID, integration.DiscordGuildName, integration.OrganizationID).
 		StructScan(integration)
 	if err != nil {
 		return fmt.Errorf("failed to create discord integration: %w", err)

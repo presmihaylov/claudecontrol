@@ -24,27 +24,23 @@ var (
 type DiscordClient struct {
 	// httpClient is used for OAuth2 token exchange since discordgo doesn't support it
 	httpClient *http.Client
+	// botToken is the Discord bot token used for API requests
+	botToken string
 }
 
 // NewDiscordClient creates a new Discord client for OAuth operations
-func NewDiscordClient() clients.DiscordClient {
+func NewDiscordClient(httpClient *http.Client, botToken string) clients.DiscordClient {
 	return &DiscordClient{
-		httpClient: &http.Client{},
+		httpClient: httpClient,
+		botToken:   botToken,
 	}
 }
 
 // ExchangeCodeForToken exchanges an OAuth authorization code for access tokens
 // Note: This still uses HTTP directly as discordgo doesn't support OAuth2 token exchange
 func (c *DiscordClient) ExchangeCodeForToken(
-	httpClient *http.Client,
 	clientID, clientSecret, code, redirectURL string,
 ) (*clients.DiscordOAuthResponse, error) {
-	// Override httpClient if provided, otherwise use default
-	client := c.httpClient
-	if httpClient != nil {
-		client = httpClient
-	}
-
 	data := url.Values{}
 	data.Set("client_id", clientID)
 	data.Set("client_secret", clientSecret)
@@ -64,7 +60,7 @@ func (c *DiscordClient) ExchangeCodeForToken(
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := client.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute OAuth request: %w", err)
 	}
@@ -75,89 +71,37 @@ func (c *DiscordClient) ExchangeCodeForToken(
 		return nil, fmt.Errorf("OAuth request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read OAuth response body: %w", err)
+	}
+
 	var oauthResp clients.DiscordOAuthResponse
-	if err := json.NewDecoder(resp.Body).Decode(&oauthResp); err != nil {
+	if err := json.Unmarshal(body, &oauthResp); err != nil {
 		return nil, fmt.Errorf("failed to decode OAuth response: %w", err)
 	}
 
 	return &oauthResp, nil
 }
 
-// GetGuildInfo fetches guild information using the access token
-func (c *DiscordClient) GetGuildInfo(
-	httpClient *http.Client,
-	accessToken string,
-) ([]*clients.DiscordGuild, error) {
-	// Create a new Discord session using the OAuth2 access token
-	session, err := discordgo.New("Bearer " + accessToken)
+// GetGuildByID fetches specific guild information using the bot token
+func (c *DiscordClient) GetGuildByID(guildID string) (*clients.DiscordGuild, error) {
+	// Create a new Discord sdkClient using the bot token
+	sdkClient, err := discordgo.New("Bot " + c.botToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Discord session: %w", err)
 	}
 
-	// Override HTTP client if provided
-	if httpClient != nil {
-		session.Client = httpClient
-	}
+	// Use our HTTP client
+	sdkClient.Client = c.httpClient
 
-	// Fetch user guilds using discordgo
-	// Parameters: limit, beforeID, afterID, withCounts, guildOwnedByCurrentUser
-	discordGuilds, err := session.UserGuilds(100, "", "", false, nil)
+	// Get the guild using discordgo
+	discordGuild, err := sdkClient.Guild(guildID, discordgo.WithContext(context.Background()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch guilds: %w", err)
+		return nil, fmt.Errorf("failed to fetch guild: %w", err)
 	}
-
-	// Convert discordgo guilds to our client interface format
-	guilds := make([]*clients.DiscordGuild, 0, len(discordGuilds))
-	for _, dg := range discordGuilds {
-		guilds = append(guilds, &clients.DiscordGuild{
-			ID:   dg.ID,
-			Name: dg.Name,
-		})
-	}
-
-	return guilds, nil
-}
-
-// GetGuildByID fetches specific guild information using the access token and guild ID
-// Note: For OAuth2 user tokens, this will only work if the user is a member of the guild
-func (c *DiscordClient) GetGuildByID(
-	httpClient *http.Client,
-	accessToken string,
-	guildID string,
-) (*clients.DiscordGuild, error) {
-	// Create a new Discord session using the OAuth2 access token
-	session, err := discordgo.New("Bearer " + accessToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Discord session: %w", err)
-	}
-
-	// Override HTTP client if provided
-	if httpClient != nil {
-		session.Client = httpClient
-	}
-
-	// Try to get the guild directly using discordgo
-	// Note: This may fail if using OAuth2 token without proper permissions
-	discordGuild, err := session.Guild(guildID, discordgo.WithContext(context.Background()))
-	if err != nil {
-		// Fallback: Get all user guilds and filter by ID
-		// This is more reliable for OAuth2 user tokens
-		userGuilds, fetchErr := session.UserGuilds(100, "", "", false, nil)
-		if fetchErr != nil {
-			return nil, fmt.Errorf("failed to fetch guild %s: %w (fallback also failed: %v)", guildID, err, fetchErr)
-		}
-
-		// Find the specific guild in user's guilds
-		for _, ug := range userGuilds {
-			if ug.ID == guildID {
-				return &clients.DiscordGuild{
-					ID:   ug.ID,
-					Name: ug.Name,
-				}, nil
-			}
-		}
-
-		return nil, fmt.Errorf("guild %s not found in user's guilds", guildID)
+	if discordGuild == nil {
+		return nil, fmt.Errorf("guild not found")
 	}
 
 	// Convert discordgo guild to our client interface format

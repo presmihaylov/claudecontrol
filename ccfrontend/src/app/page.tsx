@@ -13,7 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { Copy, Download, Key, MessageCircle, RefreshCw, Slack, Trash2 } from "lucide-react";
+import { Copy, Download, Key, RefreshCw, Trash2 } from "lucide-react";
+import { DiscordIcon, SlackIcon } from "@/icons";
 import { useEffect, useState } from "react";
 
 interface SlackIntegration {
@@ -527,16 +528,15 @@ export default function Home() {
 									className="flex items-center gap-2 cursor-pointer"
 									onClick={handleAddToSlack}
 								>
-									<Slack className="h-5 w-5" />
+									<SlackIcon className="h-5 w-5" color="white" />
 									Add to Slack
 								</Button>
 								<Button
 									size="lg"
-									variant="outline"
 									className="flex items-center gap-2 cursor-pointer"
 									onClick={handleAddToDiscord}
 								>
-									<MessageCircle className="h-5 w-5" />
+									<DiscordIcon className="h-5 w-5" color="white" />
 									Add to Discord
 								</Button>
 							</div>
@@ -640,7 +640,7 @@ export default function Home() {
 									<Card key={integration.id} className="p-4">
 										<div className="flex items-center justify-between w-full">
 											<div className="flex items-center gap-3">
-												<Slack className="h-6 w-6 text-black" />
+												<SlackIcon className="h-6 w-6" color="black" />
 												<div>
 													<h3 className="font-semibold">{integration.slack_team_name}</h3>
 													<p className="text-sm text-muted-foreground">
@@ -667,7 +667,7 @@ export default function Home() {
 									<Card key={integration.id} className="p-4">
 										<div className="flex items-center justify-between w-full">
 											<div className="flex items-center gap-3">
-												<MessageCircle className="h-6 w-6 text-indigo-500" />
+												<DiscordIcon className="h-6 w-6" color="black" />
 												<div>
 													<h3 className="font-semibold">{integration.discord_guild_name}</h3>
 													<p className="text-sm text-muted-foreground">
@@ -697,11 +697,11 @@ export default function Home() {
 						<div className="flex justify-center pt-4">
 							<div className="flex gap-4">
 								<Button size="lg" className="flex items-center gap-2" onClick={handleAddToSlack}>
-									<Slack className="h-5 w-5" />
+									<SlackIcon className="h-5 w-5" color="white" />
 									Connect Slack
 								</Button>
-								<Button size="lg" variant="outline" className="flex items-center gap-2" onClick={handleAddToDiscord}>
-									<MessageCircle className="h-5 w-5" />
+								<Button size="lg" className="flex items-center gap-2" onClick={handleAddToDiscord}>
+									<DiscordIcon className="h-5 w-5" color="white" />
 									Connect Discord
 								</Button>
 							</div>

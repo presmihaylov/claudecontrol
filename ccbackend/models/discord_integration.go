@@ -7,7 +7,6 @@ import (
 type DiscordIntegration struct {
 	ID               string    `db:"id"                 json:"id"`
 	DiscordGuildID   string    `db:"discord_guild_id"   json:"discord_guild_id"`
-	DiscordAuthToken string    `db:"discord_auth_token" json:"-"`
 	DiscordGuildName string    `db:"discord_guild_name" json:"discord_guild_name"`
 	OrganizationID   string    `db:"organization_id"    json:"organization_id"`
 	CreatedAt        time.Time `db:"created_at"         json:"created_at"`

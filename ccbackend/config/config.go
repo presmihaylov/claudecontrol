@@ -13,6 +13,7 @@ type AppConfig struct {
 	SlackClientSecret    string
 	DiscordClientID      string
 	DiscordClientSecret  string
+	DiscordBotToken      string
 	Port                 string
 	DatabaseURL          string
 	DatabaseSchema       string
@@ -53,6 +54,11 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
+	discordBotToken, err := getEnvRequired("DISCORD_BOT_TOKEN")
+	if err != nil {
+		return nil, err
+	}
+
 	databaseURL, err := getEnvRequired("DB_URL")
 	if err != nil {
 		return nil, err
@@ -84,6 +90,7 @@ func LoadConfig() (*AppConfig, error) {
 		SlackClientSecret:    slackClientSecret,
 		DiscordClientID:      discordClientID,
 		DiscordClientSecret:  discordClientSecret,
+		DiscordBotToken:      discordBotToken,
 		Port:                 port,
 		DatabaseURL:          databaseURL,
 		DatabaseSchema:       databaseSchema,

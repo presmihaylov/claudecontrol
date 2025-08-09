@@ -93,31 +93,14 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_Success(t *testing.
 	guildID := "1234567890"
 	redirectURL := "https://example.com/redirect"
 
-	// Mock OAuth response
-	mockOAuthResponse := &clients.DiscordOAuthResponse{
-		AccessToken: "test-access-token",
-		TokenType:   "Bearer",
-		ExpiresIn:   3600,
-		Scope:       "applications.commands bot",
-	}
-
-	// Mock guild response
+	// Mock guild response - OAuth is no longer used by service
 	mockGuild := &clients.DiscordGuild{
 		ID:   guildID,
 		Name: "Test Guild",
 	}
 
-	// Setup expectations
-	mockClient.On("ExchangeCodeForToken",
-		mock.AnythingOfType("*http.Client"),
-		"test-client-id",
-		"test-client-secret",
-		discordAuthCode,
-		redirectURL).Return(mockOAuthResponse, nil)
-
+	// Setup expectations - only GetGuildByID is called now
 	mockClient.On("GetGuildByID",
-		mock.AnythingOfType("*http.Client"),
-		"test-access-token",
 		guildID).Return(mockGuild, nil)
 
 	mockRepo.On("CreateDiscordIntegration", ctx, mock.AnythingOfType("*models.DiscordIntegration")).Return(nil)
@@ -131,7 +114,7 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_Success(t *testing.
 	assert.Equal(t, guildID, result.DiscordGuildID)
 	assert.Equal(t, "Test Guild", result.DiscordGuildName)
 	assert.Equal(t, organizationID, result.OrganizationID)
-	assert.Equal(t, "test-access-token", result.DiscordAuthToken)
+	// DiscordAuthToken field was removed from the model
 	assert.True(t, core.IsValidULID(result.ID))
 
 	// Verify all expectations were met
@@ -192,42 +175,7 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_ValidationErrors(t 
 	}
 }
 
-func TestDiscordIntegrationsService_CreateDiscordIntegration_OAuthFailure(t *testing.T) {
-	// Arrange
-	mockRepo := &MockDiscordIntegrationsRepository{}
-	mockClient := &discordclient.MockDiscordClient{}
-
-	service := NewDiscordIntegrationsService(mockRepo, mockClient, "test-client-id", "test-client-secret")
-
-	ctx := context.Background()
-	organizationID := core.NewID("org")
-	discordAuthCode := "invalid-auth-code"
-	guildID := "1234567890"
-	redirectURL := "https://example.com/redirect"
-
-	// Mock OAuth failure
-	mockClient.On("ExchangeCodeForToken",
-		mock.AnythingOfType("*http.Client"),
-		"test-client-id",
-		"test-client-secret",
-		discordAuthCode,
-		redirectURL).Return(nil, fmt.Errorf("Discord OAuth error: invalid_grant"))
-
-	// Act
-	result, err := service.CreateDiscordIntegration(ctx, organizationID, discordAuthCode, guildID, redirectURL)
-
-	// Assert
-	require.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to exchange OAuth code with Discord")
-	assert.Contains(t, err.Error(), "invalid_grant")
-
-	// Verify expectations
-	mockClient.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-}
-
-func TestDiscordIntegrationsService_CreateDiscordIntegration_EmptyAccessToken(t *testing.T) {
+func TestDiscordIntegrationsService_CreateDiscordIntegration_GuildFetchFailure(t *testing.T) {
 	// Arrange
 	mockRepo := &MockDiscordIntegrationsRepository{}
 	mockClient := &discordclient.MockDiscordClient{}
@@ -240,20 +188,9 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_EmptyAccessToken(t 
 	guildID := "1234567890"
 	redirectURL := "https://example.com/redirect"
 
-	// Mock OAuth response with empty access token
-	mockOAuthResponse := &clients.DiscordOAuthResponse{
-		AccessToken: "", // Empty access token
-		TokenType:   "Bearer",
-		ExpiresIn:   3600,
-		Scope:       "applications.commands bot",
-	}
-
-	mockClient.On("ExchangeCodeForToken",
-		mock.AnythingOfType("*http.Client"),
-		"test-client-id",
-		"test-client-secret",
-		discordAuthCode,
-		redirectURL).Return(mockOAuthResponse, nil)
+	// Mock guild fetch failure
+	mockClient.On("GetGuildByID",
+		guildID).Return(nil, fmt.Errorf("Discord API error: guild not found"))
 
 	// Act
 	result, err := service.CreateDiscordIntegration(ctx, organizationID, discordAuthCode, guildID, redirectURL)
@@ -261,12 +198,15 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_EmptyAccessToken(t 
 	// Assert
 	require.Error(t, err)
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "access token not found in Discord OAuth response")
+	assert.Contains(t, err.Error(), "failed to fetch Discord guild information")
+	assert.Contains(t, err.Error(), "guild not found")
 
 	// Verify expectations
 	mockClient.AssertExpectations(t)
 	mockRepo.AssertExpectations(t)
 }
+
+// EmptyAccessToken test removed - OAuth is no longer part of the service flow
 
 func TestDiscordIntegrationsService_CreateDiscordIntegration_GuildNotFound(t *testing.T) {
 	// Arrange
@@ -281,25 +221,8 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_GuildNotFound(t *te
 	guildID := "1234567890"
 	redirectURL := "https://example.com/redirect"
 
-	// Mock OAuth response
-	mockOAuthResponse := &clients.DiscordOAuthResponse{
-		AccessToken: "test-access-token",
-		TokenType:   "Bearer",
-		ExpiresIn:   3600,
-		Scope:       "applications.commands bot",
-	}
-
-	mockClient.On("ExchangeCodeForToken",
-		mock.AnythingOfType("*http.Client"),
-		"test-client-id",
-		"test-client-secret",
-		discordAuthCode,
-		redirectURL).Return(mockOAuthResponse, nil)
-
 	// Mock guild fetch failure
 	mockClient.On("GetGuildByID",
-		mock.AnythingOfType("*http.Client"),
-		"test-access-token",
 		guildID).Return(nil, fmt.Errorf("Discord API error: guild not found"))
 
 	// Act
@@ -329,25 +252,8 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_NilGuildResponse(t 
 	guildID := "1234567890"
 	redirectURL := "https://example.com/redirect"
 
-	// Mock OAuth response
-	mockOAuthResponse := &clients.DiscordOAuthResponse{
-		AccessToken: "test-access-token",
-		TokenType:   "Bearer",
-		ExpiresIn:   3600,
-		Scope:       "applications.commands bot",
-	}
-
-	mockClient.On("ExchangeCodeForToken",
-		mock.AnythingOfType("*http.Client"),
-		"test-client-id",
-		"test-client-secret",
-		discordAuthCode,
-		redirectURL).Return(mockOAuthResponse, nil)
-
 	// Mock guild response as nil (bot not in guild)
 	mockClient.On("GetGuildByID",
-		mock.AnythingOfType("*http.Client"),
-		"test-access-token",
 		guildID).Return(nil, nil)
 
 	// Act
@@ -376,30 +282,13 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_EmptyGuildName(t *t
 	guildID := "1234567890"
 	redirectURL := "https://example.com/redirect"
 
-	// Mock OAuth response
-	mockOAuthResponse := &clients.DiscordOAuthResponse{
-		AccessToken: "test-access-token",
-		TokenType:   "Bearer",
-		ExpiresIn:   3600,
-		Scope:       "applications.commands bot",
-	}
-
 	// Mock guild response with empty name
 	mockGuild := &clients.DiscordGuild{
 		ID:   guildID,
 		Name: "", // Empty guild name
 	}
 
-	mockClient.On("ExchangeCodeForToken",
-		mock.AnythingOfType("*http.Client"),
-		"test-client-id",
-		"test-client-secret",
-		discordAuthCode,
-		redirectURL).Return(mockOAuthResponse, nil)
-
 	mockClient.On("GetGuildByID",
-		mock.AnythingOfType("*http.Client"),
-		"test-access-token",
 		guildID).Return(mockGuild, nil)
 
 	// Act
@@ -428,30 +317,13 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_RepositoryError(t *
 	guildID := "1234567890"
 	redirectURL := "https://example.com/redirect"
 
-	// Mock OAuth response
-	mockOAuthResponse := &clients.DiscordOAuthResponse{
-		AccessToken: "test-access-token",
-		TokenType:   "Bearer",
-		ExpiresIn:   3600,
-		Scope:       "applications.commands bot",
-	}
-
 	// Mock guild response
 	mockGuild := &clients.DiscordGuild{
 		ID:   guildID,
 		Name: "Test Guild",
 	}
 
-	mockClient.On("ExchangeCodeForToken",
-		mock.AnythingOfType("*http.Client"),
-		"test-client-id",
-		"test-client-secret",
-		discordAuthCode,
-		redirectURL).Return(mockOAuthResponse, nil)
-
 	mockClient.On("GetGuildByID",
-		mock.AnythingOfType("*http.Client"),
-		"test-access-token",
 		guildID).Return(mockGuild, nil)
 
 	// Mock repository error
@@ -486,14 +358,12 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_Succe
 		{
 			ID:               core.NewID("di"),
 			DiscordGuildID:   "123456789012345678",
-			DiscordAuthToken: "token1",
 			DiscordGuildName: "Guild 1",
 			OrganizationID:   organizationID,
 		},
 		{
 			ID:               core.NewID("di"),
 			DiscordGuildID:   "987654321098765432",
-			DiscordAuthToken: "token2",
 			DiscordGuildName: "Guild 2",
 			OrganizationID:   organizationID,
 		},
@@ -564,7 +434,6 @@ func TestDiscordIntegrationsService_GetAllDiscordIntegrations_Success(t *testing
 		{
 			ID:               core.NewID("di"),
 			DiscordGuildID:   "123456789012345678",
-			DiscordAuthToken: "token1",
 			DiscordGuildName: "Guild 1",
 			OrganizationID:   core.NewID("org"),
 		},
@@ -702,7 +571,6 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationByGuildID_Success(t *te
 	expectedIntegration := &models.DiscordIntegration{
 		ID:               core.NewID("di"),
 		DiscordGuildID:   guildID,
-		DiscordAuthToken: "token",
 		DiscordGuildName: "Test Guild",
 		OrganizationID:   core.NewID("org"),
 	}
@@ -771,7 +639,6 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationByID_Success(t *testing
 	expectedIntegration := &models.DiscordIntegration{
 		ID:               integrationID,
 		DiscordGuildID:   "123456789012345678",
-		DiscordAuthToken: "token",
 		DiscordGuildName: "Test Guild",
 		OrganizationID:   core.NewID("org"),
 	}

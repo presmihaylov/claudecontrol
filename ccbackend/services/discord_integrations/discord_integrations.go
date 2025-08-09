@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/samber/mo"
 
@@ -61,24 +60,8 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 		return nil, fmt.Errorf("discord guild ID cannot be empty")
 	}
 
-	// Exchange OAuth code for access token to validate the request
-	oauthResponse, err := s.discordClient.ExchangeCodeForToken(
-		&http.Client{},
-		s.discordClientID,
-		s.discordClientSecret,
-		discordAuthCode,
-		redirectURL,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to exchange OAuth code with Discord: %w", err)
-	}
-
-	if oauthResponse.AccessToken == "" {
-		return nil, fmt.Errorf("access token not found in Discord OAuth response")
-	}
-
 	// Fetch guild information to get the guild name
-	guildInfo, err := s.discordClient.GetGuildByID(&http.Client{}, oauthResponse.AccessToken, guildID)
+	guildInfo, err := s.discordClient.GetGuildByID(guildID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch Discord guild information: %w", err)
 	}
@@ -94,7 +77,6 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 	integration := &models.DiscordIntegration{
 		ID:               core.NewID("di"),
 		DiscordGuildID:   guildID,
-		DiscordAuthToken: oauthResponse.AccessToken,
 		DiscordGuildName: guildInfo.Name,
 		OrganizationID:   organizationID,
 	}

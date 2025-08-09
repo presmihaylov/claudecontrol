@@ -10,6 +10,7 @@ require (
 require github.com/lib/pq v1.10.9
 
 require (
+	github.com/bwmarrin/discordgo v0.29.0
 	github.com/clerk/clerk-sdk-go/v2 v2.3.1
 	github.com/gorilla/mux v1.8.1
 	github.com/jmoiron/sqlx v1.4.0
@@ -22,7 +23,6 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.0.6 // indirect
-	github.com/bwmarrin/discordgo v0.29.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
