@@ -174,6 +174,7 @@ CCAGENT_WS_API_URL=<websocket_server_url>  # Optional, defaults to production
 - **Option Types**: Uses `mo.Option[*Model]` for Get operations that may return no results
 - **Validation Rule**: Repository layer focuses on data access only - **validation should be
   handled at the service layer, not repository layer**
+- **Identifier Data Types**: Always use `TEXT` for database identifiers, never `VARCHAR`
 
 ### Current Database Schema
 The database uses a multi-table design with user-scoped entities:

@@ -131,6 +131,19 @@ func CreateTestSlackIntegration(organizationID string) *models.SlackIntegration 
 	}
 }
 
+// CreateTestDiscordIntegration creates a test discord integration model for testing
+func CreateTestDiscordIntegration(organizationID string) *models.DiscordIntegration {
+	integrationID := core.NewID("di")
+	guildIDSuffix := core.NewID("guild")
+
+	return &models.DiscordIntegration{
+		ID:               integrationID,
+		DiscordGuildID:   "test-guild-" + guildIDSuffix,
+		DiscordGuildName: "Test Discord Guild",
+		OrganizationID:   organizationID,
+	}
+}
+
 // CleanupTestUser creates a cleanup function that deletes a test user from the database
 func CleanupTestUser(t *testing.T, dbConn *sqlx.DB, databaseSchema string, userID string) func() {
 	return func() {

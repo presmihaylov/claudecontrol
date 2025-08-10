@@ -23,6 +23,7 @@ import (
 	"ccbackend/middleware"
 	agentsservice "ccbackend/services/agents"
 	discordintegrations "ccbackend/services/discord_integrations"
+	discordmessages "ccbackend/services/discordmessages"
 	jobs "ccbackend/services/jobs"
 	organizations "ccbackend/services/organizations"
 	slackintegrations "ccbackend/services/slack_integrations"
@@ -67,6 +68,7 @@ func run() error {
 	agentsRepo := db.NewPostgresAgentsRepository(dbConn, cfg.DatabaseSchema)
 	jobsRepo := db.NewPostgresJobsRepository(dbConn, cfg.DatabaseSchema)
 	processedSlackMessagesRepo := db.NewPostgresProcessedSlackMessagesRepository(dbConn, cfg.DatabaseSchema)
+	processedDiscordMessagesRepo := db.NewPostgresProcessedDiscordMessagesRepository(dbConn, cfg.DatabaseSchema)
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
@@ -77,7 +79,8 @@ func run() error {
 
 	agentsService := agentsservice.NewAgentsService(agentsRepo)
 	slackMessagesService := slackmessages.NewSlackMessagesService(processedSlackMessagesRepo)
-	jobsService := jobs.NewJobsService(jobsRepo, slackMessagesService, txManager)
+	discordMessagesService := discordmessages.NewDiscordMessagesService(processedDiscordMessagesRepo)
+	jobsService := jobs.NewJobsService(jobsRepo, slackMessagesService, discordMessagesService, txManager)
 	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
 	usersService := users.NewUsersService(usersRepo, organizationsService, txManager)
 	slackOAuthClient := slackclient.NewSlackOAuthClient()

@@ -81,7 +81,7 @@ func (s *SlackUseCase) ProcessJobComplete(
 		log.Printf("✅ Unassigned agent %s from completed job %s", agent.ID, jobID)
 
 		// Delete the job and its associated processed messages
-		if err := s.jobsService.DeleteJob(ctx, jobID, slackIntegrationID, organizationID); err != nil {
+		if err := s.jobsService.DeleteJob(ctx, jobID, organizationID); err != nil {
 			log.Printf("❌ Failed to delete completed job %s: %v", jobID, err)
 			return fmt.Errorf("failed to delete completed job: %w", err)
 		}
@@ -142,7 +142,7 @@ func (s *SlackUseCase) CleanupFailedSlackJob(
 		}
 
 		// Delete the job (use the job's slack integration and organization from the job)
-		if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
+		if err := s.jobsService.DeleteJob(ctx, job.ID, organizationID); err != nil {
 			log.Printf("❌ Failed to delete job %s: %v", job.ID, err)
 			return fmt.Errorf("failed to delete job: %w", err)
 		}

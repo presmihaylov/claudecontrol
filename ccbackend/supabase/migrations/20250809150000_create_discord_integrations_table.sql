@@ -1,8 +1,8 @@
 -- Create discord_integrations table in production schema
 CREATE TABLE claudecontrol.discord_integrations (
     id TEXT PRIMARY KEY,
-    discord_guild_id VARCHAR(255) NOT NULL,
-    discord_guild_name VARCHAR(255) NOT NULL,
+    discord_guild_id TEXT NOT NULL,
+    discord_guild_name TEXT NOT NULL,
     organization_id TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -13,8 +13,8 @@ CREATE TABLE claudecontrol.discord_integrations (
 -- Create discord_integrations table in test schema
 CREATE TABLE claudecontrol_test.discord_integrations (
     id TEXT PRIMARY KEY,
-    discord_guild_id VARCHAR(255) NOT NULL,
-    discord_guild_name VARCHAR(255) NOT NULL,
+    discord_guild_id TEXT NOT NULL,
+    discord_guild_name TEXT NOT NULL,
     organization_id TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
