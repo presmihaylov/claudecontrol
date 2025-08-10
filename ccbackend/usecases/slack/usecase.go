@@ -12,6 +12,9 @@ import (
 	"strings"
 )
 
+// SlackClientFactory creates a Slack client given an auth token
+type SlackClientFactory func(authToken string) clients.SlackClient
+
 // SlackUseCase handles all Slack-specific operations
 type SlackUseCase struct {
 	wsClient                 clients.SocketIOClient
@@ -21,6 +24,7 @@ type SlackUseCase struct {
 	slackIntegrationsService services.SlackIntegrationsService
 	txManager                services.TransactionManager
 	agentsUseCase            agents.AgentsUseCaseInterface
+	slackClientFactory       SlackClientFactory
 }
 
 // NewSlackUseCase creates a new instance of SlackUseCase
@@ -32,6 +36,7 @@ func NewSlackUseCase(
 	slackIntegrationsService services.SlackIntegrationsService,
 	txManager services.TransactionManager,
 	agentsUseCase agents.AgentsUseCaseInterface,
+	slackClientFactory SlackClientFactory,
 ) *SlackUseCase {
 	return &SlackUseCase{
 		wsClient:                 wsClient,
@@ -41,6 +46,7 @@ func NewSlackUseCase(
 		slackIntegrationsService: slackIntegrationsService,
 		txManager:                txManager,
 		agentsUseCase:            agentsUseCase,
+		slackClientFactory:       slackClientFactory,
 	}
 }
 
