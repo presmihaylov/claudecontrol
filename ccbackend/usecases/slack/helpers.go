@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"slices"
+	"strings"
 
 	"github.com/samber/mo"
 
@@ -268,7 +269,7 @@ func (s *SlackUseCase) getBotReactionsOnMessage(
 	return botReactions, nil
 }
 
-func DeriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) string {
+func deriveMessageReactionFromStatus(status models.ProcessedSlackMessageStatus) string {
 	switch status {
 	case models.ProcessedSlackMessageStatusInProgress:
 		return "hourglass"
@@ -293,4 +294,10 @@ func getOldReactions(newEmoji string) []string {
 	}
 
 	return result
+}
+
+// isAgentErrorMessage determines if a system message from ccagent indicates an error or failure
+func isAgentErrorMessage(message string) bool {
+	// Check if message starts with the specific error prefix from ccagent
+	return strings.HasPrefix(message, "ccagent encountered error:")
 }
