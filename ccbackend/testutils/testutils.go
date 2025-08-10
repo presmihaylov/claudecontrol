@@ -235,3 +235,37 @@ func GenerateDiscordBotUsername() string {
 	n, _ := rand.Int(rand.Reader, big.NewInt(9000))
 	return fmt.Sprintf("testbot%d", n.Int64()+1000)
 }
+
+// GenerateSlackIntegrationID generates a random Slack integration ID using ULID
+func GenerateSlackIntegrationID() string {
+	return core.NewID("si")
+}
+
+// GenerateSlackChannelID generates a random Slack channel ID
+func GenerateSlackChannelID() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("C%d", n.Int64()+100000)
+}
+
+// GenerateSlackUserID generates a random Slack user ID
+func GenerateSlackUserID() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("U%d", n.Int64()+100000)
+}
+
+// GenerateSlackThreadTS generates a random Slack thread timestamp
+func GenerateSlackThreadTS() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("1234567%d.123", n.Int64()+100000)
+}
+
+// GenerateSlackMessageID generates a random Slack message ID using ULID
+func GenerateSlackMessageID() string {
+	return core.NewID("sm")
+}
+
+// GenerateSlackToken generates a random Slack token
+func GenerateSlackToken() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("xoxb-test-token-%d", n.Int64()+100000)
+}

@@ -126,6 +126,7 @@ func run() error {
 		slackIntegrationsService,
 		txManager,
 		agentsUseCase,
+		slackclient.NewSlackClient, // Real Slack client factory
 	)
 
 	discordUseCase := discordUseCase.NewDiscordUseCase(
