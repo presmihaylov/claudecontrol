@@ -7,7 +7,8 @@ import (
 type JobType string
 
 const (
-	JobTypeSlack JobType = "slack"
+	JobTypeSlack   JobType = "slack"
+	JobTypeDiscord JobType = "discord"
 )
 
 type Job struct {
@@ -19,7 +20,8 @@ type Job struct {
 	UpdatedAt      time.Time `json:"updated_at"      db:"updated_at"`
 
 	// Polymorphic payload - only one populated based on JobType
-	SlackPayload *SlackJobPayload `json:"slack_payload,omitempty"`
+	SlackPayload   *SlackJobPayload   `json:"slack_payload,omitempty"`
+	DiscordPayload *DiscordJobPayload `json:"discord_payload,omitempty"`
 }
 
 type SlackJobPayload struct {
@@ -27,6 +29,12 @@ type SlackJobPayload struct {
 	ChannelID     string `json:"channel_id"     db:"slack_channel_id"`
 	UserID        string `json:"user_id"        db:"slack_user_id"`
 	IntegrationID string `json:"integration_id" db:"slack_integration_id"`
+}
+
+type DiscordJobPayload struct {
+	MessageID     string `json:"message_id"     db:"discord_message_id"`
+	ThreadID      string `json:"thread_id"      db:"discord_thread_id"`
+	IntegrationID string `json:"integration_id" db:"discord_integration_id"`
 }
 
 type JobCreationStatus string

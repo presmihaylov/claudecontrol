@@ -108,3 +108,68 @@ func (m *MockJobsService) GetJobsWithQueuedMessages(
 	}
 	return args.Get(0).([]*models.Job), args.Error(1)
 }
+
+func (m *MockJobsService) CreateDiscordJob(
+	ctx context.Context,
+	discordMessageID, discordThreadID, discordIntegrationID, organizationID string,
+) (*models.Job, error) {
+	args := m.Called(ctx, discordMessageID, discordThreadID, discordIntegrationID, organizationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Job), args.Error(1)
+}
+
+func (m *MockJobsService) GetJobByDiscordThread(
+	ctx context.Context,
+	threadID, discordIntegrationID, organizationID string,
+) (mo.Option[*models.Job], error) {
+	args := m.Called(ctx, threadID, discordIntegrationID, organizationID)
+	if args.Get(0) == nil {
+		return mo.None[*models.Job](), args.Error(1)
+	}
+	return args.Get(0).(mo.Option[*models.Job]), args.Error(1)
+}
+
+func (m *MockJobsService) GetOrCreateJobForDiscordThread(
+	ctx context.Context,
+	messageID, threadID, discordIntegrationID, organizationID string,
+) (*models.JobCreationResult, error) {
+	args := m.Called(ctx, messageID, threadID, discordIntegrationID, organizationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.JobCreationResult), args.Error(1)
+}
+
+func (m *MockJobsService) UpdateDiscordJobTimestamp(
+	ctx context.Context,
+	jobID string,
+	discordIntegrationID string,
+	organizationID string,
+) error {
+	args := m.Called(ctx, jobID, discordIntegrationID, organizationID)
+	return args.Error(0)
+}
+
+func (m *MockJobsService) DeleteDiscordJob(
+	ctx context.Context,
+	id string,
+	discordIntegrationID string,
+	organizationID string,
+) error {
+	args := m.Called(ctx, id, discordIntegrationID, organizationID)
+	return args.Error(0)
+}
+
+func (m *MockJobsService) GetDiscordJobsWithQueuedMessages(
+	ctx context.Context,
+	discordIntegrationID string,
+	organizationID string,
+) ([]*models.Job, error) {
+	args := m.Called(ctx, discordIntegrationID, organizationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.Job), args.Error(1)
+}

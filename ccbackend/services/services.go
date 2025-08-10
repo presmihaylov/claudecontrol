@@ -148,17 +148,67 @@ type SlackMessagesService interface {
 	) error
 }
 
+// DiscordMessagesService defines the interface for processed discord message operations
+type DiscordMessagesService interface {
+	CreateProcessedDiscordMessage(
+		ctx context.Context,
+		jobID string,
+		discordMessageID, discordThreadID, textContent, discordIntegrationID, organizationID string,
+		status models.ProcessedDiscordMessageStatus,
+	) (*models.ProcessedDiscordMessage, error)
+	UpdateProcessedDiscordMessage(
+		ctx context.Context,
+		id string,
+		status models.ProcessedDiscordMessageStatus,
+		discordIntegrationID string,
+		organizationID string,
+	) (*models.ProcessedDiscordMessage, error)
+	GetProcessedMessagesByJobIDAndStatus(
+		ctx context.Context,
+		jobID string,
+		status models.ProcessedDiscordMessageStatus,
+		discordIntegrationID string,
+		organizationID string,
+	) ([]*models.ProcessedDiscordMessage, error)
+	GetProcessedDiscordMessageByID(
+		ctx context.Context,
+		id string,
+		organizationID string,
+	) (mo.Option[*models.ProcessedDiscordMessage], error)
+	GetLatestProcessedMessageForJob(
+		ctx context.Context,
+		jobID string,
+		discordIntegrationID string,
+		organizationID string,
+	) (mo.Option[*models.ProcessedDiscordMessage], error)
+	GetActiveMessageCountForJobs(
+		ctx context.Context,
+		jobIDs []string,
+		discordIntegrationID string,
+		organizationID string,
+	) (int, error)
+	TESTS_UpdateProcessedDiscordMessageUpdatedAt(
+		ctx context.Context,
+		id string,
+		updatedAt time.Time,
+		discordIntegrationID string,
+		organizationID string,
+	) error
+	DeleteProcessedDiscordMessagesByJobID(
+		ctx context.Context,
+		jobID string,
+		discordIntegrationID string,
+		organizationID string,
+	) error
+}
+
 // JobsService defines the interface for job-related operations
 type JobsService interface {
+	// Slack job operations
 	CreateJob(
 		ctx context.Context,
 		slackThreadTS, slackChannelID, slackUserID, slackIntegrationID, organizationID string,
 	) (*models.Job, error)
-	GetJobByID(
-		ctx context.Context,
-		id string,
-		organizationID string,
-	) (mo.Option[*models.Job], error)
 	GetJobBySlackThread(
 		ctx context.Context,
 		threadTS, channelID, slackIntegrationID, organizationID string,
@@ -167,12 +217,45 @@ type JobsService interface {
 		ctx context.Context,
 		threadTS, channelID, slackUserID, slackIntegrationID, organizationID string,
 	) (*models.JobCreationResult, error)
+
+	// Discord job operations
+	CreateDiscordJob(
+		ctx context.Context,
+		discordMessageID, discordThreadID, discordIntegrationID, organizationID string,
+	) (*models.Job, error)
+	GetJobByDiscordThread(
+		ctx context.Context,
+		threadID, discordIntegrationID, organizationID string,
+	) (mo.Option[*models.Job], error)
+	GetOrCreateJobForDiscordThread(
+		ctx context.Context,
+		messageID, threadID, discordIntegrationID, organizationID string,
+	) (*models.JobCreationResult, error)
+
+	// Generic job operations (work with both Slack and Discord jobs)
+	GetJobByID(
+		ctx context.Context,
+		id string,
+		organizationID string,
+	) (mo.Option[*models.Job], error)
 	UpdateJobTimestamp(ctx context.Context, jobID string, slackIntegrationID string, organizationID string) error
+	UpdateDiscordJobTimestamp(
+		ctx context.Context,
+		jobID string,
+		discordIntegrationID string,
+		organizationID string,
+	) error
 	GetIdleJobs(ctx context.Context, idleMinutes int, organizationID string) ([]*models.Job, error)
 	DeleteJob(ctx context.Context, id string, slackIntegrationID string, organizationID string) error
+	DeleteDiscordJob(ctx context.Context, id string, discordIntegrationID string, organizationID string) error
 	GetJobsWithQueuedMessages(
 		ctx context.Context,
 		slackIntegrationID string,
+		organizationID string,
+	) ([]*models.Job, error)
+	GetDiscordJobsWithQueuedMessages(
+		ctx context.Context,
+		discordIntegrationID string,
 		organizationID string,
 	) ([]*models.Job, error)
 	TESTS_UpdateJobUpdatedAt(

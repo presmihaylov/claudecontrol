@@ -15,20 +15,23 @@ import (
 )
 
 type JobsService struct {
-	jobsRepo             *db.PostgresJobsRepository
-	slackMessagesService services.SlackMessagesService
-	txManager            services.TransactionManager
+	jobsRepo               *db.PostgresJobsRepository
+	slackMessagesService   services.SlackMessagesService
+	discordMessagesService services.DiscordMessagesService
+	txManager              services.TransactionManager
 }
 
 func NewJobsService(
 	repo *db.PostgresJobsRepository,
 	slackMessagesService services.SlackMessagesService,
+	discordMessagesService services.DiscordMessagesService,
 	txManager services.TransactionManager,
 ) *JobsService {
 	return &JobsService{
-		jobsRepo:             repo,
-		slackMessagesService: slackMessagesService,
-		txManager:            txManager,
+		jobsRepo:               repo,
+		slackMessagesService:   slackMessagesService,
+		discordMessagesService: discordMessagesService,
+		txManager:              txManager,
 	}
 }
 
@@ -332,5 +335,212 @@ func (s *JobsService) GetJobsWithQueuedMessages(
 	}
 
 	log.Printf("📋 Completed successfully - found %d jobs with queued messages", len(jobs))
+	return jobs, nil
+}
+
+func (s *JobsService) CreateDiscordJob(
+	ctx context.Context,
+	discordMessageID, discordThreadID, discordIntegrationID, organizationID string,
+) (*models.Job, error) {
+	log.Printf(
+		"📋 Starting to create Discord job for message: %s, thread: %s, organization: %s",
+		discordMessageID,
+		discordThreadID,
+		organizationID,
+	)
+
+	if discordMessageID == "" {
+		return nil, fmt.Errorf("discord_message_id cannot be empty")
+	}
+	if discordThreadID == "" {
+		return nil, fmt.Errorf("discord_thread_id cannot be empty")
+	}
+	if !core.IsValidULID(discordIntegrationID) {
+		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
+	}
+	if !core.IsValidULID(organizationID) {
+		return nil, fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	job := &models.Job{
+		ID:             core.NewID("j"),
+		JobType:        models.JobTypeDiscord,
+		OrganizationID: organizationID,
+		DiscordPayload: &models.DiscordJobPayload{
+			MessageID:     discordMessageID,
+			ThreadID:      discordThreadID,
+			IntegrationID: discordIntegrationID,
+		},
+	}
+
+	if err := s.jobsRepo.CreateJob(ctx, job); err != nil {
+		return nil, fmt.Errorf("failed to create Discord job: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - created Discord job with ID: %s", job.ID)
+	return job, nil
+}
+
+func (s *JobsService) GetJobByDiscordThread(
+	ctx context.Context,
+	threadID, discordIntegrationID, organizationID string,
+) (mo.Option[*models.Job], error) {
+	log.Printf("📋 Starting to get job by Discord thread: %s", threadID)
+	if threadID == "" {
+		return mo.None[*models.Job](), fmt.Errorf("discord_thread_id cannot be empty")
+	}
+	if !core.IsValidULID(discordIntegrationID) {
+		return mo.None[*models.Job](), fmt.Errorf("discord_integration_id must be a valid ULID")
+	}
+	if !core.IsValidULID(organizationID) {
+		return mo.None[*models.Job](), fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	maybeJob, err := s.jobsRepo.GetJobByDiscordThread(ctx, threadID, discordIntegrationID, organizationID)
+	if err != nil {
+		return mo.None[*models.Job](), fmt.Errorf("failed to get job by Discord thread: %w", err)
+	}
+	if !maybeJob.IsPresent() {
+		log.Printf("📋 Completed successfully - job not found")
+		return mo.None[*models.Job](), nil
+	}
+	job := maybeJob.MustGet()
+
+	log.Printf("📋 Completed successfully - retrieved job with ID: %s", job.ID)
+	return mo.Some(job), nil
+}
+
+func (s *JobsService) GetOrCreateJobForDiscordThread(
+	ctx context.Context,
+	messageID, threadID, discordIntegrationID, organizationID string,
+) (*models.JobCreationResult, error) {
+	log.Printf(
+		"📋 Starting to get or create job for Discord thread: %s, message: %s, organization: %s",
+		threadID,
+		messageID,
+		organizationID,
+	)
+
+	if messageID == "" {
+		return nil, fmt.Errorf("discord_message_id cannot be empty")
+	}
+	if threadID == "" {
+		return nil, fmt.Errorf("discord_thread_id cannot be empty")
+	}
+	if !core.IsValidULID(discordIntegrationID) {
+		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
+	}
+	if !core.IsValidULID(organizationID) {
+		return nil, fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	maybeExistingJob, err := s.jobsRepo.GetJobByDiscordThread(
+		ctx,
+		threadID,
+		discordIntegrationID,
+		organizationID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job by Discord thread: %w", err)
+	}
+
+	if maybeExistingJob.IsPresent() {
+		existingJob := maybeExistingJob.MustGet()
+		log.Printf("📋 Completed successfully - found existing job with ID: %s", existingJob.ID)
+		return &models.JobCreationResult{
+			Job:    existingJob,
+			Status: models.JobCreationStatusNA,
+		}, nil
+	}
+
+	newJob, createErr := s.CreateDiscordJob(ctx, messageID, threadID, discordIntegrationID, organizationID)
+	if createErr != nil {
+		return nil, fmt.Errorf("failed to create new Discord job: %w", createErr)
+	}
+	log.Printf("📋 Completed successfully - created new Discord job with ID: %s", newJob.ID)
+	return &models.JobCreationResult{
+		Job:    newJob,
+		Status: models.JobCreationStatusCreated,
+	}, nil
+}
+
+func (s *JobsService) UpdateDiscordJobTimestamp(
+	ctx context.Context,
+	jobID string,
+	discordIntegrationID string,
+	organizationID string,
+) error {
+	log.Printf("📋 Starting to update Discord job timestamp for ID: %s", jobID)
+	if !core.IsValidULID(jobID) {
+		return fmt.Errorf("job ID must be a valid ULID")
+	}
+	if !core.IsValidULID(discordIntegrationID) {
+		return fmt.Errorf("discord_integration_id must be a valid ULID")
+	}
+	if !core.IsValidULID(organizationID) {
+		return fmt.Errorf("organization_id must be a valid ULID")
+	}
+	if err := s.jobsRepo.UpdateDiscordJobTimestamp(ctx, jobID, discordIntegrationID, organizationID); err != nil {
+		return fmt.Errorf("failed to update Discord job timestamp: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated timestamp for Discord job ID: %s", jobID)
+	return nil
+}
+
+func (s *JobsService) DeleteDiscordJob(
+	ctx context.Context,
+	id string,
+	discordIntegrationID string,
+	organizationID string,
+) error {
+	log.Printf("📋 Starting to delete Discord job with ID: %s", id)
+	if !core.IsValidULID(id) {
+		return fmt.Errorf("job ID must be a valid ULID")
+	}
+	if !core.IsValidULID(discordIntegrationID) {
+		return fmt.Errorf("discord_integration_id must be a valid ULID")
+	}
+	if !core.IsValidULID(organizationID) {
+		return fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+		if err := s.discordMessagesService.DeleteProcessedDiscordMessagesByJobID(ctx, id, discordIntegrationID, organizationID); err != nil {
+			return fmt.Errorf("failed to delete processed Discord messages for job: %w", err)
+		}
+
+		if _, err := s.jobsRepo.DeleteDiscordJob(ctx, id, discordIntegrationID, organizationID); err != nil {
+			return fmt.Errorf("failed to delete Discord job: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to delete Discord job in transaction: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - deleted Discord job with ID: %s", id)
+	return nil
+}
+
+func (s *JobsService) GetDiscordJobsWithQueuedMessages(
+	ctx context.Context,
+	discordIntegrationID string,
+	organizationID string,
+) ([]*models.Job, error) {
+	log.Printf("📋 Starting to get Discord jobs with queued messages")
+	if !core.IsValidULID(discordIntegrationID) {
+		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
+	}
+	if !core.IsValidULID(organizationID) {
+		return nil, fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	jobs, err := s.jobsRepo.GetDiscordJobsWithQueuedMessages(ctx, discordIntegrationID, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Discord jobs with queued messages: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found %d Discord jobs with queued messages", len(jobs))
 	return jobs, nil
 }

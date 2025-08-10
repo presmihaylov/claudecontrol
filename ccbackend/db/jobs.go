@@ -35,6 +35,11 @@ type DBJob struct {
 	SlackChannelID     *string `db:"slack_channel_id"`
 	SlackUserID        *string `db:"slack_user_id"`
 	SlackIntegrationID *string `db:"slack_integration_id"`
+
+	// Discord fields (nullable)
+	DiscordMessageID     *string `db:"discord_message_id"`
+	DiscordThreadID      *string `db:"discord_thread_id"`
+	DiscordIntegrationID *string `db:"discord_integration_id"`
 }
 
 // Column names for jobs table
@@ -45,6 +50,9 @@ var jobsColumns = []string{
 	"slack_channel_id",
 	"slack_user_id",
 	"slack_integration_id",
+	"discord_message_id",
+	"discord_thread_id",
+	"discord_integration_id",
 	"organization_id",
 	"created_at",
 	"updated_at",
@@ -78,6 +86,17 @@ func dbJobToModel(dbJob *DBJob) *models.Job {
 		}
 	}
 
+	if job.JobType == models.JobTypeDiscord &&
+		dbJob.DiscordMessageID != nil &&
+		dbJob.DiscordThreadID != nil &&
+		dbJob.DiscordIntegrationID != nil {
+		job.DiscordPayload = &models.DiscordJobPayload{
+			MessageID:     *dbJob.DiscordMessageID,
+			ThreadID:      *dbJob.DiscordThreadID,
+			IntegrationID: *dbJob.DiscordIntegrationID,
+		}
+	}
+
 	return job
 }
 
@@ -86,6 +105,9 @@ func modelToDBJob(job *models.Job) (*DBJob, error) {
 	// Validate that job type matches payload presence
 	if job.JobType == models.JobTypeSlack && job.SlackPayload == nil {
 		return nil, fmt.Errorf("slack job type requires SlackPayload to be populated")
+	}
+	if job.JobType == models.JobTypeDiscord && job.DiscordPayload == nil {
+		return nil, fmt.Errorf("discord job type requires DiscordPayload to be populated")
 	}
 
 	dbJob := &DBJob{
@@ -104,6 +126,13 @@ func modelToDBJob(job *models.Job) (*DBJob, error) {
 		dbJob.SlackIntegrationID = &job.SlackPayload.IntegrationID
 	}
 
+	// Set Discord fields if payload exists
+	if job.DiscordPayload != nil {
+		dbJob.DiscordMessageID = &job.DiscordPayload.MessageID
+		dbJob.DiscordThreadID = &job.DiscordPayload.ThreadID
+		dbJob.DiscordIntegrationID = &job.DiscordPayload.IntegrationID
+	}
+
 	return dbJob, nil
 }
 
@@ -117,26 +146,28 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 	insertColumns := []string{
 		"id",
 		"job_type",
+		"organization_id",
 		"slack_thread_ts",
 		"slack_channel_id",
 		"slack_user_id",
 		"slack_integration_id",
-		"organization_id",
-		"created_at",
-		"updated_at",
+		"discord_message_id",
+		"discord_thread_id",
+		"discord_integration_id",
 	}
 	columnsStr := strings.Join(insertColumns, ", ")
 	returningStr := strings.Join(jobsColumns, ", ")
 
 	query := fmt.Sprintf(`
-		INSERT INTO %s.jobs (%s) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
+		INSERT INTO %s.jobs (%s, created_at, updated_at) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
 	var returnedDBJob DBJob
 	err = db.QueryRowxContext(ctx, query,
-		dbJob.ID, dbJob.JobType, dbJob.SlackThreadTS, dbJob.SlackChannelID,
-		dbJob.SlackUserID, dbJob.SlackIntegrationID, dbJob.OrganizationID).
+		dbJob.ID, dbJob.JobType, dbJob.OrganizationID,
+		dbJob.SlackThreadTS, dbJob.SlackChannelID, dbJob.SlackUserID, dbJob.SlackIntegrationID,
+		dbJob.DiscordMessageID, dbJob.DiscordThreadID, dbJob.DiscordIntegrationID).
 		StructScan(&returnedDBJob)
 	if err != nil {
 		return fmt.Errorf("failed to create job: %w", err)
@@ -340,6 +371,110 @@ func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(
 	err := db.SelectContext(ctx, &dbJobs, query, slackIntegrationID, organizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jobs with queued messages: %w", err)
+	}
+
+	// Convert DBJobs to models.Job
+	jobs := make([]*models.Job, len(dbJobs))
+	for i, dbJob := range dbJobs {
+		jobs[i] = dbJobToModel(&dbJob)
+	}
+
+	return jobs, nil
+}
+
+func (r *PostgresJobsRepository) GetJobByDiscordThread(
+	ctx context.Context,
+	threadID, discordIntegrationID, organizationID string,
+) (mo.Option[*models.Job], error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+	columnsStr := strings.Join(jobsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.jobs 
+		WHERE discord_thread_id = $1 AND discord_integration_id = $2 AND organization_id = $3`,
+		columnsStr, r.schema)
+
+	var dbJob DBJob
+	err := db.GetContext(ctx, &dbJob, query, threadID, discordIntegrationID, organizationID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return mo.None[*models.Job](), nil
+		}
+		return mo.None[*models.Job](), fmt.Errorf("failed to get job by Discord thread: %w", err)
+	}
+
+	return mo.Some(dbJobToModel(&dbJob)), nil
+}
+
+func (r *PostgresJobsRepository) UpdateDiscordJobTimestamp(
+	ctx context.Context,
+	jobID, discordIntegrationID, organizationID string,
+) error {
+	db := dbtx.GetTransactional(ctx, r.db)
+	query := fmt.Sprintf(`
+		UPDATE %s.jobs 
+		SET updated_at = NOW() 
+		WHERE id = $1 AND discord_integration_id = $2 AND organization_id = $3`,
+		r.schema)
+
+	result, err := db.ExecContext(ctx, query, jobID, discordIntegrationID, organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to update Discord job timestamp: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("discord job not found")
+	}
+
+	return nil
+}
+
+func (r *PostgresJobsRepository) DeleteDiscordJob(
+	ctx context.Context,
+	id, discordIntegrationID, organizationID string,
+) (bool, error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+	query := fmt.Sprintf(`
+		DELETE FROM %s.jobs 
+		WHERE id = $1 AND discord_integration_id = $2 AND organization_id = $3`,
+		r.schema)
+
+	result, err := db.ExecContext(ctx, query, id, discordIntegrationID, organizationID)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete Discord job: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return rowsAffected > 0, nil
+}
+
+func (r *PostgresJobsRepository) GetDiscordJobsWithQueuedMessages(
+	ctx context.Context,
+	discordIntegrationID, organizationID string,
+) ([]*models.Job, error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+	columnsStr := strings.Join(jobsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT DISTINCT %s 
+		FROM %s.jobs j
+		INNER JOIN %s.processed_discord_messages pdm ON j.id = pdm.job_id
+		WHERE j.discord_integration_id = $1 
+		AND j.organization_id = $2
+		AND pdm.status = 'QUEUED'
+		ORDER BY j.created_at ASC`, columnsStr, r.schema, r.schema)
+
+	var dbJobs []DBJob
+	err := db.SelectContext(ctx, &dbJobs, query, discordIntegrationID, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Discord jobs with queued messages: %w", err)
 	}
 
 	// Convert DBJobs to models.Job
