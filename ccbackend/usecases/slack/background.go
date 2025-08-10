@@ -92,28 +92,11 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 				}
 
 				// Determine if this is the first message in the job (new conversation)
-				// Check for any completed or in-progress messages (excluding queued ones)
-				completedMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(
-					ctx,
-					job.ID,
-					models.ProcessedSlackMessageStatusCompleted,
-					slackIntegrationID,
-					integration.OrganizationID,
-				)
-				if err != nil {
-					return fmt.Errorf("failed to check for completed messages in job %s: %w", job.ID, err)
+				// Check if this message's timestamp matches the job's thread timestamp (i.e., it's the top-level message)
+				isNewConversation := false
+				if job.SlackPayload != nil {
+					isNewConversation = updatedMessage.SlackTS == job.SlackPayload.ThreadTS
 				}
-				inProgressMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(
-					ctx,
-					job.ID,
-					models.ProcessedSlackMessageStatusInProgress,
-					slackIntegrationID,
-					integration.OrganizationID,
-				)
-				if err != nil {
-					return fmt.Errorf("failed to check for in-progress messages in job %s: %w", job.ID, err)
-				}
-				isNewConversation := len(completedMessages) == 0 && len(inProgressMessages) == 0
 
 				// Send work to assigned agent
 				if isNewConversation {
