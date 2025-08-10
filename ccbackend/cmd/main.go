@@ -127,7 +127,6 @@ func run() error {
 		jobsService,
 		slackIntegrationsService,
 		organizationsService,
-		agentsUseCase,
 		slackUseCase,
 	)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)

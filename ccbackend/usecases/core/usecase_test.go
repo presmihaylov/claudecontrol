@@ -36,7 +36,6 @@ func TestRegisterAgent(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -78,7 +77,6 @@ func TestRegisterAgent(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -118,7 +116,6 @@ func TestDeregisterAgent(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -164,7 +161,6 @@ func TestDeregisterAgent(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -220,7 +216,6 @@ func TestDeregisterAgent(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -257,7 +252,6 @@ func TestDeregisterAgent(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -307,7 +301,6 @@ func TestDeregisterAgent(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -363,7 +356,6 @@ func TestDeregisterAgent(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -415,7 +407,6 @@ func TestProcessPing(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -459,7 +450,6 @@ func TestProcessPing(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -498,7 +488,6 @@ func TestCleanupInactiveAgents(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -529,7 +518,6 @@ func TestCleanupInactiveAgents(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -588,7 +576,6 @@ func TestValidateAPIKey(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -626,7 +613,6 @@ func TestValidateAPIKey(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -665,7 +651,6 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -731,7 +716,6 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -762,7 +746,6 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 			mockJobsService,
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
-			nil, // agentsUseCase
 			nil, // slackUseCase
 		)
 
@@ -788,3 +771,4 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 		mockAgentsService.AssertExpectations(t)
 	})
 }
+
