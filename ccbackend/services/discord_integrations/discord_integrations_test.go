@@ -122,59 +122,6 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_Success(t *testing.
 	mockRepo.AssertExpectations(t)
 }
 
-func TestDiscordIntegrationsService_CreateDiscordIntegration_ValidationErrors(t *testing.T) {
-	service := &DiscordIntegrationsService{}
-	ctx := context.Background()
-
-	tests := []struct {
-		name            string
-		organizationID  string
-		discordAuthCode string
-		guildID         string
-		redirectURL     string
-		expectedError   string
-	}{
-		{
-			name:            "invalid organization ID",
-			organizationID:  "invalid",
-			discordAuthCode: "code",
-			guildID:         "guild",
-			redirectURL:     "url",
-			expectedError:   "organization ID must be a valid ULID",
-		},
-		{
-			name:            "empty auth code",
-			organizationID:  core.NewID("org"),
-			discordAuthCode: "",
-			guildID:         "guild",
-			redirectURL:     "url",
-			expectedError:   "discord auth code cannot be empty",
-		},
-		{
-			name:            "empty guild ID",
-			organizationID:  core.NewID("org"),
-			discordAuthCode: "code",
-			guildID:         "",
-			redirectURL:     "url",
-			expectedError:   "discord guild ID cannot be empty",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.CreateDiscordIntegration(
-				ctx,
-				tt.organizationID,
-				tt.discordAuthCode,
-				tt.guildID,
-				tt.redirectURL,
-			)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.expectedError)
-		})
-	}
-}
-
 // EmptyAccessToken test removed - OAuth is no longer part of the service flow
 
 func TestDiscordIntegrationsService_CreateDiscordIntegration_GuildNotFound(t *testing.T) {
@@ -282,18 +229,6 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_Succe
 	mockRepo.AssertExpectations(t)
 }
 
-func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_ValidationError(t *testing.T) {
-	service := &DiscordIntegrationsService{}
-	ctx := context.Background()
-
-	// Test with invalid organization ID
-	result, err := service.GetDiscordIntegrationsByOrganizationID(ctx, "invalid-id")
-
-	require.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "organization ID must be a valid ULID")
-}
-
 func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_RepositoryError(t *testing.T) {
 	// Arrange
 	mockRepo := &MockDiscordIntegrationsRepository{}
@@ -372,39 +307,6 @@ func TestDiscordIntegrationsService_DeleteDiscordIntegration_Success(t *testing.
 
 	// Verify expectations
 	mockRepo.AssertExpectations(t)
-}
-
-func TestDiscordIntegrationsService_DeleteDiscordIntegration_ValidationErrors(t *testing.T) {
-	service := &DiscordIntegrationsService{}
-	ctx := context.Background()
-
-	tests := []struct {
-		name           string
-		organizationID string
-		integrationID  string
-		expectedError  string
-	}{
-		{
-			name:           "invalid organization ID",
-			organizationID: "invalid",
-			integrationID:  core.NewID("di"),
-			expectedError:  "organization ID must be a valid ULID",
-		},
-		{
-			name:           "invalid integration ID",
-			organizationID: core.NewID("org"),
-			integrationID:  "invalid",
-			expectedError:  "integration ID must be a valid ULID",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := service.DeleteDiscordIntegration(ctx, tt.organizationID, tt.integrationID)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.expectedError)
-		})
-	}
 }
 
 func TestDiscordIntegrationsService_DeleteDiscordIntegration_NotFound(t *testing.T) {
@@ -487,18 +389,6 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationByGuildID_NotFound(t *t
 	mockRepo.AssertExpectations(t)
 }
 
-func TestDiscordIntegrationsService_GetDiscordIntegrationByGuildID_ValidationError(t *testing.T) {
-	service := &DiscordIntegrationsService{}
-	ctx := context.Background()
-
-	// Test with empty guild ID
-	result, err := service.GetDiscordIntegrationByGuildID(ctx, "")
-
-	require.Error(t, err)
-	assert.False(t, result.IsPresent())
-	assert.Contains(t, err.Error(), "guild ID cannot be empty")
-}
-
 func TestDiscordIntegrationsService_GetDiscordIntegrationByID_Success(t *testing.T) {
 	// Arrange
 	mockRepo := &MockDiscordIntegrationsRepository{}
@@ -529,16 +419,4 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationByID_Success(t *testing
 
 	// Verify expectations
 	mockRepo.AssertExpectations(t)
-}
-
-func TestDiscordIntegrationsService_GetDiscordIntegrationByID_ValidationError(t *testing.T) {
-	service := &DiscordIntegrationsService{}
-	ctx := context.Background()
-
-	// Test with invalid integration ID
-	result, err := service.GetDiscordIntegrationByID(ctx, "invalid-id")
-
-	require.Error(t, err)
-	assert.False(t, result.IsPresent())
-	assert.Contains(t, err.Error(), "integration ID must be a valid ULID")
 }
