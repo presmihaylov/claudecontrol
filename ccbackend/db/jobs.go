@@ -65,7 +65,7 @@ func NewPostgresJobsRepository(db *sqlx.DB, schema string) *PostgresJobsReposito
 }
 
 // dbJobToModel converts a DBJob to models.Job
-func dbJobToModel(dbJob *DBJob) *models.Job {
+func dbJobToModel(dbJob *DBJob) (*models.Job, error) {
 	job := &models.Job{
 		ID:             dbJob.ID,
 		JobType:        models.JobType(dbJob.JobType),
@@ -74,34 +74,39 @@ func dbJobToModel(dbJob *DBJob) *models.Job {
 		UpdatedAt:      dbJob.UpdatedAt,
 	}
 
-	// Populate payload based on type with comprehensive nil checking
-	if job.JobType == models.JobTypeSlack &&
-		dbJob.SlackThreadTS != nil &&
-		dbJob.SlackChannelID != nil &&
-		dbJob.SlackUserID != nil &&
-		dbJob.SlackIntegrationID != nil {
+	// Populate payload based on type with comprehensive validation
+	switch job.JobType {
+	case models.JobTypeSlack:
+		if dbJob.SlackThreadTS == nil ||
+			dbJob.SlackChannelID == nil ||
+			dbJob.SlackUserID == nil ||
+			dbJob.SlackIntegrationID == nil {
+			return nil, fmt.Errorf("slack job missing required fields: job_id=%s", dbJob.ID)
+		}
 		job.SlackPayload = &models.SlackJobPayload{
 			ThreadTS:      *dbJob.SlackThreadTS,
 			ChannelID:     *dbJob.SlackChannelID,
 			UserID:        *dbJob.SlackUserID,
 			IntegrationID: *dbJob.SlackIntegrationID,
 		}
-	}
-
-	if job.JobType == models.JobTypeDiscord &&
-		dbJob.DiscordMessageID != nil &&
-		dbJob.DiscordThreadID != nil &&
-		dbJob.DiscordUserID != nil &&
-		dbJob.DiscordIntegrationID != nil {
+	case models.JobTypeDiscord:
+		if dbJob.DiscordMessageID == nil ||
+			dbJob.DiscordThreadID == nil ||
+			dbJob.DiscordUserID == nil ||
+			dbJob.DiscordIntegrationID == nil {
+			return nil, fmt.Errorf("discord job missing required fields: job_id=%s", dbJob.ID)
+		}
 		job.DiscordPayload = &models.DiscordJobPayload{
 			MessageID:     *dbJob.DiscordMessageID,
 			ThreadID:      *dbJob.DiscordThreadID,
 			UserID:        *dbJob.DiscordUserID,
 			IntegrationID: *dbJob.DiscordIntegrationID,
 		}
+	default:
+		return nil, fmt.Errorf("unsupported job type: %s for job_id=%s", job.JobType, dbJob.ID)
 	}
 
-	return job
+	return job, nil
 }
 
 // modelToDBJob converts a models.Job to DBJob
@@ -183,7 +188,11 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 	}
 
 	// Update the original job with returned values
-	*job = *dbJobToModel(&returnedDBJob)
+	convertedJob, err := dbJobToModel(&returnedDBJob)
+	if err != nil {
+		return fmt.Errorf("failed to convert created job: %w", err)
+	}
+	*job = *convertedJob
 	return nil
 }
 
@@ -208,7 +217,11 @@ func (r *PostgresJobsRepository) GetJobByID(
 		return mo.None[*models.Job](), fmt.Errorf("failed to get job: %w", err)
 	}
 
-	return mo.Some(dbJobToModel(&dbJob)), nil
+	convertedJob, err := dbJobToModel(&dbJob)
+	if err != nil {
+		return mo.None[*models.Job](), fmt.Errorf("failed to convert job: %w", err)
+	}
+	return mo.Some(convertedJob), nil
 }
 
 func (r *PostgresJobsRepository) GetJobBySlackThread(
@@ -231,7 +244,11 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(
 		return mo.None[*models.Job](), fmt.Errorf("failed to get job by slack thread: %w", err)
 	}
 
-	return mo.Some(dbJobToModel(&dbJob)), nil
+	convertedJob, err := dbJobToModel(&dbJob)
+	if err != nil {
+		return mo.None[*models.Job](), fmt.Errorf("failed to convert job: %w", err)
+	}
+	return mo.Some(convertedJob), nil
 }
 
 func (r *PostgresJobsRepository) GetJobByDiscordThread(
@@ -254,7 +271,11 @@ func (r *PostgresJobsRepository) GetJobByDiscordThread(
 		return mo.None[*models.Job](), fmt.Errorf("failed to get job by discord thread: %w", err)
 	}
 
-	return mo.Some(dbJobToModel(&dbJob)), nil
+	convertedJob, err := dbJobToModel(&dbJob)
+	if err != nil {
+		return mo.None[*models.Job](), fmt.Errorf("failed to convert job: %w", err)
+	}
+	return mo.Some(convertedJob), nil
 }
 
 func (r *PostgresJobsRepository) UpdateJobTimestamp(
@@ -317,9 +338,13 @@ func (r *PostgresJobsRepository) GetIdleJobs(
 	}
 
 	// Convert DBJobs to models.Job
-	jobs := make([]*models.Job, len(dbJobs))
-	for i, dbJob := range dbJobs {
-		jobs[i] = dbJobToModel(&dbJob)
+	jobs := make([]*models.Job, 0, len(dbJobs))
+	for _, dbJob := range dbJobs {
+		convertedJob, err := dbJobToModel(&dbJob)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert idle job: %w", err)
+		}
+		jobs = append(jobs, convertedJob)
 	}
 
 	return jobs, nil
@@ -414,9 +439,13 @@ func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(
 	}
 
 	// Convert DBJobs to models.Job
-	jobs := make([]*models.Job, len(dbJobs))
-	for i, dbJob := range dbJobs {
-		jobs[i] = dbJobToModel(&dbJob)
+	jobs := make([]*models.Job, 0, len(dbJobs))
+	for _, dbJob := range dbJobs {
+		convertedJob, err := dbJobToModel(&dbJob)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert job with queued messages: %w", err)
+		}
+		jobs = append(jobs, convertedJob)
 	}
 
 	return jobs, nil
