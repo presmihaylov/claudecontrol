@@ -232,7 +232,7 @@ func (s *SlackUseCase) ProcessReactionAdded(
 		}
 
 		// Delete the job and its associated processed messages
-		if err := s.jobsService.DeleteJob(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
+		if err := s.jobsService.DeleteJob(ctx, job.ID, organizationID); err != nil {
 			log.Printf("❌ Failed to delete completed job %s: %v", job.ID, err)
 			return fmt.Errorf("failed to delete completed job: %w", err)
 		}

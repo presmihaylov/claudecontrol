@@ -79,10 +79,9 @@ func (m *MockJobsService) GetIdleJobs(
 func (m *MockJobsService) DeleteJob(
 	ctx context.Context,
 	id string,
-	slackIntegrationID string,
 	organizationID string,
 ) error {
-	args := m.Called(ctx, id, slackIntegrationID, organizationID)
+	args := m.Called(ctx, id, organizationID)
 	return args.Error(0)
 }
 

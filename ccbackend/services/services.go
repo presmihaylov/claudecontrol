@@ -223,7 +223,7 @@ type JobsService interface {
 	) (*models.JobCreationResult, error)
 	UpdateJobTimestamp(ctx context.Context, jobID string, slackIntegrationID string, organizationID string) error
 	GetIdleJobs(ctx context.Context, idleMinutes int, organizationID string) ([]*models.Job, error)
-	DeleteJob(ctx context.Context, id string, slackIntegrationID string, organizationID string) error
+	DeleteJob(ctx context.Context, id string, organizationID string) error
 	GetJobsWithQueuedMessages(
 		ctx context.Context,
 		slackIntegrationID string,

@@ -251,15 +251,11 @@ func (s *JobsService) GetIdleJobs(ctx context.Context, idleMinutes int, organiza
 func (s *JobsService) DeleteJob(
 	ctx context.Context,
 	id string,
-	slackIntegrationID string,
 	organizationID string,
 ) error {
 	log.Printf("📋 Starting to delete job with ID: %s", id)
 	if !core.IsValidULID(id) {
 		return fmt.Errorf("job ID must be a valid ULID")
-	}
-	if !core.IsValidULID(slackIntegrationID) {
-		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
 	if !core.IsValidULID(organizationID) {
 		return fmt.Errorf("organization_id must be a valid ULID")
@@ -277,26 +273,19 @@ func (s *JobsService) DeleteJob(
 
 	// Perform database operations within transaction
 	if err := s.txManager.WithTransaction(ctx, func(ctx context.Context) error {
-		var integrationID string
-
 		// Delete messages based on job type
 		switch job.JobType {
 		case models.JobTypeSlack:
 			if job.SlackPayload == nil {
 				return fmt.Errorf("slack job missing slack payload")
 			}
-			if job.SlackPayload.IntegrationID != slackIntegrationID {
-				return fmt.Errorf("slack integration ID mismatch")
-			}
-			integrationID = slackIntegrationID
-			if err := s.slackMessagesService.DeleteProcessedSlackMessagesByJobID(ctx, id, slackIntegrationID, organizationID); err != nil {
+			if err := s.slackMessagesService.DeleteProcessedSlackMessagesByJobID(ctx, id, job.SlackPayload.IntegrationID, organizationID); err != nil {
 				return fmt.Errorf("failed to delete processed slack messages for job: %w", err)
 			}
 		case models.JobTypeDiscord:
 			if job.DiscordPayload == nil {
 				return fmt.Errorf("discord job missing discord payload")
 			}
-			integrationID = job.DiscordPayload.IntegrationID
 			if err := s.discordMessagesService.DeleteProcessedDiscordMessagesByJobID(ctx, id, job.DiscordPayload.IntegrationID, organizationID); err != nil {
 				return fmt.Errorf("failed to delete processed discord messages for job: %w", err)
 			}
@@ -304,8 +293,8 @@ func (s *JobsService) DeleteJob(
 			return fmt.Errorf("unsupported job type for deletion: %s", job.JobType)
 		}
 
-		// Delete the job itself using the appropriate integration ID
-		if _, err := s.jobsRepo.DeleteJob(ctx, id, integrationID, organizationID); err != nil {
+		// Delete the job itself
+		if _, err := s.jobsRepo.DeleteJob(ctx, id, organizationID); err != nil {
 			return fmt.Errorf("failed to delete job: %w", err)
 		}
 

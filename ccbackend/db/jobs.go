@@ -353,23 +353,15 @@ func (r *PostgresJobsRepository) GetIdleJobs(
 func (r *PostgresJobsRepository) DeleteJob(
 	ctx context.Context,
 	id string,
-	slackIntegrationID string,
 	organizationID string,
 ) (bool, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 
-	// For backward compatibility with Slack jobs, use the Slack integration ID filter
-	// For Discord jobs, this method will be called with the Discord integration ID in place of slackIntegrationID
-	// The WHERE clause checks both Slack and Discord integration IDs to support both job types
 	query := fmt.Sprintf(`
 		DELETE FROM %s.jobs 
-		WHERE id = $1 AND organization_id = $2 
-		AND (
-			(job_type = 'slack' AND slack_integration_id = $3) OR
-			(job_type = 'discord' AND discord_integration_id = $3)
-		)`, r.schema)
+		WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	result, err := db.ExecContext(ctx, query, id, organizationID, slackIntegrationID)
+	result, err := db.ExecContext(ctx, query, id, organizationID)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete job: %w", err)
 	}

@@ -237,7 +237,6 @@ func TestJobsService(t *testing.T) {
 				service.DeleteJob(
 					context.Background(),
 					result.Job.ID,
-					slackIntegrationID,
 					testIntegration.OrganizationID,
 				)
 			}()
@@ -285,7 +284,6 @@ func TestJobsService(t *testing.T) {
 				service.DeleteJob(
 					context.Background(),
 					firstResult.Job.ID,
-					slackIntegrationID,
 					testIntegration.OrganizationID,
 				)
 			}()
@@ -359,7 +357,7 @@ func TestJobsService(t *testing.T) {
 			assert.Equal(t, job.ID, fetchedJob.ID)
 
 			// Delete the job
-			err = service.DeleteJob(context.Background(), job.ID, slackIntegrationID, testIntegration.OrganizationID)
+			err = service.DeleteJob(context.Background(), job.ID, testIntegration.OrganizationID)
 			require.NoError(t, err)
 
 			// Verify job no longer exists
@@ -373,23 +371,17 @@ func TestJobsService(t *testing.T) {
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			err := service.DeleteJob(context.Background(), "", slackIntegrationID, testIntegration.OrganizationID)
+			err := service.DeleteJob(context.Background(), "", testIntegration.OrganizationID)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
-			err := service.DeleteJob(context.Background(), core.NewID("j"), "", testIntegration.OrganizationID)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
-		})
 
 		t.Run("NotFound", func(t *testing.T) {
 			id := core.NewID("j")
 
-			err := service.DeleteJob(context.Background(), id, slackIntegrationID, testIntegration.OrganizationID)
+			err := service.DeleteJob(context.Background(), id, testIntegration.OrganizationID)
 			require.NoError(t, err)
 		})
 	})
@@ -752,7 +744,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, organizationID) }()
 
 			// Since we just created the job, it shouldn't be idle
 			idleJobs, err := jobsService.GetIdleJobs(context.Background(), 1, organizationID)
@@ -794,7 +786,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, organizationID) }()
 
 			// Add a message in IN_PROGRESS state
 			_, err = slackMessagesService.CreateProcessedSlackMessage(
@@ -831,7 +823,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, organizationID) }()
 
 			// Add a message in QUEUED state
 			_, err = slackMessagesService.CreateProcessedSlackMessage(
@@ -868,7 +860,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, organizationID) }()
 
 			// Add a completed message
 			message, err := slackMessagesService.CreateProcessedSlackMessage(
@@ -922,7 +914,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, organizationID) }()
 
 			// Add a completed message
 			_, err = slackMessagesService.CreateProcessedSlackMessage(
@@ -1014,7 +1006,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Delete the job
-		err = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID)
+		err = jobsService.DeleteJob(context.Background(), job.ID, organizationID)
 		require.NoError(t, err)
 
 		// Verify job is deleted
@@ -1108,7 +1100,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Delete the job
-		err = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID)
+		err = jobsService.DeleteJob(context.Background(), job.ID, organizationID)
 		require.NoError(t, err)
 
 		// Verify job is deleted
@@ -1165,7 +1157,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job1.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job1.ID, organizationID) }()
 
 			job2, err := jobsService.CreateJob(
 				context.Background(),
@@ -1176,7 +1168,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job2.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job2.ID, organizationID) }()
 
 			job3, err := jobsService.CreateJob(
 				context.Background(),
@@ -1187,7 +1179,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job3.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job3.ID, organizationID) }()
 
 			// Add messages with different statuses
 			// Job1: QUEUED message (should be returned)
@@ -1257,7 +1249,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job1.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job1.ID, organizationID) }()
 
 			job2, err := jobsService.CreateJob(
 				context.Background(),
@@ -1268,7 +1260,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job2.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job2.ID, organizationID) }()
 
 			// Add queued messages to both jobs
 			_, err = slackMessagesService.CreateProcessedSlackMessage(
@@ -1337,7 +1329,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, organizationID) }()
 
 			// Add messages with different statuses
 			_, err = slackMessagesService.CreateProcessedSlackMessage(
