@@ -175,7 +175,6 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_ValidationErrors(t 
 	}
 }
 
-
 // EmptyAccessToken test removed - OAuth is no longer part of the service flow
 
 func TestDiscordIntegrationsService_CreateDiscordIntegration_GuildNotFound(t *testing.T) {
@@ -208,7 +207,6 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_GuildNotFound(t *te
 	mockClient.AssertExpectations(t)
 	mockRepo.AssertExpectations(t)
 }
-
 
 func TestDiscordIntegrationsService_CreateDiscordIntegration_EmptyGuildName(t *testing.T) {
 	// Arrange
@@ -244,7 +242,6 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_EmptyGuildName(t *t
 	mockClient.AssertExpectations(t)
 	mockRepo.AssertExpectations(t)
 }
-
 
 func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_Success(t *testing.T) {
 	// Arrange
@@ -433,7 +430,6 @@ func TestDiscordIntegrationsService_DeleteDiscordIntegration_NotFound(t *testing
 	// Verify expectations
 	mockRepo.AssertExpectations(t)
 }
-
 
 func TestDiscordIntegrationsService_GetDiscordIntegrationByGuildID_Success(t *testing.T) {
 	// Arrange

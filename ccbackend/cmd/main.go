@@ -26,6 +26,7 @@ import (
 	jobs "ccbackend/services/jobs"
 	organizations "ccbackend/services/organizations"
 	slackintegrations "ccbackend/services/slack_integrations"
+	slackmessages "ccbackend/services/slackmessages"
 	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
 	"ccbackend/usecases/agents"
@@ -75,6 +76,7 @@ func run() error {
 	txManager := txmanager.NewTransactionManager(dbConn)
 
 	agentsService := agentsservice.NewAgentsService(agentsRepo)
+	slackMessagesService := slackmessages.NewSlackMessagesService(processedSlackMessagesRepo)
 	jobsService := jobs.NewJobsService(jobsRepo, processedSlackMessagesRepo, txManager)
 	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
 	usersService := users.NewUsersService(usersRepo, organizationsService, txManager)
@@ -116,6 +118,7 @@ func run() error {
 		wsClient,
 		agentsService,
 		jobsService,
+		slackMessagesService,
 		slackIntegrationsService,
 		txManager,
 		agentsUseCase,

@@ -126,6 +126,10 @@ type JobsService interface {
 		slackIntegrationID string,
 		organizationID string,
 	) ([]*models.Job, error)
+}
+
+// SlackMessagesService defines the interface for Slack message processing operations
+type SlackMessagesService interface {
 	CreateProcessedSlackMessage(
 		ctx context.Context,
 		jobID string,

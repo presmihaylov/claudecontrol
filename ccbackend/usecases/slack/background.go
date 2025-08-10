@@ -59,7 +59,7 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 			}
 
 			// Job was successfully assigned - get queued messages and send them to agent
-			queuedMessages, err := s.jobsService.GetProcessedMessagesByJobIDAndStatus(
+			queuedMessages, err := s.slackMessagesService.GetProcessedMessagesByJobIDAndStatus(
 				ctx,
 				job.ID,
 				models.ProcessedSlackMessageStatusQueued,
@@ -75,7 +75,7 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 			// Process each queued message
 			for _, message := range queuedMessages {
 				// Update message status to IN_PROGRESS
-				updatedMessage, err := s.jobsService.UpdateProcessedSlackMessage(
+				updatedMessage, err := s.slackMessagesService.UpdateProcessedSlackMessage(
 					ctx,
 					message.ID,
 					models.ProcessedSlackMessageStatusInProgress,
