@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"ccbackend/clients"
 	"ccbackend/core"
 	"ccbackend/models"
 	"ccbackend/services"
+	"ccbackend/usecases/discord"
 	"ccbackend/usecases/slack"
 )
 
@@ -22,7 +22,8 @@ type CoreUseCase struct {
 	organizationsService     services.OrganizationsService
 
 	// Use case dependencies
-	slackUseCase *slack.SlackUseCase
+	slackUseCase   *slack.SlackUseCase
+	discordUseCase *discord.DiscordUseCase
 }
 
 // NewCoreUseCase creates a new instance of CoreUseCase
@@ -33,6 +34,7 @@ func NewCoreUseCase(
 	slackIntegrationsService services.SlackIntegrationsService,
 	organizationsService services.OrganizationsService,
 	slackUseCase *slack.SlackUseCase,
+	discordUseCase *discord.DiscordUseCase,
 ) *CoreUseCase {
 	return &CoreUseCase{
 		wsClient:                 wsClient,
@@ -41,6 +43,7 @@ func NewCoreUseCase(
 		slackIntegrationsService: slackIntegrationsService,
 		organizationsService:     organizationsService,
 		slackUseCase:             slackUseCase,
+		discordUseCase:           discordUseCase,
 	}
 }
 
@@ -73,52 +76,170 @@ func (s *CoreUseCase) ProcessReactionAdded(
 	)
 }
 
-// ProcessProcessingMessage proxies to SlackUseCase
+// ProcessProcessingMessage routes to appropriate usecase based on job type
 func (s *CoreUseCase) ProcessProcessingMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.ProcessingMessagePayload,
 	organizationID string,
 ) error {
-	return s.slackUseCase.ProcessProcessingMessage(ctx, clientID, payload, organizationID)
+	log.Printf("📋 Starting to route processing message from client %s", clientID)
+	jobID := payload.JobID
+
+	// Get job to determine the platform
+	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+	if !maybeJob.IsPresent() {
+		log.Printf("⚠️ Job %s not found - already completed, skipping processing message", jobID)
+		return nil
+	}
+
+	job := maybeJob.MustGet()
+	switch job.JobType {
+	case models.JobTypeSlack:
+		log.Printf("🔀 Routing processing message to Slack usecase for job %s", jobID)
+		return s.slackUseCase.ProcessProcessingMessage(ctx, clientID, payload, organizationID)
+	case models.JobTypeDiscord:
+		log.Printf("🔀 Routing processing message to Discord usecase for job %s", jobID)
+		return s.discordUseCase.ProcessProcessingMessage(ctx, clientID, payload, organizationID)
+	default:
+		return fmt.Errorf("unsupported job type: %s", job.JobType)
+	}
 }
 
-// ProcessAssistantMessage proxies to SlackUseCase
+// ProcessAssistantMessage routes to appropriate usecase based on job type
 func (s *CoreUseCase) ProcessAssistantMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.AssistantMessagePayload,
 	organizationID string,
 ) error {
-	return s.slackUseCase.ProcessAssistantMessage(ctx, clientID, payload, organizationID)
+	log.Printf("📋 Starting to route assistant message from client %s", clientID)
+
+	// Get the job to determine the type
+	jobID := payload.JobID
+	if jobID == "" {
+		return fmt.Errorf("JobID is empty in AssistantMessage payload")
+	}
+
+	// Get job to determine the platform
+	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+	if !maybeJob.IsPresent() {
+		log.Printf("⚠️ Job %s not found - already completed, skipping assistant message", jobID)
+		return nil
+	}
+
+	job := maybeJob.MustGet()
+
+	// Route based on job type
+	switch job.JobType {
+	case models.JobTypeSlack:
+		log.Printf("🔀 Routing assistant message to Slack usecase for job %s", jobID)
+		return s.slackUseCase.ProcessAssistantMessage(ctx, clientID, payload, organizationID)
+	case models.JobTypeDiscord:
+		log.Printf("🔀 Routing assistant message to Discord usecase for job %s", jobID)
+		return s.discordUseCase.ProcessAssistantMessage(ctx, clientID, payload, organizationID)
+	default:
+		return fmt.Errorf("unsupported job type: %s", job.JobType)
+	}
 }
 
-// ProcessSystemMessage proxies to SlackUseCase
+// ProcessSystemMessage routes to appropriate usecase based on job type
 func (s *CoreUseCase) ProcessSystemMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.SystemMessagePayload,
 	organizationID string,
 ) error {
-	return s.slackUseCase.ProcessSystemMessage(ctx, clientID, payload, organizationID)
+	log.Printf("📋 Starting to route system message from client %s", clientID)
+
+	// Get the job ID from the payload to determine the type
+	jobID := payload.JobID
+	if jobID == "" {
+		return fmt.Errorf("JobID is empty in SystemMessage payload")
+	}
+
+	// Get job to determine the platform
+	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+	if !maybeJob.IsPresent() {
+		log.Printf("⚠️ Job %s not found - already completed, skipping system message", jobID)
+		return nil
+	}
+
+	job := maybeJob.MustGet()
+
+	// Route based on job type
+	switch job.JobType {
+	case models.JobTypeSlack:
+		log.Printf("🔀 Routing system message to Slack usecase for job %s", jobID)
+		return s.slackUseCase.ProcessSystemMessage(ctx, clientID, payload, organizationID)
+	case models.JobTypeDiscord:
+		log.Printf("🔀 Routing system message to Discord usecase for job %s", jobID)
+		return s.discordUseCase.ProcessSystemMessage(ctx, clientID, payload, organizationID)
+	default:
+		return fmt.Errorf("unsupported job type: %s", job.JobType)
+	}
 }
 
-// ProcessJobComplete proxies to SlackUseCase
+// ProcessJobComplete routes to appropriate usecase based on job type
 func (s *CoreUseCase) ProcessJobComplete(
 	ctx context.Context,
 	clientID string,
 	payload models.JobCompletePayload,
 	organizationID string,
 ) error {
-	return s.slackUseCase.ProcessJobComplete(ctx, clientID, payload, organizationID)
+	log.Printf("📋 Starting to route job complete from client %s", clientID)
+
+	jobID := payload.JobID
+	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+	if !maybeJob.IsPresent() {
+		log.Printf("⚠️ Job %s not found - already completed, skipping job complete message", jobID)
+		return nil
+	}
+
+	job := maybeJob.MustGet()
+
+	// Route based on job type
+	switch job.JobType {
+	case models.JobTypeSlack:
+		log.Printf("🔀 Routing job complete to Slack usecase for job %s", jobID)
+		return s.slackUseCase.ProcessJobComplete(ctx, clientID, payload, organizationID)
+	case models.JobTypeDiscord:
+		log.Printf("🔀 Routing job complete to Discord usecase for job %s", jobID)
+		return s.discordUseCase.ProcessJobComplete(ctx, clientID, payload, organizationID)
+	default:
+		return fmt.Errorf("unsupported job type: %s", job.JobType)
+	}
 }
 
-// ProcessQueuedJobs proxies to SlackUseCase
+// ProcessQueuedJobs processes queued jobs for all platforms
 func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
-	return s.slackUseCase.ProcessQueuedJobs(ctx)
-}
+	log.Printf("📋 Starting to process queued jobs for all platforms")
 
-// Agent Management Functions
+	// Process Slack queued jobs
+	if err := s.slackUseCase.ProcessQueuedJobs(ctx); err != nil {
+		return fmt.Errorf("failed to process Slack queued jobs: %w", err)
+	}
+
+	// Process Discord queued jobs
+	if err := s.discordUseCase.ProcessQueuedJobs(ctx); err != nil {
+		return fmt.Errorf("failed to process Discord queued jobs: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - processed queued jobs for all platforms")
+	return nil
+}
 
 // RegisterAgent registers a new agent connection in the system
 func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client) error {
@@ -181,14 +302,17 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 		job := maybeJob.MustGet()
 
 		// Route cleanup based on job type
-		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
 		switch job.JobType {
 		case models.JobTypeSlack:
+			abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
 			if err := s.slackUseCase.CleanupFailedSlackJob(ctx, job, agent.ID, abandonmentMessage); err != nil {
 				return fmt.Errorf("failed to cleanup abandoned Slack job %s: %w", jobID, err)
 			}
-		// Future: case models.JobTypeEmail:
-		//     err = s.emailUseCase.CleanupFailedEmailJob(ctx, job, agent.ID, abandonmentMessage)
+		case models.JobTypeDiscord:
+			abandonmentMessage := "❌ The assigned agent was disconnected, abandoning job"
+			if err := s.discordUseCase.CleanupFailedDiscordJob(ctx, job, agent.ID, abandonmentMessage); err != nil {
+				return fmt.Errorf("failed to cleanup abandoned Discord job %s: %w", jobID, err)
+			}
 		default:
 			log.Printf("⚠️ Unknown job type %s for job %s, skipping cleanup", job.JobType, jobID)
 			continue
@@ -236,42 +360,32 @@ const DefaultInactiveAgentTimeoutMinutes = 10
 
 // CleanupInactiveAgents removes agents that have been inactive for more than the timeout period
 func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
-	log.Printf("📋 Starting to cleanup inactive agents (>%d minutes)", DefaultInactiveAgentTimeoutMinutes)
-
-	// Get all slack integrations
-	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations(ctx)
+	log.Printf("📋 Starting to cleanup inactive agents")
+	organizations, err := s.organizationsService.GetAllOrganizations(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get slack integrations: %w", err)
+		return fmt.Errorf("failed to get organizations: %w", err)
 	}
-
-	if len(integrations) == 0 {
-		log.Printf("📋 No slack integrations found")
+	if len(organizations) == 0 {
+		log.Printf("📋 No organizations found")
 		return nil
 	}
 
 	totalInactiveAgents := 0
-	var cleanupErrors []string
 	inactiveThresholdMinutes := DefaultInactiveAgentTimeoutMinutes
-
-	for _, integration := range integrations {
-		slackIntegrationID := integration.ID
-		organizationID := integration.OrganizationID
+	for _, organization := range organizations {
+		organizationID := organization.ID
 
 		// Get inactive agents for this organization (agents are organization-scoped)
 		inactiveAgents, err := s.agentsService.GetInactiveAgents(ctx, organizationID, inactiveThresholdMinutes)
 		if err != nil {
-			cleanupErrors = append(
-				cleanupErrors,
-				fmt.Sprintf("failed to get inactive agents for integration %s: %v", slackIntegrationID, err),
-			)
-			continue
+			return fmt.Errorf("failed to get inactive agents for organization %s: %w", organizationID, err)
 		}
 
 		if len(inactiveAgents) == 0 {
 			continue
 		}
 
-		log.Printf("🔍 Found %d inactive agents for integration %s", len(inactiveAgents), slackIntegrationID)
+		log.Printf("🔍 Found %d inactive agents for organization %s", len(inactiveAgents), organizationID)
 
 		// Delete each inactive agent
 		for _, agent := range inactiveAgents {
@@ -283,11 +397,7 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 
 			// Delete the inactive agent - CASCADE DELETE will automatically clean up job assignments
 			if err := s.agentsService.DeleteActiveAgent(ctx, agent.ID, organizationID); err != nil {
-				cleanupErrors = append(
-					cleanupErrors,
-					fmt.Sprintf("failed to delete inactive agent %s: %v", agent.ID, err),
-				)
-				continue
+				return fmt.Errorf("failed to delete inactive agent %s: %w", agent.ID, err)
 			}
 
 			log.Printf("✅ Deleted inactive agent %s (CASCADE DELETE cleaned up job assignments)", agent.ID)
@@ -295,27 +405,13 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 		}
 	}
 
-	log.Printf("📋 Completed cleanup - removed %d inactive agents", totalInactiveAgents)
-
-	// Return error if there were any cleanup failures
-	if len(cleanupErrors) > 0 {
-		return fmt.Errorf(
-			"inactive agent cleanup encountered %d errors: %s",
-			len(cleanupErrors),
-			strings.Join(cleanupErrors, "; "),
-		)
-	}
-
 	log.Printf("📋 Completed successfully - cleaned up %d inactive agents", totalInactiveAgents)
 	return nil
 }
 
-// Authentication Functions
-
 // ValidateAPIKey validates an API key and returns the organization ID if valid
 func (s *CoreUseCase) ValidateAPIKey(ctx context.Context, apiKey string) (string, error) {
 	log.Printf("📋 Starting to validate API key")
-
 	maybeOrg, err := s.organizationsService.GetOrganizationBySecretKey(ctx, apiKey)
 	if err != nil {
 		return "", err

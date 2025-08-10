@@ -77,10 +77,10 @@ func (mh *MessageHandler) handleStartConversation(msg models.BaseMessage, socket
 		return fmt.Errorf("failed to unmarshal start conversation payload: %w", err)
 	}
 
-	// Send processing slack message notification that agent is starting to process
-	if err := mh.sendProcessingSlackMessage(socketClient, payload.ProcessedMessageID); err != nil {
-		log.Info("❌ Failed to send processing slack message notification: %v", err)
-		return fmt.Errorf("failed to send processing slack message notification: %w", err)
+	// Send processing message notification that agent is starting to process
+	if err := mh.sendProcessingMessage(socketClient, payload.ProcessedMessageID, payload.JobID); err != nil {
+		log.Info("❌ Failed to send processing message notification: %v", err)
+		return fmt.Errorf("failed to send processing message notification: %w", err)
 	}
 
 	log.Info("🚀 Starting new conversation with message: %s", payload.Message)
@@ -186,10 +186,10 @@ func (mh *MessageHandler) handleUserMessage(msg models.BaseMessage, socketClient
 		return fmt.Errorf("failed to unmarshal user message payload: %w", err)
 	}
 
-	// Send processing slack message notification that agent is starting to process
-	if err := mh.sendProcessingSlackMessage(socketClient, payload.ProcessedMessageID); err != nil {
-		log.Info("❌ Failed to send processing slack message notification: %v", err)
-		return fmt.Errorf("failed to send processing slack message notification: %w", err)
+	// Send processing message notification that agent is starting to process
+	if err := mh.sendProcessingMessage(socketClient, payload.ProcessedMessageID, payload.JobID); err != nil {
+		log.Info("❌ Failed to send processing message notification: %v", err)
+		return fmt.Errorf("failed to send processing message notification: %w", err)
 	}
 
 	log.Info("💬 Continuing conversation with message: %s", payload.Message)
@@ -457,21 +457,22 @@ func (mh *MessageHandler) sendErrorMessage(socketClient *socket.Socket, err erro
 	return mh.sendSystemMessage(socketClient, messageToSend, slackMessageID, jobID)
 }
 
-func (mh *MessageHandler) sendProcessingSlackMessage(socketClient *socket.Socket, slackMessageID string) error {
-	processingSlackMessageMsg := models.BaseMessage{
+func (mh *MessageHandler) sendProcessingMessage(socketClient *socket.Socket, processedMessageID, jobID string) error {
+	processingMessageMsg := models.BaseMessage{
 		ID:   core.NewID("msg"),
 		Type: models.MessageTypeProcessingMessage,
 		Payload: models.ProcessingMessagePayload{
-			ProcessedMessageID: slackMessageID,
+			ProcessedMessageID: processedMessageID,
+			JobID:              jobID,
 		},
 	}
 
-	if err := socketClient.Emit("cc_message", processingSlackMessageMsg); err != nil {
-		log.Info("❌ Failed to send processing slack message notification: %v", err)
-		return fmt.Errorf("failed to send processing slack message notification: %w", err)
+	if err := socketClient.Emit("cc_message", processingMessageMsg); err != nil {
+		log.Info("❌ Failed to send processing message notification: %v", err)
+		return fmt.Errorf("failed to send processing message notification: %w", err)
 	}
 
-	log.Info("🔔 Sent processing slack message notification for message: %s", slackMessageID)
+	log.Info("🔔 Sent processing message notification for message: %s", processedMessageID)
 	return nil
 }
 
@@ -501,7 +502,7 @@ func (mh *MessageHandler) sendGitActivitySystemMessage(
 
 	if commitResult.JustCreatedPR && commitResult.PullRequestLink != "" {
 		// New PR created
-		message := fmt.Sprintf("Agent opened a <%s|pull request>", commitResult.PullRequestLink)
+		message := fmt.Sprintf("Agent opened a [pull request](%s)", commitResult.PullRequestLink)
 		if err := mh.sendSystemMessage(socketClient, message, slackMessageID, jobID); err != nil {
 			log.Info("❌ Failed to send PR creation system message: %v", err)
 			return fmt.Errorf("failed to send PR creation system message: %w", err)
@@ -513,13 +514,13 @@ func (mh *MessageHandler) sendGitActivitySystemMessage(
 			shortHash = shortHash[:7]
 		}
 		commitURL := fmt.Sprintf("%s/commit/%s", commitResult.RepositoryURL, commitResult.CommitHash)
-		message := fmt.Sprintf("New commit added: <%s|%s>", commitURL, shortHash)
+		message := fmt.Sprintf("New commit added: [%s](%s)", shortHash, commitURL)
 
 		// Add PR link if available
 		if commitResult.PullRequestLink != "" {
 			prNumber := extractPRNumber(commitResult.PullRequestLink)
 			if prNumber != "" {
-				message += fmt.Sprintf(" in <%s|%s>", commitResult.PullRequestLink, prNumber)
+				message += fmt.Sprintf(" in [%s](%s)", prNumber, commitResult.PullRequestLink)
 			}
 		}
 

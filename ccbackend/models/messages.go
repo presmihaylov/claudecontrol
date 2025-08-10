@@ -45,6 +45,7 @@ type SystemMessagePayload struct {
 
 type ProcessingMessagePayload struct {
 	ProcessedMessageID string `json:"processed_message_id"`
+	JobID              string `json:"job_id"`
 }
 
 type CheckIdleJobsPayload struct {

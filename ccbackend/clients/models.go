@@ -55,3 +55,36 @@ type SlackMessageParams struct {
 	Text     string
 	ThreadTS mo.Option[string]
 }
+
+// DiscordBotUser represents Discord bot user information
+type DiscordBotUser struct {
+	ID       string
+	Username string
+	Bot      bool
+}
+
+// DiscordMessageParams holds parameters for sending Discord messages
+type DiscordMessageParams struct {
+	Content  string
+	ThreadID *string // For sending messages in threads
+}
+
+// DiscordPostMessageResponse represents the response from posting a message to Discord
+type DiscordPostMessageResponse struct {
+	ChannelID string
+	MessageID string
+}
+
+// DiscordChannel represents Discord channel information
+type DiscordChannel struct {
+	ID      string
+	Name    string
+	Type    int
+	GuildID string
+}
+
+// DiscordThreadResponse represents the response from creating a Discord thread
+type DiscordThreadResponse struct {
+	ThreadID   string
+	ThreadName string
+}

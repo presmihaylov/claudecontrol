@@ -32,6 +32,7 @@ import (
 	"ccbackend/services/users"
 	"ccbackend/usecases/agents"
 	"ccbackend/usecases/core"
+	discordUseCase "ccbackend/usecases/discord"
 	"ccbackend/usecases/slack"
 	"ccbackend/utils"
 )
@@ -127,6 +128,17 @@ func run() error {
 		agentsUseCase,
 	)
 
+	discordUseCase := discordUseCase.NewDiscordUseCase(
+		discordClient,
+		wsClient,
+		agentsService,
+		jobsService,
+		discordMessagesService,
+		discordIntegrationsService,
+		txManager,
+		agentsUseCase,
+	)
+
 	coreUseCase := core.NewCoreUseCase(
 		wsClient,
 		agentsService,
@@ -134,9 +146,21 @@ func run() error {
 		slackIntegrationsService,
 		organizationsService,
 		slackUseCase,
+		discordUseCase,
 	)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
 	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
+
+	// Create Discord events handler
+	discordHandler, discordErr := handlers.NewDiscordEventsHandler(
+		cfg.DiscordBotToken,
+		discordClient,
+		coreUseCase,
+		discordIntegrationsService,
+		discordUseCase,
+	)
+	utils.AssertInvariant(discordErr == nil, "Failed to create Discord events handler")
+
 	dashboardHandler := handlers.NewDashboardAPIHandler(
 		usersService,
 		slackIntegrationsService,
@@ -153,6 +177,10 @@ func run() error {
 	wsClient.RegisterWithRouter(router)
 	slackHandler.SetupEndpoints(router)
 	dashboardHTTPHandler.SetupEndpoints(router, authMiddleware)
+
+	// Start Discord bot
+	err = discordHandler.StartBot()
+	utils.AssertInvariant(err == nil, "Failed to start Discord bot")
 
 	// Health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -224,10 +252,10 @@ func run() error {
 		ReadHeaderTimeout: 30 * time.Second,
 	}
 
-	return handleGracefulShutdown(server)
+	return handleGracefulShutdown(server, discordHandler)
 }
 
-func handleGracefulShutdown(server *http.Server) error {
+func handleGracefulShutdown(server *http.Server, discordHandler *handlers.DiscordEventsHandler) error {
 	// Channel to listen for interrupt signal
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -243,6 +271,9 @@ func handleGracefulShutdown(server *http.Server) error {
 	// Wait for interrupt signal
 	<-stop
 	log.Printf("🛑 Shutdown signal received, cleaning up...")
+
+	// Stop Discord bot
+	discordHandler.StopBot()
 
 	// Create a deadline for shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -543,14 +543,30 @@ This pattern ensures consistency, maintainability, and proper separation of conc
 Claude Code has access to specialized subagents for specific tasks. These should be used proactively when appropriate:
 
 ### Researcher Subagent
-- **Purpose**: Research APIs, libraries, SDKs, and development tools using Context7 and web search
-- **When to Use**: Anytime you need to understand how a specific library, API, or tool works
+- **Purpose**: Research APIs, libraries, SDKs, and development tools using Context7 documentation and web search. Provides comprehensive analysis of available functionality and implementation guidance for specific tools and libraries.
+- **When to Use**: 
+  - Before implementing any new library, API, or SDK integration
+  - When encountering unfamiliar technologies or tools in the codebase
+  - To evaluate alternative solutions for technical requirements
+  - When investigating compatibility, performance, or security considerations
+  - To understand best practices for specific technology stacks
+  - Before making architectural decisions that involve external dependencies
 - **Capabilities**: 
-  - Context7 documentation lookup for up-to-date library information
-  - Web search for latest documentation and best practices
-  - Implementation guidance with concrete examples
-  - Feature availability analysis and alternative solutions
-- **Usage**: Use whenever you encounter unfamiliar libraries or need to research integration approaches
+  - **Context7 Documentation Access**: Retrieves up-to-date official documentation and code examples
+  - **Web Search Integration**: Finds latest tutorials, best practices, and community resources
+  - **Implementation Guidance**: Provides concrete examples and integration patterns
+  - **Feature Analysis**: Determines availability of specific functionality and limitations
+  - **Alternative Evaluation**: Compares different approaches and recommends optimal solutions
+  - **Version Compatibility**: Identifies version requirements and compatibility constraints
+  - **Security Assessment**: Highlights security considerations and best practices
+- **Usage Examples**:
+  - **New Integration**: "Research how to integrate Discord webhooks with Go backend"
+  - **Library Evaluation**: "Compare WebSocket libraries for real-time communication in Go"
+  - **API Investigation**: "Research Slack API rate limits and authentication patterns"
+  - **Technology Assessment**: "Evaluate PostgreSQL vs MongoDB for our data storage needs"
+  - **Best Practices**: "Research Go error handling patterns for web services"
+- **Expected Output**: Structured research reports with implementation guidance, code examples, alternatives analysis, and actionable recommendations
+- **Proactive Usage**: Use the researcher subagent immediately when you encounter any unfamiliar technology rather than attempting implementation without proper research
 
 ### Code Reviewer Subagent  
 - **Purpose**: Comprehensive code review of all changes on current branch vs main branch
