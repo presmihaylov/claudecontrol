@@ -505,6 +505,7 @@ export default function Home() {
 												</Button>
 											) : (
 												<Button
+													variant="destructive"
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
 													className="flex items-center gap-2"
@@ -620,6 +621,7 @@ export default function Home() {
 												</Button>
 											) : (
 												<Button
+													variant="destructive"
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
 													className="flex items-center gap-2"
