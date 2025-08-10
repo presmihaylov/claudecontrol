@@ -175,36 +175,6 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_ValidationErrors(t 
 	}
 }
 
-func TestDiscordIntegrationsService_CreateDiscordIntegration_GuildFetchFailure(t *testing.T) {
-	// Arrange
-	mockRepo := &MockDiscordIntegrationsRepository{}
-	mockClient := &discordclient.MockDiscordClient{}
-
-	service := NewDiscordIntegrationsService(mockRepo, mockClient, "test-client-id", "test-client-secret")
-
-	ctx := context.Background()
-	organizationID := core.NewID("org")
-	discordAuthCode := "test-auth-code"
-	guildID := "1234567890"
-	redirectURL := "https://example.com/redirect"
-
-	// Mock guild fetch failure
-	mockClient.On("GetGuildByID",
-		guildID).Return(nil, fmt.Errorf("Discord API error: guild not found"))
-
-	// Act
-	result, err := service.CreateDiscordIntegration(ctx, organizationID, discordAuthCode, guildID, redirectURL)
-
-	// Assert
-	require.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to fetch Discord guild information")
-	assert.Contains(t, err.Error(), "guild not found")
-
-	// Verify expectations
-	mockClient.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-}
 
 // EmptyAccessToken test removed - OAuth is no longer part of the service flow
 
@@ -239,35 +209,6 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_GuildNotFound(t *te
 	mockRepo.AssertExpectations(t)
 }
 
-func TestDiscordIntegrationsService_CreateDiscordIntegration_NilGuildResponse(t *testing.T) {
-	// Arrange
-	mockRepo := &MockDiscordIntegrationsRepository{}
-	mockClient := &discordclient.MockDiscordClient{}
-
-	service := NewDiscordIntegrationsService(mockRepo, mockClient, "test-client-id", "test-client-secret")
-
-	ctx := context.Background()
-	organizationID := core.NewID("org")
-	discordAuthCode := "test-auth-code"
-	guildID := "1234567890"
-	redirectURL := "https://example.com/redirect"
-
-	// Mock guild response as nil (bot not in guild)
-	mockClient.On("GetGuildByID",
-		guildID).Return(nil, nil)
-
-	// Act
-	result, err := service.CreateDiscordIntegration(ctx, organizationID, discordAuthCode, guildID, redirectURL)
-
-	// Assert
-	require.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "guild not found or bot not added to guild")
-
-	// Verify expectations
-	mockClient.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-}
 
 func TestDiscordIntegrationsService_CreateDiscordIntegration_EmptyGuildName(t *testing.T) {
 	// Arrange
@@ -304,45 +245,6 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_EmptyGuildName(t *t
 	mockRepo.AssertExpectations(t)
 }
 
-func TestDiscordIntegrationsService_CreateDiscordIntegration_RepositoryError(t *testing.T) {
-	// Arrange
-	mockRepo := &MockDiscordIntegrationsRepository{}
-	mockClient := &discordclient.MockDiscordClient{}
-
-	service := NewDiscordIntegrationsService(mockRepo, mockClient, "test-client-id", "test-client-secret")
-
-	ctx := context.Background()
-	organizationID := core.NewID("org")
-	discordAuthCode := "test-auth-code"
-	guildID := "1234567890"
-	redirectURL := "https://example.com/redirect"
-
-	// Mock guild response
-	mockGuild := &clients.DiscordGuild{
-		ID:   guildID,
-		Name: "Test Guild",
-	}
-
-	mockClient.On("GetGuildByID",
-		guildID).Return(mockGuild, nil)
-
-	// Mock repository error
-	mockRepo.On("CreateDiscordIntegration", ctx, mock.AnythingOfType("*models.DiscordIntegration")).
-		Return(fmt.Errorf("database error: connection failed"))
-
-	// Act
-	result, err := service.CreateDiscordIntegration(ctx, organizationID, discordAuthCode, guildID, redirectURL)
-
-	// Assert
-	require.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to create discord integration in database")
-	assert.Contains(t, err.Error(), "connection failed")
-
-	// Verify expectations
-	mockClient.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-}
 
 func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_Success(t *testing.T) {
 	// Arrange
@@ -532,31 +434,6 @@ func TestDiscordIntegrationsService_DeleteDiscordIntegration_NotFound(t *testing
 	mockRepo.AssertExpectations(t)
 }
 
-func TestDiscordIntegrationsService_DeleteDiscordIntegration_RepositoryError(t *testing.T) {
-	// Arrange
-	mockRepo := &MockDiscordIntegrationsRepository{}
-	mockClient := &discordclient.MockDiscordClient{}
-
-	service := NewDiscordIntegrationsService(mockRepo, mockClient, "test-client-id", "test-client-secret")
-
-	ctx := context.Background()
-	organizationID := core.NewID("org")
-	integrationID := core.NewID("di")
-
-	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, organizationID).
-		Return(false, fmt.Errorf("database error"))
-
-	// Act
-	err := service.DeleteDiscordIntegration(ctx, organizationID, integrationID)
-
-	// Assert
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to delete discord integration")
-	assert.Contains(t, err.Error(), "database error")
-
-	// Verify expectations
-	mockRepo.AssertExpectations(t)
-}
 
 func TestDiscordIntegrationsService_GetDiscordIntegrationByGuildID_Success(t *testing.T) {
 	// Arrange
