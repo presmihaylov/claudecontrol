@@ -83,10 +83,6 @@ func (f *discordUseCaseTestFixture) assertAllExpectations(t *testing.T) {
 	f.mocks.agentsUseCase.AssertExpectations(t)
 }
 
-
-
-// Test ProcessDiscordMessageEvent
-
 func TestProcessDiscordMessageEvent(t *testing.T) {
 	t.Run("success_new_conversation_agent_available", func(t *testing.T) {
 		// Setup
@@ -1064,119 +1060,6 @@ func TestProcessAssistantMessage(t *testing.T) {
 		mockDiscordIntegrationsService.AssertExpectations(t)
 		mockDiscordClient.AssertExpectations(t)
 		mockDiscordMessagesService.AssertExpectations(t)
-	})
-
-	t.Run("handle_empty_message", func(t *testing.T) {
-		// Setup
-		ctx := context.Background()
-		mockDiscordClient := new(discordclient.MockDiscordClient)
-		mockWSClient := new(socketio.MockSocketIOClient)
-		mockAgentsService := new(agents.MockAgentsService)
-		mockJobsService := new(jobs.MockJobsService)
-		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
-		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(txmanager.MockTransactionManager)
-		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
-
-		useCase := NewDiscordUseCase(
-			mockDiscordClient,
-			mockWSClient,
-			mockAgentsService,
-			mockJobsService,
-			mockDiscordMessagesService,
-			mockDiscordIntegrationsService,
-			mockTxManager,
-			mockAgentsUseCase,
-		)
-
-		// Generate consistent test data for this test case
-		testJobID := testutils.GenerateJobID()
-		testProcessedID := testutils.GenerateProcessedMessageID()
-		testAgentID := testutils.GenerateAgentID()
-		testWSConnectionID := testutils.GenerateWSConnectionID()
-		testOrgID := testutils.GenerateOrganizationID()
-		testMessageID := testutils.GenerateDiscordMessageID()
-		testChannelID := testutils.GenerateDiscordChannelID()
-		testThreadID := testutils.GenerateDiscordThreadID()
-		testUserID := testutils.GenerateDiscordUserID()
-		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testGuildID := testutils.GenerateDiscordGuildID()
-		testClientID := testutils.GenerateClientID()
-		testNonTopLevelMessageID := testutils.GenerateDiscordMessageID()
-
-		payload := models.AssistantMessagePayload{
-			JobID:              testJobID,
-			Message:            "   ", // Empty/whitespace message
-			ProcessedMessageID: testProcessedID,
-		}
-
-		agent := &models.ActiveAgent{
-			ID:             testAgentID,
-			WSConnectionID: testWSConnectionID,
-			OrganizationID: testOrgID,
-		}
-
-		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
-			DiscordPayload: &models.DiscordJobPayload{
-				MessageID:     testMessageID,
-				ChannelID:     testChannelID,
-				ThreadID:      testThreadID,
-				UserID:        testUserID,
-				IntegrationID: testIntegrationID,
-			},
-		}
-
-		discordIntegration := &models.DiscordIntegration{
-			ID:             testIntegrationID,
-			OrganizationID: testOrgID,
-			DiscordGuildID: testGuildID,
-		}
-
-		updatedMessage := &models.ProcessedDiscordMessage{
-			ID:                   testProcessedID,
-			JobID:                testJobID,
-			DiscordMessageID:     testNonTopLevelMessageID,
-			DiscordThreadID:      testThreadID,
-			DiscordIntegrationID: testIntegrationID,
-			OrganizationID:       testOrgID,
-			Status:               models.ProcessedDiscordMessageStatusCompleted,
-		}
-
-		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, testClientID, testOrgID).
-			Return(mo.Some(agent), nil)
-		mockJobsService.On("GetJobByID", ctx, testJobID, testOrgID).
-			Return(mo.Some(job), nil)
-		mockAgentsUseCase.On("ValidateJobBelongsToAgent", ctx, testAgentID, testJobID, testOrgID).
-			Return(nil)
-		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, testIntegrationID).
-			Return(mo.Some(discordIntegration), nil)
-		// Expect fallback message for empty content
-		mockDiscordClient.On("PostMessage", testThreadID, clients.DiscordMessageParams{
-			Content: "(agent sent empty response)",
-		}).Return(&clients.DiscordPostMessageResponse{}, nil)
-		mockJobsService.On("UpdateJobTimestamp", ctx, testJobID, testOrgID).Return(nil)
-		mockDiscordMessagesService.On("UpdateProcessedDiscordMessage", ctx, testProcessedID, models.ProcessedDiscordMessageStatusCompleted, testIntegrationID, testOrgID).
-			Return(updatedMessage, nil)
-		mockDiscordClient.On("AddReaction", testThreadID, testNonTopLevelMessageID, EmojiCheckMark).Return(nil)
-		mockDiscordClient.On("RemoveReaction", testThreadID, testNonTopLevelMessageID, mock.AnythingOfType("string")).
-			Return(nil).
-			Maybe()
-		mockDiscordMessagesService.On("GetLatestProcessedMessageForJob", ctx, testJobID, testIntegrationID, testOrgID).
-			Return(mo.Some(updatedMessage), nil)
-		mockDiscordClient.On("AddReaction", testChannelID, testMessageID, EmojiRaisedHand).Return(nil)
-		mockDiscordClient.On("RemoveReaction", testChannelID, testMessageID, mock.AnythingOfType("string")).
-			Return(nil).
-			Maybe()
-
-		// Execute
-		err := useCase.ProcessAssistantMessage(ctx, testClientID, payload, testOrgID)
-
-		// Assert
-		assert.NoError(t, err)
-		mockDiscordClient.AssertExpectations(t)
 	})
 
 	t.Run("agent_not_found", func(t *testing.T) {

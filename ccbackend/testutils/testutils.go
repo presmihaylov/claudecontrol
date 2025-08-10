@@ -2,11 +2,11 @@ package testutils
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
@@ -159,33 +159,28 @@ func CleanupTestUser(t *testing.T, dbConn *sqlx.DB, databaseSchema string, userI
 	}
 }
 
-// Random ID generators for test isolation
-var (
-	rng *rand.Rand
-)
-
-func init() {
-	rng = rand.New(rand.NewSource(time.Now().UnixNano()))
-}
-
 // GenerateDiscordMessageID generates a random Discord message ID
 func GenerateDiscordMessageID() string {
-	return fmt.Sprintf("msg-%d", rng.Intn(999999)+100000)
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("msg-%d", n.Int64()+100000)
 }
 
 // GenerateDiscordChannelID generates a random Discord channel ID
 func GenerateDiscordChannelID() string {
-	return fmt.Sprintf("channel-%d", rng.Intn(999999)+100000)
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("channel-%d", n.Int64()+100000)
 }
 
 // GenerateDiscordThreadID generates a random Discord thread ID
 func GenerateDiscordThreadID() string {
-	return fmt.Sprintf("thread-%d", rng.Intn(999999)+100000)
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("thread-%d", n.Int64()+100000)
 }
 
 // GenerateDiscordUserID generates a random Discord user ID
 func GenerateDiscordUserID() string {
-	return fmt.Sprintf("user-%d", rng.Intn(999999)+100000)
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("user-%d", n.Int64()+100000)
 }
 
 // GenerateDiscordIntegrationID generates a random Discord integration ID using ULID
@@ -200,7 +195,8 @@ func GenerateOrganizationID() string {
 
 // GenerateDiscordGuildID generates a random Discord guild ID
 func GenerateDiscordGuildID() string {
-	return fmt.Sprintf("guild-%d", rng.Intn(999999)+100000)
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("guild-%d", n.Int64()+100000)
 }
 
 // GenerateAgentID generates a random agent ID using ULID
@@ -230,10 +226,12 @@ func GenerateProcessedMessageID() string {
 
 // GenerateDiscordBotID generates a random Discord bot ID
 func GenerateDiscordBotID() string {
-	return fmt.Sprintf("bot-%d", rng.Intn(999999)+100000)
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("bot-%d", n.Int64()+100000)
 }
 
 // GenerateDiscordBotUsername generates a random Discord bot username
 func GenerateDiscordBotUsername() string {
-	return fmt.Sprintf("testbot%d", rng.Intn(9999)+1000)
+	n, _ := rand.Int(rand.Reader, big.NewInt(9000))
+	return fmt.Sprintf("testbot%d", n.Int64()+1000)
 }
