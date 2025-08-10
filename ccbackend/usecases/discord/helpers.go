@@ -168,9 +168,21 @@ func (d *DiscordUseCase) sendDiscordMessage(
 ) error {
 	log.Printf("📋 Starting to send message to channel %s, thread %s: %s", channelID, threadID, message)
 
+	// Trim message to Discord's 2000 character limit
+	trimmedMessage := trimDiscordMessage(message)
+
+	// Log if message was trimmed
+	if len(message) > len(trimmedMessage) {
+		log.Printf(
+			"⚠️ Message trimmed from %d to %d characters for Discord API limits",
+			len(message),
+			len(trimmedMessage),
+		)
+	}
+
 	// Send message to Discord
 	params := clients.DiscordMessageParams{
-		Content: message, // Discord natively supports markdown format
+		Content: trimmedMessage, // Discord natively supports markdown format
 	}
 	if threadID != "" && threadID != channelID {
 		params.ThreadID = &threadID
@@ -231,4 +243,25 @@ func getOldDiscordReactions(newEmoji string) []string {
 func IsAgentErrorMessage(message string) bool {
 	// Check if message starts with the specific error prefix from ccagent
 	return strings.HasPrefix(message, "ccagent encountered error:")
+}
+
+// trimDiscordMessage trims a Discord message to the 2000 character limit
+// Discord has a hard limit of 2000 characters per message via the API
+func trimDiscordMessage(message string) string {
+	const discordMessageLimit = 2000
+
+	if len(message) <= discordMessageLimit {
+		return message
+	}
+
+	// Trim to 2000 characters and add ellipsis to indicate truncation
+	const truncationSuffix = "..."
+	trimmedLength := discordMessageLimit - len(truncationSuffix)
+
+	if trimmedLength <= 0 {
+		// Edge case: if somehow the suffix is longer than the limit
+		return message[:discordMessageLimit]
+	}
+
+	return message[:trimmedLength] + truncationSuffix
 }
