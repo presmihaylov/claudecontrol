@@ -10,7 +10,6 @@ import (
 	"github.com/samber/mo"
 
 	"ccbackend/clients"
-	slackclient "ccbackend/clients/slack"
 	"ccbackend/core"
 	"ccbackend/models"
 	"ccbackend/utils"
@@ -29,7 +28,7 @@ func (s *SlackUseCase) getSlackClientForIntegration(
 	}
 	integration := maybeSlackInt.MustGet()
 
-	return slackclient.NewSlackClient(integration.SlackAuthToken), nil
+	return s.slackClientFactory(integration.SlackAuthToken), nil
 }
 
 func (s *SlackUseCase) sendStartConversationToAgent(
