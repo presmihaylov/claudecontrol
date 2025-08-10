@@ -350,3 +350,32 @@ func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(
 
 	return jobs, nil
 }
+
+// GetJobsByOrganizationID retrieves all jobs for a specific organization
+func (r *PostgresJobsRepository) GetJobsByOrganizationID(
+	ctx context.Context,
+	organizationID string,
+) ([]*models.Job, error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.jobs
+		WHERE organization_id = $1
+		ORDER BY created_at DESC
+	`, strings.Join(jobsColumns, ", "), r.schema)
+
+	var dbJobs []DBJob
+	err := db.SelectContext(ctx, &dbJobs, query, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs by organization: %w", err)
+	}
+
+	// Convert DBJobs to models.Job
+	jobs := make([]*models.Job, len(dbJobs))
+	for i, dbJob := range dbJobs {
+		jobs[i] = dbJobToModel(&dbJob)
+	}
+
+	return jobs, nil
+}

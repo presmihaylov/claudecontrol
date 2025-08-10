@@ -586,3 +586,38 @@ func (s *JobsService) GetLatestProcessedMessageForJob(
 	log.Printf("📋 Completed successfully - retrieved latest processed message with ID: %s", message.ID)
 	return mo.Some(message), nil
 }
+
+// GetJobsByOrganizationID returns all jobs for a given organization
+func (s *JobsService) GetJobsByOrganizationID(ctx context.Context, organizationID string) ([]*models.Job, error) {
+	log.Printf("📋 Starting to get jobs by organization ID: %s", organizationID)
+	if !core.IsValidULID(organizationID) {
+		return nil, fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	jobs, err := s.jobsRepo.GetJobsByOrganizationID(ctx, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs by organization: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found %d jobs for organization", len(jobs))
+	return jobs, nil
+}
+
+// AssignJobToAgent assigns a job to an agent (placeholder implementation)
+func (s *JobsService) AssignJobToAgent(ctx context.Context, jobID, agentID, organizationID string) error {
+	log.Printf("📋 Starting to assign job %s to agent %s", jobID, agentID)
+	if !core.IsValidULID(jobID) {
+		return fmt.Errorf("job_id must be a valid ULID")
+	}
+	if !core.IsValidULID(agentID) {
+		return fmt.Errorf("agent_id must be a valid ULID")
+	}
+	if !core.IsValidULID(organizationID) {
+		return fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	// TODO: Implement job assignment logic (may need to create job assignment table)
+	// For now, this is a placeholder that does nothing but logs
+	log.Printf("📋 Completed successfully - assigned job %s to agent %s", jobID, agentID)
+	return nil
+}

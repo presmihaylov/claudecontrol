@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"log"
 
 	"ccbackend/clients"
 	"ccbackend/models"
@@ -116,4 +118,70 @@ func (s *CoreUseCase) ProcessJobComplete(
 // ProcessQueuedJobs proxies to SlackUseCase
 func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 	return s.slackUseCase.ProcessQueuedJobs(ctx)
+}
+
+// ProcessJobsInBackground processes pending jobs by assigning them to available agents
+func (s *CoreUseCase) ProcessJobsInBackground(ctx context.Context) error {
+	log.Printf("📋 Starting to process jobs in background")
+
+	// Get all slack integrations
+	integrations, err := s.slackIntegrationsService.GetAllSlackIntegrations(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get slack integrations: %w", err)
+	}
+
+	if len(integrations) == 0 {
+		log.Printf("📋 No slack integrations found")
+		return nil
+	}
+
+	totalProcessedJobs := 0
+	connectedClientIDs := s.wsClient.GetClientIDs()
+
+	for _, integration := range integrations {
+		organizationID := integration.OrganizationID
+
+		// Get pending jobs for this organization
+		jobs, err := s.jobsService.GetJobsByOrganizationID(ctx, organizationID)
+		if err != nil {
+			return fmt.Errorf("failed to get jobs for organization %s: %w", organizationID, err)
+		}
+
+		if len(jobs) == 0 {
+			continue
+		}
+
+		// Get available agents for this organization
+		availableAgents, err := s.agentsService.GetConnectedAvailableAgents(ctx, organizationID, connectedClientIDs)
+		if err != nil {
+			return fmt.Errorf("failed to get active agents for organization %s: %w", organizationID, err)
+		}
+
+		if len(availableAgents) == 0 {
+			log.Printf("⚠️ No available agents found for organization %s", organizationID)
+			continue
+		}
+
+		// Process all jobs (no status check since status field doesn't exist)
+		for i, job := range jobs {
+			// Round-robin assign to available agents
+			agent := availableAgents[i%len(availableAgents)]
+
+			// Assign job to agent
+			if err := s.jobsService.AssignJobToAgent(ctx, job.ID, agent.ID, organizationID); err != nil {
+				return fmt.Errorf("failed to assign job %s to agent %s: %w", job.ID, agent.ID, err)
+			}
+
+			// Send job message to agent
+			if err := s.wsClient.SendMessage(agent.WSConnectionID, job); err != nil {
+				return fmt.Errorf("failed to send job message to agent %s: %w", agent.ID, err)
+			}
+
+			log.Printf("✅ Assigned job %s to agent %s", job.ID, agent.ID)
+			totalProcessedJobs++
+		}
+	}
+
+	log.Printf("📋 Completed successfully - processed %d jobs", totalProcessedJobs)
+	return nil
 }

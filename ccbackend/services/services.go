@@ -172,6 +172,9 @@ type JobsService interface {
 		slackIntegrationID string,
 		organizationID string,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
+	// Additional methods needed by tests/implementation
+	GetJobsByOrganizationID(ctx context.Context, organizationID string) ([]*models.Job, error)
+	AssignJobToAgent(ctx context.Context, jobID, agentID, organizationID string) error
 }
 
 // TransactionManager handles database transactions via context
