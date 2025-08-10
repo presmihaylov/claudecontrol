@@ -203,7 +203,7 @@ func (d *DiscordUseCase) ProcessDiscordMessageEvent(
 	}
 
 	// Add emoji reaction based on message status
-	reactionEmoji := DeriveMessageReactionFromStatus(messageStatus)
+	reactionEmoji := deriveMessageReactionFromStatus(messageStatus)
 	if err := d.updateDiscordMessageReaction(ctx, event.ChannelID, processedMessage.DiscordMessageID, reactionEmoji, discordIntegrationID); err != nil {
 		return fmt.Errorf("failed to update Discord message reaction: %w", err)
 	}
@@ -456,7 +456,7 @@ func (d *DiscordUseCase) ProcessSystemMessage(
 	discordIntegrationID := job.DiscordPayload.IntegrationID
 
 	// Check if this is an error message from the agent
-	if IsAgentErrorMessage(payload.Message) {
+	if isAgentErrorMessage(payload.Message) {
 		log.Printf("❌ Detected agent error message for job %s: %s", job.ID, payload.Message)
 
 		// Get the agent that encountered the error
@@ -724,7 +724,7 @@ func (d *DiscordUseCase) ProcessAssistantMessage(
 	// For other messages, set white_check_mark immediately when processed
 	isTopLevelMessage := updatedMessage.DiscordMessageID == job.DiscordPayload.MessageID
 	if !isTopLevelMessage {
-		reactionEmoji := DeriveMessageReactionFromStatus(models.ProcessedDiscordMessageStatusCompleted)
+		reactionEmoji := deriveMessageReactionFromStatus(models.ProcessedDiscordMessageStatusCompleted)
 		if err := d.updateDiscordMessageReaction(
 			ctx,
 			updatedMessage.DiscordThreadID,

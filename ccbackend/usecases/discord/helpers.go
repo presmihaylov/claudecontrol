@@ -209,7 +209,7 @@ func (d *DiscordUseCase) sendSystemMessage(
 	return d.sendDiscordMessage(ctx, discordIntegrationID, guildID, channelID, threadID, systemMessage)
 }
 
-func DeriveMessageReactionFromStatus(status models.ProcessedDiscordMessageStatus) string {
+func deriveMessageReactionFromStatus(status models.ProcessedDiscordMessageStatus) string {
 	switch status {
 	case models.ProcessedDiscordMessageStatusInProgress:
 		return EmojiHourglass
@@ -239,8 +239,8 @@ func getOldDiscordReactions(newEmoji string) []string {
 	return result
 }
 
-// IsAgentErrorMessage determines if a system message from ccagent indicates an error or failure
-func IsAgentErrorMessage(message string) bool {
+// isAgentErrorMessage determines if a system message from ccagent indicates an error or failure
+func isAgentErrorMessage(message string) bool {
 	// Check if message starts with the specific error prefix from ccagent
 	return strings.HasPrefix(message, "ccagent encountered error:")
 }
