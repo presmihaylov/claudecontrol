@@ -90,7 +90,7 @@ func (s *SlackUseCase) ProcessAssistantMessage(
 
 	messageID := payload.ProcessedMessageID
 
-	updatedMessage, err := s.jobsService.UpdateProcessedSlackMessage(
+	updatedMessage, err := s.slackMessagesService.UpdateProcessedSlackMessage(
 		ctx,
 		messageID,
 		models.ProcessedSlackMessageStatusCompleted,
@@ -113,7 +113,7 @@ func (s *SlackUseCase) ProcessAssistantMessage(
 	}
 
 	// Check if this is the latest message in the job and add hand emoji if waiting for next steps
-	maybeLatestMsg, err := s.jobsService.GetLatestProcessedMessageForJob(
+	maybeLatestMsg, err := s.slackMessagesService.GetLatestProcessedMessageForJob(
 		ctx,
 		job.ID,
 		slackIntegrationID,
