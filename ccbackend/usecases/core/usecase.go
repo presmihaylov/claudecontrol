@@ -10,7 +10,6 @@ import (
 	"ccbackend/core"
 	"ccbackend/models"
 	"ccbackend/services"
-	"ccbackend/usecases/agents"
 	"ccbackend/usecases/slack"
 )
 
@@ -23,8 +22,7 @@ type CoreUseCase struct {
 	organizationsService     services.OrganizationsService
 
 	// Use case dependencies
-	agentsUseCase *agents.AgentsUseCase
-	slackUseCase  *slack.SlackUseCase
+	slackUseCase *slack.SlackUseCase
 }
 
 // NewCoreUseCase creates a new instance of CoreUseCase
@@ -34,7 +32,6 @@ func NewCoreUseCase(
 	jobsService services.JobsService,
 	slackIntegrationsService services.SlackIntegrationsService,
 	organizationsService services.OrganizationsService,
-	agentsUseCase *agents.AgentsUseCase,
 	slackUseCase *slack.SlackUseCase,
 ) *CoreUseCase {
 	return &CoreUseCase{
@@ -43,7 +40,6 @@ func NewCoreUseCase(
 		jobsService:              jobsService,
 		slackIntegrationsService: slackIntegrationsService,
 		organizationsService:     organizationsService,
-		agentsUseCase:            agentsUseCase,
 		slackUseCase:             slackUseCase,
 	}
 }
