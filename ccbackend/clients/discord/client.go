@@ -51,3 +51,19 @@ func (c *DiscordClient) GetGuildByID(guildID string) (*clients.DiscordGuild, err
 		Name: discordGuild.Name,
 	}, nil
 }
+
+// GetBotUser fetches the bot user information via REST API (no WebSocket required)
+func (c *DiscordClient) GetBotUser() (*clients.DiscordBotUser, error) {
+	// Get the bot user using the REST API endpoint - no WebSocket session required
+	botUser, err := c.sdkClient.User("@me")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch bot user via REST API: %w", err)
+	}
+	
+	// Convert discordgo user to our client interface format
+	return &clients.DiscordBotUser{
+		ID:       botUser.ID,
+		Username: botUser.Username,
+		Bot:      botUser.Bot,
+	}, nil
+}

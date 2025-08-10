@@ -55,3 +55,10 @@ type SlackMessageParams struct {
 	Text     string
 	ThreadTS mo.Option[string]
 }
+
+// DiscordBotUser represents Discord bot user information
+type DiscordBotUser struct {
+	ID       string
+	Username string
+	Bot      bool
+}

@@ -19,3 +19,12 @@ func (m *MockDiscordClient) GetGuildByID(guildID string) (*clients.DiscordGuild,
 	}
 	return args.Get(0).(*clients.DiscordGuild), args.Error(1)
 }
+
+// GetBotUser mocks fetching bot user information
+func (m *MockDiscordClient) GetBotUser() (*clients.DiscordBotUser, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*clients.DiscordBotUser), args.Error(1)
+}
