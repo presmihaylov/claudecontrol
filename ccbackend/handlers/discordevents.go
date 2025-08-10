@@ -99,7 +99,12 @@ func (h *DiscordEventsHandler) handleMessageCreatedEvent(s *discordgo.Session, m
 	}
 
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)
-	err = h.discordUseCase.ProcessDiscordMessageEvent(ctx, messageEvent, discordIntegration.ID, discordIntegration.OrganizationID)
+	err = h.discordUseCase.ProcessDiscordMessageEvent(
+		ctx,
+		messageEvent,
+		discordIntegration.ID,
+		discordIntegration.OrganizationID,
+	)
 	if err != nil {
 		log.Printf("❌ Failed to process Discord message: %v", err)
 	}
@@ -133,14 +138,22 @@ func (h *DiscordEventsHandler) handleReactionAddedEvent(s *discordgo.Session, r 
 	}
 
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)
-	err = h.discordUseCase.ProcessDiscordReactionEvent(ctx, reactionEvent, discordIntegration.ID, discordIntegration.OrganizationID)
+	err = h.discordUseCase.ProcessDiscordReactionEvent(
+		ctx,
+		reactionEvent,
+		discordIntegration.ID,
+		discordIntegration.OrganizationID,
+	)
 	if err != nil {
 		log.Printf("❌ Failed to process Discord reaction: %v", err)
 	}
 }
 
 // mapToDiscordMessageEvent maps a Discord SDK message event to our domain model
-func (h *DiscordEventsHandler) mapToDiscordMessageEvent(s *discordgo.Session, m *discordgo.MessageCreate) (models.DiscordMessageEvent, error) {
+func (h *DiscordEventsHandler) mapToDiscordMessageEvent(
+	s *discordgo.Session,
+	m *discordgo.MessageCreate,
+) (models.DiscordMessageEvent, error) {
 	// Get channel information to determine if this is a thread
 	channel, err := s.Channel(m.ChannelID)
 	if err != nil {
@@ -170,7 +183,10 @@ func (h *DiscordEventsHandler) mapToDiscordMessageEvent(s *discordgo.Session, m 
 }
 
 // mapToDiscordReactionEvent maps a Discord SDK reaction event to our domain model
-func (h *DiscordEventsHandler) mapToDiscordReactionEvent(s *discordgo.Session, r *discordgo.MessageReactionAdd) (models.DiscordReactionEvent, error) {
+func (h *DiscordEventsHandler) mapToDiscordReactionEvent(
+	s *discordgo.Session,
+	r *discordgo.MessageReactionAdd,
+) (models.DiscordReactionEvent, error) {
 	// Get channel information to determine if this is a thread
 	channel, err := s.Channel(r.ChannelID)
 	if err != nil {

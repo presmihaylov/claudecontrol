@@ -128,8 +128,15 @@ func run() error {
 		agentsUseCase,
 	)
 
-	discordUseCaseInstance := discordUseCase.NewDiscordUseCase(
+	discordUseCase := discordUseCase.NewDiscordUseCase(
 		discordClient,
+		wsClient,
+		agentsService,
+		jobsService,
+		discordMessagesService,
+		discordIntegrationsService,
+		txManager,
+		agentsUseCase,
 	)
 
 	coreUseCase := core.NewCoreUseCase(
@@ -139,12 +146,19 @@ func run() error {
 		slackIntegrationsService,
 		organizationsService,
 		slackUseCase,
+		discordUseCase,
 	)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
 	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
 
 	// Create Discord events handler
-	discordHandler, discordErr := handlers.NewDiscordEventsHandler(cfg.DiscordBotToken, discordClient, coreUseCase, discordIntegrationsService, discordUseCaseInstance)
+	discordHandler, discordErr := handlers.NewDiscordEventsHandler(
+		cfg.DiscordBotToken,
+		discordClient,
+		coreUseCase,
+		discordIntegrationsService,
+		discordUseCase,
+	)
 	utils.AssertInvariant(discordErr == nil, "Failed to create Discord events handler")
 
 	dashboardHandler := handlers.NewDashboardAPIHandler(

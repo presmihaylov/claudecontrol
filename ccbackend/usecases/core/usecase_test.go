@@ -37,6 +37,7 @@ func TestRegisterAgent(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -78,6 +79,7 @@ func TestRegisterAgent(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -117,6 +119,7 @@ func TestDeregisterAgent(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -162,6 +165,7 @@ func TestDeregisterAgent(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -217,6 +221,7 @@ func TestDeregisterAgent(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -253,6 +258,7 @@ func TestDeregisterAgent(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -302,6 +308,7 @@ func TestDeregisterAgent(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -357,6 +364,7 @@ func TestDeregisterAgent(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -408,6 +416,7 @@ func TestProcessPing(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -451,6 +460,7 @@ func TestProcessPing(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		client := &clients.Client{
@@ -489,18 +499,19 @@ func TestCleanupInactiveAgents(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		// Configure expectations
-		mockSlackIntegrationsService.On("GetAllSlackIntegrations", ctx).
-			Return([]*models.SlackIntegration{}, nil)
+		mockOrganizationsService.On("GetAllOrganizations", ctx).
+			Return([]*models.Organization{}, nil)
 
 		// Execute
 		err := useCase.CleanupInactiveAgents(ctx)
 
 		// Assert
 		assert.NoError(t, err)
-		mockSlackIntegrationsService.AssertExpectations(t)
+		mockOrganizationsService.AssertExpectations(t)
 	})
 
 	t.Run("multiple_inactive_agents", func(t *testing.T) {
@@ -519,11 +530,11 @@ func TestCleanupInactiveAgents(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
-		integration := &models.SlackIntegration{
-			ID:             "slack-111",
-			OrganizationID: "org-456",
+		organization := &models.Organization{
+			ID: "org-456",
 		}
 
 		now := time.Now()
@@ -539,8 +550,8 @@ func TestCleanupInactiveAgents(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockSlackIntegrationsService.On("GetAllSlackIntegrations", ctx).
-			Return([]*models.SlackIntegration{integration}, nil)
+		mockOrganizationsService.On("GetAllOrganizations", ctx).
+			Return([]*models.Organization{organization}, nil)
 		mockAgentsService.On("GetInactiveAgents", ctx, "org-456", DefaultInactiveAgentTimeoutMinutes).
 			Return([]*models.ActiveAgent{inactiveAgent1, inactiveAgent2}, nil)
 		mockAgentsService.On("DeleteActiveAgent", ctx, "agent-001", "org-456").
@@ -553,7 +564,7 @@ func TestCleanupInactiveAgents(t *testing.T) {
 
 		// Assert
 		assert.NoError(t, err)
-		mockSlackIntegrationsService.AssertExpectations(t)
+		mockOrganizationsService.AssertExpectations(t)
 		mockAgentsService.AssertExpectations(t)
 	})
 }
@@ -577,6 +588,7 @@ func TestValidateAPIKey(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		apiKey := "test-api-key-123"
@@ -614,6 +626,7 @@ func TestValidateAPIKey(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		apiKey := "invalid-api-key"
@@ -652,6 +665,7 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		organization := &models.Organization{
@@ -717,6 +731,7 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		// Configure expectations
@@ -747,6 +762,7 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 			mockSlackIntegrationsService,
 			mockOrganizationsService,
 			nil, // slackUseCase
+			nil, // discordUseCase
 		)
 
 		organization := &models.Organization{

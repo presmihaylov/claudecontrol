@@ -59,11 +59,86 @@ func (c *DiscordClient) GetBotUser() (*clients.DiscordBotUser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch bot user via REST API: %w", err)
 	}
-	
+
 	// Convert discordgo user to our client interface format
 	return &clients.DiscordBotUser{
 		ID:       botUser.ID,
 		Username: botUser.Username,
 		Bot:      botUser.Bot,
+	}, nil
+}
+
+// GetChannelByID fetches channel information by ID
+func (c *DiscordClient) GetChannelByID(channelID string) (*clients.DiscordChannel, error) {
+	channel, err := c.sdkClient.Channel(channelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch Discord channel: %w", err)
+	}
+	if channel == nil {
+		return nil, fmt.Errorf("discord channel not found")
+	}
+
+	return &clients.DiscordChannel{
+		ID:      channel.ID,
+		Name:    channel.Name,
+		Type:    int(channel.Type),
+		GuildID: channel.GuildID,
+	}, nil
+}
+
+// PostMessage sends a message to a Discord channel or thread
+func (c *DiscordClient) PostMessage(
+	channelID string,
+	params clients.DiscordMessageParams,
+) (*clients.DiscordPostMessageResponse, error) {
+	targetChannelID := channelID
+	if params.ThreadID != nil && *params.ThreadID != "" {
+		// For Discord threads, we post to the thread ID (which is actually a channel ID for thread channels)
+		targetChannelID = *params.ThreadID
+	}
+
+	message, err := c.sdkClient.ChannelMessageSend(targetChannelID, params.Content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send Discord message: %w", err)
+	}
+
+	return &clients.DiscordPostMessageResponse{
+		ChannelID: message.ChannelID,
+		MessageID: message.ID,
+	}, nil
+}
+
+// AddReaction adds a reaction emoji to a Discord message
+func (c *DiscordClient) AddReaction(channelID, messageID, emoji string) error {
+	err := c.sdkClient.MessageReactionAdd(channelID, messageID, emoji)
+	if err != nil {
+		return fmt.Errorf("failed to add Discord reaction: %w", err)
+	}
+	return nil
+}
+
+// RemoveReaction removes a reaction emoji from a Discord message
+func (c *DiscordClient) RemoveReaction(channelID, messageID, emoji string) error {
+	// Remove the bot's own reaction
+	err := c.sdkClient.MessageReactionRemove(channelID, messageID, emoji, "@me")
+	if err != nil {
+		return fmt.Errorf("failed to remove Discord reaction: %w", err)
+	}
+	return nil
+}
+
+// CreatePublicThread creates a public thread from a message in Discord
+func (c *DiscordClient) CreatePublicThread(
+	channelID, messageID, threadName string,
+) (*clients.DiscordThreadResponse, error) {
+	// Use discordgo to create a public thread from the message
+	thread, err := c.sdkClient.MessageThreadStart(channelID, messageID, threadName, 60)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Discord thread: %w", err)
+	}
+
+	return &clients.DiscordThreadResponse{
+		ThreadID:   thread.ID,
+		ThreadName: thread.Name,
 	}, nil
 }

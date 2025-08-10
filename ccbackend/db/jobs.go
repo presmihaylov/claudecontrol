@@ -38,6 +38,7 @@ type DBJob struct {
 
 	// Discord fields (nullable)
 	DiscordMessageID     *string `db:"discord_message_id"`
+	DiscordChannelID     *string `db:"discord_channel_id"`
 	DiscordThreadID      *string `db:"discord_thread_id"`
 	DiscordUserID        *string `db:"discord_user_id"`
 	DiscordIntegrationID *string `db:"discord_integration_id"`
@@ -52,6 +53,7 @@ var jobsColumns = []string{
 	"slack_user_id",
 	"slack_integration_id",
 	"discord_message_id",
+	"discord_channel_id",
 	"discord_thread_id",
 	"discord_user_id",
 	"discord_integration_id",
@@ -91,6 +93,7 @@ func dbJobToModel(dbJob *DBJob) (*models.Job, error) {
 		}
 	case models.JobTypeDiscord:
 		if dbJob.DiscordMessageID == nil ||
+			dbJob.DiscordChannelID == nil ||
 			dbJob.DiscordThreadID == nil ||
 			dbJob.DiscordUserID == nil ||
 			dbJob.DiscordIntegrationID == nil {
@@ -98,6 +101,7 @@ func dbJobToModel(dbJob *DBJob) (*models.Job, error) {
 		}
 		job.DiscordPayload = &models.DiscordJobPayload{
 			MessageID:     *dbJob.DiscordMessageID,
+			ChannelID:     *dbJob.DiscordChannelID,
 			ThreadID:      *dbJob.DiscordThreadID,
 			UserID:        *dbJob.DiscordUserID,
 			IntegrationID: *dbJob.DiscordIntegrationID,
@@ -138,6 +142,7 @@ func modelToDBJob(job *models.Job) (*DBJob, error) {
 	// Set Discord fields if payload exists
 	if job.DiscordPayload != nil {
 		dbJob.DiscordMessageID = &job.DiscordPayload.MessageID
+		dbJob.DiscordChannelID = &job.DiscordPayload.ChannelID
 		dbJob.DiscordThreadID = &job.DiscordPayload.ThreadID
 		dbJob.DiscordUserID = &job.DiscordPayload.UserID
 		dbJob.DiscordIntegrationID = &job.DiscordPayload.IntegrationID
@@ -161,6 +166,7 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 		"slack_user_id",
 		"slack_integration_id",
 		"discord_message_id",
+		"discord_channel_id",
 		"discord_thread_id",
 		"discord_user_id",
 		"discord_integration_id",
@@ -173,15 +179,15 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.jobs (%s) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
 	var returnedDBJob DBJob
 	err = db.QueryRowxContext(ctx, query,
 		dbJob.ID, dbJob.JobType, dbJob.SlackThreadTS, dbJob.SlackChannelID,
 		dbJob.SlackUserID, dbJob.SlackIntegrationID, dbJob.DiscordMessageID,
-		dbJob.DiscordThreadID, dbJob.DiscordUserID, dbJob.DiscordIntegrationID,
-		dbJob.OrganizationID).
+		dbJob.DiscordChannelID, dbJob.DiscordThreadID, dbJob.DiscordUserID,
+		dbJob.DiscordIntegrationID, dbJob.OrganizationID).
 		StructScan(&returnedDBJob)
 	if err != nil {
 		return fmt.Errorf("failed to create job: %w", err)
@@ -281,16 +287,15 @@ func (r *PostgresJobsRepository) GetJobByDiscordThread(
 func (r *PostgresJobsRepository) UpdateJobTimestamp(
 	ctx context.Context,
 	jobID string,
-	slackIntegrationID string,
 	organizationID string,
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
 		UPDATE %s.jobs 
 		SET updated_at = NOW() 
-		WHERE id = $1 AND slack_integration_id = $2 AND organization_id = $3`, r.schema)
+		WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	_, err := db.ExecContext(ctx, query, jobID, slackIntegrationID, organizationID)
+	_, err := db.ExecContext(ctx, query, jobID, organizationID)
 	if err != nil {
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
@@ -404,7 +409,8 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(
 // GetJobsWithQueuedMessages returns jobs that have at least one message in QUEUED status
 func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(
 	ctx context.Context,
-	slackIntegrationID string,
+	jobType models.JobType,
+	integrationID string,
 	organizationID string,
 ) ([]*models.Job, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
@@ -415,17 +421,34 @@ func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(
 	}
 	columnsStr := strings.Join(aliasedColumns, ", ")
 
-	query := fmt.Sprintf(`
-		SELECT DISTINCT %s 
-		FROM %s.jobs j
-		INNER JOIN %s.processed_slack_messages psm ON j.id = psm.job_id
-		WHERE j.slack_integration_id = $1 
-		AND j.organization_id = $2
-		AND psm.status = 'QUEUED'
-		ORDER BY j.created_at ASC`, columnsStr, r.schema, r.schema)
+	var query string
+	switch jobType {
+	case models.JobTypeSlack:
+		query = fmt.Sprintf(`
+			SELECT DISTINCT %s 
+			FROM %s.jobs j
+			INNER JOIN %s.processed_slack_messages psm ON j.id = psm.job_id
+			WHERE j.job_type = $1
+			AND j.slack_integration_id = $2 
+			AND j.organization_id = $3
+			AND psm.status = 'QUEUED'
+			ORDER BY j.created_at ASC`, columnsStr, r.schema, r.schema)
+	case models.JobTypeDiscord:
+		query = fmt.Sprintf(`
+			SELECT DISTINCT %s 
+			FROM %s.jobs j
+			INNER JOIN %s.processed_discord_messages pdm ON j.id = pdm.job_id
+			WHERE j.job_type = $1
+			AND j.discord_integration_id = $2 
+			AND j.organization_id = $3
+			AND pdm.status = 'QUEUED'
+			ORDER BY j.created_at ASC`, columnsStr, r.schema, r.schema)
+	default:
+		return nil, fmt.Errorf("unsupported job type: %s", jobType)
+	}
 
 	var dbJobs []DBJob
-	err := db.SelectContext(ctx, &dbJobs, query, slackIntegrationID, organizationID)
+	err := db.SelectContext(ctx, &dbJobs, query, jobType, integrationID, organizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jobs with queued messages: %w", err)
 	}

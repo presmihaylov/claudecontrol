@@ -33,6 +33,7 @@ type SlackJobPayload struct {
 
 type DiscordJobPayload struct {
 	MessageID     string `json:"message_id"     db:"discord_message_id"`
+	ChannelID     string `json:"channel_id"     db:"discord_channel_id"`
 	ThreadID      string `json:"thread_id"      db:"discord_thread_id"`
 	UserID        string `json:"user_id"        db:"discord_user_id"`
 	IntegrationID string `json:"integration_id" db:"discord_integration_id"`

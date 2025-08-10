@@ -79,10 +79,10 @@ func (m *MockSlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 
 func (m *MockSlackUseCase) CleanupFailedSlackJob(
 	ctx context.Context,
-	jobID string,
-	slackIntegrationID string,
-	organizationID string,
+	job *models.Job,
+	agentID string,
+	failureMessage string,
 ) error {
-	args := m.Called(ctx, jobID, slackIntegrationID, organizationID)
+	args := m.Called(ctx, job, agentID, failureMessage)
 	return args.Error(0)
 }

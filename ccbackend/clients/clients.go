@@ -33,6 +33,11 @@ type SlackOAuthClient interface {
 type DiscordClient interface {
 	GetGuildByID(guildID string) (*DiscordGuild, error)
 	GetBotUser() (*DiscordBotUser, error)
+	GetChannelByID(channelID string) (*DiscordChannel, error)
+	PostMessage(channelID string, params DiscordMessageParams) (*DiscordPostMessageResponse, error)
+	AddReaction(channelID, messageID, emoji string) error
+	RemoveReaction(channelID, messageID, emoji string) error
+	CreatePublicThread(channelID, messageID, threadName string) (*DiscordThreadResponse, error)
 }
 
 // SlackClient defines the interface for Slack API operations

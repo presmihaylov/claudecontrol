@@ -7,9 +7,9 @@ type DiscordMessageEvent struct {
 	UserID    string
 	Content   string
 	// ThreadID for thread messages (nil for top-level messages)
-	ThreadID  *string
+	ThreadID *string
 	// Mentions contains the user IDs of all users mentioned in this message
-	Mentions  []string
+	Mentions []string
 }
 
 type DiscordReactionEvent struct {

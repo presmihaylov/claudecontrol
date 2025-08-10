@@ -15,7 +15,7 @@ type MockJobsService struct {
 	mock.Mock
 }
 
-func (m *MockJobsService) CreateJob(
+func (m *MockJobsService) CreateSlackJob(
 	ctx context.Context,
 	slackThreadTS, slackChannelID, slackUserID, slackIntegrationID, organizationID string,
 ) (*models.Job, error) {
@@ -57,10 +57,9 @@ func (m *MockJobsService) GetOrCreateJobForSlackThread(
 func (m *MockJobsService) UpdateJobTimestamp(
 	ctx context.Context,
 	jobID string,
-	slackIntegrationID string,
 	organizationID string,
 ) error {
-	args := m.Called(ctx, jobID, slackIntegrationID, organizationID)
+	args := m.Called(ctx, jobID, organizationID)
 	return args.Error(0)
 }
 
@@ -98,10 +97,11 @@ func (m *MockJobsService) TESTS_UpdateJobUpdatedAt(
 
 func (m *MockJobsService) GetJobsWithQueuedMessages(
 	ctx context.Context,
-	slackIntegrationID string,
+	jobType models.JobType,
+	integrationID string,
 	organizationID string,
 ) ([]*models.Job, error) {
-	args := m.Called(ctx, slackIntegrationID, organizationID)
+	args := m.Called(ctx, jobType, integrationID, organizationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -112,9 +112,17 @@ func (m *MockJobsService) GetJobsWithQueuedMessages(
 
 func (m *MockJobsService) CreateDiscordJob(
 	ctx context.Context,
-	discordMessageID, discordThreadID, discordUserID, discordIntegrationID, organizationID string,
+	discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID, organizationID string,
 ) (*models.Job, error) {
-	args := m.Called(ctx, discordMessageID, discordThreadID, discordUserID, discordIntegrationID, organizationID)
+	args := m.Called(
+		ctx,
+		discordMessageID,
+		discordChannelID,
+		discordThreadID,
+		discordUserID,
+		discordIntegrationID,
+		organizationID,
+	)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -131,9 +139,17 @@ func (m *MockJobsService) GetJobByDiscordThread(
 
 func (m *MockJobsService) GetOrCreateJobForDiscordThread(
 	ctx context.Context,
-	discordMessageID, discordThreadID, discordUserID, discordIntegrationID, organizationID string,
+	discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID, organizationID string,
 ) (*models.JobCreationResult, error) {
-	args := m.Called(ctx, discordMessageID, discordThreadID, discordUserID, discordIntegrationID, organizationID)
+	args := m.Called(
+		ctx,
+		discordMessageID,
+		discordChannelID,
+		discordThreadID,
+		discordUserID,
+		discordIntegrationID,
+		organizationID,
+	)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

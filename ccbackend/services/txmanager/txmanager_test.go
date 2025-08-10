@@ -369,7 +369,7 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 			}
 
 			// Update job within nested transaction
-			return jobsRepo.UpdateJobTimestamp(nestedCtx, jobID, testIntegration.ID, testIntegration.OrganizationID)
+			return jobsRepo.UpdateJobTimestamp(nestedCtx, jobID, testIntegration.OrganizationID)
 		})
 	})
 

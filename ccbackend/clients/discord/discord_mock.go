@@ -28,3 +28,47 @@ func (m *MockDiscordClient) GetBotUser() (*clients.DiscordBotUser, error) {
 	}
 	return args.Get(0).(*clients.DiscordBotUser), args.Error(1)
 }
+
+// GetChannelByID mocks fetching specific Discord channel by ID
+func (m *MockDiscordClient) GetChannelByID(channelID string) (*clients.DiscordChannel, error) {
+	args := m.Called(channelID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*clients.DiscordChannel), args.Error(1)
+}
+
+// PostMessage mocks posting a message to Discord
+func (m *MockDiscordClient) PostMessage(
+	channelID string,
+	params clients.DiscordMessageParams,
+) (*clients.DiscordPostMessageResponse, error) {
+	args := m.Called(channelID, params)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*clients.DiscordPostMessageResponse), args.Error(1)
+}
+
+// AddReaction mocks adding a reaction to a Discord message
+func (m *MockDiscordClient) AddReaction(channelID, messageID, emoji string) error {
+	args := m.Called(channelID, messageID, emoji)
+	return args.Error(0)
+}
+
+// RemoveReaction mocks removing a reaction from a Discord message
+func (m *MockDiscordClient) RemoveReaction(channelID, messageID, emoji string) error {
+	args := m.Called(channelID, messageID, emoji)
+	return args.Error(0)
+}
+
+// CreatePublicThread mocks creating a public thread from a Discord message
+func (m *MockDiscordClient) CreatePublicThread(
+	channelID, messageID, threadName string,
+) (*clients.DiscordThreadResponse, error) {
+	args := m.Called(channelID, messageID, threadName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*clients.DiscordThreadResponse), args.Error(1)
+}
