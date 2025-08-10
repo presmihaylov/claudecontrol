@@ -226,6 +226,11 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 - **Test Business Logic**: Focus on service layer validation, data transformations, and business rules
 - **Real Database Only**: Use actual PostgreSQL test schema rather than mocking database operations
 
+### Test Execution Notes
+- **Flaky Tests**: Tests may occasionally fail due to timing or race conditions - retry running tests 2-3 times before investigating
+- **Database Dependency**: Tests require a running PostgreSQL database with proper test schema setup
+- **Database Not Started**: If tests fail with database connection errors, abort test fixing and report to user that the database needs to be started with `supabase start`
+
 ## Development Workflow
 
 ### Testing Approach
