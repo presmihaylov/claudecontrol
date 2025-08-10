@@ -2,12 +2,12 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"ccbackend/clients"
 	"ccbackend/clients/socketio"
@@ -17,6 +17,8 @@ import (
 	"ccbackend/services/organizations"
 	slackintegrations "ccbackend/services/slack_integrations"
 )
+
+// Agent Management Tests
 
 func TestRegisterAgent(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
@@ -88,7 +90,7 @@ func TestRegisterAgent(t *testing.T) {
 
 		// Configure expectations
 		mockAgentsService.On("UpsertActiveAgent", ctx, "ws-123", "org-456", "agent-789").
-			Return(nil, fmt.Errorf("database error"))
+			Return(nil, assert.AnError)
 
 		// Execute
 		err := useCase.RegisterAgent(ctx, client)
@@ -96,7 +98,6 @@ func TestRegisterAgent(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to register agent")
-		assert.Contains(t, err.Error(), "database error")
 		mockAgentsService.AssertExpectations(t)
 	})
 }
@@ -565,6 +566,225 @@ func TestCleanupInactiveAgents(t *testing.T) {
 		// Assert
 		assert.NoError(t, err)
 		mockSlackIntegrationsService.AssertExpectations(t)
+		mockAgentsService.AssertExpectations(t)
+	})
+}
+
+// Authentication Tests
+
+func TestValidateAPIKey(t *testing.T) {
+	t.Run("valid_api_key", func(t *testing.T) {
+		// Setup
+		ctx := context.Background()
+		mockAgentsService := new(agents.MockAgentsService)
+		mockWSClient := new(socketio.MockSocketIOClient)
+		mockJobsService := new(jobs.MockJobsService)
+		mockSlackIntegrationsService := new(slackintegrations.MockSlackIntegrationsService)
+		mockOrganizationsService := new(organizations.MockOrganizationsService)
+		// Pass nil for use cases that aren't used in this test
+		useCase := NewCoreUseCase(
+			mockWSClient,
+			mockAgentsService,
+			mockJobsService,
+			mockSlackIntegrationsService,
+			mockOrganizationsService,
+			nil, // agentsUseCase
+			nil, // slackUseCase
+		)
+
+		apiKey := "test-api-key-123"
+		organization := &models.Organization{
+			ID:               "org-456",
+			CCAgentSecretKey: &apiKey,
+		}
+
+		// Configure expectations
+		mockOrganizationsService.On("GetOrganizationBySecretKey", ctx, apiKey).
+			Return(mo.Some(organization), nil)
+
+		// Execute
+		orgID, err := useCase.ValidateAPIKey(ctx, apiKey)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "org-456", orgID)
+		mockOrganizationsService.AssertExpectations(t)
+	})
+
+	t.Run("invalid_api_key", func(t *testing.T) {
+		// Setup
+		ctx := context.Background()
+		mockAgentsService := new(agents.MockAgentsService)
+		mockWSClient := new(socketio.MockSocketIOClient)
+		mockJobsService := new(jobs.MockJobsService)
+		mockSlackIntegrationsService := new(slackintegrations.MockSlackIntegrationsService)
+		mockOrganizationsService := new(organizations.MockOrganizationsService)
+		// Pass nil for use cases that aren't used in this test
+		useCase := NewCoreUseCase(
+			mockWSClient,
+			mockAgentsService,
+			mockJobsService,
+			mockSlackIntegrationsService,
+			mockOrganizationsService,
+			nil, // agentsUseCase
+			nil, // slackUseCase
+		)
+
+		apiKey := "invalid-api-key"
+
+		// Configure expectations
+		mockOrganizationsService.On("GetOrganizationBySecretKey", ctx, apiKey).
+			Return(mo.None[*models.Organization](), nil)
+
+		// Execute
+		orgID, err := useCase.ValidateAPIKey(ctx, apiKey)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid API key")
+		assert.Equal(t, "", orgID)
+		mockOrganizationsService.AssertExpectations(t)
+	})
+}
+
+// Background Processing Tests
+
+func TestBroadcastCheckIdleJobs(t *testing.T) {
+	t.Run("success_single_organization", func(t *testing.T) {
+		// Setup
+		ctx := context.Background()
+		mockAgentsService := new(agents.MockAgentsService)
+		mockWSClient := new(socketio.MockSocketIOClient)
+		mockJobsService := new(jobs.MockJobsService)
+		mockSlackIntegrationsService := new(slackintegrations.MockSlackIntegrationsService)
+		mockOrganizationsService := new(organizations.MockOrganizationsService)
+
+		useCase := NewCoreUseCase(
+			mockWSClient,
+			mockAgentsService,
+			mockJobsService,
+			mockSlackIntegrationsService,
+			mockOrganizationsService,
+			nil, // agentsUseCase
+			nil, // slackUseCase
+		)
+
+		organization := &models.Organization{
+			ID: "org-456",
+		}
+
+		agent1 := &models.ActiveAgent{
+			ID:             "agent-001",
+			WSConnectionID: "ws-001",
+			OrganizationID: "org-456",
+		}
+
+		agent2 := &models.ActiveAgent{
+			ID:             "agent-002",
+			WSConnectionID: "ws-002",
+			OrganizationID: "org-456",
+		}
+
+		// Configure expectations
+		mockOrganizationsService.On("GetAllOrganizations", ctx).
+			Return([]*models.Organization{organization}, nil)
+		mockWSClient.On("GetClientIDs").
+			Return([]string{"ws-001", "ws-002"})
+		mockAgentsService.On("GetConnectedActiveAgents", ctx, "org-456", []string{"ws-001", "ws-002"}).
+			Return([]*models.ActiveAgent{agent1, agent2}, nil)
+
+		// Expect SendMessage to be called for each agent
+		mockWSClient.On("SendMessage", "ws-001", mock.MatchedBy(func(msg any) bool {
+			// Verify it's a CheckIdleJobs message
+			baseMsg, ok := msg.(models.BaseMessage)
+			return ok && baseMsg.Type == models.MessageTypeCheckIdleJobs
+		})).Return(nil)
+
+		mockWSClient.On("SendMessage", "ws-002", mock.MatchedBy(func(msg any) bool {
+			// Verify it's a CheckIdleJobs message
+			baseMsg, ok := msg.(models.BaseMessage)
+			return ok && baseMsg.Type == models.MessageTypeCheckIdleJobs
+		})).Return(nil)
+
+		// Execute
+		err := useCase.BroadcastCheckIdleJobs(ctx)
+
+		// Assert
+		assert.NoError(t, err)
+		mockOrganizationsService.AssertExpectations(t)
+		mockWSClient.AssertExpectations(t)
+		mockAgentsService.AssertExpectations(t)
+	})
+
+	t.Run("no_organizations", func(t *testing.T) {
+		// Setup
+		ctx := context.Background()
+		mockAgentsService := new(agents.MockAgentsService)
+		mockWSClient := new(socketio.MockSocketIOClient)
+		mockJobsService := new(jobs.MockJobsService)
+		mockSlackIntegrationsService := new(slackintegrations.MockSlackIntegrationsService)
+		mockOrganizationsService := new(organizations.MockOrganizationsService)
+
+		useCase := NewCoreUseCase(
+			mockWSClient,
+			mockAgentsService,
+			mockJobsService,
+			mockSlackIntegrationsService,
+			mockOrganizationsService,
+			nil, // agentsUseCase
+			nil, // slackUseCase
+		)
+
+		// Configure expectations
+		mockOrganizationsService.On("GetAllOrganizations", ctx).
+			Return([]*models.Organization{}, nil)
+
+		// Execute
+		err := useCase.BroadcastCheckIdleJobs(ctx)
+
+		// Assert
+		assert.NoError(t, err)
+		mockOrganizationsService.AssertExpectations(t)
+	})
+
+	t.Run("no_connected_agents", func(t *testing.T) {
+		// Setup
+		ctx := context.Background()
+		mockAgentsService := new(agents.MockAgentsService)
+		mockWSClient := new(socketio.MockSocketIOClient)
+		mockJobsService := new(jobs.MockJobsService)
+		mockSlackIntegrationsService := new(slackintegrations.MockSlackIntegrationsService)
+		mockOrganizationsService := new(organizations.MockOrganizationsService)
+
+		useCase := NewCoreUseCase(
+			mockWSClient,
+			mockAgentsService,
+			mockJobsService,
+			mockSlackIntegrationsService,
+			mockOrganizationsService,
+			nil, // agentsUseCase
+			nil, // slackUseCase
+		)
+
+		organization := &models.Organization{
+			ID: "org-456",
+		}
+
+		// Configure expectations
+		mockOrganizationsService.On("GetAllOrganizations", ctx).
+			Return([]*models.Organization{organization}, nil)
+		mockWSClient.On("GetClientIDs").
+			Return([]string{"ws-001", "ws-002"})
+		mockAgentsService.On("GetConnectedActiveAgents", ctx, "org-456", []string{"ws-001", "ws-002"}).
+			Return([]*models.ActiveAgent{}, nil)
+
+		// Execute
+		err := useCase.BroadcastCheckIdleJobs(ctx)
+
+		// Assert
+		assert.NoError(t, err)
+		mockOrganizationsService.AssertExpectations(t)
+		mockWSClient.AssertExpectations(t)
 		mockAgentsService.AssertExpectations(t)
 	})
 }
