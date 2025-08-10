@@ -48,6 +48,16 @@ type DiscordClient interface {
 	RemoveReaction(channelID, messageID, emoji string) error
 }
 
+// DiscordConnectionClient defines the interface for Discord WebSocket operations
+type DiscordConnectionClient interface {
+	// WebSocket connection management
+	StartWebSocketConnection() error
+	StopWebSocketConnection() error
+	
+	// Event handlers
+	RegisterMessageHandler(handler func(*DiscordMessage) error)
+}
+
 // SlackClient defines the interface for Slack API operations
 type SlackClient interface {
 	SlackOAuthClient

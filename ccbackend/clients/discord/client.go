@@ -3,7 +3,9 @@ package discord
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"ccbackend/clients"
 
