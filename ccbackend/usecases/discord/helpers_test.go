@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"ccbackend/models"
 	"strings"
 	"testing"
 
@@ -75,5 +76,34 @@ func TestTrimDiscordMessageEdgeCases(t *testing.T) {
 		assert.Equal(t, 2000, len(result), "Result should be exactly 2000 characters")
 		assert.True(t, strings.HasSuffix(result, "..."), "Should end with ellipsis")
 		assert.Equal(t, 1997, len(strings.TrimSuffix(result, "...")), "Should have 1997 characters before ellipsis")
+	})
+}
+
+func TestDeriveMessageReactionFromStatus(t *testing.T) {
+	t.Run("in_progress_status", func(t *testing.T) {
+		result := deriveMessageReactionFromStatus(models.ProcessedDiscordMessageStatusInProgress)
+		assert.Equal(t, EmojiHourglass, result)
+	})
+
+	t.Run("queued_status", func(t *testing.T) {
+		result := deriveMessageReactionFromStatus(models.ProcessedDiscordMessageStatusQueued)
+		assert.Equal(t, EmojiHourglass, result)
+	})
+
+	t.Run("completed_status", func(t *testing.T) {
+		result := deriveMessageReactionFromStatus(models.ProcessedDiscordMessageStatusCompleted)
+		assert.Equal(t, EmojiCheckMark, result)
+	})
+}
+
+func TestIsAgentErrorMessage(t *testing.T) {
+	t.Run("is_agent_error", func(t *testing.T) {
+		result := isAgentErrorMessage("ccagent encountered error: something went wrong")
+		assert.True(t, result)
+	})
+
+	t.Run("not_agent_error", func(t *testing.T) {
+		result := isAgentErrorMessage("regular system message")
+		assert.False(t, result)
 	})
 }

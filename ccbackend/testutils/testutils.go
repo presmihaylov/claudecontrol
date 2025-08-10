@@ -2,7 +2,9 @@ package testutils
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"os"
 	"testing"
 
@@ -155,4 +157,81 @@ func CleanupTestUser(t *testing.T, dbConn *sqlx.DB, databaseSchema string, userI
 			t.Logf("🧹 Cleaned up test user from database: %s", userID)
 		}
 	}
+}
+
+// GenerateDiscordMessageID generates a random Discord message ID
+func GenerateDiscordMessageID() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("msg-%d", n.Int64()+100000)
+}
+
+// GenerateDiscordChannelID generates a random Discord channel ID
+func GenerateDiscordChannelID() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("channel-%d", n.Int64()+100000)
+}
+
+// GenerateDiscordThreadID generates a random Discord thread ID
+func GenerateDiscordThreadID() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("thread-%d", n.Int64()+100000)
+}
+
+// GenerateDiscordUserID generates a random Discord user ID
+func GenerateDiscordUserID() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("user-%d", n.Int64()+100000)
+}
+
+// GenerateDiscordIntegrationID generates a random Discord integration ID using ULID
+func GenerateDiscordIntegrationID() string {
+	return core.NewID("di")
+}
+
+// GenerateOrganizationID generates a random organization ID using ULID
+func GenerateOrganizationID() string {
+	return core.NewID("org")
+}
+
+// GenerateDiscordGuildID generates a random Discord guild ID
+func GenerateDiscordGuildID() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("guild-%d", n.Int64()+100000)
+}
+
+// GenerateAgentID generates a random agent ID using ULID
+func GenerateAgentID() string {
+	return core.NewID("ag")
+}
+
+// GenerateWSConnectionID generates a random WebSocket connection ID using ULID
+func GenerateWSConnectionID() string {
+	return core.NewID("ws")
+}
+
+// GenerateClientID generates a random client ID using ULID
+func GenerateClientID() string {
+	return core.NewID("client")
+}
+
+// GenerateJobID generates a random job ID using ULID
+func GenerateJobID() string {
+	return core.NewID("j")
+}
+
+// GenerateProcessedMessageID generates a random processed message ID using ULID
+func GenerateProcessedMessageID() string {
+	return core.NewID("pm")
+}
+
+// GenerateDiscordBotID generates a random Discord bot ID
+func GenerateDiscordBotID() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("bot-%d", n.Int64()+100000)
+}
+
+// GenerateDiscordBotUsername generates a random Discord bot username
+func GenerateDiscordBotUsername() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(9000))
+	return fmt.Sprintf("testbot%d", n.Int64()+1000)
 }
