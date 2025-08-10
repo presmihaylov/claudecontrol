@@ -81,7 +81,7 @@ func (d *DiscordUseCase) ProcessDiscordMessageEvent(
 
 		//nolint:gosec // We don't care about using secure random numbers here
 		randomNumber := rand.Intn(9000) + 1000 // Generates number between 1000-9999
-		threadName := fmt.Sprintf("Claude Control Sesh #%d", randomNumber)
+		threadName := fmt.Sprintf("CC Sesh #%d", randomNumber)
 
 		threadResponse, err := d.discordClient.CreatePublicThread(event.ChannelID, event.MessageID, threadName)
 		if err != nil {
