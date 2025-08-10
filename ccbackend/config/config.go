@@ -14,6 +14,7 @@ type AppConfig struct {
 	DiscordClientID      string
 	DiscordClientSecret  string
 	DiscordBotToken      string
+	DiscordPublicKey     string
 	Port                 string
 	DatabaseURL          string
 	DatabaseSchema       string
@@ -59,6 +60,11 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
+	discordPublicKey, err := getEnvRequired("DISCORD_PUBLIC_KEY")
+	if err != nil {
+		return nil, err
+	}
+
 	databaseURL, err := getEnvRequired("DB_URL")
 	if err != nil {
 		return nil, err
@@ -91,6 +97,7 @@ func LoadConfig() (*AppConfig, error) {
 		DiscordClientID:      discordClientID,
 		DiscordClientSecret:  discordClientSecret,
 		DiscordBotToken:      discordBotToken,
+		DiscordPublicKey:     discordPublicKey,
 		Port:                 port,
 		DatabaseURL:          databaseURL,
 		DatabaseSchema:       databaseSchema,

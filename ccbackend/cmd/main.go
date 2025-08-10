@@ -32,6 +32,7 @@ import (
 	"ccbackend/services/users"
 	"ccbackend/usecases/agents"
 	"ccbackend/usecases/core"
+	"ccbackend/usecases/discord"
 	"ccbackend/usecases/slack"
 	"ccbackend/utils"
 )
@@ -127,16 +128,29 @@ func run() error {
 		agentsUseCase,
 	)
 
+	discordUseCase := discord.NewDiscordUseCase(
+		wsClient,
+		agentsService,
+		jobsService,
+		discordMessagesService,
+		discordIntegrationsService,
+		txManager,
+		agentsUseCase,
+	)
+
 	coreUseCase := core.NewCoreUseCase(
 		wsClient,
 		agentsService,
 		jobsService,
 		slackIntegrationsService,
+		discordIntegrationsService,
 		organizationsService,
 		slackUseCase,
+		discordUseCase,
 	)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
 	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
+	discordHandler := handlers.NewDiscordEventsHandler(cfg.DiscordPublicKey, coreUseCase, discordIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(
 		usersService,
 		slackIntegrationsService,
@@ -152,6 +166,7 @@ func run() error {
 	// Setup endpoints with the new router
 	wsClient.RegisterWithRouter(router)
 	slackHandler.SetupEndpoints(router)
+	discordHandler.SetupEndpoints(router)
 	dashboardHTTPHandler.SetupEndpoints(router, authMiddleware)
 
 	// Health check endpoint

@@ -10,19 +10,22 @@ import (
 	"ccbackend/core"
 	"ccbackend/models"
 	"ccbackend/services"
+	"ccbackend/usecases/discord"
 	"ccbackend/usecases/slack"
 )
 
 // CoreUseCase orchestrates all core business operations
 type CoreUseCase struct {
-	wsClient                 clients.SocketIOClient
-	agentsService            services.AgentsService
-	jobsService              services.JobsService
-	slackIntegrationsService services.SlackIntegrationsService
-	organizationsService     services.OrganizationsService
+	wsClient                    clients.SocketIOClient
+	agentsService               services.AgentsService
+	jobsService                 services.JobsService
+	slackIntegrationsService    services.SlackIntegrationsService
+	discordIntegrationsService  services.DiscordIntegrationsService
+	organizationsService        services.OrganizationsService
 
 	// Use case dependencies
-	slackUseCase *slack.SlackUseCase
+	slackUseCase   *slack.SlackUseCase
+	discordUseCase *discord.DiscordUseCase
 }
 
 // NewCoreUseCase creates a new instance of CoreUseCase
@@ -31,16 +34,20 @@ func NewCoreUseCase(
 	agentsService services.AgentsService,
 	jobsService services.JobsService,
 	slackIntegrationsService services.SlackIntegrationsService,
+	discordIntegrationsService services.DiscordIntegrationsService,
 	organizationsService services.OrganizationsService,
 	slackUseCase *slack.SlackUseCase,
+	discordUseCase *discord.DiscordUseCase,
 ) *CoreUseCase {
 	return &CoreUseCase{
-		wsClient:                 wsClient,
-		agentsService:            agentsService,
-		jobsService:              jobsService,
-		slackIntegrationsService: slackIntegrationsService,
-		organizationsService:     organizationsService,
-		slackUseCase:             slackUseCase,
+		wsClient:                   wsClient,
+		agentsService:              agentsService,
+		jobsService:                jobsService,
+		slackIntegrationsService:   slackIntegrationsService,
+		discordIntegrationsService: discordIntegrationsService,
+		organizationsService:       organizationsService,
+		slackUseCase:               slackUseCase,
+		discordUseCase:             discordUseCase,
 	}
 }
 
@@ -118,6 +125,65 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 	return s.slackUseCase.ProcessQueuedJobs(ctx)
 }
 
+// Proxy methods to DiscordUseCase
+
+// ProcessDiscordMessageEvent proxies to DiscordUseCase
+func (s *CoreUseCase) ProcessDiscordMessageEvent(
+	ctx context.Context,
+	event models.DiscordMessageEvent,
+	discordIntegrationID string,
+	organizationID string,
+) error {
+	return s.discordUseCase.ProcessDiscordMessageEvent(ctx, event, discordIntegrationID, organizationID)
+}
+
+// ProcessDiscordReactionAdded proxies to DiscordUseCase
+func (s *CoreUseCase) ProcessDiscordReactionAdded(
+	ctx context.Context,
+	reactionName, userID, channelID, messageID, discordIntegrationID string,
+	organizationID string,
+) error {
+	return s.discordUseCase.ProcessReactionAdded(
+		ctx,
+		reactionName,
+		userID,
+		channelID,
+		messageID,
+		discordIntegrationID,
+		organizationID,
+	)
+}
+
+// ProcessDiscordProcessingMessage proxies to DiscordUseCase
+func (s *CoreUseCase) ProcessDiscordProcessingMessage(
+	ctx context.Context,
+	clientID string,
+	payload models.ProcessingMessagePayload,
+	organizationID string,
+) error {
+	return s.discordUseCase.ProcessProcessingMessage(ctx, clientID, payload, organizationID)
+}
+
+// ProcessDiscordAssistantMessage proxies to DiscordUseCase
+func (s *CoreUseCase) ProcessDiscordAssistantMessage(
+	ctx context.Context,
+	clientID string,
+	payload models.AssistantMessagePayload,
+	organizationID string,
+) error {
+	return s.discordUseCase.ProcessAssistantMessage(ctx, clientID, payload, organizationID)
+}
+
+// ProcessDiscordSystemMessage proxies to DiscordUseCase
+func (s *CoreUseCase) ProcessDiscordSystemMessage(
+	ctx context.Context,
+	clientID string,
+	payload models.SystemMessagePayload,
+	organizationID string,
+) error {
+	return s.discordUseCase.ProcessSystemMessage(ctx, clientID, payload, organizationID)
+}
+
 // Agent Management Functions
 
 // RegisterAgent registers a new agent connection in the system
@@ -186,6 +252,10 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 		case models.JobTypeSlack:
 			if err := s.slackUseCase.CleanupFailedSlackJob(ctx, job, agent.ID, abandonmentMessage); err != nil {
 				return fmt.Errorf("failed to cleanup abandoned Slack job %s: %w", jobID, err)
+			}
+		case models.JobTypeDiscord:
+			if err := s.discordUseCase.CleanupFailedDiscordJob(ctx, job, agent.ID, abandonmentMessage); err != nil {
+				return fmt.Errorf("failed to cleanup abandoned Discord job %s: %w", jobID, err)
 			}
 		// Future: case models.JobTypeEmail:
 		//     err = s.emailUseCase.CleanupFailedEmailJob(ctx, job, agent.ID, abandonmentMessage)

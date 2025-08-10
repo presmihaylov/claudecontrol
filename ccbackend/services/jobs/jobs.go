@@ -288,7 +288,7 @@ func (s *JobsService) DeleteJob(
 			if job.DiscordPayload == nil {
 				return fmt.Errorf("discord job missing discord payload")
 			}
-			if err := s.discordMessagesService.DeleteProcessedDiscordMessagesByJobID(ctx, id, job.DiscordPayload.IntegrationID, organizationID); err != nil {
+			if err := s.discordMessagesService.DeleteProcessedDiscordMessagesByJobID(ctx, id, job.DiscordPayload.DiscordIntegrationID, organizationID); err != nil {
 				return fmt.Errorf("failed to delete processed discord messages for job: %w", err)
 			}
 		default:
@@ -399,10 +399,12 @@ func (s *JobsService) CreateDiscordJob(
 		JobType:        models.JobTypeDiscord,
 		OrganizationID: organizationID,
 		DiscordPayload: &models.DiscordJobPayload{
-			MessageID:     discordMessageID,
-			ThreadID:      discordThreadID,
-			UserID:        discordUserID,
-			IntegrationID: discordIntegrationID,
+			MessageID:           discordMessageID,
+			ThreadID:            discordThreadID,
+			ChannelID:           "", // Will be populated from Discord event data
+			GuildID:             "", // Will be populated from Discord event data
+			UserID:              discordUserID,
+			DiscordIntegrationID: discordIntegrationID,
 		},
 	}
 

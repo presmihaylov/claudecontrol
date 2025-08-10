@@ -97,10 +97,12 @@ func dbJobToModel(dbJob *DBJob) (*models.Job, error) {
 			return nil, fmt.Errorf("discord job missing required fields: job_id=%s", dbJob.ID)
 		}
 		job.DiscordPayload = &models.DiscordJobPayload{
-			MessageID:     *dbJob.DiscordMessageID,
-			ThreadID:      *dbJob.DiscordThreadID,
-			UserID:        *dbJob.DiscordUserID,
-			IntegrationID: *dbJob.DiscordIntegrationID,
+			MessageID:           *dbJob.DiscordMessageID,
+			ThreadID:            *dbJob.DiscordThreadID,
+			ChannelID:           "", // Will be filled from other source
+			GuildID:             "", // Will be filled from other source
+			UserID:              *dbJob.DiscordUserID,
+			DiscordIntegrationID: *dbJob.DiscordIntegrationID,
 		}
 	default:
 		return nil, fmt.Errorf("unsupported job type: %s for job_id=%s", job.JobType, dbJob.ID)
@@ -140,7 +142,7 @@ func modelToDBJob(job *models.Job) (*DBJob, error) {
 		dbJob.DiscordMessageID = &job.DiscordPayload.MessageID
 		dbJob.DiscordThreadID = &job.DiscordPayload.ThreadID
 		dbJob.DiscordUserID = &job.DiscordPayload.UserID
-		dbJob.DiscordIntegrationID = &job.DiscordPayload.IntegrationID
+		dbJob.DiscordIntegrationID = &job.DiscordPayload.DiscordIntegrationID
 	}
 
 	return dbJob, nil

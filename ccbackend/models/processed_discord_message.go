@@ -10,6 +10,7 @@ const (
 	ProcessedDiscordMessageStatusQueued     ProcessedDiscordMessageStatus = "QUEUED"
 	ProcessedDiscordMessageStatusInProgress ProcessedDiscordMessageStatus = "IN_PROGRESS"
 	ProcessedDiscordMessageStatusCompleted  ProcessedDiscordMessageStatus = "COMPLETED"
+	ProcessedDiscordMessageStatusFailed     ProcessedDiscordMessageStatus = "FAILED"
 )
 
 type ProcessedDiscordMessage struct {
