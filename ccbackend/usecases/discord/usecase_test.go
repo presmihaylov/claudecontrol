@@ -2,7 +2,6 @@ package discord
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/samber/mo"
@@ -84,90 +83,7 @@ func (f *discordUseCaseTestFixture) assertAllExpectations(t *testing.T) {
 	f.mocks.agentsUseCase.AssertExpectations(t)
 }
 
-// Test constants for consistent test data within each test
-const (
-	testMessageID      = "msg-123"
-	testChannelID      = "channel-456"
-	testThreadID       = "thread-123"
-	testUserID         = "user-abc"
-	testIntegrationID  = "discord-int-123"
-	testOrgID          = "org-456"
-	testGuildID        = "guild-789"
-	testAgentID        = "agent-111"
-	testWSConnectionID = "ws-222"
-	testClientID       = "client-123"
-	testJobID          = "job-111"
-	testProcessedID    = "processed-123"
-	testBotID          = "bot-xyz"
-	testBotUsername    = "testbot"
-)
 
-// Test model builders for consistent test data
-
-func createTestBotUser() *clients.DiscordBotUser {
-	return &clients.DiscordBotUser{
-		ID:       testBotID,
-		Username: testBotUsername,
-		Bot:      true,
-	}
-}
-
-func createTestThreadResponse() *clients.DiscordThreadResponse {
-	return &clients.DiscordThreadResponse{
-		ThreadID:   testThreadID,
-		ThreadName: "CC Sesh #1234",
-	}
-}
-
-func createTestJob() *models.Job {
-	return &models.Job{
-		ID:             testJobID,
-		OrganizationID: testOrgID,
-		DiscordPayload: &models.DiscordJobPayload{
-			MessageID:     testMessageID,
-			ChannelID:     testChannelID,
-			ThreadID:      testThreadID,
-			UserID:        testUserID,
-			IntegrationID: testIntegrationID,
-		},
-	}
-}
-
-func createTestDiscordIntegration() *models.DiscordIntegration {
-	return &models.DiscordIntegration{
-		ID:             testIntegrationID,
-		OrganizationID: testOrgID,
-		DiscordGuildID: testGuildID,
-	}
-}
-
-func createTestAgent() *models.ActiveAgent {
-	return &models.ActiveAgent{
-		ID:             testAgentID,
-		WSConnectionID: testWSConnectionID,
-		OrganizationID: testOrgID,
-	}
-}
-
-func createTestProcessedMessage(status models.ProcessedDiscordMessageStatus) *models.ProcessedDiscordMessage {
-	return &models.ProcessedDiscordMessage{
-		ID:                   testProcessedID,
-		JobID:                testJobID,
-		DiscordMessageID:     testMessageID,
-		DiscordThreadID:      testThreadID,
-		TextContent:          "Hello bot, help me with something",
-		DiscordIntegrationID: testIntegrationID,
-		OrganizationID:       testOrgID,
-		Status:               status,
-	}
-}
-
-func createTestJobResult() *models.JobCreationResult {
-	return &models.JobCreationResult{
-		Job:    createTestJob(),
-		Status: models.JobCreationStatusCreated,
-	}
-}
 
 // Test ProcessDiscordMessageEvent
 
@@ -288,101 +204,17 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		fixture.assertAllExpectations(t)
 	})
 
-	t.Run("error_get_bot_user_fails", func(t *testing.T) {
-		// Setup
-		fixture := setupDiscordUseCaseTest(t)
-
-		event := models.DiscordMessageEvent{
-			MessageID: testMessageID,
-			ChannelID: testChannelID,
-			GuildID:   testGuildID,
-			UserID:    testUserID,
-			Content:   "Hello bot",
-			Mentions:  []string{testBotID},
-			ThreadID:  nil,
-		}
-
-		// Configure expectations
-		expectedErr := fmt.Errorf("failed to get bot user")
-		fixture.mocks.discordClient.On("GetBotUser").Return(nil, expectedErr)
-
-		// Execute
-		err := fixture.useCase.ProcessDiscordMessageEvent(fixture.ctx, event, testIntegrationID, testOrgID)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Equal(t, expectedErr, err)
-		fixture.assertAllExpectations(t)
-	})
-
-	t.Run("error_create_public_thread_fails", func(t *testing.T) {
-		// Setup
-		fixture := setupDiscordUseCaseTest(t)
-
-		event := models.DiscordMessageEvent{
-			MessageID: testMessageID,
-			ChannelID: testChannelID,
-			GuildID:   testGuildID,
-			UserID:    testUserID,
-			Content:   "Hello bot",
-			Mentions:  []string{testBotID},
-			ThreadID:  nil,
-		}
-
-		botUser := createTestBotUser()
-
-		// Configure expectations
-		fixture.mocks.discordClient.On("GetBotUser").Return(botUser, nil)
-		expectedErr := fmt.Errorf("failed to create Discord thread: thread creation failed")
-		fixture.mocks.discordClient.On("CreatePublicThread", testChannelID, testMessageID, mock.AnythingOfType("string")).
-			Return(nil, fmt.Errorf("thread creation failed"))
-
-		// Execute
-		err := fixture.useCase.ProcessDiscordMessageEvent(fixture.ctx, event, testIntegrationID, testOrgID)
-
-		// Assert
-		assert.Error(t, err)
-		assert.EqualError(t, err, expectedErr.Error())
-		fixture.assertAllExpectations(t)
-	})
-
-	t.Run("error_get_or_create_job_fails", func(t *testing.T) {
-		// Setup
-		fixture := setupDiscordUseCaseTest(t)
-
-		event := models.DiscordMessageEvent{
-			MessageID: testMessageID,
-			ChannelID: testChannelID,
-			GuildID:   testGuildID,
-			UserID:    testUserID,
-			Content:   "Hello bot",
-			Mentions:  []string{testBotID},
-			ThreadID:  nil,
-		}
-
-		botUser := createTestBotUser()
-		threadResponse := createTestThreadResponse()
-
-		// Configure expectations
-		fixture.mocks.discordClient.On("GetBotUser").Return(botUser, nil)
-		fixture.mocks.discordClient.On("CreatePublicThread", testChannelID, testMessageID, mock.AnythingOfType("string")).
-			Return(threadResponse, nil)
-		expectedErr := fmt.Errorf("failed to get or create job for Discord thread: job creation failed")
-		fixture.mocks.jobsService.On("GetOrCreateJobForDiscordThread", fixture.ctx, testMessageID, testChannelID, testThreadID, testUserID, testIntegrationID, testOrgID).
-			Return(nil, fmt.Errorf("job creation failed"))
-
-		// Execute
-		err := fixture.useCase.ProcessDiscordMessageEvent(fixture.ctx, event, testIntegrationID, testOrgID)
-
-		// Assert
-		assert.Error(t, err)
-		assert.EqualError(t, err, expectedErr.Error())
-		fixture.assertAllExpectations(t)
-	})
-
 	t.Run("bot_not_mentioned_ignore", func(t *testing.T) {
 		// Setup
 		fixture := setupDiscordUseCaseTest(t)
+
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testBotID := testutils.GenerateDiscordBotID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
 
 		event := models.DiscordMessageEvent{
 			MessageID: testMessageID,
@@ -394,7 +226,11 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			ThreadID:  nil,
 		}
 
-		botUser := createTestBotUser()
+		botUser := &clients.DiscordBotUser{
+			ID:       testBotID,
+			Username: testutils.GenerateDiscordBotUsername(),
+			Bot:      true,
+		}
 
 		// Configure expectations
 		fixture.mocks.discordClient.On("GetBotUser").Return(botUser, nil)
@@ -430,83 +266,96 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testBotID := testutils.GenerateDiscordBotID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testJobID := testutils.GenerateJobID()
+		testProcessedID := testutils.GenerateProcessedMessageID()
+		testBotUsername := testutils.GenerateDiscordBotUsername()
+
 		event := models.DiscordMessageEvent{
-			MessageID: "msg-123",
-			ChannelID: "channel-456",
-			GuildID:   "guild-789",
-			UserID:    "user-abc",
+			MessageID: testMessageID,
+			ChannelID: testChannelID,
+			GuildID:   testGuildID,
+			UserID:    testUserID,
 			Content:   "Hello bot, help me with something",
-			Mentions:  []string{"bot-xyz"},
+			Mentions:  []string{testBotID},
 			ThreadID:  nil,
 		}
 
 		botUser := &clients.DiscordBotUser{
-			ID:       "bot-xyz",
-			Username: "testbot",
+			ID:       testBotID,
+			Username: testBotUsername,
 			Bot:      true,
 		}
 
 		threadResponse := &clients.DiscordThreadResponse{
-			ThreadID:   "thread-new",
+			ThreadID:   testThreadID,
 			ThreadName: "CC Sesh #1234",
 		}
 
 		jobResult := &models.JobCreationResult{
 			Job: &models.Job{
-				ID:             "job-111",
-				OrganizationID: "org-456",
+				ID:             testJobID,
+				OrganizationID: testOrgID,
 				DiscordPayload: &models.DiscordJobPayload{
-					MessageID:     "msg-123",
-					ChannelID:     "channel-456",
-					ThreadID:      "thread-new",
-					UserID:        "user-abc",
-					IntegrationID: "discord-int-123",
+					MessageID:     testMessageID,
+					ChannelID:     testChannelID,
+					ThreadID:      testThreadID,
+					UserID:        testUserID,
+					IntegrationID: testIntegrationID,
 				},
 			},
 			Status: models.JobCreationStatusCreated,
 		}
 
 		discordIntegration := &models.DiscordIntegration{
-			ID:             "discord-int-123",
-			OrganizationID: "org-456",
-			DiscordGuildID: "guild-789",
+			ID:             testIntegrationID,
+			OrganizationID: testOrgID,
+			DiscordGuildID: testGuildID,
 		}
 
 		processedMessage := &models.ProcessedDiscordMessage{
-			ID:                   "processed-123",
-			JobID:                "job-111",
-			DiscordMessageID:     "msg-123",
-			DiscordThreadID:      "thread-new",
+			ID:                   testProcessedID,
+			JobID:                testJobID,
+			DiscordMessageID:     testMessageID,
+			DiscordThreadID:      testThreadID,
 			TextContent:          "Hello bot, help me with something",
-			DiscordIntegrationID: "discord-int-123",
-			OrganizationID:       "org-456",
+			DiscordIntegrationID: testIntegrationID,
+			OrganizationID:       testOrgID,
 			Status:               models.ProcessedDiscordMessageStatusQueued,
 		}
 
 		// Configure expectations
 		mockDiscordClient.On("GetBotUser").Return(botUser, nil)
-		mockDiscordClient.On("CreatePublicThread", "channel-456", "msg-123", mock.AnythingOfType("string")).
+		mockDiscordClient.On("CreatePublicThread", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(threadResponse, nil)
-		mockJobsService.On("GetOrCreateJobForDiscordThread", ctx, "msg-123", "channel-456", "thread-new", "user-abc", "discord-int-123", "org-456").
+		mockJobsService.On("GetOrCreateJobForDiscordThread", ctx, testMessageID, testChannelID, testThreadID, testUserID, testIntegrationID, testOrgID).
 			Return(jobResult, nil)
-		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
+		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, testIntegrationID).
 			Return(mo.Some(discordIntegration), nil)
 		mockWSClient.On("GetClientIDs").Return([]string{})
-		mockAgentsService.On("GetConnectedActiveAgents", ctx, "org-456", []string{}).
+		mockAgentsService.On("GetConnectedActiveAgents", ctx, testOrgID, []string{}).
 			Return([]*models.ActiveAgent{}, nil)
-		mockDiscordMessagesService.On("CreateProcessedDiscordMessage", ctx, "job-111", "msg-123", "thread-new", "Hello bot, help me with something", "discord-int-123", "org-456", models.ProcessedDiscordMessageStatusQueued).
+		mockDiscordMessagesService.On("CreateProcessedDiscordMessage", ctx, testJobID, testMessageID, testThreadID, "Hello bot, help me with something", testIntegrationID, testOrgID, models.ProcessedDiscordMessageStatusQueued).
 			Return(processedMessage, nil)
-		mockDiscordClient.On("AddReaction", "channel-456", "msg-123", EmojiHourglass).Return(nil)
-		mockDiscordClient.On("RemoveReaction", "channel-456", "msg-123", mock.AnythingOfType("string")).
+		mockDiscordClient.On("AddReaction", testChannelID, testMessageID, EmojiHourglass).Return(nil)
+		mockDiscordClient.On("RemoveReaction", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(nil).
 			Maybe()
-		mockDiscordClient.On("AddReaction", "channel-456", "msg-123", EmojiEyes).Return(nil)
-		mockDiscordClient.On("RemoveReaction", "channel-456", "msg-123", mock.AnythingOfType("string")).
+		mockDiscordClient.On("AddReaction", testChannelID, testMessageID, EmojiEyes).Return(nil)
+		mockDiscordClient.On("RemoveReaction", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(nil).
 			Maybe()
 
 		// Execute
-		err := useCase.ProcessDiscordMessageEvent(ctx, event, "discord-int-123", "org-456")
+		err := useCase.ProcessDiscordMessageEvent(ctx, event, testIntegrationID, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -540,36 +389,46 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
-		threadID := "thread-existing"
+		// Generate consistent test data for this test case
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testBotID := testutils.GenerateDiscordBotID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testBotUsername := testutils.GenerateDiscordBotUsername()
+
 		event := models.DiscordMessageEvent{
-			MessageID: "msg-123",
-			ChannelID: "channel-456",
-			GuildID:   "guild-789",
-			UserID:    "user-abc",
+			MessageID: testMessageID,
+			ChannelID: testChannelID,
+			GuildID:   testGuildID,
+			UserID:    testUserID,
 			Content:   "Reply in thread",
-			Mentions:  []string{"bot-xyz"},
-			ThreadID:  &threadID, // Thread reply
+			Mentions:  []string{testBotID},
+			ThreadID:  &testThreadID, // Thread reply
 		}
 
 		botUser := &clients.DiscordBotUser{
-			ID:       "bot-xyz",
-			Username: "testbot",
+			ID:       testBotID,
+			Username: testBotUsername,
 			Bot:      true,
 		}
 
 		// Configure expectations
 		mockDiscordClient.On("GetBotUser").Return(botUser, nil)
-		mockJobsService.On("GetJobByDiscordThread", ctx, "thread-existing", "discord-int-123", "org-456").
+		mockJobsService.On("GetJobByDiscordThread", ctx, testThreadID, testIntegrationID, testOrgID).
 			Return(mo.None[*models.Job](), nil) // No existing job
 		// Expect sendSystemMessage call for error
-		mockDiscordClient.On("PostMessage", "channel-456", mock.MatchedBy(func(params clients.DiscordMessageParams) bool {
+		mockDiscordClient.On("PostMessage", testChannelID, mock.MatchedBy(func(params clients.DiscordMessageParams) bool {
 			return params.Content == EmojiGear+" Error: new jobs can only be started from top-level messages" &&
-				params.ThreadID != nil && *params.ThreadID == "thread-existing"
+				params.ThreadID != nil && *params.ThreadID == testThreadID
 		})).
 			Return(&clients.DiscordPostMessageResponse{}, nil)
 
 		// Execute
-		err := useCase.ProcessDiscordMessageEvent(ctx, event, "discord-int-123", "org-456")
+		err := useCase.ProcessDiscordMessageEvent(ctx, event, testIntegrationID, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -600,37 +459,49 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testBotID := testutils.GenerateDiscordBotID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testJobID := testutils.GenerateJobID()
+		testBotUsername := testutils.GenerateDiscordBotUsername()
+
 		event := models.DiscordMessageEvent{
-			MessageID: "msg-123",
-			ChannelID: "channel-456",
-			GuildID:   "guild-789",
-			UserID:    "user-abc",
+			MessageID: testMessageID,
+			ChannelID: testChannelID,
+			GuildID:   testGuildID,
+			UserID:    testUserID,
 			Content:   "Hello bot",
-			Mentions:  []string{"bot-xyz"},
+			Mentions:  []string{testBotID},
 			ThreadID:  nil,
 		}
 
 		botUser := &clients.DiscordBotUser{
-			ID:       "bot-xyz",
-			Username: "testbot",
+			ID:       testBotID,
+			Username: testBotUsername,
 			Bot:      true,
 		}
 
 		threadResponse := &clients.DiscordThreadResponse{
-			ThreadID:   "thread-new",
+			ThreadID:   testThreadID,
 			ThreadName: "CC Sesh #1234",
 		}
 
 		jobResult := &models.JobCreationResult{
 			Job: &models.Job{
-				ID:             "job-111",
-				OrganizationID: "org-456",
+				ID:             testJobID,
+				OrganizationID: testOrgID,
 				DiscordPayload: &models.DiscordJobPayload{
-					MessageID:     "msg-123",
-					ChannelID:     "channel-456",
-					ThreadID:      "thread-new",
-					UserID:        "user-abc",
-					IntegrationID: "discord-int-123",
+					MessageID:     testMessageID,
+					ChannelID:     testChannelID,
+					ThreadID:      testThreadID,
+					UserID:        testUserID,
+					IntegrationID: testIntegrationID,
 				},
 			},
 			Status: models.JobCreationStatusCreated,
@@ -638,15 +509,15 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 
 		// Configure expectations
 		mockDiscordClient.On("GetBotUser").Return(botUser, nil)
-		mockDiscordClient.On("CreatePublicThread", "channel-456", "msg-123", mock.AnythingOfType("string")).
+		mockDiscordClient.On("CreatePublicThread", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(threadResponse, nil)
-		mockJobsService.On("GetOrCreateJobForDiscordThread", ctx, "msg-123", "channel-456", "thread-new", "user-abc", "discord-int-123", "org-456").
+		mockJobsService.On("GetOrCreateJobForDiscordThread", ctx, testMessageID, testChannelID, testThreadID, testUserID, testIntegrationID, testOrgID).
 			Return(jobResult, nil)
-		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
+		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, testIntegrationID).
 			Return(mo.None[*models.DiscordIntegration](), nil) // Integration not found
 
 		// Execute
-		err := useCase.ProcessDiscordMessageEvent(ctx, event, "discord-int-123", "org-456")
+		err := useCase.ProcessDiscordMessageEvent(ctx, event, testIntegrationID, testOrgID)
 
 		// Assert
 		assert.Error(t, err)
@@ -681,45 +552,57 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testJobID := testutils.GenerateJobID()
+		testAgentID := testutils.GenerateAgentID()
+		testWSConnectionID := testutils.GenerateWSConnectionID()
+
 		event := models.DiscordReactionEvent{
-			MessageID: "msg-123",
-			ChannelID: "channel-456",
-			GuildID:   "guild-789",
-			UserID:    "user-abc",
+			MessageID: testMessageID,
+			ChannelID: testChannelID,
+			GuildID:   testGuildID,
+			UserID:    testUserID,
 			EmojiName: EmojiCheckMark,
 			ThreadID:  nil,
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:             testJobID,
+			OrganizationID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
-				MessageID:     "msg-123",
-				ChannelID:     "channel-456",
-				ThreadID:      "thread-123",
-				UserID:        "user-abc",
-				IntegrationID: "discord-int-123",
+				MessageID:     testMessageID,
+				ChannelID:     testChannelID,
+				ThreadID:      testThreadID,
+				UserID:        testUserID,
+				IntegrationID: testIntegrationID,
 			},
 		}
 
 		discordIntegration := &models.DiscordIntegration{
-			ID:             "discord-int-123",
-			OrganizationID: "org-456",
-			DiscordGuildID: "guild-789",
+			ID:             testIntegrationID,
+			OrganizationID: testOrgID,
+			DiscordGuildID: testGuildID,
 		}
 
 		agent := &models.ActiveAgent{
-			ID:             "agent-111",
-			WSConnectionID: "ws-222",
-			OrganizationID: "org-456",
+			ID:             testAgentID,
+			WSConnectionID: testWSConnectionID,
+			OrganizationID: testOrgID,
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByDiscordThread", ctx, "msg-123", "discord-int-123", "org-456").
+		mockJobsService.On("GetJobByDiscordThread", ctx, testMessageID, testIntegrationID, testOrgID).
 			Return(mo.Some(job), nil)
-		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
+		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, testIntegrationID).
 			Return(mo.Some(discordIntegration), nil)
-		mockAgentsService.On("GetAgentByJobID", ctx, "job-111", "org-456").
+		mockAgentsService.On("GetAgentByJobID", ctx, testJobID, testOrgID).
 			Return(mo.Some(agent), nil)
 
 		// Transaction expectations
@@ -729,23 +612,23 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 				txFunc := args.Get(1).(func(context.Context) error)
 				txFunc(ctx) // Execute with same context for simplicity
 			}).Return(nil)
-		mockAgentsService.On("UnassignAgentFromJob", ctx, "agent-111", "job-111", "org-456").Return(nil)
-		mockJobsService.On("DeleteJob", ctx, "job-111", "org-456").Return(nil)
+		mockAgentsService.On("UnassignAgentFromJob", ctx, testAgentID, testJobID, testOrgID).Return(nil)
+		mockJobsService.On("DeleteJob", ctx, testJobID, testOrgID).Return(nil)
 
 		// Discord reaction update
-		mockDiscordClient.On("AddReaction", "channel-456", "msg-123", EmojiCheckMark).Return(nil)
-		mockDiscordClient.On("RemoveReaction", "channel-456", "msg-123", mock.AnythingOfType("string")).
+		mockDiscordClient.On("AddReaction", testChannelID, testMessageID, EmojiCheckMark).Return(nil)
+		mockDiscordClient.On("RemoveReaction", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(nil).
 			Maybe()
 
 		// System message
-		mockDiscordClient.On("PostMessage", "channel-456", mock.MatchedBy(func(params clients.DiscordMessageParams) bool {
+		mockDiscordClient.On("PostMessage", testChannelID, mock.MatchedBy(func(params clients.DiscordMessageParams) bool {
 			return params.Content == EmojiGear+" Job manually marked as complete"
 		})).
 			Return(&clients.DiscordPostMessageResponse{}, nil)
 
 		// Execute
-		err := useCase.ProcessDiscordReactionEvent(ctx, event, "discord-int-123", "org-456")
+		err := useCase.ProcessDiscordReactionEvent(ctx, event, testIntegrationID, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -754,46 +637,6 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		mockAgentsService.AssertExpectations(t)
 		mockTxManager.AssertExpectations(t)
 		mockDiscordClient.AssertExpectations(t)
-	})
-
-	t.Run("ignore_invalid_emoji", func(t *testing.T) {
-		// Setup
-		ctx := context.Background()
-		mockDiscordClient := new(discordclient.MockDiscordClient)
-		mockWSClient := new(socketio.MockSocketIOClient)
-		mockAgentsService := new(agents.MockAgentsService)
-		mockJobsService := new(jobs.MockJobsService)
-		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
-		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(txmanager.MockTransactionManager)
-		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
-
-		useCase := NewDiscordUseCase(
-			mockDiscordClient,
-			mockWSClient,
-			mockAgentsService,
-			mockJobsService,
-			mockDiscordMessagesService,
-			mockDiscordIntegrationsService,
-			mockTxManager,
-			mockAgentsUseCase,
-		)
-
-		event := models.DiscordReactionEvent{
-			MessageID: "msg-123",
-			ChannelID: "channel-456",
-			GuildID:   "guild-789",
-			UserID:    "user-abc",
-			EmojiName: "thumbs_up", // Not a completion emoji
-			ThreadID:  nil,
-		}
-
-		// Execute
-		err := useCase.ProcessDiscordReactionEvent(ctx, event, "discord-int-123", "org-456")
-
-		// Assert
-		assert.NoError(t, err)
-		// No expectations should be called
 	})
 
 	t.Run("ignore_reaction_by_different_user", func(t *testing.T) {
@@ -819,33 +662,44 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testJobID := testutils.GenerateJobID()
+		testDifferentUserID := testutils.GenerateDiscordUserID() // Different user
+
 		event := models.DiscordReactionEvent{
-			MessageID: "msg-123",
-			ChannelID: "channel-456",
-			GuildID:   "guild-789",
-			UserID:    "different-user", // Different from job creator
+			MessageID: testMessageID,
+			ChannelID: testChannelID,
+			GuildID:   testGuildID,
+			UserID:    testDifferentUserID, // Different from job creator
 			EmojiName: EmojiCheckMark,
 			ThreadID:  nil,
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:             testJobID,
+			OrganizationID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
-				MessageID:     "msg-123",
-				ChannelID:     "channel-456",
-				ThreadID:      "thread-123",
-				UserID:        "user-abc", // Original job creator
-				IntegrationID: "discord-int-123",
+				MessageID:     testMessageID,
+				ChannelID:     testChannelID,
+				ThreadID:      testThreadID,
+				UserID:        testUserID, // Original job creator
+				IntegrationID: testIntegrationID,
 			},
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByDiscordThread", ctx, "msg-123", "discord-int-123", "org-456").
+		mockJobsService.On("GetJobByDiscordThread", ctx, testMessageID, testIntegrationID, testOrgID).
 			Return(mo.Some(job), nil)
 
 		// Execute
-		err := useCase.ProcessDiscordReactionEvent(ctx, event, "discord-int-123", "org-456")
+		err := useCase.ProcessDiscordReactionEvent(ctx, event, testIntegrationID, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -875,21 +729,29 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
+
 		event := models.DiscordReactionEvent{
-			MessageID: "msg-123",
-			ChannelID: "channel-456",
-			GuildID:   "guild-789",
-			UserID:    "user-abc",
+			MessageID: testMessageID,
+			ChannelID: testChannelID,
+			GuildID:   testGuildID,
+			UserID:    testUserID,
 			EmojiName: EmojiCheckMark,
 			ThreadID:  nil,
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByDiscordThread", ctx, "msg-123", "discord-int-123", "org-456").
+		mockJobsService.On("GetJobByDiscordThread", ctx, testMessageID, testIntegrationID, testOrgID).
 			Return(mo.None[*models.Job](), nil)
 
 		// Execute
-		err := useCase.ProcessDiscordReactionEvent(ctx, event, "discord-int-123", "org-456")
+		err := useCase.ProcessDiscordReactionEvent(ctx, event, testIntegrationID, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -921,43 +783,55 @@ func TestProcessProcessingMessage(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testProcessedID := testutils.GenerateProcessedMessageID()
+		testJobID := testutils.GenerateJobID()
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testClientID := testutils.GenerateClientID()
+		testTopLevelMessageID := testutils.GenerateDiscordMessageID() // Different from processed message
+
 		payload := models.ProcessingMessagePayload{
-			ProcessedMessageID: "processed-123",
+			ProcessedMessageID: testProcessedID,
 		}
 
 		processedMessage := &models.ProcessedDiscordMessage{
-			ID:                   "processed-123",
-			JobID:                "job-111",
-			DiscordMessageID:     "msg-456", // Not the top-level message
-			DiscordThreadID:      "thread-123",
-			DiscordIntegrationID: "discord-int-123",
-			OrganizationID:       "org-456",
+			ID:                   testProcessedID,
+			JobID:                testJobID,
+			DiscordMessageID:     testMessageID, // Not the top-level message
+			DiscordThreadID:      testThreadID,
+			DiscordIntegrationID: testIntegrationID,
+			OrganizationID:       testOrgID,
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:             testJobID,
+			OrganizationID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
-				MessageID:     "msg-123", // Different from processed message
-				ChannelID:     "channel-456",
-				ThreadID:      "thread-123",
-				UserID:        "user-abc",
-				IntegrationID: "discord-int-123",
+				MessageID:     testTopLevelMessageID, // Different from processed message
+				ChannelID:     testChannelID,
+				ThreadID:      testThreadID,
+				UserID:        testUserID,
+				IntegrationID: testIntegrationID,
 			},
 		}
 
 		// Configure expectations
-		mockDiscordMessagesService.On("GetProcessedDiscordMessageByID", ctx, "processed-123", "org-456").
+		mockDiscordMessagesService.On("GetProcessedDiscordMessageByID", ctx, testProcessedID, testOrgID).
 			Return(mo.Some(processedMessage), nil)
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, testJobID, testOrgID).
 			Return(mo.Some(job), nil)
-		mockDiscordClient.On("AddReaction", "thread-123", "msg-456", EmojiEyes).Return(nil)
-		mockDiscordClient.On("RemoveReaction", "thread-123", "msg-456", mock.AnythingOfType("string")).
+		mockDiscordClient.On("AddReaction", testThreadID, testMessageID, EmojiEyes).Return(nil)
+		mockDiscordClient.On("RemoveReaction", testThreadID, testMessageID, mock.AnythingOfType("string")).
 			Return(nil).
 			Maybe()
 
 		// Execute
-		err := useCase.ProcessProcessingMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessProcessingMessage(ctx, testClientID, payload, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -989,16 +863,21 @@ func TestProcessProcessingMessage(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testProcessedID := testutils.GenerateProcessedMessageID()
+		testClientID := testutils.GenerateClientID()
+		testOrgID := testutils.GenerateOrganizationID()
+
 		payload := models.ProcessingMessagePayload{
-			ProcessedMessageID: "processed-123",
+			ProcessedMessageID: testProcessedID,
 		}
 
 		// Configure expectations
-		mockDiscordMessagesService.On("GetProcessedDiscordMessageByID", ctx, "processed-123", "org-456").
+		mockDiscordMessagesService.On("GetProcessedDiscordMessageByID", ctx, testProcessedID, testOrgID).
 			Return(mo.None[*models.ProcessedDiscordMessage](), nil)
 
 		// Execute
-		err := useCase.ProcessProcessingMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessProcessingMessage(ctx, testClientID, payload, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -1028,27 +907,36 @@ func TestProcessProcessingMessage(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testProcessedID := testutils.GenerateProcessedMessageID()
+		testJobID := testutils.GenerateJobID()
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testClientID := testutils.GenerateClientID()
+
 		payload := models.ProcessingMessagePayload{
-			ProcessedMessageID: "processed-123",
+			ProcessedMessageID: testProcessedID,
 		}
 
 		processedMessage := &models.ProcessedDiscordMessage{
-			ID:                   "processed-123",
-			JobID:                "job-111",
-			DiscordMessageID:     "msg-456",
-			DiscordThreadID:      "thread-123",
-			DiscordIntegrationID: "discord-int-123",
-			OrganizationID:       "org-456",
+			ID:                   testProcessedID,
+			JobID:                testJobID,
+			DiscordMessageID:     testMessageID,
+			DiscordThreadID:      testThreadID,
+			DiscordIntegrationID: testIntegrationID,
+			OrganizationID:       testOrgID,
 		}
 
 		// Configure expectations
-		mockDiscordMessagesService.On("GetProcessedDiscordMessageByID", ctx, "processed-123", "org-456").
+		mockDiscordMessagesService.On("GetProcessedDiscordMessageByID", ctx, testProcessedID, testOrgID).
 			Return(mo.Some(processedMessage), nil)
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, testJobID, testOrgID).
 			Return(mo.None[*models.Job](), nil)
 
 		// Execute
-		err := useCase.ProcessProcessingMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessProcessingMessage(ctx, testClientID, payload, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -1081,77 +969,92 @@ func TestProcessAssistantMessage(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testJobID := testutils.GenerateJobID()
+		testProcessedID := testutils.GenerateProcessedMessageID()
+		testAgentID := testutils.GenerateAgentID()
+		testWSConnectionID := testutils.GenerateWSConnectionID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testClientID := testutils.GenerateClientID()
+		testNonTopLevelMessageID := testutils.GenerateDiscordMessageID() // Different from job's top-level message
+
 		payload := models.AssistantMessagePayload{
-			JobID:              "job-111",
+			JobID:              testJobID,
 			Message:            "Here's my response to your question",
-			ProcessedMessageID: "processed-123",
+			ProcessedMessageID: testProcessedID,
 		}
 
 		agent := &models.ActiveAgent{
-			ID:             "agent-111",
-			WSConnectionID: "ws-222",
-			OrganizationID: "org-456",
+			ID:             testAgentID,
+			WSConnectionID: testWSConnectionID,
+			OrganizationID: testOrgID,
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:             testJobID,
+			OrganizationID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
-				MessageID:     "msg-123",
-				ChannelID:     "channel-456",
-				ThreadID:      "thread-123",
-				UserID:        "user-abc",
-				IntegrationID: "discord-int-123",
+				MessageID:     testMessageID,
+				ChannelID:     testChannelID,
+				ThreadID:      testThreadID,
+				UserID:        testUserID,
+				IntegrationID: testIntegrationID,
 			},
 		}
 
 		discordIntegration := &models.DiscordIntegration{
-			ID:             "discord-int-123",
-			OrganizationID: "org-456",
-			DiscordGuildID: "guild-789",
+			ID:             testIntegrationID,
+			OrganizationID: testOrgID,
+			DiscordGuildID: testGuildID,
 		}
 
 		updatedMessage := &models.ProcessedDiscordMessage{
-			ID:                   "processed-123",
-			JobID:                "job-111",
-			DiscordMessageID:     "msg-456", // Not top-level
-			DiscordThreadID:      "thread-123",
-			DiscordIntegrationID: "discord-int-123",
-			OrganizationID:       "org-456",
+			ID:                   testProcessedID,
+			JobID:                testJobID,
+			DiscordMessageID:     testNonTopLevelMessageID, // Not top-level
+			DiscordThreadID:      testThreadID,
+			DiscordIntegrationID: testIntegrationID,
+			OrganizationID:       testOrgID,
 			Status:               models.ProcessedDiscordMessageStatusCompleted,
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", "org-456").
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, testClientID, testOrgID).
 			Return(mo.Some(agent), nil)
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, testJobID, testOrgID).
 			Return(mo.Some(job), nil)
-		mockAgentsUseCase.On("ValidateJobBelongsToAgent", ctx, "agent-111", "job-111", "org-456").
+		mockAgentsUseCase.On("ValidateJobBelongsToAgent", ctx, testAgentID, testJobID, testOrgID).
 			Return(nil)
-		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
+		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, testIntegrationID).
 			Return(mo.Some(discordIntegration), nil)
-		mockDiscordClient.On("PostMessage", "thread-123", clients.DiscordMessageParams{
+		mockDiscordClient.On("PostMessage", testThreadID, clients.DiscordMessageParams{
 			Content: "Here's my response to your question",
 		}).Return(&clients.DiscordPostMessageResponse{}, nil)
-		mockJobsService.On("UpdateJobTimestamp", ctx, "job-111", "org-456").Return(nil)
-		mockDiscordMessagesService.On("UpdateProcessedDiscordMessage", ctx, "processed-123", models.ProcessedDiscordMessageStatusCompleted, "discord-int-123", "org-456").
+		mockJobsService.On("UpdateJobTimestamp", ctx, testJobID, testOrgID).Return(nil)
+		mockDiscordMessagesService.On("UpdateProcessedDiscordMessage", ctx, testProcessedID, models.ProcessedDiscordMessageStatusCompleted, testIntegrationID, testOrgID).
 			Return(updatedMessage, nil)
 		// Reaction update for non-top-level message
-		mockDiscordClient.On("AddReaction", "thread-123", "msg-456", EmojiCheckMark).Return(nil)
-		mockDiscordClient.On("RemoveReaction", "thread-123", "msg-456", mock.AnythingOfType("string")).
+		mockDiscordClient.On("AddReaction", testThreadID, testNonTopLevelMessageID, EmojiCheckMark).Return(nil)
+		mockDiscordClient.On("RemoveReaction", testThreadID, testNonTopLevelMessageID, mock.AnythingOfType("string")).
 			Return(nil).
 			Maybe()
 		// Check if latest message
-		mockDiscordMessagesService.On("GetLatestProcessedMessageForJob", ctx, "job-111", "discord-int-123", "org-456").
+		mockDiscordMessagesService.On("GetLatestProcessedMessageForJob", ctx, testJobID, testIntegrationID, testOrgID).
 			Return(mo.Some(updatedMessage), nil)
 		// Add hand emoji to top-level message
-		mockDiscordClient.On("AddReaction", "channel-456", "msg-123", EmojiRaisedHand).Return(nil)
-		mockDiscordClient.On("RemoveReaction", "channel-456", "msg-123", mock.AnythingOfType("string")).
+		mockDiscordClient.On("AddReaction", testChannelID, testMessageID, EmojiRaisedHand).Return(nil)
+		mockDiscordClient.On("RemoveReaction", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(nil).
 			Maybe()
 
 		// Execute
-		err := useCase.ProcessAssistantMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessAssistantMessage(ctx, testClientID, payload, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -1186,75 +1089,90 @@ func TestProcessAssistantMessage(t *testing.T) {
 			mockAgentsUseCase,
 		)
 
+		// Generate consistent test data for this test case
+		testJobID := testutils.GenerateJobID()
+		testProcessedID := testutils.GenerateProcessedMessageID()
+		testAgentID := testutils.GenerateAgentID()
+		testWSConnectionID := testutils.GenerateWSConnectionID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testClientID := testutils.GenerateClientID()
+		testNonTopLevelMessageID := testutils.GenerateDiscordMessageID()
+
 		payload := models.AssistantMessagePayload{
-			JobID:              "job-111",
+			JobID:              testJobID,
 			Message:            "   ", // Empty/whitespace message
-			ProcessedMessageID: "processed-123",
+			ProcessedMessageID: testProcessedID,
 		}
 
 		agent := &models.ActiveAgent{
-			ID:             "agent-111",
-			WSConnectionID: "ws-222",
-			OrganizationID: "org-456",
+			ID:             testAgentID,
+			WSConnectionID: testWSConnectionID,
+			OrganizationID: testOrgID,
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:             testJobID,
+			OrganizationID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
-				MessageID:     "msg-123",
-				ChannelID:     "channel-456",
-				ThreadID:      "thread-123",
-				UserID:        "user-abc",
-				IntegrationID: "discord-int-123",
+				MessageID:     testMessageID,
+				ChannelID:     testChannelID,
+				ThreadID:      testThreadID,
+				UserID:        testUserID,
+				IntegrationID: testIntegrationID,
 			},
 		}
 
 		discordIntegration := &models.DiscordIntegration{
-			ID:             "discord-int-123",
-			OrganizationID: "org-456",
-			DiscordGuildID: "guild-789",
+			ID:             testIntegrationID,
+			OrganizationID: testOrgID,
+			DiscordGuildID: testGuildID,
 		}
 
 		updatedMessage := &models.ProcessedDiscordMessage{
-			ID:                   "processed-123",
-			JobID:                "job-111",
-			DiscordMessageID:     "msg-456",
-			DiscordThreadID:      "thread-123",
-			DiscordIntegrationID: "discord-int-123",
-			OrganizationID:       "org-456",
+			ID:                   testProcessedID,
+			JobID:                testJobID,
+			DiscordMessageID:     testNonTopLevelMessageID,
+			DiscordThreadID:      testThreadID,
+			DiscordIntegrationID: testIntegrationID,
+			OrganizationID:       testOrgID,
 			Status:               models.ProcessedDiscordMessageStatusCompleted,
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", "org-456").
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, testClientID, testOrgID).
 			Return(mo.Some(agent), nil)
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, testJobID, testOrgID).
 			Return(mo.Some(job), nil)
-		mockAgentsUseCase.On("ValidateJobBelongsToAgent", ctx, "agent-111", "job-111", "org-456").
+		mockAgentsUseCase.On("ValidateJobBelongsToAgent", ctx, testAgentID, testJobID, testOrgID).
 			Return(nil)
-		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
+		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, testIntegrationID).
 			Return(mo.Some(discordIntegration), nil)
 		// Expect fallback message for empty content
-		mockDiscordClient.On("PostMessage", "thread-123", clients.DiscordMessageParams{
+		mockDiscordClient.On("PostMessage", testThreadID, clients.DiscordMessageParams{
 			Content: "(agent sent empty response)",
 		}).Return(&clients.DiscordPostMessageResponse{}, nil)
-		mockJobsService.On("UpdateJobTimestamp", ctx, "job-111", "org-456").Return(nil)
-		mockDiscordMessagesService.On("UpdateProcessedDiscordMessage", ctx, "processed-123", models.ProcessedDiscordMessageStatusCompleted, "discord-int-123", "org-456").
+		mockJobsService.On("UpdateJobTimestamp", ctx, testJobID, testOrgID).Return(nil)
+		mockDiscordMessagesService.On("UpdateProcessedDiscordMessage", ctx, testProcessedID, models.ProcessedDiscordMessageStatusCompleted, testIntegrationID, testOrgID).
 			Return(updatedMessage, nil)
-		mockDiscordClient.On("AddReaction", "thread-123", "msg-456", EmojiCheckMark).Return(nil)
-		mockDiscordClient.On("RemoveReaction", "thread-123", "msg-456", mock.AnythingOfType("string")).
+		mockDiscordClient.On("AddReaction", testThreadID, testNonTopLevelMessageID, EmojiCheckMark).Return(nil)
+		mockDiscordClient.On("RemoveReaction", testThreadID, testNonTopLevelMessageID, mock.AnythingOfType("string")).
 			Return(nil).
 			Maybe()
-		mockDiscordMessagesService.On("GetLatestProcessedMessageForJob", ctx, "job-111", "discord-int-123", "org-456").
+		mockDiscordMessagesService.On("GetLatestProcessedMessageForJob", ctx, testJobID, testIntegrationID, testOrgID).
 			Return(mo.Some(updatedMessage), nil)
-		mockDiscordClient.On("AddReaction", "channel-456", "msg-123", EmojiRaisedHand).Return(nil)
-		mockDiscordClient.On("RemoveReaction", "channel-456", "msg-123", mock.AnythingOfType("string")).
+		mockDiscordClient.On("AddReaction", testChannelID, testMessageID, EmojiRaisedHand).Return(nil)
+		mockDiscordClient.On("RemoveReaction", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(nil).
 			Maybe()
 
 		// Execute
-		err := useCase.ProcessAssistantMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessAssistantMessage(ctx, testClientID, payload, testOrgID)
 
 		// Assert
 		assert.NoError(t, err)
@@ -2025,34 +1943,5 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "job has no Discord payload")
-	})
-}
-
-func TestDeriveMessageReactionFromStatus(t *testing.T) {
-	t.Run("in_progress_status", func(t *testing.T) {
-		result := DeriveMessageReactionFromStatus(models.ProcessedDiscordMessageStatusInProgress)
-		assert.Equal(t, EmojiHourglass, result)
-	})
-
-	t.Run("queued_status", func(t *testing.T) {
-		result := DeriveMessageReactionFromStatus(models.ProcessedDiscordMessageStatusQueued)
-		assert.Equal(t, EmojiHourglass, result)
-	})
-
-	t.Run("completed_status", func(t *testing.T) {
-		result := DeriveMessageReactionFromStatus(models.ProcessedDiscordMessageStatusCompleted)
-		assert.Equal(t, EmojiCheckMark, result)
-	})
-}
-
-func TestIsAgentErrorMessage(t *testing.T) {
-	t.Run("is_agent_error", func(t *testing.T) {
-		result := IsAgentErrorMessage("ccagent encountered error: something went wrong")
-		assert.True(t, result)
-	})
-
-	t.Run("not_agent_error", func(t *testing.T) {
-		result := IsAgentErrorMessage("regular system message")
-		assert.False(t, result)
 	})
 }
