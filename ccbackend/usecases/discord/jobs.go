@@ -65,7 +65,6 @@ func (d *DiscordUseCase) CleanupFailedDiscordJob(
 			ctx,
 			job.DiscordPayload.DiscordIntegrationID,
 			job.DiscordPayload.ChannelID,
-			job.DiscordPayload.ThreadID,
 			abandonmentMessage,
 		); err != nil {
 			log.Printf("❌ Failed to send abandonment message to Discord thread %s: %v", job.DiscordPayload.ThreadID, err)

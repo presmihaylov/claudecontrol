@@ -51,3 +51,37 @@ func (c *DiscordClient) GetGuildByID(guildID string) (*clients.DiscordGuild, err
 		Name: discordGuild.Name,
 	}, nil
 }
+
+// SendMessage sends a message to a Discord channel
+func (c *DiscordClient) SendMessage(channelID, content string) (*clients.DiscordMessage, error) {
+	// Send the message using the discordgo client
+	message, err := c.sdkClient.ChannelMessageSend(channelID, content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send Discord message: %w", err)
+	}
+
+	// Convert discordgo message to our client interface format
+	return &clients.DiscordMessage{
+		ID:        message.ID,
+		ChannelID: message.ChannelID,
+		Content:   message.Content,
+	}, nil
+}
+
+// AddReaction adds a reaction to a Discord message
+func (c *DiscordClient) AddReaction(channelID, messageID, emoji string) error {
+	err := c.sdkClient.MessageReactionAdd(channelID, messageID, emoji)
+	if err != nil {
+		return fmt.Errorf("failed to add Discord reaction: %w", err)
+	}
+	return nil
+}
+
+// RemoveReaction removes a reaction from a Discord message
+func (c *DiscordClient) RemoveReaction(channelID, messageID, emoji string) error {
+	err := c.sdkClient.MessageReactionRemove(channelID, messageID, emoji, "@me")
+	if err != nil {
+		return fmt.Errorf("failed to remove Discord reaction: %w", err)
+	}
+	return nil
+}

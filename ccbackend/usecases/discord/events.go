@@ -36,7 +36,7 @@ func (d *DiscordUseCase) ProcessDiscordMessageEvent(
 			// Job not found for thread reply - send error message
 			log.Printf("❌ No existing job found for thread reply in %s", event.ChannelID)
 			errorMessage := "Error: new jobs can only be started from top-level messages"
-			return d.sendSystemMessage(ctx, discordIntegrationID, event.ChannelID, event.MessageID, errorMessage)
+			return d.sendSystemMessage(ctx, discordIntegrationID, event.ChannelID, errorMessage)
 		}
 	} else {
 		log.Printf("🆕 Bot mentioned at start of new thread in channel %s", event.ChannelID)
@@ -248,7 +248,7 @@ func (d *DiscordUseCase) ProcessReactionAdded(
 	}
 
 	// Send completion message to Discord thread
-	if err := d.sendSystemMessage(ctx, job.DiscordPayload.DiscordIntegrationID, job.DiscordPayload.ChannelID, job.DiscordPayload.ThreadID, "Job manually marked as complete"); err != nil {
+	if err := d.sendSystemMessage(ctx, job.DiscordPayload.DiscordIntegrationID, job.DiscordPayload.ChannelID, "Job manually marked as complete"); err != nil {
 		log.Printf("❌ Failed to send completion message to Discord thread %s: %v", job.DiscordPayload.ThreadID, err)
 		return fmt.Errorf("failed to send completion message to Discord: %w", err)
 	}

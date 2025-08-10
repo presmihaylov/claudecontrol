@@ -21,6 +21,13 @@ type DiscordGuild struct {
 	Name string
 }
 
+// DiscordMessage represents Discord message information
+type DiscordMessage struct {
+	ID        string
+	ChannelID string
+	Content   string
+}
+
 // SlackOAuthClient defines the interface for Slack OAuth operations
 type SlackOAuthClient interface {
 	GetOAuthV2Response(
@@ -32,6 +39,13 @@ type SlackOAuthClient interface {
 // DiscordClient defines the interface for Discord operations
 type DiscordClient interface {
 	GetGuildByID(guildID string) (*DiscordGuild, error)
+	
+	// Message operations
+	SendMessage(channelID, content string) (*DiscordMessage, error)
+	
+	// Reaction operations
+	AddReaction(channelID, messageID, emoji string) error
+	RemoveReaction(channelID, messageID, emoji string) error
 }
 
 // SlackClient defines the interface for Slack API operations

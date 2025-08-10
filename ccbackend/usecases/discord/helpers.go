@@ -139,37 +139,59 @@ func (d *DiscordUseCase) updateDiscordMessageReaction(
 	ctx context.Context,
 	channelID, messageID, newEmoji, discordIntegrationID string,
 ) error {
-	// TODO: Implement Discord reaction management
-	// For now, just log the action
-	log.Printf("👍 Would update Discord message reaction to %s for message %s in channel %s", newEmoji, messageID, channelID)
+	// Get integration-specific Discord client
+	discordClient, err := d.getDiscordClientForIntegration(ctx, discordIntegrationID)
+	if err != nil {
+		return fmt.Errorf("failed to get Discord client for integration: %w", err)
+	}
+
+	// Add the new emoji reaction
+	if newEmoji != "" {
+		if err := discordClient.AddReaction(channelID, messageID, newEmoji); err != nil {
+			return fmt.Errorf("failed to add %s reaction: %w", newEmoji, err)
+		}
+		log.Printf("👍 Added Discord reaction %s to message %s in channel %s", newEmoji, messageID, channelID)
+	}
+
 	return nil
 }
 
 func (d *DiscordUseCase) sendDiscordMessage(
 	ctx context.Context,
-	discordIntegrationID, channelID, messageID, message string,
+	discordIntegrationID, channelID, message string,
 ) error {
-	log.Printf("📋 Starting to send message to channel %s, message %s: %s", channelID, messageID, message)
+	log.Printf("📋 Starting to send message to channel %s: %s", channelID, message)
 
-	// TODO: Implement Discord message sending
-	// For now, just log the action
-	log.Printf("📤 Would send Discord message: %s", utils.ConvertMarkdownToSlack(message))
+	// Get integration-specific Discord client
+	discordClient, err := d.getDiscordClientForIntegration(ctx, discordIntegrationID)
+	if err != nil {
+		return fmt.Errorf("failed to get Discord client for integration: %w", err)
+	}
 
-	log.Printf("📋 Completed successfully - sent message to channel %s, message %s", channelID, messageID)
+	// Send message to Discord
+	// Note: Discord uses Markdown syntax similar to Slack, so we can convert
+	discordMessage := utils.ConvertMarkdownToSlack(message)
+	
+	_, err = discordClient.SendMessage(channelID, discordMessage)
+	if err != nil {
+		return fmt.Errorf("failed to send message to Discord: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - sent message to channel %s", channelID)
 	return nil
 }
 
 func (d *DiscordUseCase) sendSystemMessage(
 	ctx context.Context,
-	discordIntegrationID, channelID, messageID, message string,
+	discordIntegrationID, channelID, message string,
 ) error {
-	log.Printf("📋 Starting to send system message to channel %s, message %s: %s", channelID, messageID, message)
+	log.Printf("📋 Starting to send system message to channel %s: %s", channelID, message)
 
 	// Prepend gear emoji to message
 	systemMessage := "⚙️ " + message
 
 	// Use the base sendDiscordMessage function
-	return d.sendDiscordMessage(ctx, discordIntegrationID, channelID, messageID, systemMessage)
+	return d.sendDiscordMessage(ctx, discordIntegrationID, channelID, systemMessage)
 }
 
 func DeriveMessageReactionFromStatus(status models.ProcessedDiscordMessageStatus) string {

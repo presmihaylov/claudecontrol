@@ -63,7 +63,6 @@ func (d *DiscordUseCase) ProcessAssistantMessage(
 		ctx,
 		discordIntegrationID,
 		job.DiscordPayload.ChannelID,
-		job.DiscordPayload.ThreadID,
 		payload.Message,
 	); err != nil {
 		return fmt.Errorf("failed to send assistant message to Discord: %w", err)
@@ -127,7 +126,6 @@ func (d *DiscordUseCase) ProcessSystemMessage(
 		ctx,
 		discordIntegrationID,
 		job.DiscordPayload.ChannelID,
-		job.DiscordPayload.ThreadID,
 		payload.Message,
 	); err != nil {
 		return fmt.Errorf("failed to send system message to Discord: %w", err)
