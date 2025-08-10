@@ -13,6 +13,7 @@ import (
 	"ccbackend/db"
 	"ccbackend/models"
 	agents "ccbackend/services/agents"
+	discordmessages "ccbackend/services/discordmessages"
 	slackmessages "ccbackend/services/slackmessages"
 	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
@@ -40,6 +41,7 @@ func setupTestJobsService(
 	// Create repositories
 	jobsRepo := db.NewPostgresJobsRepository(dbConn, cfg.DatabaseSchema)
 	processedSlackMessagesRepo := db.NewPostgresProcessedSlackMessagesRepository(dbConn, cfg.DatabaseSchema)
+	processedDiscordMessagesRepo := db.NewPostgresProcessedDiscordMessagesRepository(dbConn, cfg.DatabaseSchema)
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
@@ -63,7 +65,8 @@ func setupTestJobsService(
 	// Initialize real transaction manager and services for tests
 	txManager := txmanager.NewTransactionManager(dbConn)
 	slackMessagesService := slackmessages.NewSlackMessagesService(processedSlackMessagesRepo)
-	service := NewJobsService(jobsRepo, slackMessagesService, txManager)
+	discordMessagesService := discordmessages.NewDiscordMessagesService(processedDiscordMessagesRepo)
+	service := NewJobsService(jobsRepo, slackMessagesService, discordMessagesService, txManager)
 
 	cleanup := func() {
 		// Clean up test data
@@ -431,7 +434,9 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	// Create both services using the same integration
 	txManager := txmanager.NewTransactionManager(dbConn)
 	slackMessagesService := slackmessages.NewSlackMessagesService(processedSlackMessagesRepo)
-	jobsService := NewJobsService(jobsRepo, slackMessagesService, txManager)
+	processedDiscordMessagesRepo := db.NewPostgresProcessedDiscordMessagesRepository(dbConn, cfg.DatabaseSchema)
+	discordMessagesService := discordmessages.NewDiscordMessagesService(processedDiscordMessagesRepo)
+	jobsService := NewJobsService(jobsRepo, slackMessagesService, discordMessagesService, txManager)
 	agentsService := agents.NewAgentsService(agentsRepo)
 
 	// Use the shared integration ID

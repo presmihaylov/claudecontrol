@@ -35,6 +35,12 @@ type DBJob struct {
 	SlackChannelID     *string `db:"slack_channel_id"`
 	SlackUserID        *string `db:"slack_user_id"`
 	SlackIntegrationID *string `db:"slack_integration_id"`
+
+	// Discord fields (nullable)
+	DiscordMessageID     *string `db:"discord_message_id"`
+	DiscordThreadID      *string `db:"discord_thread_id"`
+	DiscordUserID        *string `db:"discord_user_id"`
+	DiscordIntegrationID *string `db:"discord_integration_id"`
 }
 
 // Column names for jobs table
@@ -45,6 +51,10 @@ var jobsColumns = []string{
 	"slack_channel_id",
 	"slack_user_id",
 	"slack_integration_id",
+	"discord_message_id",
+	"discord_thread_id",
+	"discord_user_id",
+	"discord_integration_id",
 	"organization_id",
 	"created_at",
 	"updated_at",
@@ -78,6 +88,19 @@ func dbJobToModel(dbJob *DBJob) *models.Job {
 		}
 	}
 
+	if job.JobType == models.JobTypeDiscord &&
+		dbJob.DiscordMessageID != nil &&
+		dbJob.DiscordThreadID != nil &&
+		dbJob.DiscordUserID != nil &&
+		dbJob.DiscordIntegrationID != nil {
+		job.DiscordPayload = &models.DiscordJobPayload{
+			MessageID:     *dbJob.DiscordMessageID,
+			ThreadID:      *dbJob.DiscordThreadID,
+			UserID:        *dbJob.DiscordUserID,
+			IntegrationID: *dbJob.DiscordIntegrationID,
+		}
+	}
+
 	return job
 }
 
@@ -86,6 +109,9 @@ func modelToDBJob(job *models.Job) (*DBJob, error) {
 	// Validate that job type matches payload presence
 	if job.JobType == models.JobTypeSlack && job.SlackPayload == nil {
 		return nil, fmt.Errorf("slack job type requires SlackPayload to be populated")
+	}
+	if job.JobType == models.JobTypeDiscord && job.DiscordPayload == nil {
+		return nil, fmt.Errorf("discord job type requires DiscordPayload to be populated")
 	}
 
 	dbJob := &DBJob{
@@ -102,6 +128,14 @@ func modelToDBJob(job *models.Job) (*DBJob, error) {
 		dbJob.SlackChannelID = &job.SlackPayload.ChannelID
 		dbJob.SlackUserID = &job.SlackPayload.UserID
 		dbJob.SlackIntegrationID = &job.SlackPayload.IntegrationID
+	}
+
+	// Set Discord fields if payload exists
+	if job.DiscordPayload != nil {
+		dbJob.DiscordMessageID = &job.DiscordPayload.MessageID
+		dbJob.DiscordThreadID = &job.DiscordPayload.ThreadID
+		dbJob.DiscordUserID = &job.DiscordPayload.UserID
+		dbJob.DiscordIntegrationID = &job.DiscordPayload.IntegrationID
 	}
 
 	return dbJob, nil
@@ -121,6 +155,10 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 		"slack_channel_id",
 		"slack_user_id",
 		"slack_integration_id",
+		"discord_message_id",
+		"discord_thread_id",
+		"discord_user_id",
+		"discord_integration_id",
 		"organization_id",
 		"created_at",
 		"updated_at",
@@ -130,13 +168,15 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.jobs (%s) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
 	var returnedDBJob DBJob
 	err = db.QueryRowxContext(ctx, query,
 		dbJob.ID, dbJob.JobType, dbJob.SlackThreadTS, dbJob.SlackChannelID,
-		dbJob.SlackUserID, dbJob.SlackIntegrationID, dbJob.OrganizationID).
+		dbJob.SlackUserID, dbJob.SlackIntegrationID, dbJob.DiscordMessageID,
+		dbJob.DiscordThreadID, dbJob.DiscordUserID, dbJob.DiscordIntegrationID,
+		dbJob.OrganizationID).
 		StructScan(&returnedDBJob)
 	if err != nil {
 		return fmt.Errorf("failed to create job: %w", err)
@@ -189,6 +229,29 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(
 			return mo.None[*models.Job](), nil
 		}
 		return mo.None[*models.Job](), fmt.Errorf("failed to get job by slack thread: %w", err)
+	}
+
+	return mo.Some(dbJobToModel(&dbJob)), nil
+}
+
+func (r *PostgresJobsRepository) GetJobByDiscordThread(
+	ctx context.Context,
+	threadID, discordIntegrationID, organizationID string,
+) (mo.Option[*models.Job], error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+	columnsStr := strings.Join(jobsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.jobs 
+		WHERE discord_thread_id = $1 AND discord_integration_id = $2 AND organization_id = $3`, columnsStr, r.schema)
+
+	var dbJob DBJob
+	err := db.GetContext(ctx, &dbJob, query, threadID, discordIntegrationID, organizationID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return mo.None[*models.Job](), nil
+		}
+		return mo.None[*models.Job](), fmt.Errorf("failed to get job by discord thread: %w", err)
 	}
 
 	return mo.Some(dbJobToModel(&dbJob)), nil
@@ -269,11 +332,19 @@ func (r *PostgresJobsRepository) DeleteJob(
 	organizationID string,
 ) (bool, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
+
+	// For backward compatibility with Slack jobs, use the Slack integration ID filter
+	// For Discord jobs, this method will be called with the Discord integration ID in place of slackIntegrationID
+	// The WHERE clause checks both Slack and Discord integration IDs to support both job types
 	query := fmt.Sprintf(`
 		DELETE FROM %s.jobs 
-		WHERE id = $1 AND slack_integration_id = $2 AND organization_id = $3`, r.schema)
+		WHERE id = $1 AND organization_id = $2 
+		AND (
+			(job_type = 'slack' AND slack_integration_id = $3) OR
+			(job_type = 'discord' AND discord_integration_id = $3)
+		)`, r.schema)
 
-	result, err := db.ExecContext(ctx, query, id, slackIntegrationID, organizationID)
+	result, err := db.ExecContext(ctx, query, id, organizationID, slackIntegrationID)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete job: %w", err)
 	}

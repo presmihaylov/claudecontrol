@@ -108,3 +108,35 @@ func (m *MockJobsService) GetJobsWithQueuedMessages(
 	}
 	return args.Get(0).([]*models.Job), args.Error(1)
 }
+
+// Discord-specific methods
+
+func (m *MockJobsService) CreateDiscordJob(
+	ctx context.Context,
+	discordMessageID, discordThreadID, discordUserID, discordIntegrationID, organizationID string,
+) (*models.Job, error) {
+	args := m.Called(ctx, discordMessageID, discordThreadID, discordUserID, discordIntegrationID, organizationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Job), args.Error(1)
+}
+
+func (m *MockJobsService) GetJobByDiscordThread(
+	ctx context.Context,
+	threadID, discordIntegrationID, organizationID string,
+) (mo.Option[*models.Job], error) {
+	args := m.Called(ctx, threadID, discordIntegrationID, organizationID)
+	return args.Get(0).(mo.Option[*models.Job]), args.Error(1)
+}
+
+func (m *MockJobsService) GetOrCreateJobForDiscordThread(
+	ctx context.Context,
+	discordMessageID, discordThreadID, discordUserID, discordIntegrationID, organizationID string,
+) (*models.JobCreationResult, error) {
+	args := m.Called(ctx, discordMessageID, discordThreadID, discordUserID, discordIntegrationID, organizationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.JobCreationResult), args.Error(1)
+}
