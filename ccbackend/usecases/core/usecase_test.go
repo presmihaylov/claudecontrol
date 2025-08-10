@@ -771,4 +771,3 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 		mockAgentsService.AssertExpectations(t)
 	})
 }
-
