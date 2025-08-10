@@ -220,59 +220,28 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 - **Test Schema**: `claudecontrol_test` for isolated testing
 - **Cleanup Pattern**: Delete created records in `defer` blocks
 
+### Testing Guidelines
+- **Focus on Happy Paths**: Test successful operations and expected business logic
+- **Avoid Database Failure Testing**: Do not test database connection failures, transaction rollbacks, or infrastructure failures as these make tests verbose and brittle
+- **Test Business Logic**: Focus on service layer validation, data transformations, and business rules
+- **Real Database Only**: Use actual PostgreSQL test schema rather than mocking database operations
+
 ## Development Workflow
 
-### CRITICAL WORKFLOW RESTRICTIONS
+### Testing Approach
+- **TestFixer Subagent Available**: Specialized subagent available for automated test execution and fixing
+- **Test Commands**: Standard test commands (`make test`, `go test`, `bun test`) are available for each module
+- **Test Environment**: Isolated test database schema for safe testing
 
-**STRICT REQUIREMENT - NEVER RUN TESTS DIRECTLY:**
+### Build Verification
+- **Backend Build**: `cd ccbackend && make build`
+- **Agent Build**: `cd ccagent && make build`  
+- **Frontend Build**: `cd ccfrontend && bun run build`
 
-#### Testing - MUST USE TestFixer Subagent ONLY
-- **NEVER run tests directly** - Do not run `make test`, `go test`, `bun test`, or any testing commands yourself
-- **ALWAYS use the TestFixer subagent for testing** - This is the ONLY acceptable way to run or fix tests
-- **TestFixer can be used proactively** - You may invoke the TestFixer subagent after code changes to ensure tests pass
-- **Direct test execution is STRICTLY PROHIBITED** - Never run test commands manually, always delegate to TestFixer
-- **This is a STRICT requirement** - All testing must go through the TestFixer subagent, no exceptions
-
-#### Linting - STRICTLY PROHIBITED Unless Explicitly Requested  
-- **NEVER run linting proactively** - Do not run `make lint`, `make lint-fix`, `bun run lint`, or `bun run lint:fix`
-- **NEVER attempt to fix linting issues autonomously** - Linting is only allowed when explicitly requested
-- **Ignore all linting concerns** unless the user specifically asks to "lint the code" or "fix linting issues"
-- **Do not mention linting issues** in your responses unless directly asked about them
-
-#### Code Quality Checks - STRICTLY PROHIBITED Unless Explicitly Requested
-- **NEVER run formatting commands proactively** - No `go fmt`, `bun run format`, etc.
-- **NEVER run code analysis tools** unless explicitly requested
-- **Focus ONLY on functional code changes** within the main codebase
-
-### After Completing Tasks - MANDATORY BUILD VERIFICATION
-
-**MANDATORY: Verify that the build succeeds:**
-```bash
-cd ccbackend && make build     # REQUIRED: Verify backend builds successfully
-cd ccagent && make build       # REQUIRED: Verify agent builds successfully  
-cd ccfrontend && bun run build # REQUIRED: Verify frontend builds successfully
-```
-
-**CRITICAL INSTRUCTIONS:**
-- **Build verification is MANDATORY** - Always ensure builds succeed
-- **Use TestFixer subagent for testing** - If you need to run tests, use the TestFixer subagent (allowed proactively)
-- **NEVER run test commands directly** - Do not use `make test`, `go test`, etc. - always use TestFixer
-- **DO NOT run lint, lint-fix, or formatting commands** unless explicitly requested
-- **IGNORE any suggestions or warnings** from build output about linting
-- **Testing through TestFixer is optional but allowed** - You may proactively use TestFixer to ensure tests pass
-
-### Summary of Workflow Restrictions
-1. **BUILD ONLY** - Only verify builds succeed, nothing else
-2. **NO DIRECT TESTING** - Never run test commands directly - ALWAYS use TestFixer subagent
-3. **TESTFIXER FOR ALL TESTS** - TestFixer subagent is the ONLY way to run tests (can be used proactively)
-4. **NO LINTING** - Never run linters or fix linting issues proactively
-5. **NO FORMATTING** - Never run formatters proactively
-6. **EXPLICIT REQUESTS ONLY** - Linting/formatting only when explicitly asked by the user
-
-This is a **STRICT REQUIREMENT** and must be followed without exception. Focus solely on:
-- Making the requested code changes
-- Ensuring the build succeeds
-- Nothing more
+### Code Quality Tools
+- **Linting Available**: Each module has lint commands (`make lint`, `bun run lint`)
+- **Formatting Available**: Automated formatting tools for consistent code style
+- **Auto-fix Capabilities**: Lint-fix commands available for automated corrections
 
 ### Database Migrations
 - **Apply Pending Migrations**: `supabase migration up` to apply only new migrations
@@ -579,14 +548,159 @@ Claude Code has access to specialized subagents for specific tasks. These should
 
 ### Code Reviewer Subagent  
 - **Purpose**: Comprehensive code review of all changes on current branch vs main branch
-- **When to Use**: ONLY when explicitly requested by the user or before creating pull requests if requested
 - **Capabilities**: Reviews Go backend, CLI agent, and Next.js frontend code for bugs, performance, security, and adherence to project conventions
-- **Usage**: Only use when user asks for code review - do NOT use proactively
+- **Usage**: Available for detailed code analysis when needed
 
 ### TestFixer Subagent
 - **Purpose**: Automatically fixes broken tests and suggests new test coverage
-- **CRITICAL - ONLY WAY TO RUN TESTS**: This is the ONLY acceptable method for running or fixing tests
-- **When to Use**: After code changes to ensure tests pass, or when user requests test fixes
 - **Capabilities**: Fixes Go tests in ccbackend and ccagent, suggests new test coverage, runs test suites autonomously
-- **MANDATORY**: All test execution MUST go through this subagent - never run test commands directly
-- **Proactive Use Allowed**: Can be invoked proactively after code changes to maintain test integrity
+- **Usage**: Available for automated test management and fixing test issues
+
+## Mock Architecture
+
+### Mock Library and Location
+- **Library**: Uses **Testify Mock** (`github.com/stretchr/testify/mock`) for all mocking
+- **Co-located Mocks**: Each service mock is defined alongside its implementation in `services/{servicename}/{servicename}_mock.go`
+- **Manual Mock Creation**: No code generation - all mocks are manually implemented
+- **Package-Level Mocks**: Mocks belong to the same package as the service they mock
+
+### Mock Naming Convention
+- **Pattern**: `Mock{ServiceName}Service` (e.g., `MockUsersService`, `MockSlackIntegrationsService`)
+- **Interface Implementation**: All mocks implement their corresponding service interfaces from `services/services.go`
+- **Struct Embedding**: Each mock embeds `mock.Mock` from testify
+
+### Mock Implementation Pattern
+
+#### 1. Define Mock Struct
+```go
+// In services/yourservice/yourservice_mock.go
+package yourservice
+
+type MockYourService struct {
+    mock.Mock
+}
+```
+
+#### 2. Implement Interface Methods
+```go
+func (m *MockYourService) CreateEntity(ctx context.Context, param1 string, userID string) (*models.Entity, error) {
+    args := m.Called(ctx, param1, userID)
+    if args.Get(0) == nil {
+        return nil, args.Error(1)
+    }
+    return args.Get(0).(*models.Entity), args.Error(1)
+}
+
+func (m *MockYourService) GetEntityByID(ctx context.Context, id string) (mo.Option[*models.Entity], error) {
+    args := m.Called(ctx, id)
+    if args.Get(0) == nil {
+        return mo.None[*models.Entity](), args.Error(1)
+    }
+    return args.Get(0).(mo.Option[*models.Entity]), args.Error(1)
+}
+```
+
+#### 3. Use Mocks in Tests
+```go
+// In handler test files
+func TestSomeHandler(t *testing.T) {
+    mockUsersService := &MockUsersService{}
+    mockSlackService := &MockSlackIntegrationsService{}
+    
+    // Setup expectations
+    mockUsersService.On("GetOrCreateUser", mock.Anything, "clerk", "user_123").
+        Return(testUser, nil)
+    
+    // Create handler with mocks
+    handler := &DashboardHandler{
+        usersService: mockUsersService,
+        slackIntegrationsService: mockSlackService,
+    }
+    
+    // Run test...
+    
+    // Assert expectations were met
+    mockUsersService.AssertExpectations(t)
+}
+```
+
+### Mock Return Value Patterns
+
+#### Standard Returns
+```go
+// For pointer returns - check for nil
+if args.Get(0) == nil {
+    return nil, args.Error(1)
+}
+return args.Get(0).(*models.Entity), args.Error(1)
+```
+
+#### Option Type Returns (mo.Option)
+```go
+// For Option types - return None() when nil
+if args.Get(0) == nil {
+    return mo.None[*models.Entity](), args.Error(1)
+}
+return args.Get(0).(mo.Option[*models.Entity]), args.Error(1)
+```
+
+#### Slice Returns
+```go
+// For slice returns
+if args.Get(0) == nil {
+    return nil, args.Error(1)
+}
+return args.Get(0).([]*models.Entity), args.Error(1)
+```
+
+#### Error-Only Returns
+```go
+// For methods that only return error
+args := m.Called(ctx, param1, param2)
+return args.Error(0)
+```
+
+### Mock Organization Rules
+
+#### File Location
+- **Service mocks**: Co-located in `services/{servicename}/{servicename}_mock.go`
+- **Handler mocks**: Legacy mocks in `handlers/dashboard_mocks.go` (being phased out)
+- **Repository mocks**: Create in `db/` if needed (rare - prefer real database in tests)
+- **External client mocks**: Create service-specific files if extensive
+
+#### Import Requirements
+```go
+import (
+    "context"
+    "github.com/samber/mo"              // For Option types
+    "github.com/stretchr/testify/mock"  // For mock.Mock
+    "ccbackend/models"                  // For domain models
+)
+```
+
+#### Testing Best Practices
+- **Real Database for Service Tests**: Use actual PostgreSQL test schema, not repository mocks
+- **Handler Tests Use Mocks**: HTTP handlers mock their service dependencies
+- **Mock Only External Boundaries**: Mock services, not internal data structures
+- **Assert Expectations**: Always call `mock.AssertExpectations(t)` in tests
+
+### Creating New Service Mocks
+
+When adding a new service, create its mock alongside the implementation:
+
+1. **Create Mock File**: `services/{servicename}/{servicename}_mock.go`
+2. **Add Mock Struct**: `type MockServiceName struct { mock.Mock }`
+3. **Implement All Interface Methods**: Match the service interface exactly from `services/services.go`
+4. **Follow Return Patterns**: Use appropriate null-checking for different return types
+5. **Same Package**: Mock must be in the same package as the service for proper access
+
+#### Example Structure
+```
+services/
+├── servicename/
+│   ├── servicename.go      # Service implementation  
+│   ├── servicename_mock.go # Mock implementation
+│   └── servicename_test.go # Service tests
+```
+
+This co-located approach keeps mocks close to their implementations and makes them easy to find and maintain.
