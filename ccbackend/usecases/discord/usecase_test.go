@@ -17,53 +17,9 @@ import (
 	discordintegrations "ccbackend/services/discord_integrations"
 	"ccbackend/services/discordmessages"
 	"ccbackend/services/jobs"
+	"ccbackend/services/txmanager"
+	"ccbackend/testutils"
 	agentsUseCase "ccbackend/usecases/agents"
-)
-
-// MockTransactionManager is a mock implementation of the TransactionManager interface
-type MockTransactionManager struct {
-	mock.Mock
-}
-
-func (m *MockTransactionManager) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
-	args := m.Called(ctx, fn)
-	return args.Error(0)
-}
-
-func (m *MockTransactionManager) BeginTransaction(ctx context.Context) (context.Context, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(context.Context), args.Error(1)
-}
-
-func (m *MockTransactionManager) CommitTransaction(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-func (m *MockTransactionManager) RollbackTransaction(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-// Test constants for consistent test data
-const (
-	testMessageID      = "msg-123"
-	testChannelID      = "channel-456"
-	testThreadID       = "thread-123"
-	testUserID         = "user-abc"
-	testIntegrationID  = "discord-int-123"
-	testOrgID          = "org-456"
-	testGuildID        = "guild-789"
-	testAgentID        = "agent-111"
-	testWSConnectionID = "ws-222"
-	testClientID       = "client-123"
-	testJobID          = "job-111"
-	testProcessedID    = "processed-123"
-	testBotID          = "bot-xyz"
-	testBotUsername    = "testbot"
 )
 
 // discordUseCaseTestFixture encapsulates test setup and mocks
@@ -81,7 +37,7 @@ type discordUseCaseMocks struct {
 	jobsService                *jobs.MockJobsService
 	discordMessagesService     *discordmessages.MockDiscordMessagesService
 	discordIntegrationsService *discordintegrations.MockDiscordIntegrationsService
-	txManager                  *MockTransactionManager
+	txManager                  *txmanager.MockTransactionManager
 	agentsUseCase              *agentsUseCase.MockAgentsUseCase
 }
 
@@ -94,7 +50,7 @@ func setupDiscordUseCaseTest(t *testing.T) *discordUseCaseTestFixture {
 		jobsService:                new(jobs.MockJobsService),
 		discordMessagesService:     new(discordmessages.MockDiscordMessagesService),
 		discordIntegrationsService: new(discordintegrations.MockDiscordIntegrationsService),
-		txManager:                  new(MockTransactionManager),
+		txManager:                  new(txmanager.MockTransactionManager),
 		agentsUseCase:              new(agentsUseCase.MockAgentsUseCase),
 	}
 
@@ -127,6 +83,24 @@ func (f *discordUseCaseTestFixture) assertAllExpectations(t *testing.T) {
 	f.mocks.txManager.AssertExpectations(t)
 	f.mocks.agentsUseCase.AssertExpectations(t)
 }
+
+// Test constants for consistent test data within each test
+const (
+	testMessageID      = "msg-123"
+	testChannelID      = "channel-456"
+	testThreadID       = "thread-123"
+	testUserID         = "user-abc"
+	testIntegrationID  = "discord-int-123"
+	testOrgID          = "org-456"
+	testGuildID        = "guild-789"
+	testAgentID        = "agent-111"
+	testWSConnectionID = "ws-222"
+	testClientID       = "client-123"
+	testJobID          = "job-111"
+	testProcessedID    = "processed-123"
+	testBotID          = "bot-xyz"
+	testBotUsername    = "testbot"
+)
 
 // Test model builders for consistent test data
 
@@ -202,6 +176,19 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		// Setup
 		fixture := setupDiscordUseCaseTest(t)
 
+		// Generate consistent test data for this test case
+		testMessageID := testutils.GenerateDiscordMessageID()
+		testChannelID := testutils.GenerateDiscordChannelID()
+		testGuildID := testutils.GenerateDiscordGuildID()
+		testUserID := testutils.GenerateDiscordUserID()
+		testBotID := testutils.GenerateDiscordBotID()
+		testThreadID := testutils.GenerateDiscordThreadID()
+		testIntegrationID := testutils.GenerateDiscordIntegrationID()
+		testOrgID := testutils.GenerateOrganizationID()
+		testJobID := testutils.GenerateJobID()
+		testWSConnectionID := testutils.GenerateWSConnectionID()
+		testProcessedID := testutils.GenerateProcessedMessageID()
+
 		event := models.DiscordMessageEvent{
 			MessageID: testMessageID,
 			ChannelID: testChannelID,
@@ -212,12 +199,56 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			ThreadID:  nil, // New conversation
 		}
 
-		botUser := createTestBotUser()
-		threadResponse := createTestThreadResponse()
-		jobResult := createTestJobResult()
-		discordIntegration := createTestDiscordIntegration()
-		connectedAgent := createTestAgent()
-		processedMessage := createTestProcessedMessage(models.ProcessedDiscordMessageStatusInProgress)
+		botUser := &clients.DiscordBotUser{
+			ID:       testBotID,
+			Username: testutils.GenerateDiscordBotUsername(),
+			Bot:      true,
+		}
+
+		threadResponse := &clients.DiscordThreadResponse{
+			ThreadID:   testThreadID,
+			ThreadName: "CC Sesh #1234",
+		}
+
+		job := &models.Job{
+			ID:             testJobID,
+			OrganizationID: testOrgID,
+			DiscordPayload: &models.DiscordJobPayload{
+				MessageID:     testMessageID,
+				ChannelID:     testChannelID,
+				ThreadID:      testThreadID,
+				UserID:        testUserID,
+				IntegrationID: testIntegrationID,
+			},
+		}
+
+		jobResult := &models.JobCreationResult{
+			Job:    job,
+			Status: models.JobCreationStatusCreated,
+		}
+
+		discordIntegration := &models.DiscordIntegration{
+			ID:             testIntegrationID,
+			OrganizationID: testOrgID,
+			DiscordGuildID: testGuildID,
+		}
+
+		connectedAgent := &models.ActiveAgent{
+			ID:             testutils.GenerateAgentID(),
+			WSConnectionID: testWSConnectionID,
+			OrganizationID: testOrgID,
+		}
+
+		processedMessage := &models.ProcessedDiscordMessage{
+			ID:                   testProcessedID,
+			JobID:                testJobID,
+			DiscordMessageID:     testMessageID,
+			DiscordThreadID:      testThreadID,
+			TextContent:          "Hello bot, help me with something",
+			DiscordIntegrationID: testIntegrationID,
+			OrganizationID:       testOrgID,
+			Status:               models.ProcessedDiscordMessageStatusInProgress,
+		}
 
 		// Configure expectations
 		fixture.mocks.discordClient.On("GetBotUser").Return(botUser, nil)
@@ -385,7 +416,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -495,7 +526,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -555,7 +586,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -636,7 +667,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -734,7 +765,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -774,7 +805,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -830,7 +861,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -876,7 +907,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -944,7 +975,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -983,7 +1014,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1036,7 +1067,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1141,7 +1172,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1239,7 +1270,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1281,7 +1312,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1333,7 +1364,7 @@ func TestProcessSystemMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1401,7 +1432,7 @@ func TestProcessSystemMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1486,7 +1517,7 @@ func TestProcessSystemMessage(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1528,7 +1559,7 @@ func TestProcessJobComplete(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1618,7 +1649,7 @@ func TestProcessJobComplete(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1660,7 +1691,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1758,7 +1789,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1793,7 +1824,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1836,7 +1867,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1896,7 +1927,7 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
@@ -1968,7 +1999,7 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 		mockJobsService := new(jobs.MockJobsService)
 		mockDiscordMessagesService := new(discordmessages.MockDiscordMessagesService)
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
-		mockTxManager := new(MockTransactionManager)
+		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
 
 		useCase := NewDiscordUseCase(
