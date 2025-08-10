@@ -11,6 +11,7 @@ type SlackUseCase struct {
 	wsClient                 clients.SocketIOClient
 	agentsService            services.AgentsService
 	jobsService              services.JobsService
+	slackMessagesService     services.SlackMessagesService
 	slackIntegrationsService services.SlackIntegrationsService
 	txManager                services.TransactionManager
 	agentsUseCase            agents.AgentsUseCaseInterface
@@ -21,6 +22,7 @@ func NewSlackUseCase(
 	wsClient clients.SocketIOClient,
 	agentsService services.AgentsService,
 	jobsService services.JobsService,
+	slackMessagesService services.SlackMessagesService,
 	slackIntegrationsService services.SlackIntegrationsService,
 	txManager services.TransactionManager,
 	agentsUseCase agents.AgentsUseCaseInterface,
@@ -29,6 +31,7 @@ func NewSlackUseCase(
 		wsClient:                 wsClient,
 		agentsService:            agentsService,
 		jobsService:              jobsService,
+		slackMessagesService:     slackMessagesService,
 		slackIntegrationsService: slackIntegrationsService,
 		txManager:                txManager,
 		agentsUseCase:            agentsUseCase,

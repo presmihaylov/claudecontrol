@@ -14,6 +14,7 @@ import (
 	"ccbackend/models"
 	"ccbackend/services"
 	jobs "ccbackend/services/jobs"
+	slackmessages "ccbackend/services/slackmessages"
 	"ccbackend/services/txmanager"
 	"ccbackend/testutils"
 )
@@ -40,7 +41,8 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 
 	txManager := txmanager.NewTransactionManager(dbConn)
 	agentsService := NewAgentsService(agentsRepo)
-	jobsService := jobs.NewJobsService(jobsRepo, messagesRepo, txManager)
+	slackMessagesService := slackmessages.NewSlackMessagesService(messagesRepo)
+	jobsService := jobs.NewJobsService(jobsRepo, slackMessagesService, txManager)
 
 	cleanup := func() {
 		// Clean up test data

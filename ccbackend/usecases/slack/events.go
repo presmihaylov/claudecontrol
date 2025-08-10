@@ -105,7 +105,7 @@ func (s *SlackUseCase) ProcessSlackMessageEvent(
 	}
 
 	// Store the Slack message as ProcessedSlackMessage with appropriate status
-	processedMessage, err := s.jobsService.CreateProcessedSlackMessage(
+	processedMessage, err := s.slackMessagesService.CreateProcessedSlackMessage(
 		ctx,
 		job.ID,
 		event.Channel,
@@ -271,7 +271,7 @@ func (s *SlackUseCase) ProcessProcessingMessage(
 	messageID := payload.ProcessedMessageID
 
 	// Get processed slack message directly using organization_id (optimization)
-	maybeMessage, err := s.jobsService.GetProcessedSlackMessageByID(
+	maybeMessage, err := s.slackMessagesService.GetProcessedSlackMessageByID(
 		ctx,
 		messageID,
 		organizationID,
