@@ -18,22 +18,26 @@ import (
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/usecases/core"
+	"ccbackend/usecases/slack"
 )
 
 type SlackEventsHandler struct {
 	signingSecret            string
 	coreUseCase              *core.CoreUseCase
+	slackUseCase             *slack.SlackUseCase
 	slackIntegrationsService services.SlackIntegrationsService
 }
 
 func NewSlackEventsHandler(
 	signingSecret string,
 	coreUseCase *core.CoreUseCase,
+	slackUseCase *slack.SlackUseCase,
 	slackIntegrationsService services.SlackIntegrationsService,
 ) *SlackEventsHandler {
 	return &SlackEventsHandler{
 		signingSecret:            signingSecret,
 		coreUseCase:              coreUseCase,
+		slackUseCase:             slackUseCase,
 		slackIntegrationsService: slackIntegrationsService,
 	}
 }
@@ -214,7 +218,7 @@ func (h *SlackEventsHandler) handleAppMention(
 		ThreadTS: threadTS,
 	}
 
-	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID, organizationID)
+	return h.slackUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID, organizationID)
 }
 
 func (h *SlackEventsHandler) handleReactionAdded(
@@ -239,5 +243,5 @@ func (h *SlackEventsHandler) handleReactionAdded(
 
 	log.Printf("📨 Reaction %s added by %s on message %s in %s", reactionName, user, ts, channel)
 
-	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID, organizationID)
+	return h.slackUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID, organizationID)
 }

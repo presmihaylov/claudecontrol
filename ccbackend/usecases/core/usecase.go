@@ -11,7 +11,6 @@ import (
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/usecases/agents"
-	"ccbackend/usecases/slack"
 )
 
 // CoreUseCase orchestrates all core business operations
@@ -24,7 +23,6 @@ type CoreUseCase struct {
 
 	// Use case dependencies
 	agentsUseCase *agents.AgentsUseCase
-	slackUseCase  *slack.SlackUseCase
 }
 
 // NewCoreUseCase creates a new instance of CoreUseCase
@@ -35,7 +33,6 @@ func NewCoreUseCase(
 	slackIntegrationsService services.SlackIntegrationsService,
 	organizationsService services.OrganizationsService,
 	agentsUseCase *agents.AgentsUseCase,
-	slackUseCase *slack.SlackUseCase,
 ) *CoreUseCase {
 	return &CoreUseCase{
 		wsClient:                 wsClient,
@@ -44,83 +41,9 @@ func NewCoreUseCase(
 		slackIntegrationsService: slackIntegrationsService,
 		organizationsService:     organizationsService,
 		agentsUseCase:            agentsUseCase,
-		slackUseCase:             slackUseCase,
 	}
 }
 
-// Proxy methods to SlackUseCase
-
-// ProcessSlackMessageEvent proxies to SlackUseCase
-func (s *CoreUseCase) ProcessSlackMessageEvent(
-	ctx context.Context,
-	event models.SlackMessageEvent,
-	slackIntegrationID string,
-	organizationID string,
-) error {
-	return s.slackUseCase.ProcessSlackMessageEvent(ctx, event, slackIntegrationID, organizationID)
-}
-
-// ProcessReactionAdded proxies to SlackUseCase
-func (s *CoreUseCase) ProcessReactionAdded(
-	ctx context.Context,
-	reactionName, userID, channelID, messageTS, slackIntegrationID string,
-	organizationID string,
-) error {
-	return s.slackUseCase.ProcessReactionAdded(
-		ctx,
-		reactionName,
-		userID,
-		channelID,
-		messageTS,
-		slackIntegrationID,
-		organizationID,
-	)
-}
-
-// ProcessProcessingMessage proxies to SlackUseCase
-func (s *CoreUseCase) ProcessProcessingMessage(
-	ctx context.Context,
-	clientID string,
-	payload models.ProcessingMessagePayload,
-	organizationID string,
-) error {
-	return s.slackUseCase.ProcessProcessingMessage(ctx, clientID, payload, organizationID)
-}
-
-// ProcessAssistantMessage proxies to SlackUseCase
-func (s *CoreUseCase) ProcessAssistantMessage(
-	ctx context.Context,
-	clientID string,
-	payload models.AssistantMessagePayload,
-	organizationID string,
-) error {
-	return s.slackUseCase.ProcessAssistantMessage(ctx, clientID, payload, organizationID)
-}
-
-// ProcessSystemMessage proxies to SlackUseCase
-func (s *CoreUseCase) ProcessSystemMessage(
-	ctx context.Context,
-	clientID string,
-	payload models.SystemMessagePayload,
-	organizationID string,
-) error {
-	return s.slackUseCase.ProcessSystemMessage(ctx, clientID, payload, organizationID)
-}
-
-// ProcessJobComplete proxies to SlackUseCase
-func (s *CoreUseCase) ProcessJobComplete(
-	ctx context.Context,
-	clientID string,
-	payload models.JobCompletePayload,
-	organizationID string,
-) error {
-	return s.slackUseCase.ProcessJobComplete(ctx, clientID, payload, organizationID)
-}
-
-// ProcessQueuedJobs proxies to SlackUseCase
-func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
-	return s.slackUseCase.ProcessQueuedJobs(ctx)
-}
 
 // Agent Management Functions
 
@@ -184,19 +107,8 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 
 		job := maybeJob.MustGet()
 
-		// Route cleanup based on job type
-		abandonmentMessage := ":x: The assigned agent was disconnected, abandoning job"
-		switch job.JobType {
-		case models.JobTypeSlack:
-			if err := s.slackUseCase.CleanupFailedSlackJob(ctx, job, agent.ID, abandonmentMessage); err != nil {
-				return fmt.Errorf("failed to cleanup abandoned Slack job %s: %w", jobID, err)
-			}
-		// Future: case models.JobTypeEmail:
-		//     err = s.emailUseCase.CleanupFailedEmailJob(ctx, job, agent.ID, abandonmentMessage)
-		default:
-			log.Printf("⚠️ Unknown job type %s for job %s, skipping cleanup", job.JobType, jobID)
-			continue
-		}
+		// TODO: Route cleanup to appropriate usecase based on job type
+		log.Printf("⚠️ Job cleanup during agent deregistration not implemented for job type %s (job %s)", job.JobType, jobID)
 
 		log.Printf("✅ Cleaned up abandoned job %s", jobID)
 	}

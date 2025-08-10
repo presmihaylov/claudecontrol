@@ -128,10 +128,9 @@ func run() error {
 		slackIntegrationsService,
 		organizationsService,
 		agentsUseCase,
-		slackUseCase,
 	)
-	wsHandler := handlers.NewMessagesHandler(coreUseCase)
-	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
+	wsHandler := handlers.NewMessagesHandler(coreUseCase, slackUseCase)
+	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackUseCase, slackIntegrationsService)
 	dashboardHandler := handlers.NewDashboardAPIHandler(
 		usersService,
 		slackIntegrationsService,
@@ -187,7 +186,7 @@ func run() error {
 	go func() {
 		for range cleanupTicker.C {
 			_ = alertMiddleware.WrapBackgroundTask("ProcessQueuedJobs", func() error {
-				return coreUseCase.ProcessQueuedJobs(context.Background())
+				return slackUseCase.ProcessQueuedJobs(context.Background())
 			})()
 			_ = alertMiddleware.WrapBackgroundTask("BroadcastCheckIdleJobs", func() error {
 				return coreUseCase.BroadcastCheckIdleJobs(context.Background())
