@@ -495,7 +495,7 @@ export default function Home() {
 										<div className="flex gap-2">
 											{organization.ccagent_secret_key_generated_at ? (
 												<Button
-													variant="outline"
+													variant="destructive"
 													onClick={() => setRegenerateDialogOpen(true)}
 													disabled={generatingKey}
 													className="flex items-center gap-2"
@@ -505,6 +505,7 @@ export default function Home() {
 												</Button>
 											) : (
 												<Button
+													variant="destructive"
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
 													className="flex items-center gap-2"
@@ -610,7 +611,7 @@ export default function Home() {
 										<div className="flex gap-2">
 											{organization.ccagent_secret_key_generated_at ? (
 												<Button
-													variant="outline"
+													variant="destructive"
 													onClick={() => setRegenerateDialogOpen(true)}
 													disabled={generatingKey}
 													className="flex items-center gap-2"
@@ -620,6 +621,7 @@ export default function Home() {
 												</Button>
 											) : (
 												<Button
+													variant="destructive"
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
 													className="flex items-center gap-2"
