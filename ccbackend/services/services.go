@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"time"
 
 	"github.com/samber/mo"
 
@@ -147,20 +146,6 @@ type JobsService interface {
 		id string,
 		organizationID string,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
-	TESTS_UpdateJobUpdatedAt(
-		ctx context.Context,
-		id string,
-		updatedAt time.Time,
-		slackIntegrationID string,
-		organizationID string,
-	) error
-	TESTS_UpdateProcessedSlackMessageUpdatedAt(
-		ctx context.Context,
-		id string,
-		updatedAt time.Time,
-		slackIntegrationID string,
-		organizationID string,
-	) error
 	GetJobsWithQueuedMessages(
 		ctx context.Context,
 		slackIntegrationID string,
