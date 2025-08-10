@@ -9,6 +9,9 @@ import (
 	"ccbackend/models"
 )
 
+// DefaultIdleJobTimeoutMinutes defines how long a job can be idle before being assigned to an available agent
+const DefaultIdleJobTimeoutMinutes = 5
+
 // BroadcastCheckIdleJobs sends a CheckIdleJobs message to all connected agents
 func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 	log.Printf("📋 Starting to broadcast CheckIdleJobs to all connected agents")
@@ -62,5 +65,75 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 	}
 
 	log.Printf("📋 Completed successfully - broadcasted CheckIdleJobs to %d agents", totalAgentCount)
+	return nil
+}
+
+// GetActiveOrganizations returns organizations that have available agents
+func (s *CoreUseCase) GetActiveOrganizations(ctx context.Context) ([]*models.Organization, error) {
+	log.Printf("📋 Starting to get active organizations with available agents")
+	
+	organizations, err := s.organizationsService.GetAllOrganizations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organizations: %w", err)
+	}
+
+	connectedClientIDs := s.wsClient.GetClientIDs()
+	var activeOrganizations []*models.Organization
+
+	for _, organization := range organizations {
+		availableAgents, err := s.agentsService.GetConnectedAvailableAgents(ctx, organization.ID, connectedClientIDs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get available agents for organization %s: %w", organization.ID, err)
+		}
+		
+		if len(availableAgents) > 0 {
+			activeOrganizations = append(activeOrganizations, organization)
+		}
+	}
+
+	log.Printf("📋 Completed successfully - found %d active organizations", len(activeOrganizations))
+	return activeOrganizations, nil
+}
+
+// AssignJobs assigns idle jobs to available agents for the given organization
+func (s *CoreUseCase) AssignJobs(ctx context.Context, organization *models.Organization) error {
+	log.Printf("📋 Starting to assign jobs for organization: %s", organization.ID)
+	
+	connectedClientIDs := s.wsClient.GetClientIDs()
+	availableAgents, err := s.agentsService.GetConnectedAvailableAgents(ctx, organization.ID, connectedClientIDs)
+	if err != nil {
+		return fmt.Errorf("failed to get available agents for organization %s: %w", organization.ID, err)
+	}
+
+	if len(availableAgents) == 0 {
+		log.Printf("📋 No available agents for organization %s", organization.ID)
+		return nil
+	}
+
+	idleJobs, err := s.jobsService.GetIdleJobs(ctx, DefaultIdleJobTimeoutMinutes, organization.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get idle jobs for organization %s: %w", organization.ID, err)
+	}
+
+	if len(idleJobs) == 0 {
+		log.Printf("📋 No idle jobs found for organization %s", organization.ID)
+		return nil
+	}
+
+	assignmentCount := 0
+	for i, job := range idleJobs {
+		if i >= len(availableAgents) {
+			break // More jobs than agents, assign what we can
+		}
+		
+		agent := availableAgents[i]
+		if err := s.agentsService.AssignAgentToJob(ctx, agent.ID, job.ID, organization.ID); err != nil {
+			return fmt.Errorf("failed to assign agent %s to job %s: %w", agent.ID, job.ID, err)
+		}
+		assignmentCount++
+		log.Printf("📤 Assigned agent %s to job %s", agent.ID, job.ID)
+	}
+
+	log.Printf("📋 Completed successfully - assigned %d jobs for organization %s", assignmentCount, organization.ID)
 	return nil
 }
