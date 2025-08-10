@@ -13,7 +13,7 @@ type SlackUseCase struct {
 	jobsService              services.JobsService
 	slackIntegrationsService services.SlackIntegrationsService
 	txManager                services.TransactionManager
-	agentsUseCase            *agents.AgentsUseCase
+	agentsUseCase            agents.AgentsUseCaseInterface
 }
 
 // NewSlackUseCase creates a new instance of SlackUseCase
@@ -23,7 +23,7 @@ func NewSlackUseCase(
 	jobsService services.JobsService,
 	slackIntegrationsService services.SlackIntegrationsService,
 	txManager services.TransactionManager,
-	agentsUseCase *agents.AgentsUseCase,
+	agentsUseCase agents.AgentsUseCaseInterface,
 ) *SlackUseCase {
 	return &SlackUseCase{
 		wsClient:                 wsClient,
