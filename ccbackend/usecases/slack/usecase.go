@@ -54,7 +54,7 @@ func (s *SlackUseCase) ProcessSlackMessageEvent(
 	ctx context.Context,
 	event models.SlackMessageEvent,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to process Slack message event from %s in %s: %s", event.User, event.Channel, event.Text)
 
@@ -201,7 +201,7 @@ func (s *SlackUseCase) ProcessSlackMessageEvent(
 func (s *SlackUseCase) ProcessReactionAdded(
 	ctx context.Context,
 	reactionName, userID, channelID, messageTS, slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf(
 		"📋 Starting to process reaction %s added by %s on message %s in channel %s",
@@ -306,7 +306,7 @@ func (s *SlackUseCase) ProcessProcessingMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.ProcessingMessagePayload,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to process processing slack message notification from client %s", clientID)
 
@@ -464,7 +464,7 @@ func (s *SlackUseCase) ProcessJobComplete(
 	ctx context.Context,
 	clientID string,
 	payload models.JobCompletePayload,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf(
 		"📋 Starting to process job complete from client %s: JobID: %s, Reason: %s",
@@ -612,7 +612,7 @@ func (s *SlackUseCase) ProcessAssistantMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.AssistantMessagePayload,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to process assistant message from client %s", clientID)
 
@@ -738,7 +738,7 @@ func (s *SlackUseCase) ProcessSystemMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.SystemMessagePayload,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
 	jobID := payload.JobID

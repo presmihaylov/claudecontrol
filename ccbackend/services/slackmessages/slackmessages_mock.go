@@ -17,7 +17,8 @@ type MockSlackMessagesService struct {
 func (m *MockSlackMessagesService) CreateProcessedSlackMessage(
 	ctx context.Context,
 	jobID string,
-	slackChannelID, slackTS, textContent, slackIntegrationID, organizationID string,
+	slackChannelID, slackTS, textContent, slackIntegrationID string,
+	organizationID models.OrganizationID,
 	status models.ProcessedSlackMessageStatus,
 ) (*models.ProcessedSlackMessage, error) {
 	args := m.Called(ctx, jobID, slackChannelID, slackTS, textContent, slackIntegrationID, organizationID, status)

@@ -6,6 +6,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/zishang520/socket.io/v2/socket"
+	
+	"ccbackend/models"
 )
 
 // OAuthV2Response represents our custom OAuth response with only needed fields
@@ -88,6 +90,6 @@ type APIKeyValidatorFunc func(apiKey string) (string, error)
 type Client struct {
 	ID             string
 	Socket         *socket.Socket
-	OrganizationID string
+	OrganizationID models.OrganizationID
 	AgentID        string
 }

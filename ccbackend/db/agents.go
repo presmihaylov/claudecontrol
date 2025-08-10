@@ -79,7 +79,7 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent 
 func (r *PostgresAgentsRepository) DeleteActiveAgent(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (bool, error) {
 	query := fmt.Sprintf("DELETE FROM %s.active_agents WHERE id = $1 AND organization_id = $2", r.schema)
 
@@ -99,7 +99,7 @@ func (r *PostgresAgentsRepository) DeleteActiveAgent(
 func (r *PostgresAgentsRepository) GetAgentByID(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
@@ -121,7 +121,8 @@ func (r *PostgresAgentsRepository) GetAgentByID(
 
 func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(
 	ctx context.Context,
-	wsConnectionID, organizationID string,
+	wsConnectionID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
@@ -143,7 +144,7 @@ func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(
 
 func (r *PostgresAgentsRepository) GetAvailableAgents(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) ([]*models.ActiveAgent, error) {
 	// Build column list with a. prefix for table alias
 	var aliasedColumns []string
@@ -170,7 +171,7 @@ func (r *PostgresAgentsRepository) GetAvailableAgents(
 
 func (r *PostgresAgentsRepository) GetAllActiveAgents(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) ([]*models.ActiveAgent, error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
@@ -191,7 +192,7 @@ func (r *PostgresAgentsRepository) GetAllActiveAgents(
 func (r *PostgresAgentsRepository) GetAgentByJobID(
 	ctx context.Context,
 	jobID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	// Build column list with a. prefix for table alias
 	var aliasedColumns []string
@@ -248,7 +249,7 @@ func (r *PostgresAgentsRepository) AssignAgentToJob(ctx context.Context, assignm
 func (r *PostgresAgentsRepository) UnassignAgentFromJob(
 	ctx context.Context,
 	agentID, jobID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (bool, error) {
 	query := fmt.Sprintf(`
 		DELETE FROM %s.agent_job_assignments 
@@ -270,7 +271,7 @@ func (r *PostgresAgentsRepository) UnassignAgentFromJob(
 func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(
 	ctx context.Context,
 	agentID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) ([]string, error) {
 	query := fmt.Sprintf(`
 		SELECT job_id 
@@ -289,7 +290,8 @@ func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(
 
 func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(
 	ctx context.Context,
-	wsConnectionID, organizationID string,
+	wsConnectionID string,
+	organizationID models.OrganizationID,
 ) (bool, error) {
 	query := fmt.Sprintf(`
 		UPDATE %s.active_agents 
@@ -311,7 +313,7 @@ func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(
 
 func (r *PostgresAgentsRepository) GetInactiveAgents(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrganizationID,
 	inactiveThresholdMinutes int,
 ) ([]*models.ActiveAgent, error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")

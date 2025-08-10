@@ -26,7 +26,7 @@ type PostgresJobsRepository struct {
 type DBJob struct {
 	ID             string    `db:"id"`
 	JobType        string    `db:"job_type"`
-	OrganizationID string    `db:"organization_id"`
+	OrganizationID models.OrganizationID `db:"organization_id"`
 	CreatedAt      time.Time `db:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at"`
 
@@ -205,7 +205,7 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 func (r *PostgresJobsRepository) GetJobByID(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(jobsColumns, ", ")
@@ -232,7 +232,8 @@ func (r *PostgresJobsRepository) GetJobByID(
 
 func (r *PostgresJobsRepository) GetJobBySlackThread(
 	ctx context.Context,
-	threadTS, channelID, slackIntegrationID, organizationID string,
+	threadTS, channelID, slackIntegrationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(jobsColumns, ", ")
@@ -259,7 +260,8 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(
 
 func (r *PostgresJobsRepository) GetJobByDiscordThread(
 	ctx context.Context,
-	threadID, discordIntegrationID, organizationID string,
+	threadID, discordIntegrationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(jobsColumns, ", ")
@@ -287,7 +289,7 @@ func (r *PostgresJobsRepository) GetJobByDiscordThread(
 func (r *PostgresJobsRepository) UpdateJobTimestamp(
 	ctx context.Context,
 	jobID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
@@ -306,7 +308,7 @@ func (r *PostgresJobsRepository) UpdateJobTimestamp(
 func (r *PostgresJobsRepository) GetIdleJobs(
 	ctx context.Context,
 	idleMinutes int,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) ([]*models.Job, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	// Build column list with j. prefix for table alias
@@ -358,7 +360,7 @@ func (r *PostgresJobsRepository) GetIdleJobs(
 func (r *PostgresJobsRepository) DeleteJob(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (bool, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 
@@ -385,7 +387,7 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (bool, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
@@ -411,7 +413,7 @@ func (r *PostgresJobsRepository) GetJobsWithQueuedMessages(
 	ctx context.Context,
 	jobType models.JobType,
 	integrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) ([]*models.Job, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	// Build column list with j. prefix for table alias

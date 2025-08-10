@@ -36,10 +36,10 @@ func NewSlackIntegrationsService(
 
 func (s *SlackIntegrationsService) CreateSlackIntegration(
 	ctx context.Context,
-	organizationID, slackAuthCode, redirectURL string,
+	organizationID models.OrganizationID, slackAuthCode, redirectURL string,
 ) (*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to create Slack integration for organization: %s", organizationID)
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 	if slackAuthCode == "" {
@@ -94,10 +94,10 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(
 
 func (s *SlackIntegrationsService) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) ([]*models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get Slack integrations for organization: %s", organizationID)
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 
@@ -127,10 +127,10 @@ func (s *SlackIntegrationsService) GetAllSlackIntegrations(ctx context.Context) 
 
 func (s *SlackIntegrationsService) DeleteSlackIntegration(
 	ctx context.Context,
-	organizationID, integrationID string,
+	organizationID models.OrganizationID, integrationID string,
 ) error {
 	log.Printf("📋 Starting to delete Slack integration: %s", integrationID)
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization ID must be a valid ULID")
 	}
 	if !core.IsValidULID(integrationID) {

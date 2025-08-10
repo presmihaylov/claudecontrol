@@ -76,7 +76,7 @@ func (h *DashboardAPIHandler) DeleteSlackIntegration(ctx context.Context, integr
 	if !ok {
 		return fmt.Errorf("organization not found in context")
 	}
-	if err := h.slackIntegrationsService.DeleteSlackIntegration(ctx, org.ID, integrationID); err != nil {
+	if err := h.slackIntegrationsService.DeleteSlackIntegration(ctx, models.OrganizationID(org.ID), integrationID); err != nil {
 		log.Printf("❌ Failed to delete Slack integration: %v", err)
 		return err
 	}
@@ -142,7 +142,7 @@ func (h *DashboardAPIHandler) DeleteDiscordIntegration(ctx context.Context, inte
 	if !ok {
 		return fmt.Errorf("organization not found in context")
 	}
-	if err := h.discordIntegrationsService.DeleteDiscordIntegration(ctx, org.ID, integrationID); err != nil {
+	if err := h.discordIntegrationsService.DeleteDiscordIntegration(ctx, models.OrganizationID(org.ID), integrationID); err != nil {
 		log.Printf("❌ Failed to delete Discord integration: %v", err)
 		return err
 	}
@@ -160,7 +160,7 @@ func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context) (str
 
 	log.Printf("🔑 Generating CCAgent secret key for organization: %s", org.ID)
 
-	secretKey, err := h.organizationsService.GenerateCCAgentSecretKey(ctx, org.ID)
+	secretKey, err := h.organizationsService.GenerateCCAgentSecretKey(ctx, models.OrganizationID(org.ID))
 	if err != nil {
 		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
 		return "", err

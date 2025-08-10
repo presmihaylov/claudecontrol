@@ -119,7 +119,7 @@ func CreateTestContextWithUser(user *models.User) context.Context {
 }
 
 // CreateTestSlackIntegration creates a test slack integration model for testing
-func CreateTestSlackIntegration(organizationID string) *models.SlackIntegration {
+func CreateTestSlackIntegration(organizationID models.OrganizationID) *models.SlackIntegration {
 	integrationID := core.NewID("si")
 	teamIDSuffix := core.NewID("team")
 	tokenSuffix := core.NewID("tok")
@@ -134,7 +134,7 @@ func CreateTestSlackIntegration(organizationID string) *models.SlackIntegration 
 }
 
 // CreateTestDiscordIntegration creates a test discord integration model for testing
-func CreateTestDiscordIntegration(organizationID string) *models.DiscordIntegration {
+func CreateTestDiscordIntegration(organizationID models.OrganizationID) *models.DiscordIntegration {
 	integrationID := core.NewID("di")
 	guildIDSuffix := core.NewID("guild")
 

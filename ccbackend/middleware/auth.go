@@ -62,7 +62,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 				ID:             core.NewID("u"),
 				AuthProvider:   "test",
 				AuthProviderID: core.NewID("testuser"),
-				OrganizationID: testOrg.ID,
+				OrganizationID: models.OrganizationID(testOrg.ID),
 				CreatedAt:      time.Now(),
 				UpdatedAt:      time.Now(),
 			}
@@ -114,7 +114,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// Get the user's organization
-		maybeOrg, err := m.organizationsService.GetOrganizationByID(r.Context(), user.OrganizationID)
+		maybeOrg, err := m.organizationsService.GetOrganizationByID(r.Context(), string(user.OrganizationID))
 		if err != nil {
 			log.Printf("❌ Failed to get organization: %v", err)
 			m.writeErrorResponse(w, "internal server error", http.StatusInternalServerError)

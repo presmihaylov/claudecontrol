@@ -53,7 +53,7 @@ func (d *DiscordUseCase) ProcessDiscordMessageEvent(
 	ctx context.Context,
 	event models.DiscordMessageEvent,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to process Discord message event from user %s in guild %s, channel %s",
 		event.UserID, event.GuildID, event.ChannelID)
@@ -247,7 +247,7 @@ func (d *DiscordUseCase) ProcessDiscordReactionEvent(
 	ctx context.Context,
 	event models.DiscordReactionEvent,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to process Discord reaction event: %s by user %s on message %s in guild %s, channel %s",
 		event.EmojiName, event.UserID, event.MessageID, event.GuildID, event.ChannelID)
@@ -367,7 +367,7 @@ func (d *DiscordUseCase) ProcessProcessingMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.ProcessingMessagePayload,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to process processing discord message notification from client %s", clientID)
 
@@ -432,7 +432,7 @@ func (d *DiscordUseCase) ProcessSystemMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.SystemMessagePayload,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
 	jobID := payload.JobID
@@ -520,7 +520,7 @@ func (d *DiscordUseCase) ProcessJobComplete(
 	ctx context.Context,
 	clientID string,
 	payload models.JobCompletePayload,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf(
 		"📋 Starting to process job complete from client %s: JobID: %s, Reason: %s",
@@ -617,7 +617,7 @@ func (d *DiscordUseCase) ProcessAssistantMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.AssistantMessagePayload,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to process assistant message from client %s", clientID)
 

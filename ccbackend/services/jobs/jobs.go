@@ -38,7 +38,7 @@ func NewJobsService(
 func (s *JobsService) CreateSlackJob(
 	ctx context.Context,
 	slackThreadTS, slackChannelID, slackUserID, slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (*models.Job, error) {
 	log.Printf(
 		"📋 Starting to create job for slack thread: %s, channel: %s, user: %s, organization: %s",
@@ -60,7 +60,7 @@ func (s *JobsService) CreateSlackJob(
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -87,13 +87,13 @@ func (s *JobsService) CreateSlackJob(
 func (s *JobsService) GetJobByID(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by ID: %s", id)
 	if !core.IsValidULID(id) {
 		return mo.None[*models.Job](), fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return mo.None[*models.Job](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -114,7 +114,7 @@ func (s *JobsService) GetJobByID(
 func (s *JobsService) GetJobBySlackThread(
 	ctx context.Context,
 	threadTS, channelID, slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by slack thread: %s, channel: %s", threadTS, channelID)
 	if threadTS == "" {
@@ -126,7 +126,7 @@ func (s *JobsService) GetJobBySlackThread(
 	if !core.IsValidULID(slackIntegrationID) {
 		return mo.None[*models.Job](), fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return mo.None[*models.Job](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -147,7 +147,7 @@ func (s *JobsService) GetJobBySlackThread(
 func (s *JobsService) GetOrCreateJobForSlackThread(
 	ctx context.Context,
 	threadTS, channelID, slackUserID, slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (*models.JobCreationResult, error) {
 	log.Printf(
 		"📋 Starting to get or create job for slack thread: %s, channel: %s, user: %s, organization: %s",
@@ -169,7 +169,7 @@ func (s *JobsService) GetOrCreateJobForSlackThread(
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -209,13 +209,13 @@ func (s *JobsService) GetOrCreateJobForSlackThread(
 func (s *JobsService) UpdateJobTimestamp(
 	ctx context.Context,
 	jobID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to update job timestamp for ID: %s", jobID)
 	if !core.IsValidULID(jobID) {
 		return fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 	if err := s.jobsRepo.UpdateJobTimestamp(ctx, jobID, organizationID); err != nil {
@@ -226,12 +226,12 @@ func (s *JobsService) UpdateJobTimestamp(
 	return nil
 }
 
-func (s *JobsService) GetIdleJobs(ctx context.Context, idleMinutes int, organizationID string) ([]*models.Job, error) {
+func (s *JobsService) GetIdleJobs(ctx context.Context, idleMinutes int, organizationID models.OrganizationID) ([]*models.Job, error) {
 	log.Printf("📋 Starting to get idle jobs older than %d minutes for organization: %s", idleMinutes, organizationID)
 	if idleMinutes <= 0 {
 		return nil, fmt.Errorf("idle minutes must be greater than 0")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -247,13 +247,13 @@ func (s *JobsService) GetIdleJobs(ctx context.Context, idleMinutes int, organiza
 func (s *JobsService) DeleteJob(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to delete job with ID: %s", id)
 	if !core.IsValidULID(id) {
 		return fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -311,7 +311,7 @@ func (s *JobsService) TESTS_UpdateJobUpdatedAt(
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to update job updated_at for testing purposes: %s to %s", id, updatedAt)
 	if !core.IsValidULID(id) {
@@ -320,7 +320,7 @@ func (s *JobsService) TESTS_UpdateJobUpdatedAt(
 	if !core.IsValidULID(slackIntegrationID) {
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -341,7 +341,7 @@ func (s *JobsService) GetJobsWithQueuedMessages(
 	ctx context.Context,
 	jobType models.JobType,
 	integrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) ([]*models.Job, error) {
 	log.Printf("📋 Starting to get jobs with queued messages for job type: %s", jobType)
 	if jobType == "" {
@@ -350,7 +350,7 @@ func (s *JobsService) GetJobsWithQueuedMessages(
 	if !core.IsValidULID(integrationID) {
 		return nil, fmt.Errorf("integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -368,7 +368,7 @@ func (s *JobsService) GetJobsWithQueuedMessages(
 func (s *JobsService) CreateDiscordJob(
 	ctx context.Context,
 	discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (*models.Job, error) {
 	log.Printf(
 		"📋 Starting to create discord job for message: %s, channel: %s, thread: %s, user: %s, organization: %s",
@@ -394,7 +394,7 @@ func (s *JobsService) CreateDiscordJob(
 	if !core.IsValidULID(discordIntegrationID) {
 		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -421,7 +421,8 @@ func (s *JobsService) CreateDiscordJob(
 
 func (s *JobsService) GetJobByDiscordThread(
 	ctx context.Context,
-	threadID, discordIntegrationID, organizationID string,
+	threadID, discordIntegrationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by discord thread: %s", threadID)
 	if threadID == "" {
@@ -430,7 +431,7 @@ func (s *JobsService) GetJobByDiscordThread(
 	if !core.IsValidULID(discordIntegrationID) {
 		return mo.None[*models.Job](), fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return mo.None[*models.Job](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -451,7 +452,7 @@ func (s *JobsService) GetJobByDiscordThread(
 func (s *JobsService) GetOrCreateJobForDiscordThread(
 	ctx context.Context,
 	discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (*models.JobCreationResult, error) {
 	log.Printf(
 		"📋 Starting to get or create job for discord thread: %s, channel: %s, message: %s, user: %s, organization: %s",
@@ -474,7 +475,7 @@ func (s *JobsService) GetOrCreateJobForDiscordThread(
 	if !core.IsValidULID(discordIntegrationID) {
 		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 

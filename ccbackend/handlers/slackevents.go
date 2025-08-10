@@ -192,7 +192,7 @@ func (h *SlackEventsHandler) handleAppMention(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	channel := event["channel"].(string)
 	user := event["user"].(string)
@@ -221,7 +221,7 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	reactionName := event["reaction"].(string)
 	user := event["user"].(string)

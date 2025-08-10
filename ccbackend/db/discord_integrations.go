@@ -65,7 +65,7 @@ func (r *PostgresDiscordIntegrationsRepository) CreateDiscordIntegration(
 
 func (r *PostgresDiscordIntegrationsRepository) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) ([]*models.DiscordIntegration, error) {
 	if organizationID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
@@ -107,7 +107,8 @@ func (r *PostgresDiscordIntegrationsRepository) GetAllDiscordIntegrations(
 
 func (r *PostgresDiscordIntegrationsRepository) DeleteDiscordIntegrationByID(
 	ctx context.Context,
-	integrationID, organizationID string,
+	integrationID string,
+	organizationID models.OrganizationID,
 ) (bool, error) {
 	query := fmt.Sprintf(`DELETE FROM %s.discord_integrations WHERE id = $1 AND organization_id = $2`, r.schema)
 

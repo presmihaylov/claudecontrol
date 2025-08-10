@@ -15,7 +15,7 @@ type Job struct {
 	// Common fields
 	ID             string    `json:"id"              db:"id"`
 	JobType        JobType   `json:"job_type"        db:"job_type"`
-	OrganizationID string    `json:"organization_id" db:"organization_id"`
+	OrganizationID OrganizationID `json:"organization_id" db:"organization_id"`
 	CreatedAt      time.Time `json:"created_at"      db:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"      db:"updated_at"`
 

@@ -62,7 +62,7 @@ func (s *UsersService) GetOrCreateUser(ctx context.Context, authProvider, authPr
 		}
 
 		// Create new user with organization_id
-		newUser, err := s.usersRepo.CreateUser(txCtx, authProvider, authProviderID, organization.ID)
+		newUser, err := s.usersRepo.CreateUser(txCtx, authProvider, authProviderID, models.OrganizationID(organization.ID))
 		if err != nil {
 			return fmt.Errorf("failed to create user: %w", err)
 		}

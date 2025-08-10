@@ -27,7 +27,7 @@ func (s *DiscordMessagesService) CreateProcessedDiscordMessage(
 	ctx context.Context,
 	jobID string,
 	discordMessageID, discordThreadID, textContent, discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 	status models.ProcessedDiscordMessageStatus,
 ) (*models.ProcessedDiscordMessage, error) {
 	log.Printf(
@@ -53,7 +53,7 @@ func (s *DiscordMessagesService) CreateProcessedDiscordMessage(
 	if !core.IsValidULID(discordIntegrationID) {
 		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 	if status == "" {
@@ -84,7 +84,7 @@ func (s *DiscordMessagesService) UpdateProcessedDiscordMessage(
 	id string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (*models.ProcessedDiscordMessage, error) {
 	log.Printf("📋 Starting to update processed discord message: %s with status: %s", id, status)
 	if !core.IsValidULID(id) {
@@ -93,7 +93,7 @@ func (s *DiscordMessagesService) UpdateProcessedDiscordMessage(
 	if !core.IsValidULID(discordIntegrationID) {
 		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 	if status == "" {
@@ -116,7 +116,7 @@ func (s *DiscordMessagesService) GetProcessedMessagesByJobIDAndStatus(
 	jobID string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) ([]*models.ProcessedDiscordMessage, error) {
 	log.Printf("📋 Starting to get processed discord messages by job ID: %s and status: %s", jobID, status)
 	if !core.IsValidULID(jobID) {
@@ -125,7 +125,7 @@ func (s *DiscordMessagesService) GetProcessedMessagesByJobIDAndStatus(
 	if !core.IsValidULID(discordIntegrationID) {
 		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 	if status == "" {
@@ -146,7 +146,7 @@ func (s *DiscordMessagesService) GetProcessedMessagesByJobIDAndStatus(
 func (s *DiscordMessagesService) GetProcessedDiscordMessageByID(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	log.Printf("📋 Starting to get processed discord message by ID: %s", id)
 	if !core.IsValidULID(id) {
@@ -154,7 +154,7 @@ func (s *DiscordMessagesService) GetProcessedDiscordMessageByID(
 			"processed discord message ID must be a valid ULID",
 		)
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return mo.None[*models.ProcessedDiscordMessage](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -179,7 +179,7 @@ func (s *DiscordMessagesService) GetLatestProcessedMessageForJob(
 	ctx context.Context,
 	jobID string,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	log.Printf("📋 Starting to get latest processed discord message for job: %s", jobID)
 	if !core.IsValidULID(jobID) {
@@ -188,7 +188,7 @@ func (s *DiscordMessagesService) GetLatestProcessedMessageForJob(
 	if !core.IsValidULID(discordIntegrationID) {
 		return mo.None[*models.ProcessedDiscordMessage](), fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return mo.None[*models.ProcessedDiscordMessage](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -215,13 +215,13 @@ func (s *DiscordMessagesService) GetActiveMessageCountForJobs(
 	ctx context.Context,
 	jobIDs []string,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) (int, error) {
 	log.Printf("📋 Starting to get active message count for %d jobs", len(jobIDs))
 	if !core.IsValidULID(discordIntegrationID) {
 		return 0, fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return 0, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -247,7 +247,7 @@ func (s *DiscordMessagesService) TESTS_UpdateProcessedDiscordMessageUpdatedAt(
 	id string,
 	updatedAt time.Time,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf(
 		"📋 Starting to update processed discord message updated_at for testing purposes: %s to %s",
@@ -260,7 +260,7 @@ func (s *DiscordMessagesService) TESTS_UpdateProcessedDiscordMessageUpdatedAt(
 	if !core.IsValidULID(discordIntegrationID) {
 		return fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -278,7 +278,7 @@ func (s *DiscordMessagesService) DeleteProcessedDiscordMessagesByJobID(
 	ctx context.Context,
 	jobID string,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrganizationID,
 ) error {
 	log.Printf("📋 Starting to delete processed discord messages by job ID: %s", jobID)
 	if !core.IsValidULID(jobID) {
@@ -287,7 +287,7 @@ func (s *DiscordMessagesService) DeleteProcessedDiscordMessagesByJobID(
 	if !core.IsValidULID(discordIntegrationID) {
 		return fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 

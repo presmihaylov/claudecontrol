@@ -3,6 +3,7 @@ package socketio
 import (
 	"ccbackend/clients"
 	"ccbackend/core"
+	"ccbackend/models"
 	"ccbackend/utils"
 	"fmt"
 	"log"
@@ -106,7 +107,7 @@ func (ws *Server) handleSocketIOConnection(sock *socket.Socket) {
 	client := &clients.Client{
 		ID:             core.NewID("cl"),
 		Socket:         sock,
-		OrganizationID: organizationID,
+		OrganizationID: models.OrganizationID(organizationID),
 		AgentID:        agentID,
 	}
 	ws.addClient(client)
