@@ -38,7 +38,7 @@ func NewJobsService(
 func (s *JobsService) CreateSlackJob(
 	ctx context.Context,
 	slackThreadTS, slackChannelID, slackUserID, slackIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (*models.Job, error) {
 	log.Printf(
 		"📋 Starting to create job for slack thread: %s, channel: %s, user: %s, organization: %s",
@@ -65,9 +65,9 @@ func (s *JobsService) CreateSlackJob(
 	}
 
 	job := &models.Job{
-		ID:             core.NewID("j"),
-		JobType:        models.JobTypeSlack,
-		OrganizationID: organizationID,
+		ID:      core.NewID("j"),
+		JobType: models.JobTypeSlack,
+		OrgID:   organizationID,
 		SlackPayload: &models.SlackJobPayload{
 			ThreadTS:      slackThreadTS,
 			ChannelID:     slackChannelID,
@@ -87,7 +87,7 @@ func (s *JobsService) CreateSlackJob(
 func (s *JobsService) GetJobByID(
 	ctx context.Context,
 	id string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by ID: %s", id)
 	if !core.IsValidULID(id) {
@@ -114,7 +114,7 @@ func (s *JobsService) GetJobByID(
 func (s *JobsService) GetJobBySlackThread(
 	ctx context.Context,
 	threadTS, channelID, slackIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by slack thread: %s, channel: %s", threadTS, channelID)
 	if threadTS == "" {
@@ -147,7 +147,7 @@ func (s *JobsService) GetJobBySlackThread(
 func (s *JobsService) GetOrCreateJobForSlackThread(
 	ctx context.Context,
 	threadTS, channelID, slackUserID, slackIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (*models.JobCreationResult, error) {
 	log.Printf(
 		"📋 Starting to get or create job for slack thread: %s, channel: %s, user: %s, organization: %s",
@@ -209,7 +209,7 @@ func (s *JobsService) GetOrCreateJobForSlackThread(
 func (s *JobsService) UpdateJobTimestamp(
 	ctx context.Context,
 	jobID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to update job timestamp for ID: %s", jobID)
 	if !core.IsValidULID(jobID) {
@@ -226,7 +226,11 @@ func (s *JobsService) UpdateJobTimestamp(
 	return nil
 }
 
-func (s *JobsService) GetIdleJobs(ctx context.Context, idleMinutes int, organizationID models.OrganizationID) ([]*models.Job, error) {
+func (s *JobsService) GetIdleJobs(
+	ctx context.Context,
+	idleMinutes int,
+	organizationID models.OrgID,
+) ([]*models.Job, error) {
 	log.Printf("📋 Starting to get idle jobs older than %d minutes for organization: %s", idleMinutes, organizationID)
 	if idleMinutes <= 0 {
 		return nil, fmt.Errorf("idle minutes must be greater than 0")
@@ -247,7 +251,7 @@ func (s *JobsService) GetIdleJobs(ctx context.Context, idleMinutes int, organiza
 func (s *JobsService) DeleteJob(
 	ctx context.Context,
 	id string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to delete job with ID: %s", id)
 	if !core.IsValidULID(id) {
@@ -311,7 +315,7 @@ func (s *JobsService) TESTS_UpdateJobUpdatedAt(
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to update job updated_at for testing purposes: %s to %s", id, updatedAt)
 	if !core.IsValidULID(id) {
@@ -341,7 +345,7 @@ func (s *JobsService) GetJobsWithQueuedMessages(
 	ctx context.Context,
 	jobType models.JobType,
 	integrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) ([]*models.Job, error) {
 	log.Printf("📋 Starting to get jobs with queued messages for job type: %s", jobType)
 	if jobType == "" {
@@ -368,7 +372,7 @@ func (s *JobsService) GetJobsWithQueuedMessages(
 func (s *JobsService) CreateDiscordJob(
 	ctx context.Context,
 	discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (*models.Job, error) {
 	log.Printf(
 		"📋 Starting to create discord job for message: %s, channel: %s, thread: %s, user: %s, organization: %s",
@@ -399,9 +403,9 @@ func (s *JobsService) CreateDiscordJob(
 	}
 
 	job := &models.Job{
-		ID:             core.NewID("j"),
-		JobType:        models.JobTypeDiscord,
-		OrganizationID: organizationID,
+		ID:      core.NewID("j"),
+		JobType: models.JobTypeDiscord,
+		OrgID:   organizationID,
 		DiscordPayload: &models.DiscordJobPayload{
 			MessageID:     discordMessageID,
 			ChannelID:     discordChannelID,
@@ -422,7 +426,7 @@ func (s *JobsService) CreateDiscordJob(
 func (s *JobsService) GetJobByDiscordThread(
 	ctx context.Context,
 	threadID, discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by discord thread: %s", threadID)
 	if threadID == "" {
@@ -452,7 +456,7 @@ func (s *JobsService) GetJobByDiscordThread(
 func (s *JobsService) GetOrCreateJobForDiscordThread(
 	ctx context.Context,
 	discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (*models.JobCreationResult, error) {
 	log.Printf(
 		"📋 Starting to get or create job for discord thread: %s, channel: %s, message: %s, user: %s, organization: %s",

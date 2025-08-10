@@ -36,14 +36,14 @@ func (h *DashboardAPIHandler) ListSlackIntegrations(
 	ctx context.Context,
 	user *models.User,
 ) ([]*models.SlackIntegration, error) {
-	log.Printf("📋 Listing Slack integrations for organization: %s", user.OrganizationID)
-	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(ctx, user.OrganizationID)
+	log.Printf("📋 Listing Slack integrations for organization: %s", user.OrgID)
+	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(ctx, user.OrgID)
 	if err != nil {
 		log.Printf("❌ Failed to get Slack integrations: %v", err)
 		return nil, err
 	}
 
-	log.Printf("✅ Retrieved %d Slack integrations for organization: %s", len(integrations), user.OrganizationID)
+	log.Printf("✅ Retrieved %d Slack integrations for organization: %s", len(integrations), user.OrgID)
 	return integrations, nil
 }
 
@@ -53,10 +53,10 @@ func (h *DashboardAPIHandler) CreateSlackIntegration(
 	slackAuthToken, redirectURL string,
 	user *models.User,
 ) (*models.SlackIntegration, error) {
-	log.Printf("➕ Creating Slack integration for organization: %s", user.OrganizationID)
+	log.Printf("➕ Creating Slack integration for organization: %s", user.OrgID)
 	integration, err := h.slackIntegrationsService.CreateSlackIntegration(
 		ctx,
-		user.OrganizationID,
+		user.OrgID,
 		slackAuthToken,
 		redirectURL,
 	)
@@ -76,7 +76,7 @@ func (h *DashboardAPIHandler) DeleteSlackIntegration(ctx context.Context, integr
 	if !ok {
 		return fmt.Errorf("organization not found in context")
 	}
-	if err := h.slackIntegrationsService.DeleteSlackIntegration(ctx, models.OrganizationID(org.ID), integrationID); err != nil {
+	if err := h.slackIntegrationsService.DeleteSlackIntegration(ctx, models.OrgID(org.ID), integrationID); err != nil {
 		log.Printf("❌ Failed to delete Slack integration: %v", err)
 		return err
 	}
@@ -101,14 +101,14 @@ func (h *DashboardAPIHandler) ListDiscordIntegrations(
 	ctx context.Context,
 	user *models.User,
 ) ([]*models.DiscordIntegration, error) {
-	log.Printf("📋 Listing Discord integrations for organization: %s", user.OrganizationID)
-	integrations, err := h.discordIntegrationsService.GetDiscordIntegrationsByOrganizationID(ctx, user.OrganizationID)
+	log.Printf("📋 Listing Discord integrations for organization: %s", user.OrgID)
+	integrations, err := h.discordIntegrationsService.GetDiscordIntegrationsByOrganizationID(ctx, user.OrgID)
 	if err != nil {
 		log.Printf("❌ Failed to get Discord integrations: %v", err)
 		return nil, err
 	}
 
-	log.Printf("✅ Retrieved %d Discord integrations for organization: %s", len(integrations), user.OrganizationID)
+	log.Printf("✅ Retrieved %d Discord integrations for organization: %s", len(integrations), user.OrgID)
 	return integrations, nil
 }
 
@@ -118,10 +118,10 @@ func (h *DashboardAPIHandler) CreateDiscordIntegration(
 	discordAuthCode, guildID, redirectURL string,
 	user *models.User,
 ) (*models.DiscordIntegration, error) {
-	log.Printf("➕ Creating Discord integration for organization: %s", user.OrganizationID)
+	log.Printf("➕ Creating Discord integration for organization: %s", user.OrgID)
 	integration, err := h.discordIntegrationsService.CreateDiscordIntegration(
 		ctx,
-		user.OrganizationID,
+		user.OrgID,
 		discordAuthCode,
 		guildID,
 		redirectURL,
@@ -142,7 +142,7 @@ func (h *DashboardAPIHandler) DeleteDiscordIntegration(ctx context.Context, inte
 	if !ok {
 		return fmt.Errorf("organization not found in context")
 	}
-	if err := h.discordIntegrationsService.DeleteDiscordIntegration(ctx, models.OrganizationID(org.ID), integrationID); err != nil {
+	if err := h.discordIntegrationsService.DeleteDiscordIntegration(ctx, models.OrgID(org.ID), integrationID); err != nil {
 		log.Printf("❌ Failed to delete Discord integration: %v", err)
 		return err
 	}
@@ -160,7 +160,7 @@ func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context) (str
 
 	log.Printf("🔑 Generating CCAgent secret key for organization: %s", org.ID)
 
-	secretKey, err := h.organizationsService.GenerateCCAgentSecretKey(ctx, models.OrganizationID(org.ID))
+	secretKey, err := h.organizationsService.GenerateCCAgentSecretKey(ctx, models.OrgID(org.ID))
 	if err != nil {
 		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
 		return "", err

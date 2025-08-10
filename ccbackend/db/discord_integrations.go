@@ -54,7 +54,7 @@ func (r *PostgresDiscordIntegrationsRepository) CreateDiscordIntegration(
 		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.DiscordGuildID, integration.DiscordGuildName, integration.OrganizationID).
+	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.DiscordGuildID, integration.DiscordGuildName, integration.OrgID).
 		StructScan(integration)
 	if err != nil {
 		return fmt.Errorf("failed to create discord integration: %w", err)
@@ -65,7 +65,7 @@ func (r *PostgresDiscordIntegrationsRepository) CreateDiscordIntegration(
 
 func (r *PostgresDiscordIntegrationsRepository) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) ([]*models.DiscordIntegration, error) {
 	if organizationID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
@@ -108,7 +108,7 @@ func (r *PostgresDiscordIntegrationsRepository) GetAllDiscordIntegrations(
 func (r *PostgresDiscordIntegrationsRepository) DeleteDiscordIntegrationByID(
 	ctx context.Context,
 	integrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (bool, error) {
 	query := fmt.Sprintf(`DELETE FROM %s.discord_integrations WHERE id = $1 AND organization_id = $2`, r.schema)
 

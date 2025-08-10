@@ -6,7 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/zishang520/socket.io/v2/socket"
-	
+
 	"ccbackend/models"
 )
 
@@ -88,8 +88,8 @@ type APIKeyValidatorFunc func(apiKey string) (string, error)
 
 // Client represents a connected WebSocket client
 type Client struct {
-	ID             string
-	Socket         *socket.Socket
-	OrganizationID models.OrganizationID
-	AgentID        string
+	ID      string
+	Socket  *socket.Socket
+	OrgID   models.OrgID
+	AgentID string
 }

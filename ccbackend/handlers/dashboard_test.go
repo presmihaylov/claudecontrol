@@ -33,7 +33,7 @@ var (
 		ID:             "u_01234567890123456789012345",
 		AuthProvider:   "clerk",
 		AuthProviderID: "user_test_123",
-		OrganizationID: testOrg.ID,
+		OrgID:          models.OrgID(testOrg.ID),
 	}
 
 	testSlackIntegration = &models.SlackIntegration{
@@ -41,7 +41,7 @@ var (
 		SlackTeamID:    "T123456",
 		SlackAuthToken: "xoxb-test-token",
 		SlackTeamName:  "Test Team",
-		OrganizationID: testOrg.ID,
+		OrgID:          models.OrgID(testOrg.ID),
 	}
 )
 

@@ -66,7 +66,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) CreateProcessedDiscordMessa
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := db.QueryRowxContext(ctx, query, message.ID, message.JobID, message.DiscordMessageID, message.DiscordThreadID, message.TextContent, message.Status, message.DiscordIntegrationID, message.OrganizationID).
+	err := db.QueryRowxContext(ctx, query, message.ID, message.JobID, message.DiscordMessageID, message.DiscordThreadID, message.TextContent, message.Status, message.DiscordIntegrationID, message.OrgID).
 		StructScan(message)
 	if err != nil {
 		return fmt.Errorf("failed to create processed discord message: %w", err)
@@ -78,7 +78,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) CreateProcessedDiscordMessa
 func (r *PostgresProcessedDiscordMessagesRepository) GetProcessedDiscordMessageByID(
 	ctx context.Context,
 	id string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
@@ -107,7 +107,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) UpdateProcessedDiscordMessa
 	id string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (*models.ProcessedDiscordMessage, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
@@ -135,7 +135,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetProcessedMessagesByJobID
 	jobID string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) ([]*models.ProcessedDiscordMessage, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
@@ -158,7 +158,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetLatestProcessedMessageFo
 	ctx context.Context,
 	jobID string,
 	discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
@@ -188,7 +188,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetActiveMessageCountForJob
 	ctx context.Context,
 	jobIDs []string,
 	discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (int, error) {
 	if len(jobIDs) == 0 {
 		return 0, nil
@@ -223,7 +223,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) TESTS_UpdateProcessedDiscor
 	id string,
 	updatedAt time.Time,
 	discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
@@ -243,7 +243,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) DeleteProcessedDiscordMessa
 	ctx context.Context,
 	jobID string,
 	discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`

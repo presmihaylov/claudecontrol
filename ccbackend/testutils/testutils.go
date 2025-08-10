@@ -68,7 +68,7 @@ func CreateTestUser(t *testing.T, usersRepo *db.PostgresUsersRepository) *models
 
 	// Create user with the organization ID
 	testUserID := core.NewID("u")
-	testUser, err := usersRepo.CreateUser(context.Background(), "test", testUserID, testOrgID)
+	testUser, err := usersRepo.CreateUser(context.Background(), "test", testUserID, models.OrgID(testOrgID))
 	require.NoError(t, err, "Failed to create test user")
 	return testUser
 }
@@ -92,7 +92,7 @@ func CreateTestUserWithProvider(t *testing.T, usersRepo *db.PostgresUsersReposit
 
 	// Create user with the organization ID
 	testUserID := core.NewID("u")
-	testUser, err := usersRepo.CreateUser(context.Background(), authProvider, testUserID, testOrgID)
+	testUser, err := usersRepo.CreateUser(context.Background(), authProvider, testUserID, models.OrgID(testOrgID))
 	require.NoError(t, err, "Failed to create test user with provider %s", authProvider)
 	return testUser
 }
@@ -111,7 +111,7 @@ func CreateTestContextWithUser(user *models.User) context.Context {
 	// Get the user's organization and add it to context
 	// For tests, we need to create or fetch the organization
 	org := &models.Organization{
-		ID: user.OrganizationID,
+		ID: string(user.OrgID),
 	}
 	ctx = appctx.SetOrganization(ctx, org)
 
@@ -119,7 +119,7 @@ func CreateTestContextWithUser(user *models.User) context.Context {
 }
 
 // CreateTestSlackIntegration creates a test slack integration model for testing
-func CreateTestSlackIntegration(organizationID models.OrganizationID) *models.SlackIntegration {
+func CreateTestSlackIntegration(organizationID models.OrgID) *models.SlackIntegration {
 	integrationID := core.NewID("si")
 	teamIDSuffix := core.NewID("team")
 	tokenSuffix := core.NewID("tok")
@@ -129,12 +129,12 @@ func CreateTestSlackIntegration(organizationID models.OrganizationID) *models.Sl
 		SlackTeamID:    "test-team-" + teamIDSuffix,
 		SlackAuthToken: "xoxb-test-token-" + tokenSuffix,
 		SlackTeamName:  "Test Team",
-		OrganizationID: organizationID,
+		OrgID:          organizationID,
 	}
 }
 
 // CreateTestDiscordIntegration creates a test discord integration model for testing
-func CreateTestDiscordIntegration(organizationID models.OrganizationID) *models.DiscordIntegration {
+func CreateTestDiscordIntegration(organizationID models.OrgID) *models.DiscordIntegration {
 	integrationID := core.NewID("di")
 	guildIDSuffix := core.NewID("guild")
 
@@ -142,7 +142,7 @@ func CreateTestDiscordIntegration(organizationID models.OrganizationID) *models.
 		ID:               integrationID,
 		DiscordGuildID:   "test-guild-" + guildIDSuffix,
 		DiscordGuildName: "Test Discord Guild",
-		OrganizationID:   organizationID,
+		OrgID:            organizationID,
 	}
 }
 

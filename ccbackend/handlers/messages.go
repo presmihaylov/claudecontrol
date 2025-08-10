@@ -38,7 +38,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 	log.Printf(
 		"📋 Processing message %s from ccagent (Organization: %s, Agent: %s)",
 		parsedMsg.ID,
-		client.OrganizationID,
+		client.OrgID,
 		client.AgentID,
 	)
 
@@ -51,7 +51,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 		}
 
 		log.Printf("🤖 Received assistant message from client %s", client.ID)
-		if err := h.coreUseCase.ProcessAssistantMessage(context.Background(), client.ID, payload, client.OrganizationID); err != nil {
+		if err := h.coreUseCase.ProcessAssistantMessage(context.Background(), client.ID, payload, client.OrgID); err != nil {
 			log.Printf("❌ Failed to process assistant message from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process assistant message: %w", err)
 		}
@@ -64,7 +64,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 		}
 
 		log.Printf("⚙️ Received system message from client %s: %s", client.ID, payload.Message)
-		if err := h.coreUseCase.ProcessSystemMessage(context.Background(), client.ID, payload, client.OrganizationID); err != nil {
+		if err := h.coreUseCase.ProcessSystemMessage(context.Background(), client.ID, payload, client.OrgID); err != nil {
 			log.Printf("❌ Failed to process system message from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process system message: %w", err)
 		}
@@ -81,7 +81,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 			client.ID,
 			payload.ProcessedMessageID,
 		)
-		if err := h.coreUseCase.ProcessProcessingMessage(context.Background(), client.ID, payload, client.OrganizationID); err != nil {
+		if err := h.coreUseCase.ProcessProcessingMessage(context.Background(), client.ID, payload, client.OrgID); err != nil {
 			log.Printf("❌ Failed to process processing slack message notification from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process processing slack message: %w", err)
 		}
@@ -99,7 +99,7 @@ func (h *MessagesHandler) HandleMessage(client *clients.Client, msg any) error {
 			payload.JobID,
 			payload.Reason,
 		)
-		if err := h.coreUseCase.ProcessJobComplete(context.Background(), client.ID, payload, client.OrganizationID); err != nil {
+		if err := h.coreUseCase.ProcessJobComplete(context.Background(), client.ID, payload, client.OrgID); err != nil {
 			log.Printf("❌ Failed to process job complete notification from client %s: %v", client.ID, err)
 			return fmt.Errorf("failed to process job complete: %w", err)
 		}

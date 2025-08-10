@@ -59,7 +59,10 @@ func (s *OrganizationsService) GetOrganizationByID(
 	return organization, nil
 }
 
-func (s *OrganizationsService) GenerateCCAgentSecretKey(ctx context.Context, organizationID models.OrganizationID) (string, error) {
+func (s *OrganizationsService) GenerateCCAgentSecretKey(
+	ctx context.Context,
+	organizationID models.OrgID,
+) (string, error) {
 	log.Printf("📋 Starting to generate CCAgent secret key for organization: %s", organizationID)
 	if !core.IsValidULID(string(organizationID)) {
 		return "", fmt.Errorf("organization ID must be a valid ULID")

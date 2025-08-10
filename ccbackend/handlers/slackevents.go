@@ -163,11 +163,11 @@ func (h *SlackEventsHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Req
 
 	switch eventType {
 	case "app_mention":
-		if err := h.handleAppMention(r.Context(), event, slackIntegration.ID, slackIntegration.OrganizationID); err != nil {
+		if err := h.handleAppMention(r.Context(), event, slackIntegration.ID, slackIntegration.OrgID); err != nil {
 			log.Printf("❌ Failed to handle app mention: %v", err)
 		}
 	case "reaction_added":
-		if err := h.handleReactionAdded(r.Context(), event, slackIntegration.ID, slackIntegration.OrganizationID); err != nil {
+		if err := h.handleReactionAdded(r.Context(), event, slackIntegration.ID, slackIntegration.OrgID); err != nil {
 			log.Printf("❌ Failed to handle reaction added: %v", err)
 		}
 	default:
@@ -192,7 +192,7 @@ func (h *SlackEventsHandler) handleAppMention(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) error {
 	channel := event["channel"].(string)
 	user := event["user"].(string)
@@ -221,7 +221,7 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) error {
 	reactionName := event["reaction"].(string)
 	user := event["user"].(string)

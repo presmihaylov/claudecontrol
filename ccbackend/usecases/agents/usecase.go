@@ -34,7 +34,7 @@ func (s *AgentsUseCase) GetOrAssignAgentForJob(
 	ctx context.Context,
 	job *models.Job,
 	threadTS string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (string, error) {
 	// Check if this job is already assigned to an agent
 	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, job.ID, organizationID)
@@ -73,7 +73,7 @@ func (s *AgentsUseCase) AssignJobToAvailableAgent(
 	ctx context.Context,
 	job *models.Job,
 	threadTS string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (string, error) {
 	log.Printf("📝 Job %s not yet assigned, looking for any active agent", job.ID)
 
@@ -99,7 +99,7 @@ func (s *AgentsUseCase) AssignJobToAvailableAgent(
 func (s *AgentsUseCase) TryAssignJobToAgent(
 	ctx context.Context,
 	jobID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (string, bool, error) {
 	// First check if this job is already assigned to an agent
 	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, jobID, organizationID)
@@ -161,7 +161,7 @@ func (s *AgentsUseCase) TryAssignJobToAgent(
 func (s *AgentsUseCase) ValidateJobBelongsToAgent(
 	ctx context.Context,
 	agentID, jobID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) error {
 	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agentID, organizationID)
 	if err != nil {
@@ -185,7 +185,7 @@ type agentWithLoad struct {
 func (s *AgentsUseCase) sortAgentsByLoad(
 	ctx context.Context,
 	agents []*models.ActiveAgent,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) ([]agentWithLoad, error) {
 	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
 

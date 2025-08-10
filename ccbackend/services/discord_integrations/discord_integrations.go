@@ -17,10 +17,10 @@ type DiscordIntegrationsRepository interface {
 	CreateDiscordIntegration(ctx context.Context, integration *models.DiscordIntegration) error
 	GetDiscordIntegrationsByOrganizationID(
 		ctx context.Context,
-		organizationID models.OrganizationID,
+		organizationID models.OrgID,
 	) ([]*models.DiscordIntegration, error)
 	GetAllDiscordIntegrations(ctx context.Context) ([]*models.DiscordIntegration, error)
-	DeleteDiscordIntegrationByID(ctx context.Context, integrationID string, organizationID models.OrganizationID) (bool, error)
+	DeleteDiscordIntegrationByID(ctx context.Context, integrationID string, organizationID models.OrgID) (bool, error)
 	GetDiscordIntegrationByGuildID(ctx context.Context, guildID string) (mo.Option[*models.DiscordIntegration], error)
 	GetDiscordIntegrationByID(ctx context.Context, id string) (mo.Option[*models.DiscordIntegration], error)
 }
@@ -47,7 +47,7 @@ func NewDiscordIntegrationsService(
 
 func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 	ctx context.Context,
-	organizationID models.OrganizationID, discordAuthCode, guildID, redirectURL string,
+	organizationID models.OrgID, discordAuthCode, guildID, redirectURL string,
 ) (*models.DiscordIntegration, error) {
 	log.Printf("📋 Starting to create Discord integration for organization: %s", organizationID)
 	if !core.IsValidULID(string(organizationID)) {
@@ -78,7 +78,7 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 		ID:               core.NewID("di"),
 		DiscordGuildID:   guildID,
 		DiscordGuildName: guildInfo.Name,
-		OrganizationID:   organizationID,
+		OrgID:            organizationID,
 	}
 	if err := s.discordIntegrationsRepo.CreateDiscordIntegration(ctx, integration); err != nil {
 		return nil, fmt.Errorf("failed to create discord integration in database: %w", err)
@@ -94,7 +94,7 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 
 func (s *DiscordIntegrationsService) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) ([]*models.DiscordIntegration, error) {
 	log.Printf("📋 Starting to get Discord integrations for organization: %s", organizationID)
 	if !core.IsValidULID(string(organizationID)) {
@@ -129,7 +129,7 @@ func (s *DiscordIntegrationsService) GetAllDiscordIntegrations(
 
 func (s *DiscordIntegrationsService) DeleteDiscordIntegration(
 	ctx context.Context,
-	organizationID models.OrganizationID, integrationID string,
+	organizationID models.OrgID, integrationID string,
 ) error {
 	log.Printf("📋 Starting to delete Discord integration: %s", integrationID)
 	if !core.IsValidULID(string(organizationID)) {

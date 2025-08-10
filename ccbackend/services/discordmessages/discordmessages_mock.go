@@ -18,7 +18,7 @@ func (m *MockDiscordMessagesService) CreateProcessedDiscordMessage(
 	ctx context.Context,
 	jobID string,
 	discordMessageID, discordThreadID, textContent, discordIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 	status models.ProcessedDiscordMessageStatus,
 ) (*models.ProcessedDiscordMessage, error) {
 	args := m.Called(

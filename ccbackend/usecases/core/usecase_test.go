@@ -41,15 +41,15 @@ func TestRegisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
-			AgentID:        "agent-789",
+			ID:      "ws-123",
+			OrgID:   "org-456",
+			AgentID: "agent-789",
 		}
 
 		agent := &models.ActiveAgent{
 			ID:             "agent-789",
 			WSConnectionID: "ws-123",
-			OrganizationID: "org-456",
+			OrgID:          "org-456",
 		}
 
 		// Configure expectations
@@ -83,9 +83,9 @@ func TestRegisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
-			AgentID:        "agent-789",
+			ID:      "ws-123",
+			OrgID:   "org-456",
+			AgentID: "agent-789",
 		}
 
 		// Configure expectations
@@ -123,14 +123,14 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
+			ID:    "ws-123",
+			OrgID: "org-456",
 		}
 
 		agent := &models.ActiveAgent{
 			ID:             "agent-789",
 			WSConnectionID: "ws-123",
-			OrganizationID: "org-456",
+			OrgID:          "org-456",
 		}
 
 		// Configure expectations
@@ -169,20 +169,20 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
+			ID:    "ws-123",
+			OrgID: "org-456",
 		}
 
 		agent := &models.ActiveAgent{
 			ID:             "agent-789",
 			WSConnectionID: "ws-123",
-			OrganizationID: "org-456",
+			OrgID:          "org-456",
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			JobType:        "unknown_type", // Unknown job type should be skipped during cleanup
-			OrganizationID: "org-456",
+			ID:      "job-111",
+			JobType: "unknown_type", // Unknown job type should be skipped during cleanup
+			OrgID:   "org-456",
 		}
 
 		// Configure expectations
@@ -225,8 +225,8 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
+			ID:    "ws-123",
+			OrgID: "org-456",
 		}
 
 		// Configure expectations
@@ -262,14 +262,14 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
+			ID:    "ws-123",
+			OrgID: "org-456",
 		}
 
 		agent := &models.ActiveAgent{
 			ID:             "agent-789",
 			WSConnectionID: "ws-123",
-			OrganizationID: "org-456",
+			OrgID:          "org-456",
 		}
 
 		// Configure expectations
@@ -312,20 +312,20 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
+			ID:    "ws-123",
+			OrgID: "org-456",
 		}
 
 		agent := &models.ActiveAgent{
 			ID:             "agent-789",
 			WSConnectionID: "ws-123",
-			OrganizationID: "org-456",
+			OrgID:          "org-456",
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			JobType:        "unknown_type",
-			OrganizationID: "org-456",
+			ID:      "job-111",
+			JobType: "unknown_type",
+			OrgID:   "org-456",
 		}
 
 		// Configure expectations
@@ -368,14 +368,14 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
+			ID:    "ws-123",
+			OrgID: "org-456",
 		}
 
 		agent := &models.ActiveAgent{
 			ID:             "agent-789",
 			WSConnectionID: "ws-123",
-			OrganizationID: "org-456",
+			OrgID:          "org-456",
 		}
 
 		// Configure expectations
@@ -420,14 +420,14 @@ func TestProcessPing(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
+			ID:    "ws-123",
+			OrgID: "org-456",
 		}
 
 		agent := &models.ActiveAgent{
 			ID:             "agent-789",
 			WSConnectionID: "ws-123",
-			OrganizationID: "org-456",
+			OrgID:          "org-456",
 		}
 
 		// Configure expectations
@@ -464,8 +464,8 @@ func TestProcessPing(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:             "ws-123",
-			OrganizationID: "org-456",
+			ID:    "ws-123",
+			OrgID: "org-456",
 		}
 
 		// Configure expectations
@@ -539,14 +539,14 @@ func TestCleanupInactiveAgents(t *testing.T) {
 
 		now := time.Now()
 		inactiveAgent1 := &models.ActiveAgent{
-			ID:             "agent-001",
-			OrganizationID: "org-456",
-			LastActiveAt:   now.Add(-20 * time.Minute),
+			ID:           "agent-001",
+			OrgID:        "org-456",
+			LastActiveAt: now.Add(-20 * time.Minute),
 		}
 		inactiveAgent2 := &models.ActiveAgent{
-			ID:             "agent-002",
-			OrganizationID: "org-456",
-			LastActiveAt:   now.Add(-30 * time.Minute),
+			ID:           "agent-002",
+			OrgID:        "org-456",
+			LastActiveAt: now.Add(-30 * time.Minute),
 		}
 
 		// Configure expectations
@@ -675,13 +675,13 @@ func TestBroadcastCheckIdleJobs(t *testing.T) {
 		agent1 := &models.ActiveAgent{
 			ID:             "agent-001",
 			WSConnectionID: "ws-001",
-			OrganizationID: "org-456",
+			OrgID:          "org-456",
 		}
 
 		agent2 := &models.ActiveAgent{
 			ID:             "agent-002",
 			WSConnectionID: "ws-002",
-			OrganizationID: "org-456",
+			OrgID:          "org-456",
 		}
 
 		// Configure expectations

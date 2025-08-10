@@ -67,7 +67,7 @@ func (r *PostgresUsersRepository) GetUserByAuthProvider(
 func (r *PostgresUsersRepository) CreateUser(
 	ctx context.Context,
 	authProvider, authProviderID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (*models.User, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 

@@ -18,7 +18,7 @@ type MockJobsService struct {
 func (m *MockJobsService) CreateSlackJob(
 	ctx context.Context,
 	slackThreadTS, slackChannelID, slackUserID, slackIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (*models.Job, error) {
 	args := m.Called(ctx, slackThreadTS, slackChannelID, slackUserID, slackIntegrationID, organizationID)
 	if args.Get(0) == nil {
@@ -39,7 +39,7 @@ func (m *MockJobsService) GetJobByID(
 func (m *MockJobsService) GetJobBySlackThread(
 	ctx context.Context,
 	threadTS, channelID, slackIntegrationID string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (mo.Option[*models.Job], error) {
 	args := m.Called(ctx, threadTS, channelID, slackIntegrationID, organizationID)
 	return args.Get(0).(mo.Option[*models.Job]), args.Error(1)

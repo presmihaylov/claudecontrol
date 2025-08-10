@@ -20,7 +20,7 @@ type ProcessedDiscordMessage struct {
 	TextContent          string                        `json:"text_content"           db:"text_content"`
 	Status               ProcessedDiscordMessageStatus `json:"status"                 db:"status"`
 	DiscordIntegrationID string                        `json:"discord_integration_id" db:"discord_integration_id"`
-	OrganizationID       OrganizationID                `json:"organization_id"        db:"organization_id"`
+	OrgID                OrgID                         `json:"organization_id"        db:"organization_id"`
 	CreatedAt            time.Time                     `json:"created_at"             db:"created_at"`
 	UpdatedAt            time.Time                     `json:"updated_at"             db:"updated_at"`
 }

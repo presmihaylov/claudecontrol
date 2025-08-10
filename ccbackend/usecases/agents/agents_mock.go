@@ -17,7 +17,7 @@ func (m *MockAgentsUseCase) GetOrAssignAgentForJob(
 	ctx context.Context,
 	job *models.Job,
 	threadTS string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (string, error) {
 	args := m.Called(ctx, job, threadTS, organizationID)
 	return args.String(0), args.Error(1)
@@ -27,7 +27,7 @@ func (m *MockAgentsUseCase) AssignJobToAvailableAgent(
 	ctx context.Context,
 	job *models.Job,
 	threadTS string,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 ) (string, error) {
 	args := m.Called(ctx, job, threadTS, organizationID)
 	return args.String(0), args.Error(1)

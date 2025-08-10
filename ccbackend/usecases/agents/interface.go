@@ -13,7 +13,7 @@ type AgentsUseCaseInterface interface {
 		ctx context.Context,
 		job *models.Job,
 		threadTS string,
-		organizationID models.OrganizationID,
+		organizationID models.OrgID,
 	) (string, error)
 
 	// TryAssignJobToAgent attempts to assign a job to the least loaded available agent
@@ -24,13 +24,13 @@ type AgentsUseCaseInterface interface {
 	TryAssignJobToAgent(
 		ctx context.Context,
 		jobID string,
-		organizationID models.OrganizationID,
+		organizationID models.OrgID,
 	) (string, bool, error)
 
 	// ValidateJobBelongsToAgent checks if a job is assigned to the specified agent
 	ValidateJobBelongsToAgent(
 		ctx context.Context,
 		agentID, jobID string,
-		organizationID models.OrganizationID,
+		organizationID models.OrgID,
 	) error
 }

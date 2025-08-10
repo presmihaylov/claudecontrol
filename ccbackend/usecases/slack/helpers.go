@@ -43,7 +43,7 @@ func (s *SlackUseCase) sendStartConversationToAgent(
 	}
 
 	// Get job to access thread timestamp
-	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.OrganizationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.OrgID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -96,7 +96,7 @@ func (s *SlackUseCase) sendUserMessageToAgent(
 	}
 
 	// Get job to access thread timestamp
-	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.OrganizationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, message.JobID, message.OrgID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}

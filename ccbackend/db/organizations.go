@@ -88,7 +88,7 @@ func (r *PostgresOrganizationsRepository) GetOrganizationByID(
 
 func (r *PostgresOrganizationsRepository) GenerateCCAgentSecretKey(
 	ctx context.Context,
-	organizationID models.OrganizationID,
+	organizationID models.OrgID,
 	secretKey string,
 ) (bool, error) {
 	if secretKey == "" {
