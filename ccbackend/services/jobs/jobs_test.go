@@ -377,7 +377,6 @@ func TestJobsService(t *testing.T) {
 			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
-
 		t.Run("NotFound", func(t *testing.T) {
 			id := core.NewID("j")
 
@@ -1394,6 +1393,374 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			_, err := jobsService.GetJobsWithQueuedMessages(context.Background(), "", organizationID)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
+		})
+	})
+
+	t.Run("DiscordJobs", func(t *testing.T) {
+		// Set up Discord integration
+		cfg, err := testutils.LoadTestConfig()
+		require.NoError(t, err)
+		dbConn, err := db.NewConnection(cfg.DatabaseURL)
+		require.NoError(t, err)
+		defer dbConn.Close()
+
+		discordIntegrationsRepo := db.NewPostgresDiscordIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+		testDiscordIntegration := testutils.CreateTestDiscordIntegration(organizationID)
+		err = discordIntegrationsRepo.CreateDiscordIntegration(context.Background(), testDiscordIntegration)
+		require.NoError(t, err)
+		defer func() {
+			_, _ = discordIntegrationsRepo.DeleteDiscordIntegrationByID(
+				context.Background(),
+				testDiscordIntegration.ID,
+				organizationID,
+			)
+		}()
+
+		t.Run("CreateDiscordJob", func(t *testing.T) {
+			t.Run("Success", func(t *testing.T) {
+				discordMessageID := "discord-msg-123"
+				discordThreadID := "discord-thread-456"
+
+				job, err := jobsService.CreateDiscordJob(
+					context.Background(),
+					discordMessageID,
+					discordThreadID,
+					"discord-user-789",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+
+				require.NoError(t, err)
+				assert.NotEmpty(t, job.ID)
+				assert.Equal(t, models.JobTypeDiscord, job.JobType)
+				assert.NotNil(t, job.DiscordPayload)
+				assert.Equal(t, discordMessageID, job.DiscordPayload.MessageID)
+				assert.Equal(t, discordThreadID, job.DiscordPayload.ThreadID)
+				assert.Equal(t, testDiscordIntegration.ID, job.DiscordPayload.IntegrationID)
+				assert.False(t, job.CreatedAt.IsZero())
+				assert.False(t, job.UpdatedAt.IsZero())
+
+				// Cleanup
+				defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, organizationID) }()
+			})
+
+			t.Run("EmptyDiscordMessageID", func(t *testing.T) {
+				_, err := jobsService.CreateDiscordJob(
+					context.Background(),
+					"",
+					"discord-thread-456",
+					"discord-user-789",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+
+				require.Error(t, err)
+				assert.Equal(t, "discord_message_id cannot be empty", err.Error())
+			})
+
+			t.Run("EmptyDiscordThreadID", func(t *testing.T) {
+				_, err := jobsService.CreateDiscordJob(
+					context.Background(),
+					"discord-msg-123",
+					"",
+					"discord-user-789",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+
+				require.Error(t, err)
+				assert.Equal(t, "discord_thread_id cannot be empty", err.Error())
+			})
+
+			t.Run("InvalidDiscordIntegrationID", func(t *testing.T) {
+				_, err := jobsService.CreateDiscordJob(
+					context.Background(),
+					"discord-msg-123",
+					"discord-thread-456",
+					"discord-user-789",
+					"invalid-integration-id",
+					organizationID,
+				)
+
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "discord_integration_id must be a valid ULID")
+			})
+		})
+
+		t.Run("GetJobByDiscordThread", func(t *testing.T) {
+			t.Run("Success", func(t *testing.T) {
+				// Create a Discord job first
+				createdJob, err := jobsService.CreateDiscordJob(
+					context.Background(),
+					"discord-msg-lookup",
+					"discord-thread-lookup-123",
+					"discord-user-lookup",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+				require.NoError(t, err)
+				defer func() { _ = jobsService.DeleteJob(context.Background(), createdJob.ID, organizationID) }()
+
+				// Fetch it by Discord thread
+				maybeFetchedJob, err := jobsService.GetJobByDiscordThread(
+					context.Background(),
+					"discord-thread-lookup-123",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+				require.NoError(t, err)
+				require.True(t, maybeFetchedJob.IsPresent())
+				fetchedJob := maybeFetchedJob.MustGet()
+
+				assert.Equal(t, createdJob.ID, fetchedJob.ID)
+				assert.Equal(t, models.JobTypeDiscord, fetchedJob.JobType)
+				assert.NotNil(t, fetchedJob.DiscordPayload)
+				assert.Equal(t, createdJob.DiscordPayload.ThreadID, fetchedJob.DiscordPayload.ThreadID)
+				assert.Equal(t, createdJob.DiscordPayload.MessageID, fetchedJob.DiscordPayload.MessageID)
+			})
+
+			t.Run("NotFound", func(t *testing.T) {
+				maybeJob, err := jobsService.GetJobByDiscordThread(
+					context.Background(),
+					"non-existent-thread",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+				require.NoError(t, err)
+				assert.False(t, maybeJob.IsPresent())
+			})
+
+			t.Run("EmptyDiscordThreadID", func(t *testing.T) {
+				_, err := jobsService.GetJobByDiscordThread(
+					context.Background(),
+					"",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+
+				require.Error(t, err)
+				assert.Equal(t, "discord_thread_id cannot be empty", err.Error())
+			})
+		})
+
+		t.Run("GetOrCreateJobForDiscordThread", func(t *testing.T) {
+			t.Run("CreateNew", func(t *testing.T) {
+				// Use unique thread ID to avoid conflicts
+				discordThreadID := fmt.Sprintf("new-discord-thread-%d", time.Now().UnixNano())
+				discordMessageID := "new-discord-msg-123"
+
+				result, err := jobsService.GetOrCreateJobForDiscordThread(
+					context.Background(),
+					discordMessageID,
+					discordThreadID,
+					"discord-user-create",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+
+				require.NoError(t, err)
+				assert.NotEmpty(t, result.Job.ID)
+				assert.Equal(t, models.JobTypeDiscord, result.Job.JobType)
+				assert.NotNil(t, result.Job.DiscordPayload)
+				assert.Equal(t, discordMessageID, result.Job.DiscordPayload.MessageID)
+				assert.Equal(t, discordThreadID, result.Job.DiscordPayload.ThreadID)
+				assert.Equal(t, testDiscordIntegration.ID, result.Job.DiscordPayload.IntegrationID)
+				assert.Equal(t, models.JobCreationStatusCreated, result.Status)
+
+				// Cleanup
+				defer func() { _ = jobsService.DeleteJob(context.Background(), result.Job.ID, organizationID) }()
+			})
+
+			t.Run("GetExisting", func(t *testing.T) {
+				// Use unique thread ID to avoid conflicts
+				discordThreadID := fmt.Sprintf("existing-discord-thread-%d", time.Now().UnixNano())
+				discordMessageID := "existing-discord-msg-123"
+
+				// Create job first
+				firstResult, err := jobsService.GetOrCreateJobForDiscordThread(
+					context.Background(),
+					discordMessageID,
+					discordThreadID,
+					"discord-user-existing",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+				require.NoError(t, err)
+				assert.Equal(t, models.JobCreationStatusCreated, firstResult.Status)
+
+				// Get the same job again
+				secondResult, err := jobsService.GetOrCreateJobForDiscordThread(
+					context.Background(),
+					"different-msg-id", // Different message ID, same thread
+					discordThreadID,
+					"discord-user-existing",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+				require.NoError(t, err)
+				assert.Equal(t, models.JobCreationStatusNA, secondResult.Status)
+
+				// Should be the same job
+				assert.Equal(t, firstResult.Job.ID, secondResult.Job.ID)
+				assert.Equal(t, firstResult.Job.DiscordPayload.ThreadID, secondResult.Job.DiscordPayload.ThreadID)
+				// Original message ID should be preserved
+				assert.Equal(t, firstResult.Job.DiscordPayload.MessageID, secondResult.Job.DiscordPayload.MessageID)
+
+				// Cleanup
+				defer func() { _ = jobsService.DeleteJob(context.Background(), firstResult.Job.ID, organizationID) }()
+			})
+
+			t.Run("EmptyDiscordMessageID", func(t *testing.T) {
+				_, err := jobsService.GetOrCreateJobForDiscordThread(
+					context.Background(),
+					"",
+					"discord-thread-456",
+					"discord-user-789",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+
+				require.Error(t, err)
+				assert.Equal(t, "discord_message_id cannot be empty", err.Error())
+			})
+
+			t.Run("EmptyDiscordThreadID", func(t *testing.T) {
+				_, err := jobsService.GetOrCreateJobForDiscordThread(
+					context.Background(),
+					"discord-msg-123",
+					"",
+					"discord-user-789",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+
+				require.Error(t, err)
+				assert.Equal(t, "discord_thread_id cannot be empty", err.Error())
+			})
+		})
+
+		t.Run("DeleteDiscordJob", func(t *testing.T) {
+			t.Run("Success", func(t *testing.T) {
+				// Create a Discord job first
+				job, err := jobsService.CreateDiscordJob(
+					context.Background(),
+					"discord-msg-delete",
+					"discord-thread-delete",
+					"discord-user-delete",
+					testDiscordIntegration.ID,
+					organizationID,
+				)
+				require.NoError(t, err)
+
+				// Verify job exists
+				maybeFetchedJob, err := jobsService.GetJobByID(
+					context.Background(),
+					job.ID,
+					organizationID,
+				)
+				require.NoError(t, err)
+				require.True(t, maybeFetchedJob.IsPresent())
+				fetchedJob := maybeFetchedJob.MustGet()
+				assert.Equal(t, job.ID, fetchedJob.ID)
+				assert.Equal(t, models.JobTypeDiscord, fetchedJob.JobType)
+
+				// Delete the job
+				err = jobsService.DeleteJob(context.Background(), job.ID, organizationID)
+				require.NoError(t, err)
+
+				// Verify job no longer exists
+				maybeJob, err := jobsService.GetJobByID(
+					context.Background(),
+					job.ID,
+					organizationID,
+				)
+				require.NoError(t, err)
+				assert.False(t, maybeJob.IsPresent())
+			})
+		})
+
+		t.Run("DeleteDiscordJobWithMessages", func(t *testing.T) {
+			// Create a Discord job
+			job, err := jobsService.CreateDiscordJob(
+				context.Background(),
+				"discord-msg-cascade",
+				"discord-thread-cascade",
+				"discord-user-cascade",
+				testDiscordIntegration.ID,
+				organizationID,
+			)
+			require.NoError(t, err)
+
+			// Create Discord messages for this job
+			processedDiscordMessagesRepo := db.NewPostgresProcessedDiscordMessagesRepository(dbConn, cfg.DatabaseSchema)
+			discordMessagesService := discordmessages.NewDiscordMessagesService(processedDiscordMessagesRepo)
+
+			message1, err := discordMessagesService.CreateProcessedDiscordMessage(
+				context.Background(),
+				job.ID,
+				"discord-msg-cascade-1",
+				"discord-thread-cascade",
+				"Discord message 1",
+				testDiscordIntegration.ID,
+				organizationID,
+				models.ProcessedDiscordMessageStatusQueued,
+			)
+			require.NoError(t, err)
+
+			message2, err := discordMessagesService.CreateProcessedDiscordMessage(
+				context.Background(),
+				job.ID,
+				"discord-msg-cascade-2",
+				"discord-thread-cascade",
+				"Discord message 2",
+				testDiscordIntegration.ID,
+				organizationID,
+				models.ProcessedDiscordMessageStatusInProgress,
+			)
+			require.NoError(t, err)
+
+			// Verify messages exist
+			maybeMessage1, err := discordMessagesService.GetProcessedDiscordMessageByID(
+				context.Background(),
+				message1.ID,
+				organizationID,
+			)
+			require.NoError(t, err)
+			require.True(t, maybeMessage1.IsPresent())
+
+			maybeMessage2, err := discordMessagesService.GetProcessedDiscordMessageByID(
+				context.Background(),
+				message2.ID,
+				organizationID,
+			)
+			require.NoError(t, err)
+			require.True(t, maybeMessage2.IsPresent())
+
+			// Delete the job
+			err = jobsService.DeleteJob(context.Background(), job.ID, organizationID)
+			require.NoError(t, err)
+
+			// Verify job is deleted
+			maybeJob, err := jobsService.GetJobByID(context.Background(), job.ID, organizationID)
+			require.NoError(t, err)
+			assert.False(t, maybeJob.IsPresent())
+
+			// Verify all Discord messages are also deleted (cascade)
+			maybeMessage1After, err := discordMessagesService.GetProcessedDiscordMessageByID(
+				context.Background(),
+				message1.ID,
+				organizationID,
+			)
+			require.NoError(t, err)
+			assert.False(t, maybeMessage1After.IsPresent())
+
+			maybeMessage2After, err := discordMessagesService.GetProcessedDiscordMessageByID(
+				context.Background(),
+				message2.ID,
+				organizationID,
+			)
+			require.NoError(t, err)
+			assert.False(t, maybeMessage2After.IsPresent())
 		})
 	})
 }

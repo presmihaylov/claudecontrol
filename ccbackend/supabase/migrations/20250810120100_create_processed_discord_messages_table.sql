@@ -2,14 +2,14 @@
 
 -- Step 1: Create processed_discord_messages table in production schema
 CREATE TABLE claudecontrol.processed_discord_messages (
-    id CHAR(26) PRIMARY KEY,
-    job_id CHAR(26) NOT NULL,
-    discord_message_id VARCHAR(255) NOT NULL,
-    discord_thread_id VARCHAR(255) NOT NULL,
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    discord_message_id TEXT NOT NULL,
+    discord_thread_id TEXT NOT NULL,
     text_content TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('QUEUED', 'IN_PROGRESS', 'COMPLETED')),
-    discord_integration_id CHAR(26) NOT NULL,
-    organization_id CHAR(26) NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('QUEUED', 'IN_PROGRESS', 'COMPLETED')),
+    discord_integration_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
@@ -32,14 +32,14 @@ CREATE TABLE claudecontrol.processed_discord_messages (
 
 -- Step 2: Create processed_discord_messages table in test schema
 CREATE TABLE claudecontrol_test.processed_discord_messages (
-    id CHAR(26) PRIMARY KEY,
-    job_id CHAR(26) NOT NULL,
-    discord_message_id VARCHAR(255) NOT NULL,
-    discord_thread_id VARCHAR(255) NOT NULL,
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    discord_message_id TEXT NOT NULL,
+    discord_thread_id TEXT NOT NULL,
     text_content TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('QUEUED', 'IN_PROGRESS', 'COMPLETED')),
-    discord_integration_id CHAR(26) NOT NULL,
-    organization_id CHAR(26) NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('QUEUED', 'IN_PROGRESS', 'COMPLETED')),
+    discord_integration_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     

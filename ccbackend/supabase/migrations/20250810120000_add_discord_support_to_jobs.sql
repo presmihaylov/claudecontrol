@@ -2,17 +2,17 @@
 
 -- Step 1: Add Discord columns to jobs table in production schema
 ALTER TABLE claudecontrol.jobs 
-ADD COLUMN discord_message_id VARCHAR(255),
-ADD COLUMN discord_thread_id VARCHAR(255),
-ADD COLUMN discord_user_id VARCHAR(255),
-ADD COLUMN discord_integration_id CHAR(26);
+ADD COLUMN discord_message_id TEXT,
+ADD COLUMN discord_thread_id TEXT,
+ADD COLUMN discord_user_id TEXT,
+ADD COLUMN discord_integration_id TEXT;
 
 -- Step 2: Add Discord columns to jobs table in test schema
 ALTER TABLE claudecontrol_test.jobs 
-ADD COLUMN discord_message_id VARCHAR(255),
-ADD COLUMN discord_thread_id VARCHAR(255),
-ADD COLUMN discord_user_id VARCHAR(255),
-ADD COLUMN discord_integration_id CHAR(26);
+ADD COLUMN discord_message_id TEXT,
+ADD COLUMN discord_thread_id TEXT,
+ADD COLUMN discord_user_id TEXT,
+ADD COLUMN discord_integration_id TEXT;
 
 -- Step 3: Update constraint to handle Discord fields in production schema
 ALTER TABLE claudecontrol.jobs 
