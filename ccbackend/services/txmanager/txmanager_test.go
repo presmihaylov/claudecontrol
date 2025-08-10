@@ -93,7 +93,7 @@ func TestTransactionManager_WithTransaction_Success(t *testing.T) {
 	}
 
 	// Clean up
-	jobsRepo.DeleteJob(ctx, createdJob.ID, testIntegration.ID, testIntegration.OrganizationID)
+	jobsRepo.DeleteJob(ctx, createdJob.ID, testIntegration.OrganizationID)
 }
 
 func TestTransactionManager_WithTransaction_Rollback_OnError(t *testing.T) {
@@ -264,8 +264,8 @@ func TestTransactionManager_WithTransaction_MultipleDatabaseOperations(t *testin
 	}
 
 	// Clean up
-	jobsRepo.DeleteJob(ctx, job1ID, testIntegration.ID, testIntegration.OrganizationID)
-	jobsRepo.DeleteJob(ctx, job2ID, testIntegration.ID, testIntegration.OrganizationID)
+	jobsRepo.DeleteJob(ctx, job1ID, testIntegration.OrganizationID)
+	jobsRepo.DeleteJob(ctx, job2ID, testIntegration.OrganizationID)
 }
 
 func TestTransactionManager_WithTransaction_MultipleDatabaseOperations_PartialRollback(t *testing.T) {
@@ -384,7 +384,7 @@ func TestTransactionManager_NestedTransactions(t *testing.T) {
 	}
 
 	// Clean up
-	jobsRepo.DeleteJob(ctx, jobID, testIntegration.ID, testIntegration.OrganizationID)
+	jobsRepo.DeleteJob(ctx, jobID, testIntegration.OrganizationID)
 }
 
 func TestTransactionManager_ManualTransaction_Success(t *testing.T) {
@@ -425,7 +425,7 @@ func TestTransactionManager_ManualTransaction_Success(t *testing.T) {
 	}
 
 	// Clean up
-	jobsRepo.DeleteJob(ctx, job.ID, testIntegration.ID, testIntegration.OrganizationID)
+	jobsRepo.DeleteJob(ctx, job.ID, testIntegration.OrganizationID)
 }
 
 func TestTransactionManager_ManualTransaction_Rollback(t *testing.T) {

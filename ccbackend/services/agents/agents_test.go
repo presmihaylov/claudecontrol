@@ -13,6 +13,7 @@ import (
 	"ccbackend/db"
 	"ccbackend/models"
 	"ccbackend/services"
+	discordmessages "ccbackend/services/discordmessages"
 	jobs "ccbackend/services/jobs"
 	slackmessages "ccbackend/services/slackmessages"
 	"ccbackend/services/txmanager"
@@ -30,6 +31,7 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 	agentsRepo := db.NewPostgresAgentsRepository(dbConn, cfg.DatabaseSchema)
 	jobsRepo := db.NewPostgresJobsRepository(dbConn, cfg.DatabaseSchema)
 	messagesRepo := db.NewPostgresProcessedSlackMessagesRepository(dbConn, cfg.DatabaseSchema)
+	discordMessagesRepo := db.NewPostgresProcessedDiscordMessagesRepository(dbConn, cfg.DatabaseSchema)
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 
@@ -42,7 +44,8 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 	txManager := txmanager.NewTransactionManager(dbConn)
 	agentsService := NewAgentsService(agentsRepo)
 	slackMessagesService := slackmessages.NewSlackMessagesService(messagesRepo)
-	jobsService := jobs.NewJobsService(jobsRepo, slackMessagesService, txManager)
+	discordMessagesService := discordmessages.NewDiscordMessagesService(discordMessagesRepo)
+	jobsService := jobs.NewJobsService(jobsRepo, slackMessagesService, discordMessagesService, txManager)
 
 	cleanup := func() {
 		// Clean up test data
