@@ -53,6 +53,7 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
    - Use real database connections with test schema
    - Implement proper cleanup with `defer` functions
    - Follow user-scoped entity patterns with proper isolation
+   - Run `supabase db reset` when encountering migration-related test failures
 
 ## Workflow
 
@@ -65,6 +66,8 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
 
 2. **Autonomous Test Execution**:
    - Automatically run `make test` in ccbackend and ccagent
+   - If database-related test failures occur (connection errors, migration issues), run `supabase db reset` to reset database with fresh migrations
+   - Retry tests after database reset if initial failures were migration-related
    - Capture and analyze test failures
    - Classify errors by type and severity
 
@@ -106,6 +109,7 @@ cd ccbackend && make test          # Run backend tests
 cd ccagent && make test            # Run agent tests  
 cd ccbackend && make lint-fix      # Fix linting issues
 cd ccagent && make lint-fix        # Fix linting issues
+supabase db reset                  # Reset database with fresh migrations (when needed)
 ```
 
 ### Build Commands (for validation)

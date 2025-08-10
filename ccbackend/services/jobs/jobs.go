@@ -267,7 +267,9 @@ func (s *JobsService) DeleteJob(
 		return fmt.Errorf("failed to get job for deletion: %w", err)
 	}
 	if !maybeJob.IsPresent() {
-		return fmt.Errorf("job not found for deletion")
+		// Job not found - delete operation is idempotent, so this is successful
+		log.Printf("📋 Completed successfully - job not found (idempotent delete): %s", id)
+		return nil
 	}
 	job := maybeJob.MustGet()
 
