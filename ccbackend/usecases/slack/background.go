@@ -29,7 +29,12 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 		slackIntegrationID := integration.ID
 
 		// Get jobs with queued messages for this integration
-		queuedJobs, err := s.jobsService.GetJobsWithQueuedMessages(ctx, slackIntegrationID, integration.OrganizationID)
+		queuedJobs, err := s.jobsService.GetJobsWithQueuedMessages(
+			ctx,
+			models.JobTypeSlack,
+			slackIntegrationID,
+			integration.OrganizationID,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to get queued jobs for integration %s: %w", slackIntegrationID, err)
 		}

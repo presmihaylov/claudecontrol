@@ -107,7 +107,7 @@ func TestAgentsService(t *testing.T) {
 			agentID := core.NewID("ccaid")
 
 			// Create a real job first
-			job, err := jobsService.CreateJob(
+			job, err := jobsService.CreateSlackJob(
 				context.Background(),
 				"test.thread.assigned",
 				"C1234567890",
@@ -305,7 +305,7 @@ func TestAgentsService(t *testing.T) {
 			wsConnectionID := core.NewID("wsc")
 
 			// Create a real job first
-			job, err := jobsService.CreateJob(
+			job, err := jobsService.CreateSlackJob(
 				context.Background(),
 				"test.thread.getbyid",
 				"C1234567890",
@@ -394,7 +394,7 @@ func TestAgentsService(t *testing.T) {
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, organizationID) }()
 
 			// Create a real job first
-			job, err := jobsService.CreateJob(
+			job, err := jobsService.CreateSlackJob(
 				context.Background(),
 				"test.thread.available",
 				"C1234567890",
@@ -463,7 +463,7 @@ func TestAgentsService(t *testing.T) {
 
 			// Create only agents with jobs
 			// Create real jobs first
-			job1, err := jobsService.CreateJob(
+			job1, err := jobsService.CreateSlackJob(
 				context.Background(),
 				"test.thread.busy1",
 				"C1111111111",
@@ -488,7 +488,7 @@ func TestAgentsService(t *testing.T) {
 
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, organizationID) }()
 
-			job2, err := jobsService.CreateJob(
+			job2, err := jobsService.CreateSlackJob(
 				context.Background(),
 				"test.thread.busy2",
 				"C2222222222",

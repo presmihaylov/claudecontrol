@@ -80,7 +80,7 @@ func (s *SlackUseCase) ProcessAssistantMessage(
 	}
 
 	// Update job timestamp to track activity
-	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
+	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, organizationID); err != nil {
 		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
@@ -202,7 +202,7 @@ func (s *SlackUseCase) ProcessSystemMessage(
 	}
 
 	// Update job timestamp to track activity
-	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, slackIntegrationID, organizationID); err != nil {
+	if err := s.jobsService.UpdateJobTimestamp(ctx, job.ID, organizationID); err != nil {
 		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}

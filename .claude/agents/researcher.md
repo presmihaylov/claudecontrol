@@ -2,6 +2,7 @@
 name: researcher
 description: Research APIs, libraries, SDKs, and tooling using Context7 documentation and web search. Provides comprehensive analysis of available functionality and implementation guidance for specific tools and libraries.
 tools: mcp__context7__resolve-library-id, mcp__context7__get-library-docs, WebSearch, WebFetch, Read, Grep, Glob
+color: purple
 ---
 
 # Researcher Subagent

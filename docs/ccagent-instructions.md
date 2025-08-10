@@ -89,12 +89,26 @@ Every task must be completed to full working state before considering it done. T
 
 ### Mandatory Workflow Steps
 
-#### 1. Implementation Phase
+#### 1. Environment Verification (PREREQUISITE)
+Before starting any task implementation, verify the environment is ready:
+```bash
+# Verify database is running and migrations are applied
+cd ccbackend && supabase status
+cd ccbackend && supabase migration up
+```
+
+If database is not running or migrations fail:
+- Report to user that database needs to be started
+- Request user to run: `supabase start` from ccbackend directory
+- If migrations fail, request user to run: `supabase db reset` to reset and apply all migrations
+- Do not proceed with implementation until database and migrations are confirmed working
+
+#### 2. Implementation Phase
 - Write the requested code changes following existing patterns
 - Use TodoWrite tool to track implementation progress
 - Follow service architecture patterns from CLAUDE.md
 
-#### 2. Build Verification (REQUIRED)
+#### 3. Build Verification (REQUIRED)
 Always verify builds succeed after making changes:
 ```bash
 cd ccbackend && make build     # Backend must build
@@ -103,7 +117,7 @@ cd ccfrontend && bun run build # Frontend must build
 ```
 If any build fails, fix the issues before proceeding.
 
-#### 3. Code Review Integration (REQUIRED)
+#### 4. Code Review Integration (REQUIRED)
 When main implementation is complete:
 - Use the CodeReviewer subagent to analyze all changes
 - Review the suggestions and identify high-impact improvements
@@ -114,14 +128,14 @@ When main implementation is complete:
   - Better adherence to project conventions
 - This must happen before running tests to ensure code quality improvements are tested
 
-#### 4. Test Management (REQUIRED)
+#### 5. Test Management (REQUIRED)
 **ALWAYS use the TestFixer subagent for all test-related operations:**
 - Use TestFixer subagent after code review improvements are applied
 - TestFixer will run tests and fix any failures
 - Never run test commands directly - always delegate to TestFixer
 - If TestFixer reports database issues, inform user that `supabase start` is needed
 
-#### 5. Linting Compliance (REQUIRED)
+#### 6. Linting Compliance (REQUIRED)
 Ensure code passes linting standards:
 ```bash
 cd ccbackend && make lint      # Backend linting
@@ -176,6 +190,7 @@ Before considering any task complete, verify:
 - [ ] **Task Classification**: Determined if request is a question (answer directly) or task (follow workflow)
 - [ ] **Clarification**: For tasks, created execution plan and asked all clarifying questions in single request
 - [ ] **Requirements Confirmed**: All ambiguities resolved and task clearly defined
+- [ ] **Environment Verified**: Database is running and accessible before starting implementation
 - [ ] **Implementation**: Code is written and follows project patterns
 - [ ] **Builds**: All modules (`ccbackend`, `ccagent`, `ccfrontend`) build successfully
 - [ ] **Code Review**: CodeReviewer suggestions have been reviewed and high-impact ones applied
