@@ -507,7 +507,7 @@ export default function Home() {
 												<Button
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
-													className="flex items-center gap-2"
+													className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
 												>
 													<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
 													{generatingKey ? "Generating..." : "Generate"}
@@ -622,7 +622,7 @@ export default function Home() {
 												<Button
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
-													className="flex items-center gap-2"
+													className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
 												>
 													<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
 													{generatingKey ? "Generating..." : "Generate"}
@@ -780,7 +780,7 @@ export default function Home() {
 							<Button variant="outline" onClick={() => setRegenerateDialogOpen(false)}>
 								Cancel
 							</Button>
-							<Button onClick={handleGenerateSecretKey} disabled={generatingKey}>
+							<Button onClick={handleGenerateSecretKey} disabled={generatingKey} className="bg-red-600 hover:bg-red-700 text-white">
 								{generatingKey ? "Regenerating..." : "Regenerate Key"}
 							</Button>
 						</DialogFooter>
