@@ -131,7 +131,6 @@ func TestGetOrAssignAgentForJob(t *testing.T) {
 		mockWS.AssertExpectations(t)
 		mockAgents.AssertExpectations(t)
 	})
-
 }
 
 // AssignJobToAvailableAgent Tests
@@ -187,7 +186,6 @@ func TestAssignJobToAvailableAgent(t *testing.T) {
 		mockWS.AssertExpectations(t)
 		mockAgents.AssertExpectations(t)
 	})
-
 }
 
 // TryAssignJobToAgent Tests
@@ -293,7 +291,6 @@ func TestTryAssignJobToAgent(t *testing.T) {
 		mockWS.AssertExpectations(t)
 		mockAgents.AssertExpectations(t)
 	})
-
 }
 
 // ValidateJobBelongsToAgent Tests
