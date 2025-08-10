@@ -505,6 +505,7 @@ export default function Home() {
 												</Button>
 											) : (
 												<Button
+													variant="destructive"
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
 													className="flex items-center gap-2"
@@ -620,6 +621,7 @@ export default function Home() {
 												</Button>
 											) : (
 												<Button
+													variant="destructive"
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
 													className="flex items-center gap-2"
@@ -780,7 +782,7 @@ export default function Home() {
 							<Button variant="outline" onClick={() => setRegenerateDialogOpen(false)}>
 								Cancel
 							</Button>
-							<Button onClick={handleGenerateSecretKey} disabled={generatingKey}>
+							<Button variant="destructive" onClick={handleGenerateSecretKey} disabled={generatingKey}>
 								{generatingKey ? "Regenerating..." : "Regenerate Key"}
 							</Button>
 						</DialogFooter>
