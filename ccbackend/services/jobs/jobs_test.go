@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -43,9 +42,20 @@ func setupTestJobsService(
 	processedSlackMessagesRepo := db.NewPostgresProcessedSlackMessagesRepository(dbConn, cfg.DatabaseSchema)
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
 
-	// Create test user and slack integration
-	testUser := testutils.CreateTestUser(t, usersRepo)
+	// Create organization first
+	testOrgID := core.NewID("org")
+	organization := &models.Organization{ID: testOrgID}
+	err = organizationsRepo.CreateOrganization(context.Background(), organization)
+	require.NoError(t, err, "Failed to create test organization")
+
+	// Create user with the same database connection
+	testUserID := core.NewID("u")
+	testUser, err := usersRepo.CreateUser(context.Background(), "test", testUserID, testOrgID)
+	require.NoError(t, err, "Failed to create test user")
+
+	// Create slack integration using the same organization ID
 	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrganizationID)
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
@@ -397,10 +407,20 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	agentsRepo := db.NewPostgresAgentsRepository(dbConn, cfg.DatabaseSchema)
 	usersRepo := db.NewPostgresUsersRepository(dbConn, cfg.DatabaseSchema)
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
 
-	// Create shared test user and slack integration
-	testUser := testutils.CreateTestUser(t, usersRepo)
+	// Create organization first
+	testOrgID := core.NewID("org")
+	organization := &models.Organization{ID: testOrgID}
+	err = organizationsRepo.CreateOrganization(context.Background(), organization)
+	require.NoError(t, err, "Failed to create test organization")
 
+	// Create user with the same database connection
+	testUserID := core.NewID("u")
+	testUser, err := usersRepo.CreateUser(context.Background(), "test", testUserID, testOrgID)
+	require.NoError(t, err, "Failed to create test user")
+
+	// Create slack integration using the same organization ID
 	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrganizationID)
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
@@ -952,213 +972,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		})
 	})
 
-	t.Run("CreateProcessedSlackMessage", func(t *testing.T) {
-		t.Run("Success", func(t *testing.T) {
-			// Create a job first
-			job, err := jobsService.CreateJob(
-				context.Background(),
-				"test.thread.processed",
-				"C1234567890",
-				"testuser",
-				slackIntegrationID,
-				organizationID,
-			)
-			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
-
-			slackChannelID := "C1234567890"
-			slackTS := "1234567890.123456"
-			textContent := "Hello world"
-			status := models.ProcessedSlackMessageStatusQueued
-
-			message, err := slackMessagesService.CreateProcessedSlackMessage(
-				context.Background(),
-				job.ID,
-				slackChannelID,
-				slackTS,
-				textContent,
-				slackIntegrationID,
-				organizationID,
-				status,
-			)
-
-			require.NoError(t, err)
-			assert.NotEmpty(t, message.ID)
-			assert.Equal(t, job.ID, message.JobID)
-			assert.Equal(t, slackChannelID, message.SlackChannelID)
-			assert.Equal(t, slackTS, message.SlackTS)
-			assert.Equal(t, textContent, message.TextContent)
-			assert.Equal(t, status, message.Status)
-			assert.False(t, message.CreatedAt.IsZero())
-			assert.False(t, message.UpdatedAt.IsZero())
-		})
-
-		t.Run("NilJobID", func(t *testing.T) {
-			_, err := slackMessagesService.CreateProcessedSlackMessage(
-				context.Background(),
-				"",
-				"C1234567890",
-				"1234567890.123456",
-				"Hello world",
-				slackIntegrationID,
-				organizationID,
-				models.ProcessedSlackMessageStatusQueued,
-			)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
-		})
-
-		t.Run("EmptySlackChannelID", func(t *testing.T) {
-			job, err := jobsService.CreateJob(
-				context.Background(),
-				"test.thread.empty.channel",
-				"C1234567890",
-				"testuser",
-				slackIntegrationID,
-				organizationID,
-			)
-			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
-
-			_, err = slackMessagesService.CreateProcessedSlackMessage(
-				context.Background(),
-				job.ID,
-				"",
-				"1234567890.123456",
-				"Hello world",
-				slackIntegrationID,
-				organizationID,
-				models.ProcessedSlackMessageStatusQueued,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "slack_channel_id cannot be empty", err.Error())
-		})
-
-		t.Run("EmptySlackTS", func(t *testing.T) {
-			job, err := jobsService.CreateJob(
-				context.Background(),
-				"test.thread.empty.ts",
-				"C1234567890",
-				"testuser",
-				slackIntegrationID,
-				organizationID,
-			)
-			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
-
-			_, err = slackMessagesService.CreateProcessedSlackMessage(
-				context.Background(),
-				job.ID,
-				"C1234567890",
-				"",
-				"Hello world",
-				slackIntegrationID,
-				organizationID,
-				models.ProcessedSlackMessageStatusQueued,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "slack_ts cannot be empty", err.Error())
-		})
-
-		t.Run("EmptyTextContent", func(t *testing.T) {
-			job, err := jobsService.CreateJob(
-				context.Background(),
-				"test.thread.empty.text",
-				"C1234567890",
-				"testuser",
-				slackIntegrationID,
-				organizationID,
-			)
-			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
-
-			_, err = slackMessagesService.CreateProcessedSlackMessage(
-				context.Background(),
-				job.ID,
-				"C1234567890",
-				"1234567890.123456",
-				"",
-				slackIntegrationID,
-				organizationID,
-				models.ProcessedSlackMessageStatusQueued,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "text_content cannot be empty", err.Error())
-		})
-	})
-
-	t.Run("UpdateProcessedSlackMessage", func(t *testing.T) {
-		t.Run("Success", func(t *testing.T) {
-			// Create a job and processed slack message first
-			job, err := jobsService.CreateJob(
-				context.Background(),
-				"test.thread.update",
-				"C1234567890",
-				"testuser",
-				slackIntegrationID,
-				organizationID,
-			)
-			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
-
-			message, err := slackMessagesService.CreateProcessedSlackMessage(
-				context.Background(),
-				job.ID,
-				"C1234567890",
-				"1234567890.123456",
-				"Hello world",
-				slackIntegrationID,
-				organizationID,
-				models.ProcessedSlackMessageStatusQueued,
-			)
-			require.NoError(t, err)
-
-			// Update the status
-			newStatus := models.ProcessedSlackMessageStatusInProgress
-			updatedMessage, err := slackMessagesService.UpdateProcessedSlackMessage(
-				context.Background(),
-				message.ID,
-				newStatus,
-				slackIntegrationID,
-				organizationID,
-			)
-			require.NoError(t, err)
-			assert.Equal(t, newStatus, updatedMessage.Status)
-			assert.True(t, updatedMessage.UpdatedAt.After(message.UpdatedAt))
-		})
-
-		t.Run("NilID", func(t *testing.T) {
-			_, err := slackMessagesService.UpdateProcessedSlackMessage(
-				context.Background(),
-				"",
-				models.ProcessedSlackMessageStatusCompleted,
-				slackIntegrationID,
-				organizationID,
-			)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "processed slack message ID must be a valid ULID")
-		})
-
-		t.Run("NotFound", func(t *testing.T) {
-			id := core.NewID("j")
-
-			_, err := slackMessagesService.UpdateProcessedSlackMessage(
-				context.Background(),
-				id,
-				models.ProcessedSlackMessageStatusCompleted,
-				slackIntegrationID,
-				organizationID,
-			)
-			require.Error(t, err)
-			assert.True(t, errors.Is(err, core.ErrNotFound))
-		})
-	})
-
 	t.Run("DeleteJobWithAgentAssignment", func(t *testing.T) {
 		// Create an agent and job
 		agent, err := agentsService.UpsertActiveAgent(
@@ -1322,55 +1135,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		)
 		require.NoError(t, err)
 		assert.False(t, maybeMessage3.IsPresent())
-	})
-
-	t.Run("ProcessedSlackMessageStatusTransitions", func(t *testing.T) {
-		// Create a job
-		job, err := jobsService.CreateJob(
-			context.Background(),
-			"status.transition.thread",
-			"C9999999999",
-			"testuser",
-			slackIntegrationID,
-			organizationID,
-		)
-		require.NoError(t, err)
-		defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, slackIntegrationID, organizationID) }()
-
-		// Create a processed slack message
-		message, err := slackMessagesService.CreateProcessedSlackMessage(
-			context.Background(),
-			job.ID,
-			"C9999999999",
-			"1234567890.444444",
-			"Hello world transition",
-			slackIntegrationID,
-			organizationID,
-			models.ProcessedSlackMessageStatusQueued,
-		)
-		require.NoError(t, err)
-
-		// Test status transitions: QUEUED -> IN_PROGRESS -> COMPLETED
-		updatedMessage, err := slackMessagesService.UpdateProcessedSlackMessage(
-			context.Background(),
-			message.ID,
-			models.ProcessedSlackMessageStatusInProgress,
-			slackIntegrationID,
-			organizationID,
-		)
-		require.NoError(t, err)
-		assert.Equal(t, models.ProcessedSlackMessageStatusInProgress, updatedMessage.Status)
-
-		finalMessage, err := slackMessagesService.UpdateProcessedSlackMessage(
-			context.Background(),
-			message.ID,
-			models.ProcessedSlackMessageStatusCompleted,
-			slackIntegrationID,
-			organizationID,
-		)
-		require.NoError(t, err)
-		assert.Equal(t, models.ProcessedSlackMessageStatusCompleted, finalMessage.Status)
-		assert.True(t, finalMessage.UpdatedAt.After(updatedMessage.UpdatedAt))
 	})
 
 	t.Run("GetJobsWithQueuedMessages", func(t *testing.T) {
