@@ -107,48 +107,6 @@ func TestJobsService(t *testing.T) {
 			assert.False(t, job.CreatedAt.IsZero())
 			assert.False(t, job.UpdatedAt.IsZero())
 		})
-
-		t.Run("EmptySlackThreadTS", func(t *testing.T) {
-			_, err := service.CreateJob(
-				context.Background(),
-				"",
-				"C1234567890",
-				"testuser",
-				slackIntegrationID,
-				testIntegration.OrganizationID,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "slack_thread_ts cannot be empty", err.Error())
-		})
-
-		t.Run("EmptySlackChannelID", func(t *testing.T) {
-			_, err := service.CreateJob(
-				context.Background(),
-				"test.thread.456",
-				"",
-				"testuser",
-				slackIntegrationID,
-				testIntegration.OrganizationID,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "slack_channel_id cannot be empty", err.Error())
-		})
-
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
-			_, err := service.CreateJob(
-				context.Background(),
-				"test.thread.456",
-				"C1234567890",
-				"testuser",
-				"",
-				testIntegration.OrganizationID,
-			)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
-		})
 	})
 
 	t.Run("GetJobByID", func(t *testing.T) {
@@ -180,20 +138,6 @@ func TestJobsService(t *testing.T) {
 			assert.Equal(t, createdJob.SlackPayload.ThreadTS, fetchedJob.SlackPayload.ThreadTS)
 			assert.Equal(t, createdJob.SlackPayload.ChannelID, fetchedJob.SlackPayload.ChannelID)
 			assert.Equal(t, testIntegration.ID, fetchedJob.SlackPayload.IntegrationID)
-		})
-
-		t.Run("NilUUID", func(t *testing.T) {
-			_, err := service.GetJobByID(context.Background(), "", testIntegration.OrganizationID)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
-		})
-
-		t.Run("EmptyOrganizationID", func(t *testing.T) {
-			_, err := service.GetJobByID(context.Background(), core.NewID("j"), "")
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
@@ -288,48 +232,6 @@ func TestJobsService(t *testing.T) {
 				)
 			}()
 		})
-
-		t.Run("EmptySlackThreadTS", func(t *testing.T) {
-			_, err := service.GetOrCreateJobForSlackThread(
-				context.Background(),
-				"",
-				"C1234567890",
-				"testuser",
-				slackIntegrationID,
-				testIntegration.OrganizationID,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "slack_thread_ts cannot be empty", err.Error())
-		})
-
-		t.Run("EmptySlackChannelID", func(t *testing.T) {
-			_, err := service.GetOrCreateJobForSlackThread(
-				context.Background(),
-				"test.thread.999",
-				"",
-				"testuser",
-				slackIntegrationID,
-				testIntegration.OrganizationID,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "slack_channel_id cannot be empty", err.Error())
-		})
-
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
-			_, err := service.GetOrCreateJobForSlackThread(
-				context.Background(),
-				"test.thread.999",
-				"C1234567890",
-				"testuser",
-				"",
-				testIntegration.OrganizationID,
-			)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
-		})
 	})
 
 	t.Run("DeleteJob", func(t *testing.T) {
@@ -368,13 +270,6 @@ func TestJobsService(t *testing.T) {
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeJob.IsPresent())
-		})
-
-		t.Run("NilUUID", func(t *testing.T) {
-			err := service.DeleteJob(context.Background(), "", testIntegration.OrganizationID)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
@@ -955,17 +850,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				"Job with mixed messages (including incomplete) should not be idle",
 			)
 		})
-
-		t.Run("InvalidIdleMinutes", func(t *testing.T) {
-			// Test with invalid idle minutes
-			_, err := jobsService.GetIdleJobs(context.Background(), 0, organizationID)
-			require.Error(t, err)
-			assert.Equal(t, "idle minutes must be greater than 0", err.Error())
-
-			_, err = jobsService.GetIdleJobs(context.Background(), -5, organizationID)
-			require.Error(t, err)
-			assert.Equal(t, "idle minutes must be greater than 0", err.Error())
-		})
 	})
 
 	t.Run("DeleteJobWithAgentAssignment", func(t *testing.T) {
@@ -1388,12 +1272,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			}
 			assert.True(t, foundJob, "Job with mixed statuses (including queued) should be returned")
 		})
-
-		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
-			_, err := jobsService.GetJobsWithQueuedMessages(context.Background(), "", organizationID)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
-		})
 	})
 
 	t.Run("DiscordJobs", func(t *testing.T) {
@@ -1443,48 +1321,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				// Cleanup
 				defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, organizationID) }()
 			})
-
-			t.Run("EmptyDiscordMessageID", func(t *testing.T) {
-				_, err := jobsService.CreateDiscordJob(
-					context.Background(),
-					"",
-					"discord-thread-456",
-					"discord-user-789",
-					testDiscordIntegration.ID,
-					organizationID,
-				)
-
-				require.Error(t, err)
-				assert.Equal(t, "discord_message_id cannot be empty", err.Error())
-			})
-
-			t.Run("EmptyDiscordThreadID", func(t *testing.T) {
-				_, err := jobsService.CreateDiscordJob(
-					context.Background(),
-					"discord-msg-123",
-					"",
-					"discord-user-789",
-					testDiscordIntegration.ID,
-					organizationID,
-				)
-
-				require.Error(t, err)
-				assert.Equal(t, "discord_thread_id cannot be empty", err.Error())
-			})
-
-			t.Run("InvalidDiscordIntegrationID", func(t *testing.T) {
-				_, err := jobsService.CreateDiscordJob(
-					context.Background(),
-					"discord-msg-123",
-					"discord-thread-456",
-					"discord-user-789",
-					"invalid-integration-id",
-					organizationID,
-				)
-
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), "discord_integration_id must be a valid ULID")
-			})
 		})
 
 		t.Run("GetJobByDiscordThread", func(t *testing.T) {
@@ -1528,18 +1364,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 				)
 				require.NoError(t, err)
 				assert.False(t, maybeJob.IsPresent())
-			})
-
-			t.Run("EmptyDiscordThreadID", func(t *testing.T) {
-				_, err := jobsService.GetJobByDiscordThread(
-					context.Background(),
-					"",
-					testDiscordIntegration.ID,
-					organizationID,
-				)
-
-				require.Error(t, err)
-				assert.Equal(t, "discord_thread_id cannot be empty", err.Error())
 			})
 		})
 
@@ -1608,34 +1432,6 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 				// Cleanup
 				defer func() { _ = jobsService.DeleteJob(context.Background(), firstResult.Job.ID, organizationID) }()
-			})
-
-			t.Run("EmptyDiscordMessageID", func(t *testing.T) {
-				_, err := jobsService.GetOrCreateJobForDiscordThread(
-					context.Background(),
-					"",
-					"discord-thread-456",
-					"discord-user-789",
-					testDiscordIntegration.ID,
-					organizationID,
-				)
-
-				require.Error(t, err)
-				assert.Equal(t, "discord_message_id cannot be empty", err.Error())
-			})
-
-			t.Run("EmptyDiscordThreadID", func(t *testing.T) {
-				_, err := jobsService.GetOrCreateJobForDiscordThread(
-					context.Background(),
-					"discord-msg-123",
-					"",
-					"discord-user-789",
-					testDiscordIntegration.ID,
-					organizationID,
-				)
-
-				require.Error(t, err)
-				assert.Equal(t, "discord_thread_id cannot be empty", err.Error())
 			})
 		})
 

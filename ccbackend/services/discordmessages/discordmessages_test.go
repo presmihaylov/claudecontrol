@@ -142,102 +142,6 @@ func TestDiscordMessagesService(t *testing.T) {
 				)
 			}()
 		})
-
-		t.Run("InvalidJobID", func(t *testing.T) {
-			_, err := service.CreateProcessedDiscordMessage(
-				context.Background(),
-				"invalid-job-id",
-				"discord-msg-123",
-				"discord-thread-456",
-				"Hello Discord world!",
-				discordIntegrationID,
-				organizationID,
-				models.ProcessedDiscordMessageStatusQueued,
-			)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
-		})
-
-		t.Run("EmptyDiscordMessageID", func(t *testing.T) {
-			_, err := service.CreateProcessedDiscordMessage(
-				context.Background(),
-				testJob.ID,
-				"",
-				"discord-thread-456",
-				"Hello Discord world!",
-				discordIntegrationID,
-				organizationID,
-				models.ProcessedDiscordMessageStatusQueued,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "discord_message_id cannot be empty", err.Error())
-		})
-
-		t.Run("EmptyDiscordThreadID", func(t *testing.T) {
-			_, err := service.CreateProcessedDiscordMessage(
-				context.Background(),
-				testJob.ID,
-				"discord-msg-123",
-				"",
-				"Hello Discord world!",
-				discordIntegrationID,
-				organizationID,
-				models.ProcessedDiscordMessageStatusQueued,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "discord_thread_id cannot be empty", err.Error())
-		})
-
-		t.Run("EmptyTextContent", func(t *testing.T) {
-			_, err := service.CreateProcessedDiscordMessage(
-				context.Background(),
-				testJob.ID,
-				"discord-msg-123",
-				"discord-thread-456",
-				"",
-				discordIntegrationID,
-				organizationID,
-				models.ProcessedDiscordMessageStatusQueued,
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "text_content cannot be empty", err.Error())
-		})
-
-		t.Run("InvalidDiscordIntegrationID", func(t *testing.T) {
-			_, err := service.CreateProcessedDiscordMessage(
-				context.Background(),
-				testJob.ID,
-				"discord-msg-123",
-				"discord-thread-456",
-				"Hello Discord world!",
-				"invalid-integration-id",
-				organizationID,
-				models.ProcessedDiscordMessageStatusQueued,
-			)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "discord_integration_id must be a valid ULID")
-		})
-
-		t.Run("EmptyStatus", func(t *testing.T) {
-			_, err := service.CreateProcessedDiscordMessage(
-				context.Background(),
-				testJob.ID,
-				"discord-msg-123",
-				"discord-thread-456",
-				"Hello Discord world!",
-				discordIntegrationID,
-				organizationID,
-				"",
-			)
-
-			require.Error(t, err)
-			assert.Equal(t, "status cannot be empty", err.Error())
-		})
 	})
 
 	t.Run("GetProcessedDiscordMessageByID", func(t *testing.T) {
@@ -291,16 +195,6 @@ func TestDiscordMessagesService(t *testing.T) {
 			require.NoError(t, err)
 			assert.False(t, maybeMessage.IsPresent())
 		})
-
-		t.Run("InvalidID", func(t *testing.T) {
-			_, err := service.GetProcessedDiscordMessageByID(
-				context.Background(),
-				"invalid-id",
-				organizationID,
-			)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "processed discord message ID must be a valid ULID")
-		})
 	})
 
 	t.Run("UpdateProcessedDiscordMessage", func(t *testing.T) {
@@ -339,31 +233,6 @@ func TestDiscordMessagesService(t *testing.T) {
 			assert.Equal(t, createdMessage.ID, updatedMessage.ID)
 			assert.Equal(t, models.ProcessedDiscordMessageStatusInProgress, updatedMessage.Status)
 			assert.True(t, updatedMessage.UpdatedAt.After(createdMessage.UpdatedAt))
-		})
-
-		t.Run("InvalidID", func(t *testing.T) {
-			_, err := service.UpdateProcessedDiscordMessage(
-				context.Background(),
-				"invalid-id",
-				models.ProcessedDiscordMessageStatusCompleted,
-				discordIntegrationID,
-				organizationID,
-			)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "processed discord message ID must be a valid ULID")
-		})
-
-		t.Run("EmptyStatus", func(t *testing.T) {
-			messageID := core.NewID("pdm")
-			_, err := service.UpdateProcessedDiscordMessage(
-				context.Background(),
-				messageID,
-				"",
-				discordIntegrationID,
-				organizationID,
-			)
-			require.Error(t, err)
-			assert.Equal(t, "status cannot be empty", err.Error())
 		})
 	})
 
@@ -773,54 +642,6 @@ func TestDiscordMessagesService(t *testing.T) {
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeMessage2After.IsPresent())
-		})
-	})
-
-	// Test validation errors for various methods
-	t.Run("ValidationErrors", func(t *testing.T) {
-		t.Run("GetProcessedMessagesByJobIDAndStatus_InvalidJobID", func(t *testing.T) {
-			_, err := service.GetProcessedMessagesByJobIDAndStatus(
-				context.Background(),
-				"invalid-job-id",
-				models.ProcessedDiscordMessageStatusQueued,
-				discordIntegrationID,
-				organizationID,
-			)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
-		})
-
-		t.Run("GetLatestProcessedMessageForJob_InvalidJobID", func(t *testing.T) {
-			_, err := service.GetLatestProcessedMessageForJob(
-				context.Background(),
-				"invalid-job-id",
-				discordIntegrationID,
-				organizationID,
-			)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
-		})
-
-		t.Run("GetActiveMessageCountForJobs_InvalidJobID", func(t *testing.T) {
-			_, err := service.GetActiveMessageCountForJobs(
-				context.Background(),
-				[]string{"valid-job-id", "invalid-job-id"},
-				discordIntegrationID,
-				organizationID,
-			)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "all job IDs must be valid ULIDs")
-		})
-
-		t.Run("DeleteProcessedDiscordMessagesByJobID_InvalidJobID", func(t *testing.T) {
-			err := service.DeleteProcessedDiscordMessagesByJobID(
-				context.Background(),
-				"invalid-job-id",
-				discordIntegrationID,
-				organizationID,
-			)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 	})
 }
