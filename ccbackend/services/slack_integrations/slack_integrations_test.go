@@ -156,7 +156,6 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to exchange OAuth code with Slack")
 		assert.Contains(t, err.Error(), "invalid authorization code")
 	})
-
 }
 
 func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testing.T) {

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"github.com/samber/mo"
 
@@ -93,39 +94,8 @@ type AgentsService interface {
 	) ([]*models.ActiveAgent, error)
 }
 
-// JobsService defines the interface for job-related operations
-type JobsService interface {
-	GetActiveMessageCountForJobs(
-		ctx context.Context,
-		jobIDs []string,
-		slackIntegrationID string,
-		organizationID string,
-	) (int, error)
-	CreateJob(
-		ctx context.Context,
-		slackThreadTS, slackChannelID, slackUserID, slackIntegrationID, organizationID string,
-	) (*models.Job, error)
-	GetJobByID(
-		ctx context.Context,
-		id string,
-		organizationID string,
-	) (mo.Option[*models.Job], error)
-	GetJobBySlackThread(
-		ctx context.Context,
-		threadTS, channelID, slackIntegrationID, organizationID string,
-	) (mo.Option[*models.Job], error)
-	GetOrCreateJobForSlackThread(
-		ctx context.Context,
-		threadTS, channelID, slackUserID, slackIntegrationID, organizationID string,
-	) (*models.JobCreationResult, error)
-	UpdateJobTimestamp(ctx context.Context, jobID string, slackIntegrationID string, organizationID string) error
-	GetIdleJobs(ctx context.Context, idleMinutes int, organizationID string) ([]*models.Job, error)
-	DeleteJob(ctx context.Context, id string, slackIntegrationID string, organizationID string) error
-	GetJobsWithQueuedMessages(
-		ctx context.Context,
-		slackIntegrationID string,
-		organizationID string,
-	) ([]*models.Job, error)
+// SlackMessagesService defines the interface for processed slack message operations
+type SlackMessagesService interface {
 	CreateProcessedSlackMessage(
 		ctx context.Context,
 		jobID string,
@@ -157,6 +127,61 @@ type JobsService interface {
 		slackIntegrationID string,
 		organizationID string,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
+	GetActiveMessageCountForJobs(
+		ctx context.Context,
+		jobIDs []string,
+		slackIntegrationID string,
+		organizationID string,
+	) (int, error)
+	TESTS_UpdateProcessedSlackMessageUpdatedAt(
+		ctx context.Context,
+		id string,
+		updatedAt time.Time,
+		slackIntegrationID string,
+		organizationID string,
+	) error
+	DeleteProcessedSlackMessagesByJobID(
+		ctx context.Context,
+		jobID string,
+		slackIntegrationID string,
+		organizationID string,
+	) error
+}
+
+// JobsService defines the interface for job-related operations
+type JobsService interface {
+	CreateJob(
+		ctx context.Context,
+		slackThreadTS, slackChannelID, slackUserID, slackIntegrationID, organizationID string,
+	) (*models.Job, error)
+	GetJobByID(
+		ctx context.Context,
+		id string,
+		organizationID string,
+	) (mo.Option[*models.Job], error)
+	GetJobBySlackThread(
+		ctx context.Context,
+		threadTS, channelID, slackIntegrationID, organizationID string,
+	) (mo.Option[*models.Job], error)
+	GetOrCreateJobForSlackThread(
+		ctx context.Context,
+		threadTS, channelID, slackUserID, slackIntegrationID, organizationID string,
+	) (*models.JobCreationResult, error)
+	UpdateJobTimestamp(ctx context.Context, jobID string, slackIntegrationID string, organizationID string) error
+	GetIdleJobs(ctx context.Context, idleMinutes int, organizationID string) ([]*models.Job, error)
+	DeleteJob(ctx context.Context, id string, slackIntegrationID string, organizationID string) error
+	GetJobsWithQueuedMessages(
+		ctx context.Context,
+		slackIntegrationID string,
+		organizationID string,
+	) ([]*models.Job, error)
+	TESTS_UpdateJobUpdatedAt(
+		ctx context.Context,
+		id string,
+		updatedAt time.Time,
+		slackIntegrationID string,
+		organizationID string,
+	) error
 }
 
 // TransactionManager handles database transactions via context
