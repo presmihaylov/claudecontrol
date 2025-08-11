@@ -17,6 +17,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
 	title: "Claude Control",
 	description: "Claude Control Dashboard",
+	icons: {
+		icon: '/icon.svg',
+		shortcut: '/icon.svg',
+		apple: '/icon.svg',
+	},
 };
 
 export default function RootLayout({
@@ -27,6 +32,10 @@ export default function RootLayout({
 	return (
 		<ClerkProvider>
 			<html lang="en" className="h-full">
+				<head>
+					<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+					<link rel="shortcut icon" href="/icon.svg" />
+				</head>
 				<body
 					className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-full bg-background`}
 				>
