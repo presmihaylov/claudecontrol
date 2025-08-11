@@ -3,10 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { AnimateOnScroll } from "./components/animate-on-scroll";
+import PlainChat from "./components/plain-chat";
 
 export default function Home() {
 	return (
 		<main className="flex min-h-screen flex-col items-center justify-between md:pl-12 md:pr-12 pb-0">
+			<PlainChat />
 			{/* Hero Section */}
 			<div className="z-10 w-full max-w-5xl mx-auto items-center justify-center font-sans">
 				<section className="flex flex-col items-center justify-center text-center py-12 md:pb-20 md:pt-32">
