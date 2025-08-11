@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gammazero/workerpool"
@@ -245,33 +244,16 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up connect handler: %v", err))
 
 	err = socketClient.On("connect_error", func(args ...any) {
-		log.Info("❌ Socket.IO connection error: %v", args)
-
-		// Check if connection error is due to authentication failure
-		if len(args) > 0 {
-			if err, ok := args[0].(error); ok {
-				errorStr := err.Error()
-				if strings.Contains(errorStr, "Authentication failed") ||
-					strings.Contains(errorStr, "Unauthorized") ||
-					strings.Contains(errorStr, "Invalid API key") {
-					log.Error("❌ Authentication failed - invalid API key. Please check your CCAGENT_API_KEY environment variable")
-					os.Exit(1)
-				}
-			}
-		}
+		log.Error("❌ Socket.IO connection error: %v", args)
+		os.Exit(1)
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up connect_error handler: %v", err))
 
 	err = socketClient.On("disconnect", func(args ...any) {
 		log.Info("🔌 Socket.IO disconnected: %v", args)
 
-		// Send disconnect reason to the channel for auth failure detection
+		// Send disconnect reason to the channel
 		reason := "unknown"
-		if len(args) > 0 {
-			if r, ok := args[0].(string); ok {
-				reason = r
-			}
-		}
 
 		select {
 		case disconnected <- reason:
