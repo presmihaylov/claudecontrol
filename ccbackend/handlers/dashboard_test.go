@@ -24,6 +24,11 @@ import (
 	users "ccbackend/services/users"
 )
 
+// ErrorResponse represents a generic error response
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
 // Test data
 var (
 	testOrg = &models.Organization{
@@ -267,6 +272,16 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			},
 			expectedResult: expectedSecretKey,
 			expectedError:  "",
+		},
+		{
+			name: "fails when agent disconnect fails",
+			ctx:  ctx,
+			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
+				orgMock.On("GenerateCCAgentSecretKey", ctx, models.OrgID(testOrg.ID)).Return(expectedSecretKey, nil)
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", ctx).Return(fmt.Errorf("failed to disconnect agents"))
+			},
+			expectedResult: "",
+			expectedError:  "API key generated but failed to disconnect agents",
 		},
 	}
 
@@ -615,6 +630,19 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 				var response CCAgentSecretKeyResponse
 				require.NoError(t, json.Unmarshal(body, &response))
 				assert.Equal(t, expectedSecretKey, response.SecretKey)
+			},
+		},
+		{
+			name: "fails when agent disconnect fails",
+			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
+				orgMock.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
+					Return(expectedSecretKey, nil)
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", mock.AnythingOfType("*context.valueCtx")).
+					Return(fmt.Errorf("failed to disconnect agents"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			validateBody: func(t *testing.T, body []byte) {
+				assert.Contains(t, string(body), "failed to generate secret key")
 			},
 		},
 	}
