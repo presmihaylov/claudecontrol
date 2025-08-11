@@ -89,24 +89,47 @@ export default function Home() {
 					</AnimateOnScroll>
 				</section>
 
-				{/* How It Works */}
+				{/* FAQ */}
 				<hr className="border-gray-800 w-full max-w-4xl mx-auto" />
 				<section className="py-12 rounded-lg pb-8 pt-8 max-w-4xl mx-auto">
 					<AnimateOnScroll>
-						<h2 className="text-4xl font-bold text-center mb-8">How it works</h2>
+						<h2 className="text-4xl font-bold text-center mb-8">FAQ</h2>
 					</AnimateOnScroll>
 
-					{/* High-level description */}
-					<AnimateOnScroll delay={0.2}>
-						<div className="mb-12 max-w-2xl mx-auto">
-							<p className="p-4 md:p-0 text-xl leading-7 text-center text-gray-300">
-								Deploy the <a href="https://github.com/presmihaylov/ccagent" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline transition-colors">ccagent binary</a> on your infra. The agent communicates
-								with our server, which sends requests to Slack and Discord.
-								<br />
-								Your code and data never leave your machine.
-							</p>
-						</div>
-					</AnimateOnScroll>
+					<div className="space-y-8 max-w-3xl mx-auto">
+						{/* First FAQ */}
+						<AnimateOnScroll delay={0.1}>
+							<div className="p-4 md:p-0">
+								<h3 className="text-xl font-semibold mb-4 text-gray-200">How does it work?</h3>
+								<p className="text-gray-300 leading-7">
+									Deploy the <a href="https://github.com/presmihaylov/ccagent" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline transition-colors">ccagent binary</a> on your infra. The agent communicates
+									with our server, which sends requests to Slack and Discord.
+									<br />
+									Your code and data never leave your machine.
+								</p>
+							</div>
+						</AnimateOnScroll>
+
+						{/* Second FAQ */}
+						<AnimateOnScroll delay={0.2}>
+							<div className="p-4 md:p-0">
+								<h3 className="text-xl font-semibold mb-4 text-gray-200">How much does it cost?</h3>
+								<p className="text-gray-300 leading-7">
+									It's free during beta.
+								</p>
+							</div>
+						</AnimateOnScroll>
+
+						{/* Third FAQ */}
+						<AnimateOnScroll delay={0.3}>
+							<div className="p-4 md:p-0">
+								<h3 className="text-xl font-semibold mb-4 text-gray-200">How can I share feedback and feature requests?</h3>
+								<p className="text-gray-300 leading-7">
+									Contact me at <a href="mailto:support@pmihaylov.com" className="text-blue-400 hover:text-blue-300 underline transition-colors">support@pmihaylov.com</a> or use the chat widget in the app.
+								</p>
+							</div>
+						</AnimateOnScroll>
+					</div>
 				</section>
 			</div>
 
