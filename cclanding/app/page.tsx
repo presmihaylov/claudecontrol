@@ -20,10 +20,8 @@ export default function Home() {
 					<AnimateOnScroll delay={0.1}>
 						<p className="p-4 md:p-0 text-xl leading-7 mb-8 max-w-2xl text-gray-300">
 							Open pull requests, ask questions about your codebase, and connect
-							any MCP server.
-							<br />
-							Self-hosted and open source - your whole team can use Claude Code
-							without your data leaving your server.
+							any MCP server. Self-hosted and open source - your whole team can
+							use it without data leaving your server.
 						</p>
 					</AnimateOnScroll>
 					<AnimateOnScroll delay={0.2}>
@@ -69,13 +67,18 @@ export default function Home() {
 				<hr className="border-gray-800 w-full max-w-4xl mx-auto" />
 				<section className="py-12 rounded-lg pb-8 pt-8 max-w-4xl mx-auto">
 					<AnimateOnScroll>
-						<h2 className="text-4xl font-bold text-center mb-8">See it in action</h2>
+						<h2 className="text-4xl font-bold text-center mb-8">
+							See it in action
+						</h2>
 					</AnimateOnScroll>
-					
+
 					{/* YouTube Video Embed */}
 					<AnimateOnScroll delay={0.2}>
 						<div className="mb-12 max-w-4xl mx-auto">
-							<div className="relative w-full" style={{paddingBottom: '56.25%'}}>
+							<div
+								className="relative w-full"
+								style={{ paddingBottom: "56.25%" }}
+							>
 								<iframe
 									className="absolute top-0 left-0 w-full h-full rounded-lg"
 									src="https://www.youtube.com/embed/dQw4w9WgXcQ"
@@ -100,10 +103,21 @@ export default function Home() {
 						{/* First FAQ */}
 						<AnimateOnScroll delay={0.1}>
 							<div className="p-4 md:p-0">
-								<h3 className="text-xl font-semibold mb-4 text-gray-200">How does it work?</h3>
+								<h3 className="text-xl font-semibold mb-4 text-gray-200">
+									How does it work?
+								</h3>
 								<p className="text-gray-300 leading-7">
-									Deploy the <a href="https://github.com/presmihaylov/ccagent" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline transition-colors">ccagent binary</a> on your infra. The agent communicates
-									with our server, which sends requests to Slack and Discord.
+									Deploy the{" "}
+									<a
+										href="https://github.com/presmihaylov/ccagent"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-blue-400 hover:text-blue-300 underline transition-colors"
+									>
+										ccagent binary
+									</a>{" "}
+									on your infra. The agent communicates with our server, which
+									sends requests to Slack and Discord.
 									<br />
 									Your code and data never leave your machine.
 								</p>
@@ -113,7 +127,9 @@ export default function Home() {
 						{/* Second FAQ */}
 						<AnimateOnScroll delay={0.2}>
 							<div className="p-4 md:p-0">
-								<h3 className="text-xl font-semibold mb-4 text-gray-200">How much does it cost?</h3>
+								<h3 className="text-xl font-semibold mb-4 text-gray-200">
+									How much does it cost?
+								</h3>
 								<p className="text-gray-300 leading-7">
 									It's free during beta.
 								</p>
@@ -123,9 +139,18 @@ export default function Home() {
 						{/* Third FAQ */}
 						<AnimateOnScroll delay={0.3}>
 							<div className="p-4 md:p-0">
-								<h3 className="text-xl font-semibold mb-4 text-gray-200">How can I share feedback and feature requests?</h3>
+								<h3 className="text-xl font-semibold mb-4 text-gray-200">
+									How can I share feedback and feature requests?
+								</h3>
 								<p className="text-gray-300 leading-7">
-									Contact me at <a href="mailto:support@pmihaylov.com" className="text-blue-400 hover:text-blue-300 underline transition-colors">support@pmihaylov.com</a> or use the chat widget in the app.
+									Contact me at{" "}
+									<a
+										href="mailto:support@pmihaylov.com"
+										className="text-blue-400 hover:text-blue-300 underline transition-colors"
+									>
+										support@pmihaylov.com
+									</a>{" "}
+									or use the chat widget in the app.
 								</p>
 							</div>
 						</AnimateOnScroll>
