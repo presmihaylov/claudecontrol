@@ -38,7 +38,7 @@ func NewClerkAuthMiddleware(
 		},
 	}
 	jwksClient := jwks.NewClient(config)
-	
+
 	// Configure the global Clerk client for user API calls
 	clerk.SetKey(clerkSecretKey)
 
@@ -111,7 +111,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		log.Printf("✅ JWT token verified successfully for user: %s", claims.Subject)
-		
+
 		// Fetch user details from Clerk to get email
 		clerkUser, err := user.Get(r.Context(), claims.Subject)
 		if err != nil {
@@ -119,7 +119,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 			m.writeErrorResponse(w, "failed to fetch user details", http.StatusInternalServerError)
 			return
 		}
-		
+
 		// Extract primary email address
 		email := ""
 		if len(clerkUser.EmailAddresses) > 0 {
@@ -130,7 +130,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 			m.writeErrorResponse(w, "email required", http.StatusBadRequest)
 			return
 		}
-		
+
 		appUser, err := m.usersService.GetOrCreateUser(r.Context(), "clerk", claims.Subject, email)
 		if err != nil {
 			log.Printf("❌ Failed to get or create user: %v", err)
