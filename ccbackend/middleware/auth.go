@@ -11,6 +11,7 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/jwks"
 	"github.com/clerk/clerk-sdk-go/v2/jwt"
+	"github.com/clerk/clerk-sdk-go/v2/user"
 
 	"ccbackend/appctx"
 	"ccbackend/core"
@@ -37,6 +38,9 @@ func NewClerkAuthMiddleware(
 		},
 	}
 	jwksClient := jwks.NewClient(config)
+	
+	// Configure the global Clerk client for user API calls
+	clerk.SetKey(clerkSecretKey)
 
 	return &ClerkAuthMiddleware{
 		usersService:         usersService,
@@ -62,6 +66,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 				ID:             core.NewID("u"),
 				AuthProvider:   "test",
 				AuthProviderID: core.NewID("testuser"),
+				Email:          "test@example.com",
 				OrgID:          models.OrgID(testOrg.ID),
 				CreatedAt:      time.Now(),
 				UpdatedAt:      time.Now(),
@@ -106,7 +111,27 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		log.Printf("✅ JWT token verified successfully for user: %s", claims.Subject)
-		user, err := m.usersService.GetOrCreateUser(r.Context(), "clerk", claims.Subject)
+		
+		// Fetch user details from Clerk to get email
+		clerkUser, err := user.Get(r.Context(), claims.Subject)
+		if err != nil {
+			log.Printf("❌ Failed to fetch user details from Clerk: %v", err)
+			m.writeErrorResponse(w, "failed to fetch user details", http.StatusInternalServerError)
+			return
+		}
+		
+		// Extract primary email address
+		email := ""
+		if len(clerkUser.EmailAddresses) > 0 {
+			email = clerkUser.EmailAddresses[0].EmailAddress
+		}
+		if email == "" {
+			log.Printf("❌ No email address found for user: %s", claims.Subject)
+			m.writeErrorResponse(w, "email required", http.StatusBadRequest)
+			return
+		}
+		
+		appUser, err := m.usersService.GetOrCreateUser(r.Context(), "clerk", claims.Subject, email)
 		if err != nil {
 			log.Printf("❌ Failed to get or create user: %v", err)
 			m.writeErrorResponse(w, "internal server error", http.StatusInternalServerError)
@@ -114,21 +139,21 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// Get the user's organization
-		maybeOrg, err := m.organizationsService.GetOrganizationByID(r.Context(), string(user.OrgID))
+		maybeOrg, err := m.organizationsService.GetOrganizationByID(r.Context(), string(appUser.OrgID))
 		if err != nil {
 			log.Printf("❌ Failed to get organization: %v", err)
 			m.writeErrorResponse(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		if !maybeOrg.IsPresent() {
-			log.Printf("❌ Organization not found: %s", user.OrgID)
+			log.Printf("❌ Organization not found: %s", appUser.OrgID)
 			m.writeErrorResponse(w, "organization not found", http.StatusInternalServerError)
 			return
 		}
 		org := maybeOrg.MustGet()
 
-		log.Printf("✅ User authenticated successfully: %s (org: %s)", user.ID, org.ID)
-		ctx := appctx.SetUser(r.Context(), user)
+		log.Printf("✅ User authenticated successfully: %s (org: %s)", appUser.ID, org.ID)
+		ctx := appctx.SetUser(r.Context(), appUser)
 		ctx = appctx.SetOrganization(ctx, org)
 		r = r.WithContext(ctx)
 

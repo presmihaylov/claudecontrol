@@ -11,7 +11,7 @@ import (
 
 // UsersService defines the interface for user-related operations
 type UsersService interface {
-	GetOrCreateUser(ctx context.Context, authProvider, authProviderID string) (*models.User, error)
+	GetOrCreateUser(ctx context.Context, authProvider, authProviderID, email string) (*models.User, error)
 }
 
 // OrganizationsService defines the interface for organization-related operations
