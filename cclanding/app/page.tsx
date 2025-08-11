@@ -20,8 +20,7 @@ export default function Home() {
 					<AnimateOnScroll delay={0.1}>
 						<p className="p-4 md:p-0 text-xl leading-7 mb-8 max-w-2xl text-gray-300">
 							Open pull requests, ask questions about your codebase, and connect
-							any MCP server. Self-hosted and open source - your whole team can
-							use it without data leaving your server.
+							any MCP server. Self-hosted and open source.
 						</p>
 					</AnimateOnScroll>
 					<AnimateOnScroll delay={0.2}>
@@ -116,10 +115,10 @@ export default function Home() {
 									>
 										ccagent binary
 									</a>{" "}
-									on your infra. The agent communicates with our server, which
-									sends requests to Slack and Discord.
+									on your laptop or server. The agent communicates with the CC
+									server, which sends messages to Slack and Discord.
 									<br />
-									Your code and data never leave your machine.
+									Your code and data never leaves your machine.
 								</p>
 							</div>
 						</AnimateOnScroll>
@@ -140,7 +139,7 @@ export default function Home() {
 						<AnimateOnScroll delay={0.3}>
 							<div className="p-4 md:p-0">
 								<h3 className="text-xl font-semibold mb-4 text-gray-200">
-									How can I share feedback and feature requests?
+									How can I share feedback?
 								</h3>
 								<p className="text-gray-300 leading-7">
 									Contact me at{" "}
