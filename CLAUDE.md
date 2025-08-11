@@ -604,8 +604,12 @@ Claude Code has access to specialized subagents for specific tasks. These should
 
 ### TestFixer Subagent
 - **Purpose**: Automatically fixes broken tests and suggests new test coverage
+- **Prerequisites**: **MUST check if Supabase is running before executing any tests**
+  - Run `supabase status` or equivalent to verify database availability
+  - If Supabase is not running, immediately stop execution and instruct user to run `supabase start`
+  - All tests will fail without a running database, making test fixing impossible
 - **Capabilities**: Fixes Go tests in ccbackend and ccagent, suggests new test coverage, runs test suites autonomously
-- **Usage**: Available for automated test management and fixing test issues
+- **Usage**: Available for automated test management and fixing test issues, but only after confirming database availability
 
 ## Mock Architecture
 
