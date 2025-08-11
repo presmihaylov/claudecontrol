@@ -278,14 +278,6 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 		default:
 			// Channel full, ignore
 		}
-
-		// Check if disconnect is due to authentication failure
-		if strings.Contains(reason, "Authentication failed") ||
-			strings.Contains(reason, "Unauthorized") ||
-			strings.Contains(reason, "Invalid API key") {
-			log.Error("❌ Authentication failed - invalid API key. Please check your CCAGENT_API_KEY environment variable")
-			os.Exit(1)
-		}
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up disconnect handler: %v", err))
 
@@ -359,10 +351,10 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 			os.Exit(1)
 		}
 
-		// After successful connection, watch for immediate disconnection (auth failure)
+		// After successful connection, watch for immediate disconnection
 		select {
 		case reason := <-disconnected:
-			log.Error("❌ Disconnected immediately after connection (reason: %s). This likely indicates authentication failure. Please check your CCAGENT_API_KEY environment variable", reason)
+			log.Error("❌ Disconnected immediately after connection for unknown reason: %s", reason)
 			os.Exit(1)
 		case <-time.After(5 * time.Second):
 			// No immediate disconnection - connection appears stable
