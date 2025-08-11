@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import * as crypto from 'node:crypto';
 
-const PLAIN_CHAT_SECRET = '41fbe4a9ab644e8ed94e6967b2b60bf972e74e420eacd889811aa524137f2fd5';
-
 export async function GET(request: NextRequest) {
   try {
     // Get the authenticated user from Clerk
@@ -45,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate email hash for Plain chat authentication
-    const hmac = crypto.createHmac('sha256', PLAIN_CHAT_SECRET);
+    const hmac = crypto.createHmac('sha256', env.PLAIN_CHAT_SECRET);
     hmac.update(userProfile.email);
     const emailHash = hmac.digest('hex');
 
