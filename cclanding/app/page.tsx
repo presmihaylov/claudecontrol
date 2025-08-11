@@ -37,27 +37,27 @@ export default function Home() {
 
 					{/* Platform Preview */}
 					<AnimateOnScroll delay={0.4}>
-						<div className="mt-16 w-full max-w-4xl">
+						<div className="mt-16 w-full max-w-6xl">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
 								{/* Slack Preview */}
-								<div className="rounded-lg overflow-hidden">
+								<div className="rounded-lg overflow-hidden h-96 md:h-[500px] bg-gray-900">
 									<Image
 										src="/slack-example.jpeg"
 										alt="Claude Control Slack Integration Example"
 										width={600}
 										height={400}
-										className="w-full h-auto"
+										className="w-full h-full object-contain"
 									/>
 								</div>
 
 								{/* Discord Preview */}
-								<div className="rounded-lg overflow-hidden">
+								<div className="rounded-lg overflow-hidden h-96 md:h-[500px] bg-gray-900">
 									<Image
 										src="/discord-example.jpeg"
 										alt="Claude Control Discord Integration Example"
 										width={600}
 										height={400}
-										className="w-full h-auto"
+										className="w-full h-full object-contain"
 									/>
 								</div>
 							</div>

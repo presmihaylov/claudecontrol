@@ -21,6 +21,9 @@ const orbitron = Orbitron({
 export const metadata: Metadata = {
   title: "Claude Control - AI Agent for Your Team",
   description: "Deploy AI agents that interact with your codebase directly from Slack and Discord. Open pull requests, ask questions, and connect MCP servers with your AI co-worker.",
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
