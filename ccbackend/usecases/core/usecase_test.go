@@ -53,7 +53,7 @@ func TestRegisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("UpsertActiveAgent", ctx, "ws-123", models.OrgID("org-456"), "agent-789").
+		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789").
 			Return(agent, nil)
 
 		// Execute
@@ -90,7 +90,7 @@ func TestRegisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("UpsertActiveAgent", ctx, "ws-123", models.OrgID("org-456"), "agent-789").
+		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789").
 			Return(nil, assert.AnError)
 
 		// Execute
@@ -135,11 +135,11 @@ func TestDeregisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(mo.Some(agent), nil)
-		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, "agent-789", models.OrgID("org-456")).
+		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, models.OrgID("org-456"), "agent-789").
 			Return([]string{}, nil)
-		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(nil)
 
 		// Execute
@@ -187,14 +187,14 @@ func TestDeregisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(mo.Some(agent), nil)
-		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, "agent-789", models.OrgID("org-456")).
+		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, models.OrgID("org-456"), "agent-789").
 			Return([]string{"job-111"}, nil)
-		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
+		mockJobsService.On("GetJobByID", ctx, models.OrgID("org-456"), "job-111").
 			Return(mo.Some(job), nil)
 		// Unknown job type should be skipped in cleanup - no SlackUseCase call expected
-		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(nil)
 
 		// Execute
@@ -231,7 +231,7 @@ func TestDeregisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(mo.None[*models.ActiveAgent](), nil)
 
 		// Execute
@@ -274,14 +274,14 @@ func TestDeregisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(mo.Some(agent), nil)
-		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, "agent-789", models.OrgID("org-456")).
+		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, models.OrgID("org-456"), "agent-789").
 			Return([]string{"job-111"}, nil)
-		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
+		mockJobsService.On("GetJobByID", ctx, models.OrgID("org-456"), "job-111").
 			Return(mo.None[*models.Job](), nil) // Job not found during cleanup
 		// Job not found should be skipped - no error expected
-		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(nil)
 
 		// Execute
@@ -330,14 +330,14 @@ func TestDeregisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(mo.Some(agent), nil)
-		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, "agent-789", models.OrgID("org-456")).
+		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, models.OrgID("org-456"), "agent-789").
 			Return([]string{"job-111"}, nil)
-		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
+		mockJobsService.On("GetJobByID", ctx, models.OrgID("org-456"), "job-111").
 			Return(mo.Some(job), nil)
 		// Unknown job type should be skipped
-		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(nil)
 
 		// Execute
@@ -380,14 +380,14 @@ func TestDeregisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(mo.Some(agent), nil)
-		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, "agent-789", models.OrgID("org-456")).
+		mockAgentsService.On("GetActiveAgentJobAssignments", ctx, models.OrgID("org-456"), "agent-789").
 			Return([]string{"job-111"}, nil)
-		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
+		mockJobsService.On("GetJobByID", ctx, models.OrgID("org-456"), "job-111").
 			Return(mo.None[*models.Job](), nil)
 		// Job not found should be skipped
-		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("DeleteActiveAgentByWsConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(nil)
 
 		// Execute
@@ -432,9 +432,9 @@ func TestProcessPing(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(mo.Some(agent), nil)
-		mockAgentsService.On("UpdateAgentLastActiveAt", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("UpdateAgentLastActiveAt", ctx, models.OrgID("org-456"), "ws-123").
 			Return(nil)
 
 		// Execute
@@ -470,7 +470,7 @@ func TestProcessPing(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "ws-123", models.OrgID("org-456")).
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, models.OrgID("org-456"), "ws-123").
 			Return(mo.None[*models.ActiveAgent](), nil)
 
 		// Execute
@@ -555,9 +555,9 @@ func TestCleanupInactiveAgents(t *testing.T) {
 			Return([]*models.Organization{organization}, nil)
 		mockAgentsService.On("GetInactiveAgents", ctx, models.OrgID("org-456"), DefaultInactiveAgentTimeoutMinutes).
 			Return([]*models.ActiveAgent{inactiveAgent1, inactiveAgent2}, nil)
-		mockAgentsService.On("DeleteActiveAgent", ctx, "agent-001", models.OrgID("org-456")).
+		mockAgentsService.On("DeleteActiveAgent", ctx, models.OrgID("org-456"), "agent-001").
 			Return(nil)
-		mockAgentsService.On("DeleteActiveAgent", ctx, "agent-002", models.OrgID("org-456")).
+		mockAgentsService.On("DeleteActiveAgent", ctx, models.OrgID("org-456"), "agent-002").
 			Return(nil)
 
 		// Execute

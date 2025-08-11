@@ -87,7 +87,7 @@ func (s *CoreUseCase) ProcessProcessingMessage(
 	jobID := payload.JobID
 
 	// Get job to determine the platform
-	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, organizationID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -125,7 +125,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	}
 
 	// Get job to determine the platform
-	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, organizationID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -165,7 +165,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	}
 
 	// Get job to determine the platform
-	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, organizationID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -199,7 +199,7 @@ func (s *CoreUseCase) ProcessJobComplete(
 	log.Printf("📋 Starting to route job complete from client %s", clientID)
 
 	jobID := payload.JobID
-	maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, organizationID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, organizationID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -246,7 +246,7 @@ func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client)
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
 
 	// Pass the agent ID to UpsertActiveAgent - use organization ID since agents are organization-scoped
-	_, err := s.agentsService.UpsertActiveAgent(ctx, client.ID, client.OrgID, client.AgentID)
+	_, err := s.agentsService.UpsertActiveAgent(ctx, client.OrgID, client.ID, client.AgentID)
 	if err != nil {
 		return fmt.Errorf("failed to register agent for client %s: %w", client.ID, err)
 	}
@@ -264,7 +264,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	log.Printf("📋 Starting to deregister agent for client %s", client.ID)
 
 	// Find the agent directly using organization ID since agents are organization-scoped
-	maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.ID, client.OrgID)
+	maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.OrgID, client.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get agent by WS connection ID: %w", err)
 	}
@@ -277,7 +277,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	agent := maybeAgent.MustGet()
 
 	// Get active jobs for agent cleanup
-	jobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, agent.ID, client.OrgID)
+	jobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, client.OrgID, agent.ID)
 	if err != nil {
 		log.Printf("❌ Failed to get jobs for cleanup: %v", err)
 		return fmt.Errorf("failed to get jobs for cleanup: %w", err)
@@ -289,7 +289,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	// Process each job: route cleanup based on job type
 	for _, jobID := range jobs {
 		// Get job directly using organization_id (optimization)
-		maybeJob, err := s.jobsService.GetJobByID(ctx, jobID, client.OrgID)
+		maybeJob, err := s.jobsService.GetJobByID(ctx, client.OrgID, jobID)
 		if err != nil {
 			log.Printf("❌ Failed to get job %s for cleanup: %v", jobID, err)
 			return fmt.Errorf("failed to get job for cleanup: %w", err)
@@ -322,7 +322,7 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	}
 
 	// Delete the agent record (use organization ID since agents are organization-scoped)
-	err = s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.ID, client.OrgID)
+	err = s.agentsService.DeleteActiveAgentByWsConnectionID(ctx, client.OrgID, client.ID)
 	if err != nil {
 		return fmt.Errorf("failed to deregister agent for client %s: %w", client.ID, err)
 	}
@@ -336,7 +336,7 @@ func (s *CoreUseCase) ProcessPing(ctx context.Context, client *clients.Client) e
 	log.Printf("📋 Starting to process ping from client %s", client.ID)
 
 	// Check if agent exists for this client (agents are organization-scoped)
-	maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.ID, client.OrgID)
+	maybeAgent, err := s.agentsService.GetAgentByWSConnectionID(ctx, client.OrgID, client.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get agent by WS connection ID: %w", err)
 	}
@@ -347,7 +347,7 @@ func (s *CoreUseCase) ProcessPing(ctx context.Context, client *clients.Client) e
 	}
 
 	// Update the agent's last_active_at timestamp (use organization ID since agents are organization-scoped)
-	if err := s.agentsService.UpdateAgentLastActiveAt(ctx, client.ID, client.OrgID); err != nil {
+	if err := s.agentsService.UpdateAgentLastActiveAt(ctx, client.OrgID, client.ID); err != nil {
 		log.Printf("❌ Failed to update agent last_active_at for client %s: %v", client.ID, err)
 		return fmt.Errorf("failed to update agent last_active_at: %w", err)
 	}
@@ -400,7 +400,7 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 			)
 
 			// Delete the inactive agent - CASCADE DELETE will automatically clean up job assignments
-			if err := s.agentsService.DeleteActiveAgent(ctx, agent.ID, models.OrgID(organizationID)); err != nil {
+			if err := s.agentsService.DeleteActiveAgent(ctx, models.OrgID(organizationID), agent.ID); err != nil {
 				return fmt.Errorf("failed to delete inactive agent %s: %w", agent.ID, err)
 			}
 

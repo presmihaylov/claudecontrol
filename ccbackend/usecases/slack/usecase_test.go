@@ -141,7 +141,7 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.jobsService.On("GetOrCreateJobForSlackThread", fixture.ctx, event.TS, event.Channel, event.User, testSlackIntegrationID, testOrgID).
+		fixture.mocks.jobsService.On("GetOrCreateJobForSlackThread", fixture.ctx, testOrgID, event.TS, event.Channel, event.User, testSlackIntegrationID).
 			Return(jobResult, nil)
 		fixture.mocks.slackIntegrationsService.On("GetSlackIntegrationByID", fixture.ctx, testSlackIntegrationID).
 			Return(mo.Some(slackIntegration), nil)
@@ -150,7 +150,7 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 			Return([]*models.ActiveAgent{connectedAgent}, nil)
 		fixture.mocks.agentsUseCase.On("GetOrAssignAgentForJob", fixture.ctx, jobResult.Job, testThreadTS, testOrgID).
 			Return(testWSConnectionID, nil)
-		fixture.mocks.slackMessagesService.On("CreateProcessedSlackMessage", fixture.ctx, testJobID, testChannelID, testThreadTS, "Hello bot, help me with something", testSlackIntegrationID, testOrgID, models.ProcessedSlackMessageStatusInProgress).
+		fixture.mocks.slackMessagesService.On("CreateProcessedSlackMessage", fixture.ctx, testOrgID, testJobID, testChannelID, testThreadTS, "Hello bot, help me with something", testSlackIntegrationID, models.ProcessedSlackMessageStatusInProgress).
 			Return(processedMessage, nil)
 
 		// Mock Slack client expectations for updating reaction
@@ -171,7 +171,7 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 		}
 
 		// Mock expectations for sendStartConversationToAgent
-		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testJobID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).
 			Return(mo.Some(job), nil)
 		fixture.mocks.slackClient.MockGetPermalink = func(params *clients.SlackPermalinkParameters) (string, error) {
 			return "https://workspace.slack.com/archives/" + params.Channel + "/p" + params.TS, nil
@@ -232,7 +232,7 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.jobsService.On("GetOrCreateJobForSlackThread", fixture.ctx, event.TS, event.Channel, event.User, testSlackIntegrationID, testOrgID).
+		fixture.mocks.jobsService.On("GetOrCreateJobForSlackThread", fixture.ctx, testOrgID, event.TS, event.Channel, event.User, testSlackIntegrationID).
 			Return(jobResult, nil)
 		fixture.mocks.slackIntegrationsService.On("GetSlackIntegrationByID", fixture.ctx, testSlackIntegrationID).
 			Return(mo.None[*models.SlackIntegration](), nil)
@@ -289,11 +289,11 @@ func TestProcessReactionAdded(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.jobsService.On("GetJobBySlackThread", fixture.ctx, testThreadTS, testChannelID, testSlackIntegrationID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobBySlackThread", fixture.ctx, testOrgID, testThreadTS, testChannelID, testSlackIntegrationID).
 			Return(mo.Some(job), nil)
 		fixture.mocks.slackIntegrationsService.On("GetSlackIntegrationByID", fixture.ctx, testSlackIntegrationID).
 			Return(mo.Some(slackIntegration), nil)
-		fixture.mocks.agentsService.On("GetAgentByJobID", fixture.ctx, testJobID, testOrgID).
+		fixture.mocks.agentsService.On("GetAgentByJobID", fixture.ctx, testOrgID, testJobID).
 			Return(mo.Some(agent), nil)
 
 		// Transaction expectations
@@ -303,9 +303,9 @@ func TestProcessReactionAdded(t *testing.T) {
 				txFunc := args.Get(1).(func(context.Context) error)
 				txFunc(fixture.ctx) // Execute with same context for simplicity
 			}).Return(nil)
-		fixture.mocks.agentsService.On("UnassignAgentFromJob", fixture.ctx, testAgentID, testJobID, testOrgID).
+		fixture.mocks.agentsService.On("UnassignAgentFromJob", fixture.ctx, testOrgID, testAgentID, testJobID).
 			Return(nil)
-		fixture.mocks.jobsService.On("DeleteJob", fixture.ctx, testJobID, testOrgID).Return(nil)
+		fixture.mocks.jobsService.On("DeleteJob", fixture.ctx, testOrgID, testJobID).Return(nil)
 
 		// Mock Slack client for sending system message
 		fixture.mocks.slackClient.MockPostMessage = func(channelID string, params clients.SlackMessageParams) (*clients.SlackPostMessageResponse, error) {
@@ -361,7 +361,7 @@ func TestProcessReactionAdded(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.jobsService.On("GetJobBySlackThread", fixture.ctx, testThreadTS, testChannelID, testSlackIntegrationID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobBySlackThread", fixture.ctx, testOrgID, testThreadTS, testChannelID, testSlackIntegrationID).
 			Return(mo.Some(job), nil)
 
 		// Execute
@@ -454,9 +454,9 @@ func TestProcessJobComplete(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, payload.JobID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, payload.JobID).
 			Return(mo.Some(job), nil)
-		fixture.mocks.agentsService.On("GetAgentByWSConnectionID", fixture.ctx, clientID, testOrgID).
+		fixture.mocks.agentsService.On("GetAgentByWSConnectionID", fixture.ctx, testOrgID, clientID).
 			Return(mo.Some(agent), nil)
 		fixture.mocks.agentsUseCase.On("ValidateJobBelongsToAgent", fixture.ctx, testAgentID, testJobID, testOrgID).
 			Return(nil)
@@ -487,9 +487,9 @@ func TestProcessJobComplete(t *testing.T) {
 				txFunc := args.Get(1).(func(context.Context) error)
 				txFunc(fixture.ctx) // Execute with same context for simplicity
 			}).Return(nil)
-		fixture.mocks.agentsService.On("UnassignAgentFromJob", fixture.ctx, testAgentID, testJobID, testOrgID).
+		fixture.mocks.agentsService.On("UnassignAgentFromJob", fixture.ctx, testOrgID, testAgentID, testJobID).
 			Return(nil)
-		fixture.mocks.jobsService.On("DeleteJob", fixture.ctx, testJobID, testOrgID).Return(nil)
+		fixture.mocks.jobsService.On("DeleteJob", fixture.ctx, testOrgID, testJobID).Return(nil)
 
 		// Mock system message sending
 		fixture.mocks.slackClient.MockPostMessage = func(channelID string, params clients.SlackMessageParams) (*clients.SlackPostMessageResponse, error) {
@@ -527,7 +527,7 @@ func TestProcessJobComplete(t *testing.T) {
 		}
 
 		// Configure expectations - job not found
-		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, payload.JobID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, payload.JobID).
 			Return(mo.None[*models.Job](), nil)
 
 		// Execute
@@ -596,16 +596,16 @@ func TestProcessAssistantMessage(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.agentsService.On("GetAgentByWSConnectionID", fixture.ctx, clientID, testOrgID).
+		fixture.mocks.agentsService.On("GetAgentByWSConnectionID", fixture.ctx, testOrgID, clientID).
 			Return(mo.Some(agent), nil)
-		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testJobID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).
 			Return(mo.Some(job), nil)
 		fixture.mocks.agentsUseCase.On("ValidateJobBelongsToAgent", fixture.ctx, testAgentID, testJobID, testOrgID).
 			Return(nil)
 		fixture.mocks.slackIntegrationsService.On("GetSlackIntegrationByID", fixture.ctx, testSlackIntegrationID).
 			Return(mo.Some(slackIntegration), nil)
-		fixture.mocks.jobsService.On("UpdateJobTimestamp", fixture.ctx, testJobID, testOrgID).Return(nil)
-		fixture.mocks.slackMessagesService.On("UpdateProcessedSlackMessage", fixture.ctx, testProcessedID, models.ProcessedSlackMessageStatusCompleted, testSlackIntegrationID, testOrgID).
+		fixture.mocks.jobsService.On("UpdateJobTimestamp", fixture.ctx, testOrgID, testJobID).Return(nil)
+		fixture.mocks.slackMessagesService.On("UpdateProcessedSlackMessage", fixture.ctx, testOrgID, testProcessedID, models.ProcessedSlackMessageStatusCompleted, testSlackIntegrationID).
 			Return(updatedMessage, nil)
 
 		// Mock Slack client for posting message
@@ -634,7 +634,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 		}
 
 		// Check if latest message
-		fixture.mocks.slackMessagesService.On("GetLatestProcessedMessageForJob", fixture.ctx, testJobID, testSlackIntegrationID, testOrgID).
+		fixture.mocks.slackMessagesService.On("GetLatestProcessedMessageForJob", fixture.ctx, testOrgID, testJobID, testSlackIntegrationID).
 			Return(mo.Some(updatedMessage), nil)
 
 		// Execute
@@ -674,9 +674,9 @@ func TestProcessAssistantMessage(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.agentsService.On("GetAgentByWSConnectionID", fixture.ctx, clientID, testOrgID).
+		fixture.mocks.agentsService.On("GetAgentByWSConnectionID", fixture.ctx, testOrgID, clientID).
 			Return(mo.Some(agent), nil)
-		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, payload.JobID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, payload.JobID).
 			Return(mo.None[*models.Job](), nil)
 
 		// Execute
@@ -747,13 +747,13 @@ func TestProcessQueuedJobs(t *testing.T) {
 		// Configure expectations
 		fixture.mocks.slackIntegrationsService.On("GetAllSlackIntegrations", fixture.ctx).
 			Return([]*models.SlackIntegration{integration}, nil)
-		fixture.mocks.jobsService.On("GetJobsWithQueuedMessages", fixture.ctx, models.JobTypeSlack, testSlackIntegrationID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobsWithQueuedMessages", fixture.ctx, testOrgID, models.JobTypeSlack, testSlackIntegrationID).
 			Return([]*models.Job{queuedJob}, nil)
 		fixture.mocks.agentsUseCase.On("TryAssignJobToAgent", fixture.ctx, queuedJob.ID, testOrgID).
 			Return(testWSConnectionID, true, nil)
-		fixture.mocks.slackMessagesService.On("GetProcessedMessagesByJobIDAndStatus", fixture.ctx, testJobID, models.ProcessedSlackMessageStatusQueued, testSlackIntegrationID, testOrgID).
+		fixture.mocks.slackMessagesService.On("GetProcessedMessagesByJobIDAndStatus", fixture.ctx, testOrgID, testJobID, models.ProcessedSlackMessageStatusQueued, testSlackIntegrationID).
 			Return([]*models.ProcessedSlackMessage{queuedMessage}, nil)
-		fixture.mocks.slackMessagesService.On("UpdateProcessedSlackMessage", fixture.ctx, testProcessedID, models.ProcessedSlackMessageStatusInProgress, testSlackIntegrationID, testOrgID).
+		fixture.mocks.slackMessagesService.On("UpdateProcessedSlackMessage", fixture.ctx, testOrgID, testProcessedID, models.ProcessedSlackMessageStatusInProgress, testSlackIntegrationID).
 			Return(updatedMessage, nil)
 
 		// Mock Slack client for updating reaction
@@ -774,7 +774,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 		}
 
 		// Mock expectations for sendStartConversationToAgent
-		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testJobID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).
 			Return(mo.Some(queuedJob), nil)
 		fixture.mocks.slackIntegrationsService.On("GetSlackIntegrationByID", fixture.ctx, testSlackIntegrationID).
 			Return(mo.Some(integration), nil)
@@ -832,7 +832,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 		// Configure expectations
 		fixture.mocks.slackIntegrationsService.On("GetAllSlackIntegrations", fixture.ctx).
 			Return([]*models.SlackIntegration{integration}, nil)
-		fixture.mocks.jobsService.On("GetJobsWithQueuedMessages", fixture.ctx, models.JobTypeSlack, testSlackIntegrationID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobsWithQueuedMessages", fixture.ctx, testOrgID, models.JobTypeSlack, testSlackIntegrationID).
 			Return([]*models.Job{queuedJob}, nil)
 		fixture.mocks.agentsUseCase.On("TryAssignJobToAgent", fixture.ctx, queuedJob.ID, testOrgID).
 			Return("", false, nil) // No agents available
@@ -882,7 +882,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.slackMessagesService.On("GetProcessedSlackMessageByID", fixture.ctx, testProcessedID, testOrgID).
+		fixture.mocks.slackMessagesService.On("GetProcessedSlackMessageByID", fixture.ctx, testOrgID, testProcessedID).
 			Return(mo.Some(processedMessage), nil)
 		fixture.mocks.slackIntegrationsService.On("GetSlackIntegrationByID", fixture.ctx, testSlackIntegrationID).
 			Return(mo.Some(slackIntegration), nil)
@@ -928,7 +928,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.slackMessagesService.On("GetProcessedSlackMessageByID", fixture.ctx, testProcessedID, testOrgID).
+		fixture.mocks.slackMessagesService.On("GetProcessedSlackMessageByID", fixture.ctx, testOrgID, testProcessedID).
 			Return(mo.None[*models.ProcessedSlackMessage](), nil)
 
 		// Execute
@@ -977,11 +977,11 @@ func TestProcessSystemMessage(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testJobID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).
 			Return(mo.Some(job), nil)
 		fixture.mocks.slackIntegrationsService.On("GetSlackIntegrationByID", fixture.ctx, testSlackIntegrationID).
 			Return(mo.Some(slackIntegration), nil)
-		fixture.mocks.jobsService.On("UpdateJobTimestamp", fixture.ctx, testJobID, testOrgID).Return(nil)
+		fixture.mocks.jobsService.On("UpdateJobTimestamp", fixture.ctx, testOrgID, testJobID).Return(nil)
 
 		// Mock Slack client for posting message
 		fixture.mocks.slackClient.MockPostMessage = func(channelID string, params clients.SlackMessageParams) (*clients.SlackPostMessageResponse, error) {
@@ -1015,7 +1015,7 @@ func TestProcessSystemMessage(t *testing.T) {
 		}
 
 		// Configure expectations
-		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testJobID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).
 			Return(mo.None[*models.Job](), nil)
 
 		// Execute

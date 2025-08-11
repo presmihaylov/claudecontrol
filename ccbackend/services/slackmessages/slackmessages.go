@@ -25,9 +25,9 @@ func NewSlackMessagesService(repo *db.PostgresProcessedSlackMessagesRepository) 
 
 func (s *SlackMessagesService) CreateProcessedSlackMessage(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	slackChannelID, slackTS, textContent, slackIntegrationID string,
-	organizationID models.OrgID,
 	status models.ProcessedSlackMessageStatus,
 ) (*models.ProcessedSlackMessage, error) {
 	log.Printf(
@@ -78,10 +78,10 @@ func (s *SlackMessagesService) CreateProcessedSlackMessage(
 
 func (s *SlackMessagesService) UpdateProcessedSlackMessage(
 	ctx context.Context,
+	organizationID models.OrgID,
 	id string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) (*models.ProcessedSlackMessage, error) {
 	log.Printf("📋 Starting to update processed slack message status for ID: %s to %s", id, status)
 	if !core.IsValidULID(id) {
@@ -115,10 +115,10 @@ func (s *SlackMessagesService) UpdateProcessedSlackMessage(
 
 func (s *SlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) ([]*models.ProcessedSlackMessage, error) {
 	log.Printf("📋 Starting to get processed messages for job: %s with status: %s", jobID, status)
 	if !core.IsValidULID(jobID) {
@@ -148,8 +148,8 @@ func (s *SlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 
 func (s *SlackMessagesService) GetProcessedSlackMessageByID(
 	ctx context.Context,
-	id string,
 	organizationID models.OrgID,
+	id string,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	log.Printf("📋 Starting to get processed slack message by ID: %s", id)
 	if !core.IsValidULID(id) {
@@ -179,9 +179,9 @@ func (s *SlackMessagesService) GetProcessedSlackMessageByID(
 
 func (s *SlackMessagesService) GetLatestProcessedMessageForJob(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	log.Printf("📋 Starting to get latest processed message for job: %s", jobID)
 	if !core.IsValidULID(jobID) {
@@ -215,9 +215,9 @@ func (s *SlackMessagesService) GetLatestProcessedMessageForJob(
 
 func (s *SlackMessagesService) GetActiveMessageCountForJobs(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobIDs []string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) (int, error) {
 	log.Printf("📋 Starting to get active message count for %d jobs", len(jobIDs))
 	if !core.IsValidULID(string(organizationID)) {
@@ -239,10 +239,10 @@ func (s *SlackMessagesService) GetActiveMessageCountForJobs(
 
 func (s *SlackMessagesService) TESTS_UpdateProcessedSlackMessageUpdatedAt(
 	ctx context.Context,
+	organizationID models.OrgID,
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to update processed slack message updated_at for testing purposes: %s to %s", id, updatedAt)
 	if !core.IsValidULID(id) {
@@ -275,9 +275,9 @@ func (s *SlackMessagesService) TESTS_UpdateProcessedSlackMessageUpdatedAt(
 
 func (s *SlackMessagesService) DeleteProcessedSlackMessagesByJobID(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to delete processed slack messages for job: %s", jobID)
 	if !core.IsValidULID(jobID) {
