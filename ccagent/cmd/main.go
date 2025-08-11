@@ -232,19 +232,34 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 	instantWorkerPool := workerpool.New(5)
 	defer instantWorkerPool.StopWait()
 
+	// Track connection state for auth failure detection
+	connected := make(chan bool, 1)
+	disconnected := make(chan string, 1)
+
 	// Connection event handlers
 	err := socketClient.On("connect", func(args ...any) {
 		log.Info("✅ Connected to Socket.IO server, socket ID: %s", socketClient.Id())
+		connected <- true
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up connect handler: %v", err))
 
 	err = socketClient.On("connect_error", func(args ...any) {
-		log.Info("❌ Socket.IO connection error: %v", args)
+		log.Error("❌ Socket.IO connection error: %v", args)
+		os.Exit(1)
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up connect_error handler: %v", err))
 
 	err = socketClient.On("disconnect", func(args ...any) {
 		log.Info("🔌 Socket.IO disconnected: %v", args)
+
+		// Send disconnect reason to the channel
+		reason := "unknown"
+
+		select {
+		case disconnected <- reason:
+		default:
+			// Channel full, ignore
+		}
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up disconnect handler: %v", err))
 
@@ -306,6 +321,28 @@ func (cr *CmdRunner) startSocketIOClient(serverURLStr, apiKey string) error {
 		log.Info("❌ Socket.IO reconnection failed: %v", errs)
 	})
 	utils.AssertInvariant(err == nil, fmt.Sprintf("Failed to set up reconnect_failed handler: %v", err))
+
+	// Wait for initial connection or detect auth failure
+	go func() {
+		// Wait up to 10 seconds for initial connection
+		select {
+		case <-connected:
+			log.Info("✅ Successfully authenticated with Socket.IO server")
+		case <-time.After(10 * time.Second):
+			log.Error("❌ Connection timeout - server may have rejected authentication. Please check your CCAGENT_API_KEY environment variable")
+			os.Exit(1)
+		}
+
+		// After successful connection, watch for immediate disconnection
+		select {
+		case reason := <-disconnected:
+			log.Error("❌ Disconnected immediately after connection for unknown reason: %s", reason)
+			os.Exit(1)
+		case <-time.After(5 * time.Second):
+			// No immediate disconnection - connection appears stable
+			log.Info("✅ Connection appears stable, continuing normal operation")
+		}
+	}()
 
 	// Start ping routine once connected
 	pingCtx, pingCancel := context.WithCancel(context.Background())
