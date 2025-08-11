@@ -278,7 +278,8 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			ctx:  ctx,
 			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
 				orgMock.On("GenerateCCAgentSecretKey", ctx, models.OrgID(testOrg.ID)).Return(expectedSecretKey, nil)
-				agentsMock.On("DisconnectAllActiveAgentsByOrganization", ctx).Return(fmt.Errorf("failed to disconnect agents"))
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", ctx).
+					Return(fmt.Errorf("failed to disconnect agents"))
 			},
 			expectedResult: "",
 			expectedError:  "API key generated but failed to disconnect agents",

@@ -175,7 +175,7 @@ func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context) (str
 		log.Printf("❌ Failed to disconnect agents after API key regeneration: %v", err)
 		return "", fmt.Errorf("API key generated but failed to disconnect agents: %w", err)
 	}
-	
+
 	log.Printf("✅ All agents disconnected successfully after API key regeneration")
 	log.Printf("✅ CCAgent secret key generated successfully for organization: %s", org.ID)
 	return secretKey, nil
