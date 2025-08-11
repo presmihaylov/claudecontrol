@@ -376,8 +376,8 @@ export default function Home() {
 			<div className="min-h-screen bg-background">
 				<header className="border-b">
 					<div className="container mx-auto px-4 py-4 flex items-center justify-between">
-						<div />
-						<h1 className="text-2xl font-semibold">Claude Control</h1>
+						<div className="hidden sm:block" />
+						<h1 className="text-xl sm:text-2xl font-semibold text-center sm:text-left">Claude Control</h1>
 						<Button variant="secondary" size="sm" onClick={() => signOut()}>
 							Logout
 						</Button>
@@ -420,8 +420,8 @@ export default function Home() {
 		<div className="min-h-screen bg-background">
 			<header className="border-b">
 				<div className="container mx-auto px-4 py-4 flex items-center justify-between">
-					<div />
-					<h1 className="text-2xl font-semibold">Claude Control</h1>
+					<div className="hidden sm:block" />
+					<h1 className="text-xl sm:text-2xl font-semibold text-center sm:text-left">Claude Control</h1>
 					<Button variant="secondary" size="sm" onClick={() => signOut()}>
 						Logout
 					</Button>
@@ -439,7 +439,7 @@ export default function Home() {
 								</CardHeader>
 								<CardContent className="space-y-4">
 									{/* Setup Tutorial Link */}
-									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">Getting Started</h4>
 											<p className="text-sm text-muted-foreground">
@@ -454,14 +454,14 @@ export default function Home() {
 													"_blank",
 												)
 											}
-											className="flex items-center gap-2"
+											className="flex items-center gap-2 w-full sm:w-auto"
 										>
 											📺 Watch Tutorial
 										</Button>
 									</div>
 
 									{/* Download ccagent Button */}
-									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">Download CCAgent</h4>
 											<p className="text-sm text-muted-foreground">
@@ -477,7 +477,7 @@ export default function Home() {
 													"_blank",
 												)
 											}
-											className="flex items-center gap-2"
+											className="flex items-center gap-2 w-full sm:w-auto"
 										>
 											<Download className="h-4 w-4" />
 											Download
@@ -485,20 +485,20 @@ export default function Home() {
 									</div>
 
 									{/* CCAgent API Key Section */}
-									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">CCAgent API Key</h4>
 											<p className="text-sm text-muted-foreground">
 												The secret key used to authenticate ccagent against your organization
 											</p>
 										</div>
-										<div className="flex gap-2">
+										<div className="flex gap-2 w-full sm:w-auto">
 											{organization.ccagent_secret_key_generated_at ? (
 												<Button
 													variant="outline"
 													onClick={() => setRegenerateDialogOpen(true)}
 													disabled={generatingKey}
-													className="flex items-center gap-2"
+													className="flex items-center gap-2 w-full sm:w-auto"
 												>
 													<RefreshCw className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
 													{generatingKey ? "Regenerating..." : "Regenerate"}
@@ -507,7 +507,7 @@ export default function Home() {
 												<Button
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
-													className="flex items-center gap-2"
+													className="flex items-center gap-2 w-full sm:w-auto"
 												>
 													<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
 													{generatingKey ? "Generating..." : "Generate"}
@@ -520,13 +520,13 @@ export default function Home() {
 						)}
 
 						<div className="flex flex-col items-center justify-center">
-							<p className="text-lg text-muted-foreground mb-6 text-center">
+							<p className="text-base sm:text-lg text-muted-foreground mb-6 text-center px-4">
 								Connect your workspace to get started with Claude Control
 							</p>
-							<div className="flex gap-4">
+							<div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
 								<Button
 									size="lg"
-									className="flex items-center gap-2 cursor-pointer"
+									className="flex items-center gap-2 cursor-pointer w-full sm:w-auto"
 									onClick={handleAddToSlack}
 								>
 									<SlackIcon className="h-5 w-5" color="white" />
@@ -534,7 +534,7 @@ export default function Home() {
 								</Button>
 								<Button
 									size="lg"
-									className="flex items-center gap-2 cursor-pointer"
+									className="flex items-center gap-2 cursor-pointer w-full sm:w-auto"
 									onClick={handleAddToDiscord}
 								>
 									<DiscordIcon className="h-5 w-5" color="white" />
@@ -554,7 +554,7 @@ export default function Home() {
 								</CardHeader>
 								<CardContent className="space-y-4">
 									{/* Setup Tutorial Link */}
-									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">Getting Started</h4>
 											<p className="text-sm text-muted-foreground">
@@ -569,14 +569,14 @@ export default function Home() {
 													"_blank",
 												)
 											}
-											className="flex items-center gap-2"
+											className="flex items-center gap-2 w-full sm:w-auto"
 										>
 											📺 Watch Tutorial
 										</Button>
 									</div>
 
 									{/* Download ccagent Button */}
-									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">Download CCAgent</h4>
 											<p className="text-sm text-muted-foreground">
@@ -592,7 +592,7 @@ export default function Home() {
 													"_blank",
 												)
 											}
-											className="flex items-center gap-2"
+											className="flex items-center gap-2 w-full sm:w-auto"
 										>
 											<Download className="h-4 w-4" />
 											Download
@@ -600,20 +600,20 @@ export default function Home() {
 									</div>
 
 									{/* CCAgent API Key Section */}
-									<div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">CCAgent API Key</h4>
 											<p className="text-sm text-muted-foreground">
 												The secret key used to authenticate ccagent against your organization
 											</p>
 										</div>
-										<div className="flex gap-2">
+										<div className="flex gap-2 w-full sm:w-auto">
 											{organization.ccagent_secret_key_generated_at ? (
 												<Button
 													variant="outline"
 													onClick={() => setRegenerateDialogOpen(true)}
 													disabled={generatingKey}
-													className="flex items-center gap-2"
+													className="flex items-center gap-2 w-full sm:w-auto"
 												>
 													<RefreshCw className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
 													{generatingKey ? "Regenerating..." : "Regenerate"}
@@ -622,7 +622,7 @@ export default function Home() {
 												<Button
 													onClick={handleGenerateSecretKey}
 													disabled={generatingKey}
-													className="flex items-center gap-2"
+													className="flex items-center gap-2 w-full sm:w-auto"
 												>
 													<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
 													{generatingKey ? "Generating..." : "Generate"}
@@ -639,7 +639,7 @@ export default function Home() {
 							<div className="grid gap-4">
 								{integrations.map((integration) => (
 									<Card key={integration.id} className="p-4">
-										<div className="flex items-center justify-between w-full">
+										<div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-4">
 											<div className="flex items-center gap-3">
 												<SlackIcon className="h-6 w-6" color="black" />
 												<div>
@@ -656,7 +656,7 @@ export default function Home() {
 													size="sm"
 													onClick={() => handleDeleteIntegration(integration)}
 													disabled={deleting === integration.id}
-													className="flex items-center gap-2"
+													className="flex items-center gap-2 w-full sm:w-auto"
 												>
 													<Trash2 className="h-4 w-4" />
 													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
@@ -667,7 +667,7 @@ export default function Home() {
 								))}
 								{discordIntegrations.map((integration) => (
 									<Card key={integration.id} className="p-4">
-										<div className="flex items-center justify-between w-full">
+										<div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-4">
 											<div className="flex items-center gap-3">
 												<DiscordIcon className="h-6 w-6" color="black" />
 												<div>
@@ -684,7 +684,7 @@ export default function Home() {
 													size="sm"
 													onClick={() => handleDeleteDiscordIntegration(integration)}
 													disabled={deleting === integration.id}
-													className="flex items-center gap-2"
+													className="flex items-center gap-2 w-full sm:w-auto"
 												>
 													<Trash2 className="h-4 w-4" />
 													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
@@ -698,12 +698,12 @@ export default function Home() {
 
 						{/* Connect another workspace buttons */}
 						<div className="flex justify-center pt-4">
-							<div className="flex gap-4">
-								<Button size="lg" className="flex items-center gap-2" onClick={handleAddToSlack}>
+							<div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+								<Button size="lg" className="flex items-center gap-2 w-full sm:w-auto" onClick={handleAddToSlack}>
 									<SlackIcon className="h-5 w-5" color="white" />
 									Connect Slack
 								</Button>
-								<Button size="lg" className="flex items-center gap-2" onClick={handleAddToDiscord}>
+								<Button size="lg" className="flex items-center gap-2 w-full sm:w-auto" onClick={handleAddToDiscord}>
 									<DiscordIcon className="h-5 w-5" color="white" />
 									Connect Discord
 								</Button>
