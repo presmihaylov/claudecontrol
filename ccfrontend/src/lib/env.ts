@@ -4,7 +4,6 @@ const requiredEnvVars = {
 	NEXT_PUBLIC_SLACK_REDIRECT_URI: process.env.NEXT_PUBLIC_SLACK_REDIRECT_URI,
 	NEXT_PUBLIC_DISCORD_REDIRECT_URI: process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI,
 	NEXT_PUBLIC_CCBACKEND_BASE_URL: process.env.NEXT_PUBLIC_CCBACKEND_BASE_URL,
-	PLAIN_CHAT_SECRET: process.env.PLAIN_CHAT_SECRET,
 } as const;
 
 // Validate all required environment variables
@@ -20,5 +19,4 @@ export const env = {
 	SLACK_REDIRECT_URI: requiredEnvVars.NEXT_PUBLIC_SLACK_REDIRECT_URI as string,
 	DISCORD_REDIRECT_URI: requiredEnvVars.NEXT_PUBLIC_DISCORD_REDIRECT_URI as string,
 	CCBACKEND_BASE_URL: requiredEnvVars.NEXT_PUBLIC_CCBACKEND_BASE_URL as string,
-	PLAIN_CHAT_SECRET: requiredEnvVars.PLAIN_CHAT_SECRET as string,
 } as const;

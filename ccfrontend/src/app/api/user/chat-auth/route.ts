@@ -43,7 +43,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate email hash for Plain chat authentication
-    const hmac = crypto.createHmac('sha256', env.PLAIN_CHAT_SECRET);
+    const plainChatSecret = process.env.PLAIN_CHAT_SECRET;
+    if (!plainChatSecret) {
+      console.error('PLAIN_CHAT_SECRET environment variable is not set');
+      return NextResponse.json(
+        { error: 'Chat service configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const hmac = crypto.createHmac('sha256', plainChatSecret);
     hmac.update(userProfile.email);
     const emailHash = hmac.digest('hex');
 
