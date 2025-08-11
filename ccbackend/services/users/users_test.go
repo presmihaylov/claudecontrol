@@ -99,7 +99,7 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	defer testutils.CleanupTestUser(t, dbConn, cfg.DatabaseSchema, testUser.ID)()
 
 	// Test GetOrCreateUser with test user
-	user, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID)
+	user, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID, testUser.Email)
 	require.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.Equal(t, testUser.AuthProvider, user.AuthProvider)
@@ -108,7 +108,7 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	assert.Equal(t, testUser.OrgID, user.OrgID, "Should return same user with same organization ID")
 
 	// Test that calling GetOrCreateUser again returns the same user
-	user2, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID)
+	user2, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID, testUser.Email)
 	require.NoError(t, err)
 	assert.Equal(t, user.ID, user2.ID)
 	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
@@ -132,14 +132,20 @@ func TestUsersService_GetOrCreateUser_ValidationErrors(t *testing.T) {
 	usersService := NewUsersService(usersRepo, organizationsService, txManager)
 
 	// Test with empty auth provider
-	user, err := usersService.GetOrCreateUser(context.Background(), "", "test_user_id")
+	user, err := usersService.GetOrCreateUser(context.Background(), "", "test_user_id", "test@example.com")
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.Contains(t, err.Error(), "auth_provider cannot be empty")
 
 	// Test with empty auth provider ID
-	user, err = usersService.GetOrCreateUser(context.Background(), "clerk", "")
+	user, err = usersService.GetOrCreateUser(context.Background(), "clerk", "", "test@example.com")
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.Contains(t, err.Error(), "auth_provider_id cannot be empty")
+
+	// Test with empty email
+	user, err = usersService.GetOrCreateUser(context.Background(), "clerk", "test_user_id", "")
+	assert.Error(t, err)
+	assert.Nil(t, user)
+	assert.Contains(t, err.Error(), "email cannot be empty")
 }
