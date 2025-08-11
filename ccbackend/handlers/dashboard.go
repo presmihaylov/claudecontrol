@@ -16,6 +16,7 @@ type DashboardAPIHandler struct {
 	discordIntegrationsService services.DiscordIntegrationsService
 	organizationsService       services.OrganizationsService
 	agentsService              services.AgentsService
+	txManager                  services.TransactionManager
 }
 
 func NewDashboardAPIHandler(
@@ -24,6 +25,7 @@ func NewDashboardAPIHandler(
 	discordIntegrationsService services.DiscordIntegrationsService,
 	organizationsService services.OrganizationsService,
 	agentsService services.AgentsService,
+	txManager services.TransactionManager,
 ) *DashboardAPIHandler {
 	return &DashboardAPIHandler{
 		usersService:               usersService,
@@ -31,6 +33,7 @@ func NewDashboardAPIHandler(
 		discordIntegrationsService: discordIntegrationsService,
 		organizationsService:       organizationsService,
 		agentsService:              agentsService,
+		txManager:                  txManager,
 	}
 }
 
@@ -163,20 +166,30 @@ func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context) (str
 
 	log.Printf("🔑 Generating CCAgent secret key for organization: %s", org.ID)
 
-	secretKey, err := h.organizationsService.GenerateCCAgentSecretKey(ctx, models.OrgID(org.ID))
+	var secretKey string
+	err := h.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		var err error
+		secretKey, err = h.organizationsService.GenerateCCAgentSecretKey(txCtx, models.OrgID(org.ID))
+		if err != nil {
+			log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
+			return err
+		}
+
+		// Disconnect all active agents since the API key has changed
+		log.Printf("🔌 Disconnecting all active agents for organization: %s", org.ID)
+		if err := h.agentsService.DisconnectAllActiveAgentsByOrganization(txCtx, models.OrgID(org.ID)); err != nil {
+			log.Printf("❌ Failed to disconnect agents after API key regeneration: %v", err)
+			return fmt.Errorf("failed to disconnect agents: %w", err)
+		}
+
+		log.Printf("✅ All agents disconnected successfully after API key regeneration")
+		return nil
+	})
+
 	if err != nil {
-		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
-		return "", err
+		return "", fmt.Errorf("API key generation transaction failed: %w", err)
 	}
 
-	// Disconnect all active agents since the API key has changed
-	log.Printf("🔌 Disconnecting all active agents for organization: %s", org.ID)
-	if err := h.agentsService.DisconnectAllActiveAgentsByOrganization(ctx, models.OrgID(org.ID)); err != nil {
-		log.Printf("❌ Failed to disconnect agents after API key regeneration: %v", err)
-		return "", fmt.Errorf("API key generated but failed to disconnect agents: %w", err)
-	}
-
-	log.Printf("✅ All agents disconnected successfully after API key regeneration")
 	log.Printf("✅ CCAgent secret key generated successfully for organization: %s", org.ID)
 	return secretKey, nil
 }

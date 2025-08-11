@@ -170,6 +170,7 @@ func run() error {
 		discordIntegrationsService,
 		organizationsService,
 		agentsService,
+		txManager,
 	)
 	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkSecretKey)
