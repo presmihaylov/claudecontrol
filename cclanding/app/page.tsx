@@ -36,26 +36,26 @@ export default function Home() {
 
 					{/* Platform Preview */}
 					<AnimateOnScroll delay={0.4}>
-						<div className="mt-16 w-full max-w-6xl">
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+						<div className="mt-16 w-full max-w-7xl">
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
 								{/* Slack Preview */}
-								<div className="md:rounded-lg md:overflow-hidden md:h-[500px] md:bg-gray-900">
+								<div className="md:rounded-lg md:overflow-hidden md:h-[700px] md:bg-gray-900">
 									<Image
 										src="/slack-example.jpeg"
 										alt="Claude Control Slack Integration Example"
-										width={600}
-										height={400}
+										width={800}
+										height={600}
 										className="w-full h-auto md:h-full md:object-contain rounded-lg md:rounded-none"
 									/>
 								</div>
 
 								{/* Discord Preview */}
-								<div className="md:rounded-lg md:overflow-hidden md:h-[500px] md:bg-gray-900">
+								<div className="md:rounded-lg md:overflow-hidden md:h-[700px] md:bg-gray-900">
 									<Image
 										src="/discord-example.jpeg"
 										alt="Claude Control Discord Integration Example"
-										width={600}
-										height={400}
+										width={800}
+										height={600}
 										className="w-full h-auto md:h-full md:object-contain rounded-lg md:rounded-none"
 									/>
 								</div>
@@ -75,7 +75,7 @@ export default function Home() {
 
 					{/* YouTube Video Embed */}
 					<AnimateOnScroll delay={0.2}>
-						<div className="mb-12 max-w-4xl mx-auto">
+						<div className="mb-12 max-w-7xl mx-auto">
 							<div
 								className="relative w-full"
 								style={{ paddingBottom: "56.25%" }}
