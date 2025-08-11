@@ -31,7 +31,7 @@ func (m *MockDiscordIntegrationsRepository) CreateDiscordIntegration(
 
 func (m *MockDiscordIntegrationsRepository) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrgID,
 ) ([]*models.DiscordIntegration, error) {
 	args := m.Called(ctx, organizationID)
 	if args.Get(0) == nil {
@@ -52,7 +52,7 @@ func (m *MockDiscordIntegrationsRepository) GetAllDiscordIntegrations(
 
 func (m *MockDiscordIntegrationsRepository) DeleteDiscordIntegrationByID(
 	ctx context.Context,
-	integrationID, organizationID string,
+	integrationID string, organizationID models.OrgID,
 ) (bool, error) {
 	args := m.Called(ctx, integrationID, organizationID)
 	return args.Bool(0), args.Error(1)
@@ -106,14 +106,20 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_Success(t *testing.
 	mockRepo.On("CreateDiscordIntegration", ctx, mock.AnythingOfType("*models.DiscordIntegration")).Return(nil)
 
 	// Act
-	result, err := service.CreateDiscordIntegration(ctx, organizationID, discordAuthCode, guildID, redirectURL)
+	result, err := service.CreateDiscordIntegration(
+		ctx,
+		models.OrgID(organizationID),
+		discordAuthCode,
+		guildID,
+		redirectURL,
+	)
 
 	// Assert
 	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, guildID, result.DiscordGuildID)
 	assert.Equal(t, "Test Guild", result.DiscordGuildName)
-	assert.Equal(t, organizationID, result.OrganizationID)
+	assert.Equal(t, models.OrgID(organizationID), result.OrgID)
 	// DiscordAuthToken field was removed from the model
 	assert.True(t, core.IsValidULID(result.ID))
 
@@ -142,7 +148,13 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_GuildNotFound(t *te
 		guildID).Return(nil, fmt.Errorf("Discord API error: guild not found"))
 
 	// Act
-	result, err := service.CreateDiscordIntegration(ctx, organizationID, discordAuthCode, guildID, redirectURL)
+	result, err := service.CreateDiscordIntegration(
+		ctx,
+		models.OrgID(organizationID),
+		discordAuthCode,
+		guildID,
+		redirectURL,
+	)
 
 	// Assert
 	require.Error(t, err)
@@ -178,7 +190,13 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_EmptyGuildName(t *t
 		guildID).Return(mockGuild, nil)
 
 	// Act
-	result, err := service.CreateDiscordIntegration(ctx, organizationID, discordAuthCode, guildID, redirectURL)
+	result, err := service.CreateDiscordIntegration(
+		ctx,
+		models.OrgID(organizationID),
+		discordAuthCode,
+		guildID,
+		redirectURL,
+	)
 
 	// Assert
 	require.Error(t, err)
@@ -205,21 +223,21 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_Succe
 			ID:               core.NewID("di"),
 			DiscordGuildID:   "123456789012345678",
 			DiscordGuildName: "Guild 1",
-			OrganizationID:   organizationID,
+			OrgID:            models.OrgID(organizationID),
 		},
 		{
 			ID:               core.NewID("di"),
 			DiscordGuildID:   "987654321098765432",
 			DiscordGuildName: "Guild 2",
-			OrganizationID:   organizationID,
+			OrgID:            models.OrgID(organizationID),
 		},
 	}
 
-	mockRepo.On("GetDiscordIntegrationsByOrganizationID", ctx, organizationID).
+	mockRepo.On("GetDiscordIntegrationsByOrganizationID", ctx, models.OrgID(organizationID)).
 		Return(expectedIntegrations, nil)
 
 	// Act
-	result, err := service.GetDiscordIntegrationsByOrganizationID(ctx, organizationID)
+	result, err := service.GetDiscordIntegrationsByOrganizationID(ctx, models.OrgID(organizationID))
 
 	// Assert
 	require.NoError(t, err)
@@ -239,11 +257,11 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_Repos
 	ctx := context.Background()
 	organizationID := core.NewID("org")
 
-	mockRepo.On("GetDiscordIntegrationsByOrganizationID", ctx, organizationID).
+	mockRepo.On("GetDiscordIntegrationsByOrganizationID", ctx, models.OrgID(organizationID)).
 		Return(nil, fmt.Errorf("database connection error"))
 
 	// Act
-	result, err := service.GetDiscordIntegrationsByOrganizationID(ctx, organizationID)
+	result, err := service.GetDiscordIntegrationsByOrganizationID(ctx, models.OrgID(organizationID))
 
 	// Assert
 	require.Error(t, err)
@@ -269,7 +287,7 @@ func TestDiscordIntegrationsService_GetAllDiscordIntegrations_Success(t *testing
 			ID:               core.NewID("di"),
 			DiscordGuildID:   "123456789012345678",
 			DiscordGuildName: "Guild 1",
-			OrganizationID:   core.NewID("org"),
+			OrgID:            models.OrgID(core.NewID("org")),
 		},
 	}
 
@@ -297,10 +315,10 @@ func TestDiscordIntegrationsService_DeleteDiscordIntegration_Success(t *testing.
 	organizationID := core.NewID("org")
 	integrationID := core.NewID("di")
 
-	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, organizationID).Return(true, nil)
+	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, models.OrgID(organizationID)).Return(true, nil)
 
 	// Act
-	err := service.DeleteDiscordIntegration(ctx, organizationID, integrationID)
+	err := service.DeleteDiscordIntegration(ctx, models.OrgID(organizationID), integrationID)
 
 	// Assert
 	require.NoError(t, err)
@@ -320,10 +338,10 @@ func TestDiscordIntegrationsService_DeleteDiscordIntegration_NotFound(t *testing
 	organizationID := core.NewID("org")
 	integrationID := core.NewID("di")
 
-	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, organizationID).Return(false, nil)
+	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, models.OrgID(organizationID)).Return(false, nil)
 
 	// Act
-	err := service.DeleteDiscordIntegration(ctx, organizationID, integrationID)
+	err := service.DeleteDiscordIntegration(ctx, models.OrgID(organizationID), integrationID)
 
 	// Assert
 	require.Error(t, err)
@@ -347,7 +365,7 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationByGuildID_Success(t *te
 		ID:               core.NewID("di"),
 		DiscordGuildID:   guildID,
 		DiscordGuildName: "Test Guild",
-		OrganizationID:   core.NewID("org"),
+		OrgID:            models.OrgID(core.NewID("org")),
 	}
 
 	mockRepo.On("GetDiscordIntegrationByGuildID", ctx, guildID).
@@ -403,7 +421,7 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationByID_Success(t *testing
 		ID:               integrationID,
 		DiscordGuildID:   "123456789012345678",
 		DiscordGuildName: "Test Guild",
-		OrganizationID:   core.NewID("org"),
+		OrgID:            models.OrgID(core.NewID("org")),
 	}
 
 	mockRepo.On("GetDiscordIntegrationByID", ctx, integrationID).

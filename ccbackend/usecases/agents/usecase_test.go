@@ -15,20 +15,20 @@ import (
 )
 
 // Test helper functions
-func createTestAgent(id, wsConnectionID, organizationID string) *models.ActiveAgent {
+func createTestAgent(id, wsConnectionID string, organizationID models.OrgID) *models.ActiveAgent {
 	return &models.ActiveAgent{
 		ID:             id,
 		WSConnectionID: wsConnectionID,
-		OrganizationID: organizationID,
+		OrgID:          organizationID,
 		CCAgentID:      "ccaid_test123",
 	}
 }
 
-func createTestJob(id, slackThreadTS, slackChannelID, organizationID string) *models.Job {
+func createTestJob(id, slackThreadTS, slackChannelID string, organizationID models.OrgID) *models.Job {
 	return &models.Job{
-		ID:             id,
-		JobType:        models.JobTypeSlack,
-		OrganizationID: organizationID,
+		ID:      id,
+		JobType: models.JobTypeSlack,
+		OrgID:   organizationID,
 		SlackPayload: &models.SlackJobPayload{
 			ThreadTS:  slackThreadTS,
 			ChannelID: slackChannelID,
@@ -53,7 +53,7 @@ func TestNewAgentsUseCase(t *testing.T) {
 // GetOrAssignAgentForJob Tests
 func TestGetOrAssignAgentForJob(t *testing.T) {
 	ctx := context.Background()
-	organizationID := "org_test123"
+	organizationID := models.OrgID("org_test123")
 	threadTS := "1234567890.123456"
 	job := createTestJob("job_123", threadTS, "C123456", organizationID)
 
@@ -136,7 +136,7 @@ func TestGetOrAssignAgentForJob(t *testing.T) {
 // AssignJobToAvailableAgent Tests
 func TestAssignJobToAvailableAgent(t *testing.T) {
 	ctx := context.Background()
-	organizationID := "org_test123"
+	organizationID := models.OrgID("org_test123")
 	threadTS := "1234567890.123456"
 	job := createTestJob("job_123", threadTS, "C123456", organizationID)
 
@@ -191,7 +191,7 @@ func TestAssignJobToAvailableAgent(t *testing.T) {
 // TryAssignJobToAgent Tests
 func TestTryAssignJobToAgent(t *testing.T) {
 	ctx := context.Background()
-	organizationID := "org_test123"
+	organizationID := models.OrgID("org_test123")
 	jobID := "job_123"
 
 	t.Run("Job already assigned with active connection", func(t *testing.T) {
@@ -296,7 +296,7 @@ func TestTryAssignJobToAgent(t *testing.T) {
 // ValidateJobBelongsToAgent Tests
 func TestValidateJobBelongsToAgent(t *testing.T) {
 	ctx := context.Background()
-	organizationID := "org_test123"
+	organizationID := models.OrgID("org_test123")
 	agentID := "agent_123"
 	jobID := "job_123"
 
@@ -348,7 +348,7 @@ func TestValidateJobBelongsToAgent(t *testing.T) {
 // sortAgentsByLoad Tests
 func TestSortAgentsByLoad(t *testing.T) {
 	ctx := context.Background()
-	organizationID := "org_test123"
+	organizationID := models.OrgID("org_test123")
 
 	t.Run("Correct load calculation and sort order", func(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
@@ -367,7 +367,11 @@ func TestSortAgentsByLoad(t *testing.T) {
 			Return([]string{"job_e", "job_f"}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		sorted, err := useCase.sortAgentsByLoad(ctx, []*models.ActiveAgent{agent1, agent2, agent3}, organizationID)
+		sorted, err := useCase.sortAgentsByLoad(
+			ctx,
+			[]*models.ActiveAgent{agent1, agent2, agent3},
+			organizationID,
+		)
 
 		require.NoError(t, err)
 		require.Len(t, sorted, 3)
@@ -426,7 +430,11 @@ func TestSortAgentsByLoad(t *testing.T) {
 			Return([]string{"job_c", "job_d"}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		sorted, err := useCase.sortAgentsByLoad(ctx, []*models.ActiveAgent{agent1, agent2}, organizationID)
+		sorted, err := useCase.sortAgentsByLoad(
+			ctx,
+			[]*models.ActiveAgent{agent1, agent2},
+			organizationID,
+		)
 
 		require.NoError(t, err)
 		require.Len(t, sorted, 2)
@@ -449,7 +457,11 @@ func TestSortAgentsByLoad(t *testing.T) {
 			Return([]string{}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		sorted, err := useCase.sortAgentsByLoad(ctx, []*models.ActiveAgent{agent1, agent2}, organizationID)
+		sorted, err := useCase.sortAgentsByLoad(
+			ctx,
+			[]*models.ActiveAgent{agent1, agent2},
+			organizationID,
+		)
 
 		require.NoError(t, err)
 		require.Len(t, sorted, 2)

@@ -56,7 +56,7 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(
 		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.SlackTeamID, integration.SlackAuthToken, integration.SlackTeamName, integration.OrganizationID).
+	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.SlackTeamID, integration.SlackAuthToken, integration.SlackTeamName, integration.OrgID).
 		StructScan(integration)
 	if err != nil {
 		return fmt.Errorf("failed to create slack integration: %w", err)
@@ -67,7 +67,7 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(
 
 func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrgID,
 ) ([]*models.SlackIntegration, error) {
 	if organizationID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
@@ -109,7 +109,8 @@ func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations(
 
 func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(
 	ctx context.Context,
-	integrationID, organizationID string,
+	integrationID string,
+	organizationID models.OrgID,
 ) (bool, error) {
 	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND organization_id = $2`, r.schema)
 

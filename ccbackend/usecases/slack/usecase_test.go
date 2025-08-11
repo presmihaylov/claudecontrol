@@ -84,7 +84,7 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 		// Generate consistent test data for this test case
 		testJobID := testutils.GenerateJobID()
 		testUserID := testutils.GenerateSlackUserID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testChannelID := testutils.GenerateSlackChannelID()
 		testSlackIntegrationID := testutils.GenerateSlackIntegrationID()
 		testThreadTS := testutils.GenerateSlackThreadTS()
@@ -102,8 +102,8 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			SlackPayload: &models.SlackJobPayload{
 				IntegrationID: testSlackIntegrationID,
 				ChannelID:     testChannelID,
@@ -119,14 +119,14 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 
 		slackIntegration := &models.SlackIntegration{
 			ID:             testSlackIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			SlackAuthToken: testSlackToken,
 		}
 
 		connectedAgent := &models.ActiveAgent{
 			ID:             testAgentID,
 			WSConnectionID: testWSConnectionID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 		}
 
 		processedMessage := &models.ProcessedSlackMessage{
@@ -136,7 +136,7 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 			SlackChannelID:     testChannelID,
 			TextContent:        "Hello bot, help me with something",
 			SlackIntegrationID: testSlackIntegrationID,
-			OrganizationID:     testOrgID,
+			OrgID:              testOrgID,
 			Status:             models.ProcessedSlackMessageStatusInProgress,
 		}
 
@@ -202,7 +202,7 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 		// Generate consistent test data for this test case
 		testJobID := testutils.GenerateJobID()
 		testUserID := testutils.GenerateSlackUserID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testChannelID := testutils.GenerateSlackChannelID()
 		testSlackIntegrationID := testutils.GenerateSlackIntegrationID()
 		testThreadTS := testutils.GenerateSlackThreadTS()
@@ -216,8 +216,8 @@ func TestProcessSlackMessageEvent(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			SlackPayload: &models.SlackJobPayload{
 				IntegrationID: testSlackIntegrationID,
 				ChannelID:     testChannelID,
@@ -256,7 +256,7 @@ func TestProcessReactionAdded(t *testing.T) {
 		// Generate consistent test data for this test case
 		testJobID := testutils.GenerateJobID()
 		testUserID := testutils.GenerateSlackUserID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testChannelID := testutils.GenerateSlackChannelID()
 		testSlackIntegrationID := testutils.GenerateSlackIntegrationID()
 		testThreadTS := testutils.GenerateSlackThreadTS()
@@ -266,8 +266,8 @@ func TestProcessReactionAdded(t *testing.T) {
 		reactionName := "white_check_mark"
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			SlackPayload: &models.SlackJobPayload{
 				IntegrationID: testSlackIntegrationID,
 				ChannelID:     testChannelID,
@@ -278,14 +278,14 @@ func TestProcessReactionAdded(t *testing.T) {
 
 		slackIntegration := &models.SlackIntegration{
 			ID:             testSlackIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			SlackAuthToken: testutils.GenerateSlackToken(),
 		}
 
 		agent := &models.ActiveAgent{
 			ID:             testAgentID,
 			WSConnectionID: testWSConnectionID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 		}
 
 		// Configure expectations
@@ -342,7 +342,7 @@ func TestProcessReactionAdded(t *testing.T) {
 		testJobID := testutils.GenerateJobID()
 		testUserID := testutils.GenerateSlackUserID()
 		testDifferentUserID := testutils.GenerateSlackUserID() // Different user
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testChannelID := testutils.GenerateSlackChannelID()
 		testSlackIntegrationID := testutils.GenerateSlackIntegrationID()
 		testThreadTS := testutils.GenerateSlackThreadTS()
@@ -350,8 +350,8 @@ func TestProcessReactionAdded(t *testing.T) {
 		reactionName := "white_check_mark"
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			SlackPayload: &models.SlackJobPayload{
 				IntegrationID: testSlackIntegrationID,
 				ChannelID:     testChannelID,
@@ -386,7 +386,7 @@ func TestProcessReactionAdded(t *testing.T) {
 
 		// Generate consistent test data
 		testUserID := testutils.GenerateSlackUserID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testChannelID := testutils.GenerateSlackChannelID()
 		testSlackIntegrationID := testutils.GenerateSlackIntegrationID()
 		testThreadTS := testutils.GenerateSlackThreadTS()
@@ -416,7 +416,7 @@ func TestProcessJobComplete(t *testing.T) {
 
 		// Generate consistent test data for this test case
 		testJobID := testutils.GenerateJobID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testWSConnectionID := testutils.GenerateWSConnectionID()
 		testAgentID := testutils.GenerateAgentID()
 		testChannelID := testutils.GenerateSlackChannelID()
@@ -431,8 +431,8 @@ func TestProcessJobComplete(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			SlackPayload: &models.SlackJobPayload{
 				IntegrationID: testSlackIntegrationID,
 				ChannelID:     testChannelID,
@@ -444,12 +444,12 @@ func TestProcessJobComplete(t *testing.T) {
 		agent := &models.ActiveAgent{
 			ID:             testAgentID,
 			WSConnectionID: testWSConnectionID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 		}
 
 		slackIntegration := &models.SlackIntegration{
 			ID:             testSlackIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			SlackAuthToken: testutils.GenerateSlackToken(),
 		}
 
@@ -517,7 +517,7 @@ func TestProcessJobComplete(t *testing.T) {
 
 		// Generate consistent test data for this test case
 		testJobID := testutils.GenerateJobID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testWSConnectionID := testutils.GenerateWSConnectionID()
 
 		clientID := testWSConnectionID
@@ -547,7 +547,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 		// Generate consistent test data for this test case
 		testJobID := testutils.GenerateJobID()
 		testAgentID := testutils.GenerateAgentID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testWSConnectionID := testutils.GenerateWSConnectionID()
 		testProcessedID := testutils.GenerateProcessedMessageID()
 		testChannelID := testutils.GenerateSlackChannelID()
@@ -565,12 +565,12 @@ func TestProcessAssistantMessage(t *testing.T) {
 		agent := &models.ActiveAgent{
 			ID:             testAgentID,
 			WSConnectionID: testWSConnectionID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			SlackPayload: &models.SlackJobPayload{
 				IntegrationID: testSlackIntegrationID,
 				ChannelID:     testChannelID,
@@ -581,7 +581,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 
 		slackIntegration := &models.SlackIntegration{
 			ID:             testSlackIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			SlackAuthToken: testutils.GenerateSlackToken(),
 		}
 
@@ -591,7 +591,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 			SlackTS:            testutils.GenerateSlackMessageID(),
 			SlackChannelID:     testChannelID,
 			SlackIntegrationID: testSlackIntegrationID,
-			OrganizationID:     testOrgID,
+			OrgID:              testOrgID,
 			Status:             models.ProcessedSlackMessageStatusCompleted,
 		}
 
@@ -656,7 +656,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 		// Generate consistent test data for this test case
 		testJobID := testutils.GenerateJobID()
 		testAgentID := testutils.GenerateAgentID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testWSConnectionID := testutils.GenerateWSConnectionID()
 		testProcessedID := testutils.GenerateProcessedMessageID()
 
@@ -670,7 +670,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 		agent := &models.ActiveAgent{
 			ID:             testAgentID,
 			WSConnectionID: clientID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 		}
 
 		// Configure expectations
@@ -697,7 +697,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 		// Generate consistent test data for this test case
 		testJobID := testutils.GenerateJobID()
 		testUserID := testutils.GenerateSlackUserID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testChannelID := testutils.GenerateSlackChannelID()
 		testSlackIntegrationID := testutils.GenerateSlackIntegrationID()
 		testThreadTS := testutils.GenerateSlackThreadTS()
@@ -707,13 +707,13 @@ func TestProcessQueuedJobs(t *testing.T) {
 
 		integration := &models.SlackIntegration{
 			ID:             testSlackIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			SlackAuthToken: testSlackToken,
 		}
 
 		queuedJob := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			SlackPayload: &models.SlackJobPayload{
 				IntegrationID: testSlackIntegrationID,
 				ChannelID:     testChannelID,
@@ -729,7 +729,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 			SlackChannelID:     testChannelID,
 			TextContent:        "Queued message content",
 			SlackIntegrationID: testSlackIntegrationID,
-			OrganizationID:     testOrgID,
+			OrgID:              testOrgID,
 			Status:             models.ProcessedSlackMessageStatusQueued,
 		}
 
@@ -740,7 +740,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 			SlackChannelID:     testChannelID,
 			TextContent:        "Queued message content",
 			SlackIntegrationID: testSlackIntegrationID,
-			OrganizationID:     testOrgID,
+			OrgID:              testOrgID,
 			Status:             models.ProcessedSlackMessageStatusInProgress,
 		}
 
@@ -806,7 +806,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 		// Generate consistent test data for this test case
 		testJobID := testutils.GenerateJobID()
 		testUserID := testutils.GenerateSlackUserID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testChannelID := testutils.GenerateSlackChannelID()
 		testSlackIntegrationID := testutils.GenerateSlackIntegrationID()
 		testThreadTS := testutils.GenerateSlackThreadTS()
@@ -814,13 +814,13 @@ func TestProcessQueuedJobs(t *testing.T) {
 
 		integration := &models.SlackIntegration{
 			ID:             testSlackIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			SlackAuthToken: testSlackToken,
 		}
 
 		queuedJob := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			SlackPayload: &models.SlackJobPayload{
 				IntegrationID: testSlackIntegrationID,
 				ChannelID:     testChannelID,
@@ -857,7 +857,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		testProcessedID := testutils.GenerateProcessedMessageID()
 		testJobID := testutils.GenerateJobID()
 		testClientID := testutils.GenerateClientID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testChannelID := testutils.GenerateSlackChannelID()
 		testSlackIntegrationID := testutils.GenerateSlackIntegrationID()
 		testMessageID := testutils.GenerateSlackMessageID()
@@ -872,12 +872,12 @@ func TestProcessProcessingMessage(t *testing.T) {
 			SlackTS:            testMessageID,
 			SlackChannelID:     testChannelID,
 			SlackIntegrationID: testSlackIntegrationID,
-			OrganizationID:     testOrgID,
+			OrgID:              testOrgID,
 		}
 
 		slackIntegration := &models.SlackIntegration{
 			ID:             testSlackIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			SlackAuthToken: testutils.GenerateSlackToken(),
 		}
 
@@ -921,7 +921,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		// Generate consistent test data for this test case
 		testProcessedID := testutils.GenerateProcessedMessageID()
 		testClientID := testutils.GenerateClientID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 
 		payload := models.ProcessingMessagePayload{
 			ProcessedMessageID: testProcessedID,
@@ -947,7 +947,7 @@ func TestProcessSystemMessage(t *testing.T) {
 
 		// Generate consistent test data
 		testJobID := testutils.GenerateJobID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testClientID := testutils.GenerateClientID()
 		testChannelID := testutils.GenerateSlackChannelID()
 		testThreadTS := testutils.GenerateSlackThreadTS()
@@ -960,8 +960,8 @@ func TestProcessSystemMessage(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			SlackPayload: &models.SlackJobPayload{
 				IntegrationID: testSlackIntegrationID,
 				ChannelID:     testChannelID,
@@ -972,7 +972,7 @@ func TestProcessSystemMessage(t *testing.T) {
 
 		slackIntegration := &models.SlackIntegration{
 			ID:             testSlackIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			SlackAuthToken: testutils.GenerateSlackToken(),
 		}
 
@@ -1006,7 +1006,7 @@ func TestProcessSystemMessage(t *testing.T) {
 
 		// Generate consistent test data
 		testJobID := testutils.GenerateJobID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testClientID := testutils.GenerateClientID()
 
 		payload := models.SystemMessagePayload{

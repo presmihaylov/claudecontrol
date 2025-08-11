@@ -40,7 +40,7 @@ func (m *MockOrganizationsService) GetAllOrganizations(ctx context.Context) ([]*
 
 func (m *MockOrganizationsService) GenerateCCAgentSecretKey(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrgID,
 ) (string, error) {
 	args := m.Called(ctx, organizationID)
 	return args.String(0), args.Error(1)

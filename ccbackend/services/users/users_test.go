@@ -105,14 +105,14 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	assert.Equal(t, testUser.AuthProvider, user.AuthProvider)
 	assert.Equal(t, testUser.AuthProviderID, user.AuthProviderID)
 	assert.Equal(t, testUser.ID, user.ID)
-	assert.Equal(t, testUser.OrganizationID, user.OrganizationID, "Should return same user with same organization ID")
+	assert.Equal(t, testUser.OrgID, user.OrgID, "Should return same user with same organization ID")
 
 	// Test that calling GetOrCreateUser again returns the same user
 	user2, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID)
 	require.NoError(t, err)
 	assert.Equal(t, user.ID, user2.ID)
 	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)
-	assert.Equal(t, user.OrganizationID, user2.OrganizationID, "Organization ID should remain consistent")
+	assert.Equal(t, user.OrgID, user2.OrgID, "Organization ID should remain consistent")
 }
 
 func TestUsersService_GetOrCreateUser_ValidationErrors(t *testing.T) {
