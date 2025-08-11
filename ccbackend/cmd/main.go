@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -108,7 +109,7 @@ func run() error {
 			return "", err
 		}
 		if !maybeOrg.IsPresent() {
-			return "", err
+			return "", fmt.Errorf("organization not found - invalid API key")
 		}
 		return maybeOrg.MustGet().ID, nil
 	}
