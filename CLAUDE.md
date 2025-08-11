@@ -44,6 +44,7 @@ bun start                   # Start production server
 bun run lint                # Run Biome linter and check
 bun run lint:fix            # Run Biome and fix issues automatically
 bun run format              # Format code with Biome
+bun run typecheck           # Run TypeScript type checking
 bun install                 # Install dependencies
 ```
 
@@ -58,44 +59,61 @@ supabase migration up       # Apply pending migrations
 supabase gen types typescript  # Generate TypeScript types from database schema
 ```
 
-### WebSocket Examples
+### Examples
 ```bash
+# WebSocket Examples (deprecated)
 cd examples/websockets/server
-go run main.go             # Start example server on :8080
+go run main.go             # Start example WebSocket server on :8080
 
 cd examples/websockets/client  
 go run main.go             # Connect client to server
-go run main.go ws://localhost:8080/ws  # Connect to ccbackend
+
+# Socket.IO Examples (current)
+cd examples/socketio/server
+go run main.go             # Start Socket.IO server
+
+cd examples/socketio/client  
+go run main.go             # Connect Socket.IO client
+
+# Discord Bot Example
+cd examples/discord-bot
+go run main.go             # Run Discord bot example
+
+# Worker Pool Example
+cd examples/workerpool
+go run main.go             # Demonstrate worker pool usage
 ```
 
 ## Architecture Overview
 
 ### Multi-Module Structure
-- **ccbackend**: Go HTTP/WebSocket server handling Slack integration with Supabase database, Clerk authentication
-- **ccagent**: Go CLI tool for Claude Code interaction with WebSocket connection to backend
+- **ccbackend**: Go HTTP/Socket.IO server handling Slack and Discord integrations with Supabase database, Clerk authentication
+- **ccagent**: Go CLI tool for Claude Code interaction with Socket.IO connection to backend
 - **ccfrontend**: Next.js 15 frontend application with React 19, Tailwind CSS 4, and Clerk authentication
-- **examples/websockets**: Reference WebSocket implementations (deprecated - see ccagent for current WebSocket patterns)
+- **examples/websockets**: Reference WebSocket implementations (deprecated - see ccagent for current Socket.IO patterns)
+- **examples/socketio**: Socket.IO client/server examples
+- **examples/discord-bot**: Discord bot integration example
 
 ### Backend Component Organization
-- `main.go`: Server setup, environment loading, port 8080
-- `handlers/`: HTTP request handlers for Slack events, WebSocket connections, dashboard API
-- `middleware/auth.go`: Clerk JWT authentication middleware with user context
-- `services/`: Business logic layer with context-based user scoping
+- `cmd/main.go`: Server setup, environment loading, port 8080
+- `handlers/`: HTTP request handlers for Slack/Discord events, Socket.IO connections, dashboard API
+- `middleware/`: Authentication (Clerk JWT) and error alerting middleware
+- `services/`: Business logic layer with context-based organization scoping (users, slack_integrations, discord_integrations, jobs, agents)
 - `db/`: Database repository layer using sqlx with PostgreSQL
 - `models/`: Domain models and API response structures
-- `appctx/`: Application context management for user entities
-- `clients/`: External service clients (Slack, WebSocket)
-- `usecases/`: Core business use cases and workflows
+- `appctx/`: Application context management for organization entities
+- `clients/`: External service clients (Slack, Discord, Socket.IO)
+- `usecases/`: Core business use cases and workflows (agents, core, discord, slack)
+- `config/`: Application configuration management
+- `core/`: Core utilities (ULID generation, error handling)
+- `testutils/`: Testing utilities and helpers
 
-### WebSocket Server Architecture
-The WebSocket implementation uses a refactored design:
-- `newWebsocketServer()`: Creates server instance
-- `startWebsocketServer()`: Registers HTTP handlers
-- `getClients()`: Returns connected clients array
-- `sendMessage(client, msg)`: Send arbitrary message to client
-- `registerMessageHandler(func)`: Register message processors
-
-All messages received from clients invoke all registered handlers, enabling modular message processing.
+### Socket.IO Server Architecture
+The Socket.IO implementation provides real-time communication:
+- Socket.IO server handling agent connections
+- Message-based protocol for job management
+- Organization-scoped agent tracking
+- Integration with Slack and Discord webhooks
 
 ### Environment Configuration
 ccbackend requires environment variables (copy `.env.example` to `.env` and configure):
@@ -110,45 +128,49 @@ DATABASE_URL=<postgresql_connection_string>
 ccagent requires environment variables:
 ```
 CCAGENT_API_KEY=<ccagent_api_key>
-CCAGENT_WS_API_URL=<websocket_server_url>  # Optional, defaults to production
+CCAGENT_SOCKET_URL=<socketio_server_url>  # Optional, defaults to production
 ```
 
 ### Key Integration Points
 - **Slack Webhooks**: `/slack/events` endpoint for app mentions and URL verification
-- **WebSocket Endpoint**: `/ws` for real-time ccagent connections with API key authentication
+- **Discord Webhooks**: `/discord/events` endpoint for Discord message events
+- **Socket.IO Endpoint**: Socket.IO server for real-time ccagent connections with API key authentication
 - **Dashboard API**: `/api/dashboard/*` endpoints with Clerk JWT authentication
 - **Clerk Authentication**: JWT-based user authentication with automatic user creation
-- **Claude Code Integration**: ccagent connects via WebSocket with retry logic and job management
+- **Claude Code Integration**: ccagent connects via Socket.IO with retry logic and job management
 
 ## Go Code Standards
 - Use `any` instead of `interface{}` for generic types
-- WebSocket clients stored as `[]Client` where `Client.ClientConn` is the connection
+- Socket.IO clients managed via organization-scoped connections
 - Thread-safe operations with `sync.RWMutex` for client management
-- JSON message protocol for WebSocket communication
+- JSON message protocol for Socket.IO communication
 - **Prefer `slices.Contains`**: Use `slices.Contains(slice, value)` instead of manual loops when
   checking for membership in a slice
+- **ULID IDs**: Use prefixed ULIDs generated via `core.NewID(prefix)` for all entity identifiers
 
 ## Module Dependencies
 
 ### ccbackend Dependencies
-- **Gorilla WebSocket**: Real-time communication (`github.com/gorilla/websocket`)
+- **Socket.IO**: Real-time communication (`github.com/zishang520/socket.io/v2`)
 - **Gorilla Mux**: HTTP routing (`github.com/gorilla/mux`)
-- **Slack Go SDK**: Platform integration (`github.com/slack-go/slack`)
+- **Slack Go SDK**: Slack integration (`github.com/slack-go/slack`)
+- **Discord Go SDK**: Discord integration (`github.com/bwmarrin/discordgo`)
 - **Clerk SDK**: Authentication (`github.com/clerk/clerk-sdk-go/v2`)
 - **SQLX**: Enhanced SQL interface (`github.com/jmoiron/sqlx`)
 - **PostgreSQL Driver**: Database connectivity (`github.com/lib/pq`)
-- **UUID**: UUID generation (`github.com/google/uuid`)
-- **Lo**: Functional utilities (`github.com/samber/lo`)
+- **ULID**: ULID generation (`github.com/oklog/ulid/v2`)
+- **Mo**: Option types (`github.com/samber/mo`)
 - **CORS**: Cross-origin requests (`github.com/rs/cors`)
 - **Testify**: Testing assertions (`github.com/stretchr/testify`)
 - **Godotenv**: Environment management (`github.com/joho/godotenv`)
 
 ### ccagent Dependencies
-- **Gorilla WebSocket**: WebSocket client (`github.com/gorilla/websocket`)
+- **Socket.IO Client**: Socket.IO client connection (`github.com/zishang520/socket.io-client-go`)
 - **Worker Pool**: Concurrent message processing (`github.com/gammazero/workerpool`)
 - **Go Flags**: Command-line argument parsing (`github.com/jessevdk/go-flags`)
 - **UUID**: UUID generation (`github.com/google/uuid`)
 - **Codename**: Branch name generation (`github.com/lucasepe/codename`)
+- **File Lock**: Directory locking (`github.com/gofrs/flock`)
 
 ### ccfrontend Dependencies
 - **Next.js 15**: React framework with App Router
@@ -174,25 +196,30 @@ CCAGENT_WS_API_URL=<websocket_server_url>  # Optional, defaults to production
 - **Option Types**: Uses `mo.Option[*Model]` for Get operations that may return no results
 - **Validation Rule**: Repository layer focuses on data access only - **validation should be
   handled at the service layer, not repository layer**
+- **Transaction Support**: Transaction management via `txmanager` service for atomic operations
 - **Identifier Data Types**: Always use `TEXT` for database identifiers, never `VARCHAR`
 
 ### Current Database Schema
-The database uses a multi-table design with user-scoped entities:
+The database uses a multi-table design with organization-scoped entities:
 
-- **users**: User accounts from Clerk authentication
-- **slack_integrations**: Slack workspace integrations per user
-- **active_agents**: WebSocket-connected agents per integration
-- **jobs**: Tasks assigned to agents
+- **organizations**: Organizations containing users and integrations
+- **users**: User accounts from Clerk authentication, scoped to organizations
+- **slack_integrations**: Slack workspace integrations per organization
+- **discord_integrations**: Discord guild integrations per organization
+- **active_agents**: Socket.IO-connected agents per organization
+- **jobs**: Tasks assigned to agents (supports both Slack and Discord)
 - **agent_job_assignments**: Many-to-many relationship between agents and jobs
 - **processed_slack_messages**: Tracks processed Slack messages to avoid duplicates
+- **processed_discord_messages**: Tracks processed Discord messages to avoid duplicates
 
-All core entities are scoped to slack_integration_id for proper user isolation.
+All core entities are scoped to organization_id for proper data isolation.
 
 ## Service Layer Patterns
 
-### UUID Management
-- **Service-Generated IDs**: Services generate UUIDs internally using `uuid.New()`
+### ULID Management
+- **Service-Generated IDs**: Services generate ULIDs internally using `core.NewID(prefix)`
 - **No External ID Input**: Callers don't provide IDs, ensuring uniqueness
+- **ULID Format**: Prefixed ULIDs (e.g., `u_01G0EZ1XTM37C5X11SQTDNCTM1` for users)
 - **Database Timestamps**: `created_at`/`updated_at` managed by database `NOW()`
 
 ### Error Handling
@@ -257,9 +284,11 @@ All core entities are scoped to slack_integration_id for proper user isolation.
 - **Test Schema**: Migrations create both prod and test schemas
 ```
 
-## Slack Message Handling Guidelines
+## Message Handling Guidelines
 - **Slack Message Conversion**: Anytime you send a message to slack coming from the ccagent,
   you should ensure it goes through the `utils.ConvertMarkdownToSlack` function
+- **Discord Message Support**: Discord integration supports message events and responses
+- **Multi-Platform Support**: Jobs can be created from both Slack and Discord interactions
 
 ## Error Handling Guidelines
 - **Error Propagation**: Never log errors silently and proceed with control flow. Always
@@ -274,9 +303,9 @@ All core entities are scoped to slack_integration_id for proper user isolation.
   handling: `log.Printf(...); return fmt.Errorf(...)`
 
 ## Service Layer Architecture Rules
-- **User-Scoped Entities**: All entities in the database should be scoped to a user ID.
-  Never manage an entity without a user ID filter for security and data isolation
-- **Context-Based User Access**: User ID should be accessed from the context in the service
+- **Organization-Scoped Entities**: All entities in the database should be scoped to an organization ID.
+  Never manage an entity without organization ID filter for security and data isolation
+- **Context-Based Organization Access**: Organization should be accessed from the context in the service
   layer instead of being passed explicitly as a parameter
 - **Context First Parameter**: All functions in the service layer should take
   `ctx context.Context` as the first argument to ensure proper request context propagation
@@ -504,8 +533,8 @@ This pattern ensures consistency, maintainability, and proper separation of conc
 
 ## Agent Architecture (ccagent)
 
-### WebSocket Communication
-- **Persistent Connection**: Maintains connection to ccbackend WebSocket server
+### Socket.IO Communication
+- **Persistent Connection**: Maintains connection to ccbackend Socket.IO server
 - **Retry Logic**: Exponential backoff on connection failures
 - **Message Types**: Structured message protocol for different operations
 - **Worker Pool**: Sequential message processing with job queuing
@@ -532,11 +561,11 @@ This pattern ensures consistency, maintainability, and proper separation of conc
 - **API Protection**: All dashboard endpoints require authentication
 - **Error Handling**: Standardized error responses for auth failures
 
-### User Scoping Pattern
+### Organization Scoping Pattern
 - **Context-First**: All service functions take `context.Context` as first parameter
-- **User Extraction**: Users extracted from context using `appctx.GetUser()`
-- **Database Isolation**: All queries filtered by user's slack_integration_id
-- **Security**: No cross-user data access possible
+- **Organization Extraction**: Organizations extracted from context using `appctx.GetOrganization()`
+- **Database Isolation**: All queries filtered by organization_id
+- **Security**: No cross-organization data access possible
 
 ## Available Subagents
 
