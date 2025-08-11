@@ -59,13 +59,13 @@ export default function PlainChatAuthenticated() {
                   shortName: authData.shortName,
                 },
                 
-                // Styling with white background and black text
-                theme: 'light',
+                // Styling with black background and white text
+                theme: 'dark',
                 style: {
-                  brandColor: '#000000',
-                  brandBackgroundColor: '#ffffff',
-                  launcherBackgroundColor: '#ffffff',
-                  launcherIconColor: '#000000'
+                  brandColor: '#ffffff',
+                  brandBackgroundColor: '#000000',
+                  launcherBackgroundColor: '#000000',
+                  launcherIconColor: '#ffffff'
                 },
                 
                 // Position the chat widget
