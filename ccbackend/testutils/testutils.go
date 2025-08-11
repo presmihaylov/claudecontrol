@@ -68,7 +68,7 @@ func CreateTestUser(t *testing.T, usersRepo *db.PostgresUsersRepository) *models
 
 	// Create user with the organization ID
 	testUserID := core.NewID("u")
-	testUser, err := usersRepo.CreateUser(context.Background(), "test", testUserID, models.OrgID(testOrgID))
+	testUser, err := usersRepo.CreateUser(context.Background(), "test", testUserID, "test@example.com", models.OrgID(testOrgID))
 	require.NoError(t, err, "Failed to create test user")
 	return testUser
 }
@@ -92,7 +92,7 @@ func CreateTestUserWithProvider(t *testing.T, usersRepo *db.PostgresUsersReposit
 
 	// Create user with the organization ID
 	testUserID := core.NewID("u")
-	testUser, err := usersRepo.CreateUser(context.Background(), authProvider, testUserID, models.OrgID(testOrgID))
+	testUser, err := usersRepo.CreateUser(context.Background(), authProvider, testUserID, "test@example.com", models.OrgID(testOrgID))
 	require.NoError(t, err, "Failed to create test user with provider %s", authProvider)
 	return testUser
 }
