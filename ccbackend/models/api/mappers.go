@@ -10,6 +10,7 @@ func DomainUserToAPIUser(domainUser *models.User) *UserModel {
 
 	return &UserModel{
 		ID:        domainUser.ID,
+		Email:     domainUser.Email,
 		CreatedAt: domainUser.CreatedAt,
 		UpdatedAt: domainUser.UpdatedAt,
 	}
