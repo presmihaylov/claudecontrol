@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Home() {
 	return (
@@ -17,29 +18,36 @@ export default function Home() {
 						Self-hosted and open source - your whole team can use Claude Code
 						without your data leaving your server.
 					</p>
-					<button
-						id="signup"
-						type="button"
+					<Link
+						href="https://app.claudecontrol.com"
 						className="cursor-pointer inline-flex h-12 items-center justify-center rounded-md bg-black text-white px-8 py-3 text-lg font-medium shadow transition-all hover:bg-gray-800"
 					>
 						Get Started
-					</button>
+					</Link>
 
 					{/* Platform Preview */}
 					<div className="mt-16 w-full max-w-4xl">
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
 							{/* Slack Preview */}
-							<div className="bg-gray-200 rounded-lg h-64 flex items-center justify-center">
-								<span className="text-gray-500 font-medium">
-									Slack Screenshot Placeholder
-								</span>
+							<div className="rounded-lg overflow-hidden">
+								<Image
+									src="/slack-example.jpeg"
+									alt="Claude Control Slack Integration Example"
+									width={600}
+									height={400}
+									className="w-full h-auto"
+								/>
 							</div>
 
 							{/* Discord Preview */}
-							<div className="bg-gray-200 rounded-lg h-64 flex items-center justify-center">
-								<span className="text-gray-500 font-medium">
-									Discord Screenshot Placeholder
-								</span>
+							<div className="rounded-lg overflow-hidden">
+								<Image
+									src="/discord-example.jpeg"
+									alt="Claude Control Discord Integration Example"
+									width={600}
+									height={400}
+									className="w-full h-auto"
+								/>
 							</div>
 						</div>
 					</div>
