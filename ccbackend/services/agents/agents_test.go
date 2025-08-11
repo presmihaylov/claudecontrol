@@ -747,7 +747,7 @@ func TestAgentsService(t *testing.T) {
 			mockSocketIO.AssertNotCalled(t, "DisconnectClientByID")
 		})
 
-		t.Run("Partial failure - some agents fail to disconnect", func(t *testing.T) {
+		t.Run("Fails immediately on first disconnect error", func(t *testing.T) {
 			// Reset mock for this test
 			mockSocketIO.ExpectedCalls = nil
 			mockSocketIO.Calls = nil
@@ -780,10 +780,11 @@ func TestAgentsService(t *testing.T) {
 			// Call the disconnect function
 			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), organizationID)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "failed to disconnect 1 agents")
+			assert.Contains(t, err.Error(), "failed to disconnect agent")
+			assert.Contains(t, err.Error(), agentID2) // Should mention the specific agent that failed
 			assert.Contains(t, err.Error(), "disconnect failed")
 
-			// Verify all mock expectations were met
+			// Verify all mock expectations were met (both calls should still happen)
 			mockSocketIO.AssertExpectations(t)
 		})
 

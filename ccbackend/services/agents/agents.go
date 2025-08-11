@@ -465,27 +465,16 @@ func (s *AgentsService) DisconnectAllActiveAgentsByOrganization(
 	log.Printf("📋 Found %d active agents to disconnect", len(agents))
 
 	// Disconnect each agent
-	disconnectedCount := 0
-	var disconnectErrors []error
-
 	for _, agent := range agents {
 		log.Printf("🔍 Attempting to disconnect agent %s", agent.CCAgentID)
 		err := s.socketIOClient.DisconnectClientByID(agent.CCAgentID)
 		if err != nil {
 			log.Printf("❌ Failed to disconnect agent %s: %v", agent.CCAgentID, err)
-			disconnectErrors = append(disconnectErrors, fmt.Errorf("agent %s: %w", agent.CCAgentID, err))
-		} else {
-			log.Printf("📋 Successfully disconnected agent %s", agent.CCAgentID)
-			disconnectedCount++
+			return fmt.Errorf("failed to disconnect agent %s: %w", agent.CCAgentID, err)
 		}
+		log.Printf("📋 Successfully disconnected agent %s", agent.CCAgentID)
 	}
 
-	log.Printf("📋 Completed successfully - disconnected %d out of %d agents", disconnectedCount, len(agents))
-
-	// Return aggregated errors if any disconnects failed
-	if len(disconnectErrors) > 0 {
-		return fmt.Errorf("failed to disconnect %d agents: %v", len(disconnectErrors), disconnectErrors)
-	}
-
+	log.Printf("📋 Completed successfully - disconnected all %d agents", len(agents))
 	return nil
 }
