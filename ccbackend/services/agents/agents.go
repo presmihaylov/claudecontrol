@@ -22,14 +22,14 @@ func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
 
 func (s *AgentsService) UpsertActiveAgent(
 	ctx context.Context,
-	wsConnectionID, organizationID string,
+	wsConnectionID string, organizationID models.OrgID,
 	agentID string,
 ) (*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to upsert active agent for wsConnectionID: %s, agentID: %s", wsConnectionID, agentID)
 	if !core.IsValidULID(wsConnectionID) {
 		return nil, fmt.Errorf("ws_connection_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 	if !core.IsValidULID(agentID) {
@@ -39,7 +39,7 @@ func (s *AgentsService) UpsertActiveAgent(
 	agent := &models.ActiveAgent{
 		ID:             core.NewID("ag"),
 		WSConnectionID: wsConnectionID,
-		OrganizationID: organizationID,
+		OrgID:          organizationID,
 		CCAgentID:      agentID,
 	}
 	if err := s.agentsRepo.UpsertActiveAgent(ctx, agent); err != nil {
@@ -52,13 +52,14 @@ func (s *AgentsService) UpsertActiveAgent(
 
 func (s *AgentsService) DeleteActiveAgentByWsConnectionID(
 	ctx context.Context,
-	wsConnectionID, organizationID string,
+	wsConnectionID string,
+	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to delete active agent by wsConnectionID: %s", wsConnectionID)
 	if !core.IsValidULID(wsConnectionID) {
 		return fmt.Errorf("ws_connection_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -85,12 +86,12 @@ func (s *AgentsService) DeleteActiveAgentByWsConnectionID(
 	return nil
 }
 
-func (s *AgentsService) DeleteActiveAgent(ctx context.Context, id string, organizationID string) error {
+func (s *AgentsService) DeleteActiveAgent(ctx context.Context, id string, organizationID models.OrgID) error {
 	log.Printf("📋 Starting to delete active agent with ID: %s", id)
 	if !core.IsValidULID(id) {
 		return fmt.Errorf("agent ID must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -109,13 +110,13 @@ func (s *AgentsService) DeleteActiveAgent(ctx context.Context, id string, organi
 func (s *AgentsService) GetAgentByID(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	log.Printf("📋 Starting to get agent by ID: %s", id)
 	if !core.IsValidULID(id) {
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("agent ID must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -135,10 +136,10 @@ func (s *AgentsService) GetAgentByID(
 
 func (s *AgentsService) GetAvailableAgents(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrgID,
 ) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get available agents")
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -154,11 +155,11 @@ func (s *AgentsService) GetAvailableAgents(
 // GetConnectedActiveAgents returns only agents that have active WebSocket connections
 func (s *AgentsService) GetConnectedActiveAgents(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrgID,
 	connectedClientIDs []string,
 ) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get connected active agents")
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -194,11 +195,11 @@ func (s *AgentsService) GetConnectedActiveAgents(
 // GetConnectedAvailableAgents returns only available agents that have active WebSocket connections
 func (s *AgentsService) GetConnectedAvailableAgents(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrgID,
 	connectedClientIDs []string,
 ) ([]*models.ActiveAgent, error) {
 	log.Printf("📋 Starting to get connected available agents")
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -247,7 +248,11 @@ func (s *AgentsService) CheckAgentHasActiveConnection(agent *models.ActiveAgent,
 	return hasConnection
 }
 
-func (s *AgentsService) AssignAgentToJob(ctx context.Context, agentID, jobID string, organizationID string) error {
+func (s *AgentsService) AssignAgentToJob(
+	ctx context.Context,
+	agentID, jobID string,
+	organizationID models.OrgID,
+) error {
 	log.Printf("📋 Starting to assign agent %s to job %s", agentID, jobID)
 	if !core.IsValidULID(agentID) {
 		return fmt.Errorf("agent ID must be a valid ULID")
@@ -255,15 +260,15 @@ func (s *AgentsService) AssignAgentToJob(ctx context.Context, agentID, jobID str
 	if !core.IsValidULID(jobID) {
 		return fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
 	assignment := &models.AgentJobAssignment{
-		ID:             core.NewID("aji"),
-		AgentID:        agentID,
-		JobID:          jobID,
-		OrganizationID: organizationID,
+		ID:      core.NewID("aji"),
+		AgentID: agentID,
+		JobID:   jobID,
+		OrgID:   organizationID,
 	}
 
 	if err := s.agentsRepo.AssignAgentToJob(ctx, assignment); err != nil {
@@ -277,7 +282,7 @@ func (s *AgentsService) AssignAgentToJob(ctx context.Context, agentID, jobID str
 func (s *AgentsService) UnassignAgentFromJob(
 	ctx context.Context,
 	agentID, jobID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to unassign agent %s from job %s", agentID, jobID)
 	if !core.IsValidULID(agentID) {
@@ -286,7 +291,7 @@ func (s *AgentsService) UnassignAgentFromJob(
 	if !core.IsValidULID(jobID) {
 		return fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -305,13 +310,13 @@ func (s *AgentsService) UnassignAgentFromJob(
 func (s *AgentsService) GetAgentByJobID(
 	ctx context.Context,
 	jobID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	log.Printf("📋 Starting to get agent by job ID: %s", jobID)
 	if !core.IsValidULID(jobID) {
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -331,13 +336,14 @@ func (s *AgentsService) GetAgentByJobID(
 
 func (s *AgentsService) GetAgentByWSConnectionID(
 	ctx context.Context,
-	wsConnectionID, organizationID string,
+	wsConnectionID string,
+	organizationID models.OrgID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	log.Printf("📋 Starting to get agent by WS connection ID: %s", wsConnectionID)
 	if !core.IsValidULID(wsConnectionID) {
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("ws_connection_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return mo.None[*models.ActiveAgent](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -358,13 +364,13 @@ func (s *AgentsService) GetAgentByWSConnectionID(
 func (s *AgentsService) GetActiveAgentJobAssignments(
 	ctx context.Context,
 	agentID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) ([]string, error) {
 	log.Printf("📋 Starting to get active job assignments for agent %s", agentID)
 	if !core.IsValidULID(agentID) {
 		return nil, fmt.Errorf("agent ID must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -377,12 +383,16 @@ func (s *AgentsService) GetActiveAgentJobAssignments(
 	return jobIDs, nil
 }
 
-func (s *AgentsService) UpdateAgentLastActiveAt(ctx context.Context, wsConnectionID, organizationID string) error {
+func (s *AgentsService) UpdateAgentLastActiveAt(
+	ctx context.Context,
+	wsConnectionID string,
+	organizationID models.OrgID,
+) error {
 	log.Printf("📋 Starting to update last_active_at for agent with WS connection ID: %s", wsConnectionID)
 	if !core.IsValidULID(wsConnectionID) {
 		return fmt.Errorf("ws_connection_id must be a valid ULID")
 	}
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -400,7 +410,7 @@ func (s *AgentsService) UpdateAgentLastActiveAt(ctx context.Context, wsConnectio
 
 func (s *AgentsService) GetInactiveAgents(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrgID,
 	inactiveThresholdMinutes int,
 ) ([]*models.ActiveAgent, error) {
 	log.Printf(
@@ -409,7 +419,7 @@ func (s *AgentsService) GetInactiveAgents(
 		inactiveThresholdMinutes,
 	)
 
-	if !core.IsValidULID(organizationID) {
+	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 	if inactiveThresholdMinutes <= 0 {

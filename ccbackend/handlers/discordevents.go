@@ -103,7 +103,7 @@ func (h *DiscordEventsHandler) handleMessageCreatedEvent(s *discordgo.Session, m
 		ctx,
 		messageEvent,
 		discordIntegration.ID,
-		discordIntegration.OrganizationID,
+		discordIntegration.OrgID,
 	)
 	if err != nil {
 		log.Printf("❌ Failed to process Discord message: %v", err)
@@ -142,7 +142,7 @@ func (h *DiscordEventsHandler) handleReactionAddedEvent(s *discordgo.Session, r 
 		ctx,
 		reactionEvent,
 		discordIntegration.ID,
-		discordIntegration.OrganizationID,
+		discordIntegration.OrgID,
 	)
 	if err != nil {
 		log.Printf("❌ Failed to process Discord reaction: %v", err)

@@ -54,7 +54,7 @@ func (s *SlackUseCase) ProcessSlackMessageEvent(
 	ctx context.Context,
 	event models.SlackMessageEvent,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to process Slack message event from %s in %s: %s", event.User, event.Channel, event.Text)
 
@@ -201,7 +201,7 @@ func (s *SlackUseCase) ProcessSlackMessageEvent(
 func (s *SlackUseCase) ProcessReactionAdded(
 	ctx context.Context,
 	reactionName, userID, channelID, messageTS, slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	log.Printf(
 		"📋 Starting to process reaction %s added by %s on message %s in channel %s",
@@ -306,7 +306,7 @@ func (s *SlackUseCase) ProcessProcessingMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.ProcessingMessagePayload,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to process processing slack message notification from client %s", clientID)
 
@@ -366,7 +366,7 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 			ctx,
 			models.JobTypeSlack,
 			slackIntegrationID,
-			integration.OrganizationID,
+			integration.OrgID,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to get queued jobs for integration %s: %w", slackIntegrationID, err)
@@ -383,7 +383,7 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 			log.Printf("🔄 Processing queued job %s", job.ID)
 
 			// Get organization ID for this integration
-			organizationID := integration.OrganizationID
+			organizationID := integration.OrgID
 
 			// Try to assign job to an available agent
 			clientID, assigned, err := s.agentsUseCase.TryAssignJobToAgent(ctx, job.ID, organizationID)
@@ -402,7 +402,7 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 				job.ID,
 				models.ProcessedSlackMessageStatusQueued,
 				slackIntegrationID,
-				integration.OrganizationID,
+				integration.OrgID,
 			)
 			if err != nil {
 				return fmt.Errorf("failed to get queued messages for job %s: %w", job.ID, err)
@@ -464,7 +464,7 @@ func (s *SlackUseCase) ProcessJobComplete(
 	ctx context.Context,
 	clientID string,
 	payload models.JobCompletePayload,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	log.Printf(
 		"📋 Starting to process job complete from client %s: JobID: %s, Reason: %s",
@@ -567,7 +567,7 @@ func (s *SlackUseCase) CleanupFailedSlackJob(
 		return fmt.Errorf("job has no Slack payload")
 	}
 	slackIntegrationID := job.SlackPayload.IntegrationID
-	organizationID := job.OrganizationID
+	organizationID := job.OrgID
 
 	// Send failure message to Slack thread
 	if err := s.sendSlackMessage(ctx, slackIntegrationID, job.SlackPayload.ChannelID, job.SlackPayload.ThreadTS, failureMessage); err != nil {
@@ -612,7 +612,7 @@ func (s *SlackUseCase) ProcessAssistantMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.AssistantMessagePayload,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to process assistant message from client %s", clientID)
 
@@ -738,7 +738,7 @@ func (s *SlackUseCase) ProcessSystemMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.SystemMessagePayload,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
 	jobID := payload.JobID

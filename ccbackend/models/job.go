@@ -13,11 +13,11 @@ const (
 
 type Job struct {
 	// Common fields
-	ID             string    `json:"id"              db:"id"`
-	JobType        JobType   `json:"job_type"        db:"job_type"`
-	OrganizationID string    `json:"organization_id" db:"organization_id"`
-	CreatedAt      time.Time `json:"created_at"      db:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"      db:"updated_at"`
+	ID        string    `json:"id"              db:"id"`
+	JobType   JobType   `json:"job_type"        db:"job_type"`
+	OrgID     OrgID     `json:"organization_id" db:"organization_id"`
+	CreatedAt time.Time `json:"created_at"      db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"      db:"updated_at"`
 
 	// Polymorphic payload - only one populated based on JobType
 	SlackPayload   *SlackJobPayload   `json:"slack_payload,omitempty"`

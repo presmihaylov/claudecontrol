@@ -62,7 +62,7 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 				ID:             core.NewID("u"),
 				AuthProvider:   "test",
 				AuthProviderID: core.NewID("testuser"),
-				OrganizationID: testOrg.ID,
+				OrgID:          models.OrgID(testOrg.ID),
 				CreatedAt:      time.Now(),
 				UpdatedAt:      time.Now(),
 			}
@@ -114,14 +114,14 @@ func (m *ClerkAuthMiddleware) WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// Get the user's organization
-		maybeOrg, err := m.organizationsService.GetOrganizationByID(r.Context(), user.OrganizationID)
+		maybeOrg, err := m.organizationsService.GetOrganizationByID(r.Context(), string(user.OrgID))
 		if err != nil {
 			log.Printf("❌ Failed to get organization: %v", err)
 			m.writeErrorResponse(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		if !maybeOrg.IsPresent() {
-			log.Printf("❌ Organization not found: %s", user.OrganizationID)
+			log.Printf("❌ Organization not found: %s", user.OrgID)
 			m.writeErrorResponse(w, "organization not found", http.StatusInternalServerError)
 			return
 		}

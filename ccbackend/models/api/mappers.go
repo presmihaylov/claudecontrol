@@ -22,12 +22,12 @@ func DomainSlackIntegrationToAPISlackIntegration(domainIntegration *models.Slack
 	}
 
 	return &SlackIntegrationModel{
-		ID:             domainIntegration.ID,
-		SlackTeamID:    domainIntegration.SlackTeamID,
-		SlackTeamName:  domainIntegration.SlackTeamName,
-		OrganizationID: domainIntegration.OrganizationID,
-		CreatedAt:      domainIntegration.CreatedAt,
-		UpdatedAt:      domainIntegration.UpdatedAt,
+		ID:            domainIntegration.ID,
+		SlackTeamID:   domainIntegration.SlackTeamID,
+		SlackTeamName: domainIntegration.SlackTeamName,
+		OrgID:         domainIntegration.OrgID,
+		CreatedAt:     domainIntegration.CreatedAt,
+		UpdatedAt:     domainIntegration.UpdatedAt,
 	}
 }
 
@@ -59,7 +59,7 @@ func DomainDiscordIntegrationToAPIDiscordIntegration(
 		ID:               domainIntegration.ID,
 		DiscordGuildID:   domainIntegration.DiscordGuildID,
 		DiscordGuildName: domainIntegration.DiscordGuildName,
-		OrganizationID:   domainIntegration.OrganizationID,
+		OrgID:            domainIntegration.OrgID,
 		CreatedAt:        domainIntegration.CreatedAt,
 		UpdatedAt:        domainIntegration.UpdatedAt,
 	}

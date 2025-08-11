@@ -33,12 +33,12 @@ func TestSlackMessagesService(t *testing.T) {
 
 	// Create test user and slack integration
 	testUser := testutils.CreateTestUser(t, usersRepo)
-	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrganizationID)
+	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrgID)
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 
 	// Test organization and integration data
-	organizationID := testIntegration.OrganizationID
+	organizationID := testIntegration.OrgID
 	slackIntegrationID := testIntegration.ID
 
 	// Create a test job
@@ -51,7 +51,7 @@ func TestSlackMessagesService(t *testing.T) {
 			UserID:        "U12345",
 			IntegrationID: slackIntegrationID,
 		},
-		OrganizationID: organizationID,
+		OrgID: organizationID,
 	}
 	err = jobsRepo.CreateJob(context.Background(), job)
 	require.NoError(t, err, "Failed to create test job")
@@ -65,7 +65,11 @@ func TestSlackMessagesService(t *testing.T) {
 			slackIntegrationID,
 			organizationID,
 		)
-		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
+		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(
+			context.Background(),
+			testIntegration.ID,
+			testUser.OrgID,
+		)
 	}()
 
 	t.Run("CreateProcessedSlackMessage", func(t *testing.T) {
@@ -102,7 +106,7 @@ func TestSlackMessagesService(t *testing.T) {
 			assert.Equal(t, textContent, message.TextContent)
 			assert.Equal(t, status, message.Status)
 			assert.Equal(t, slackIntegrationID, message.SlackIntegrationID)
-			assert.Equal(t, organizationID, message.OrganizationID)
+			assert.Equal(t, organizationID, message.OrgID)
 		})
 
 		t.Run("InvalidJobID", func(t *testing.T) {
@@ -486,7 +490,7 @@ func TestSlackMessagesService(t *testing.T) {
 					UserID:        "U23456",
 					IntegrationID: slackIntegrationID,
 				},
-				OrganizationID: organizationID,
+				OrgID: organizationID,
 			}
 			err := jobsRepo.CreateJob(context.Background(), job1)
 			require.NoError(t, err, "Failed to create test job1")
@@ -501,7 +505,7 @@ func TestSlackMessagesService(t *testing.T) {
 					UserID:        "U34567",
 					IntegrationID: slackIntegrationID,
 				},
-				OrganizationID: organizationID,
+				OrgID: organizationID,
 			}
 			err = jobsRepo.CreateJob(context.Background(), job2)
 			require.NoError(t, err, "Failed to create test job2")

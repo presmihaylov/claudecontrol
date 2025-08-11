@@ -61,7 +61,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
-			testUser.OrganizationID,
+			testUser.OrgID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -72,7 +72,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		assert.Equal(t, teamID, integration.SlackTeamID)
 		assert.Equal(t, "Test Team", integration.SlackTeamName)
 		assert.Equal(t, "xoxb-test-token-123", integration.SlackAuthToken)
-		assert.Equal(t, testUser.OrganizationID, integration.OrganizationID)
+		assert.Equal(t, testUser.OrgID, integration.OrgID)
 		assert.NotZero(t, integration.CreatedAt)
 		assert.NotZero(t, integration.UpdatedAt)
 
@@ -101,7 +101,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
-			testUser.OrganizationID,
+			testUser.OrgID,
 			"",
 			"http://localhost:3000/callback",
 		)
@@ -146,7 +146,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
-			testUser.OrganizationID,
+			testUser.OrgID,
 			"invalid-code",
 			"http://localhost:3000/callback",
 		)
@@ -182,7 +182,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration1, err := testService.CreateSlackIntegration(
 			ctx,
-			testUser.OrganizationID,
+			testUser.OrgID,
 			"test-auth-code-1",
 			"http://localhost:3000/callback",
 		)
@@ -204,7 +204,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 		ctx = testutils.CreateTestContextWithUser(testUser)
 		integration2, err := testService2.CreateSlackIntegration(
 			ctx,
-			testUser.OrganizationID,
+			testUser.OrgID,
 			"test-auth-code-2",
 			"http://localhost:3000/callback",
 		)
@@ -227,7 +227,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 		ctx3 := testutils.CreateTestContextWithUser(otherUser)
 		integration3, err := testService3.CreateSlackIntegration(
 			ctx3,
-			otherUser.OrganizationID,
+			otherUser.OrgID,
 			"test-auth-code-3",
 			"http://localhost:3000/callback",
 		)
@@ -235,7 +235,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 
 		// Get integrations for the first user
 		ctx = testutils.CreateTestContextWithUser(testUser)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrganizationID)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrgID)
 
 		require.NoError(t, err)
 		assert.Len(t, integrations, 2)
@@ -244,7 +244,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 		foundIDs := make(map[string]bool)
 		for _, integration := range integrations {
 			foundIDs[integration.ID] = true
-			assert.Equal(t, testUser.OrganizationID, integration.OrganizationID)
+			assert.Equal(t, testUser.OrgID, integration.OrgID)
 		}
 		assert.True(t, foundIDs[integration1.ID])
 		assert.True(t, foundIDs[integration2.ID])
@@ -264,7 +264,7 @@ func TestSlackIntegrationsService_GetSlackIntegrationsByOrganizationID(t *testin
 		testUser := testutils.CreateTestUser(t, usersRepo)
 
 		ctx := testutils.CreateTestContextWithUser(testUser)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrganizationID)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrgID)
 
 		require.NoError(t, err)
 		assert.Empty(t, integrations)
@@ -303,7 +303,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(testUser)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
-			testUser.OrganizationID,
+			testUser.OrgID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -313,12 +313,12 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		ctx = testutils.CreateTestContextWithUser(testUser)
 
 		// Delete the integration
-		err = service.DeleteSlackIntegration(ctx, testUser.OrganizationID, integration.ID)
+		err = service.DeleteSlackIntegration(ctx, testUser.OrgID, integration.ID)
 		require.NoError(t, err)
 
 		// Verify integration is deleted
 		ctx = testutils.CreateTestContextWithUser(testUser)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrganizationID)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, testUser.OrgID)
 		require.NoError(t, err)
 		assert.Empty(t, integrations)
 	})
@@ -345,7 +345,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		ctx := testutils.CreateTestContextWithUser(user1)
 		integration, err := testService.CreateSlackIntegration(
 			ctx,
-			user1.OrganizationID,
+			user1.OrgID,
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
@@ -354,13 +354,13 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		// Try to delete using user2's context
 		ctx = testutils.CreateTestContextWithUser(user2)
 
-		err = service.DeleteSlackIntegration(ctx, user2.OrganizationID, integration.ID)
+		err = service.DeleteSlackIntegration(ctx, user2.OrgID, integration.ID)
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 
 		// Verify integration still exists
 		ctx = testutils.CreateTestContextWithUser(user1)
-		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, user1.OrganizationID)
+		integrations, err := service.GetSlackIntegrationsByOrganizationID(ctx, user1.OrgID)
 		require.NoError(t, err)
 		assert.Len(t, integrations, 1)
 
@@ -378,7 +378,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContextWithUser(testUser)
 
-		err := service.DeleteSlackIntegration(ctx, testUser.OrganizationID, "")
+		err := service.DeleteSlackIntegration(ctx, testUser.OrgID, "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "integration ID must be a valid ULID")
 	})
@@ -395,7 +395,7 @@ func TestSlackIntegrationsService_DeleteSlackIntegration(t *testing.T) {
 		testUser := testutils.CreateTestUser(t, usersRepo)
 		ctx := testutils.CreateTestContextWithUser(testUser)
 
-		err := service.DeleteSlackIntegration(ctx, testUser.OrganizationID, core.NewID("t"))
+		err := service.DeleteSlackIntegration(ctx, testUser.OrgID, core.NewID("t"))
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, core.ErrNotFound))
 	})

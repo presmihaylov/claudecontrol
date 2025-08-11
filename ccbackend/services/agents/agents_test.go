@@ -37,7 +37,7 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 
 	// Create test user and slack integration
 	testUser := testutils.CreateTestUser(t, usersRepo)
-	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrganizationID)
+	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrgID)
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 
@@ -49,7 +49,11 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 
 	cleanup := func() {
 		// Clean up test data
-		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
+		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(
+			context.Background(),
+			testIntegration.ID,
+			models.OrgID(testUser.ID),
+		)
 		dbConn.Close()
 	}
 
@@ -60,7 +64,7 @@ func TestAgentsService(t *testing.T) {
 	agentsService, jobsService, testIntegration, cleanup := setupTestService(t)
 	defer cleanup()
 
-	organizationID := testIntegration.OrganizationID
+	organizationID := testIntegration.OrgID
 
 	t.Run("UpsertActiveAgent", func(t *testing.T) {
 		t.Run("Success with agent ID", func(t *testing.T) {
@@ -87,7 +91,7 @@ func TestAgentsService(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, jobs)
 			assert.Equal(t, wsConnectionID, agent.WSConnectionID)
-			assert.Equal(t, testIntegration.OrganizationID, agent.OrganizationID)
+			assert.Equal(t, testIntegration.OrgID, agent.OrgID)
 			assert.False(t, agent.CreatedAt.IsZero())
 			assert.False(t, agent.UpdatedAt.IsZero())
 
@@ -98,7 +102,7 @@ func TestAgentsService(t *testing.T) {
 			fetchedAgent := maybeFetchedAgent.MustGet()
 			assert.Equal(t, agent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
-			assert.Equal(t, testIntegration.OrganizationID, fetchedAgent.OrganizationID)
+			assert.Equal(t, testIntegration.OrgID, fetchedAgent.OrgID)
 			assert.Equal(t, agent.CCAgentID, fetchedAgent.CCAgentID)
 		})
 
@@ -113,7 +117,7 @@ func TestAgentsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				testIntegration.ID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 
@@ -136,7 +140,7 @@ func TestAgentsService(t *testing.T) {
 
 			assert.NotEmpty(t, agent.ID)
 			assert.Equal(t, wsConnectionID, agent.WSConnectionID)
-			assert.Equal(t, testIntegration.OrganizationID, agent.OrganizationID)
+			assert.Equal(t, testIntegration.OrgID, agent.OrgID)
 			// Verify agent has the assigned job
 			jobs, err := agentsService.GetActiveAgentJobAssignments(context.Background(), agent.ID, organizationID)
 			require.NoError(t, err)
@@ -149,7 +153,7 @@ func TestAgentsService(t *testing.T) {
 			require.True(t, maybeFetchedAgent.IsPresent())
 			fetchedAgent := maybeFetchedAgent.MustGet()
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
-			assert.Equal(t, testIntegration.OrganizationID, fetchedAgent.OrganizationID)
+			assert.Equal(t, testIntegration.OrgID, fetchedAgent.OrgID)
 			// Verify fetched agent has the assigned job
 			fetchedJobs, err := agentsService.GetActiveAgentJobAssignments(
 				context.Background(),
@@ -311,7 +315,7 @@ func TestAgentsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				testIntegration.ID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 
@@ -344,7 +348,7 @@ func TestAgentsService(t *testing.T) {
 
 			assert.Equal(t, createdAgent.ID, fetchedAgent.ID)
 			assert.Equal(t, wsConnectionID, fetchedAgent.WSConnectionID)
-			assert.Equal(t, testIntegration.OrganizationID, fetchedAgent.OrganizationID)
+			assert.Equal(t, testIntegration.OrgID, fetchedAgent.OrgID)
 
 			// Verify agent has the assigned job
 			jobs, err := agentsService.GetActiveAgentJobAssignments(
@@ -400,7 +404,7 @@ func TestAgentsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				testIntegration.ID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 
@@ -445,7 +449,7 @@ func TestAgentsService(t *testing.T) {
 				)
 				require.NoError(t, err)
 				assert.Empty(t, jobs)
-				assert.Equal(t, testIntegration.OrganizationID, agent.OrganizationID)
+				assert.Equal(t, testIntegration.OrgID, agent.OrgID)
 				if agent.ID == agent1.ID {
 					foundAgent1 = true
 				}
@@ -469,7 +473,7 @@ func TestAgentsService(t *testing.T) {
 				"C1111111111",
 				"testuser",
 				testIntegration.ID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 
@@ -494,7 +498,7 @@ func TestAgentsService(t *testing.T) {
 				"C2222222222",
 				"testuser",
 				testIntegration.ID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 			agentIDBusy2 := core.NewID("ccaid")

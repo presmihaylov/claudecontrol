@@ -17,7 +17,8 @@ type MockDiscordMessagesService struct {
 func (m *MockDiscordMessagesService) CreateProcessedDiscordMessage(
 	ctx context.Context,
 	jobID string,
-	discordMessageID, discordThreadID, textContent, discordIntegrationID, organizationID string,
+	discordMessageID, discordThreadID, textContent, discordIntegrationID string,
+	organizationID models.OrgID,
 	status models.ProcessedDiscordMessageStatus,
 ) (*models.ProcessedDiscordMessage, error) {
 	args := m.Called(
@@ -41,7 +42,7 @@ func (m *MockDiscordMessagesService) UpdateProcessedDiscordMessage(
 	id string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (*models.ProcessedDiscordMessage, error) {
 	args := m.Called(ctx, id, status, discordIntegrationID, organizationID)
 	if args.Get(0) == nil {
@@ -55,7 +56,7 @@ func (m *MockDiscordMessagesService) GetProcessedMessagesByJobIDAndStatus(
 	jobID string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) ([]*models.ProcessedDiscordMessage, error) {
 	args := m.Called(ctx, jobID, status, discordIntegrationID, organizationID)
 	if args.Get(0) == nil {
@@ -67,7 +68,7 @@ func (m *MockDiscordMessagesService) GetProcessedMessagesByJobIDAndStatus(
 func (m *MockDiscordMessagesService) GetProcessedDiscordMessageByID(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	args := m.Called(ctx, id, organizationID)
 	if args.Get(0) == nil {
@@ -80,7 +81,7 @@ func (m *MockDiscordMessagesService) GetLatestProcessedMessageForJob(
 	ctx context.Context,
 	jobID string,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	args := m.Called(ctx, jobID, discordIntegrationID, organizationID)
 	if args.Get(0) == nil {
@@ -93,7 +94,7 @@ func (m *MockDiscordMessagesService) GetActiveMessageCountForJobs(
 	ctx context.Context,
 	jobIDs []string,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (int, error) {
 	args := m.Called(ctx, jobIDs, discordIntegrationID, organizationID)
 	return args.Int(0), args.Error(1)
@@ -104,7 +105,7 @@ func (m *MockDiscordMessagesService) TESTS_UpdateProcessedDiscordMessageUpdatedA
 	id string,
 	updatedAt time.Time,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	args := m.Called(ctx, id, updatedAt, discordIntegrationID, organizationID)
 	return args.Error(0)
@@ -114,7 +115,7 @@ func (m *MockDiscordMessagesService) DeleteProcessedDiscordMessagesByJobID(
 	ctx context.Context,
 	jobID string,
 	discordIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	args := m.Called(ctx, jobID, discordIntegrationID, organizationID)
 	return args.Error(0)

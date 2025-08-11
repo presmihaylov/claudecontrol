@@ -16,7 +16,7 @@ type MockSlackIntegrationsService struct {
 
 func (m *MockSlackIntegrationsService) CreateSlackIntegration(
 	ctx context.Context,
-	organizationID, slackAuthCode, redirectURL string,
+	organizationID models.OrgID, slackAuthCode, redirectURL string,
 ) (*models.SlackIntegration, error) {
 	args := m.Called(ctx, organizationID, slackAuthCode, redirectURL)
 	if args.Get(0) == nil {
@@ -27,7 +27,7 @@ func (m *MockSlackIntegrationsService) CreateSlackIntegration(
 
 func (m *MockSlackIntegrationsService) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID string,
+	organizationID models.OrgID,
 ) ([]*models.SlackIntegration, error) {
 	args := m.Called(ctx, organizationID)
 	if args.Get(0) == nil {
@@ -48,7 +48,7 @@ func (m *MockSlackIntegrationsService) GetAllSlackIntegrations(
 
 func (m *MockSlackIntegrationsService) DeleteSlackIntegration(
 	ctx context.Context,
-	organizationID, integrationID string,
+	organizationID models.OrgID, integrationID string,
 ) error {
 	args := m.Called(ctx, organizationID, integrationID)
 	return args.Error(0)

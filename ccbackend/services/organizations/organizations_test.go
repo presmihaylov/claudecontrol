@@ -164,7 +164,7 @@ func TestOrganizationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		require.NoError(t, err)
 
 		// Generate secret key
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, testOrgID)
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(testOrgID))
 		require.NoError(t, err)
 		assert.NotEmpty(t, secretKey)
 		assert.Greater(t, len(secretKey), 40) // Base64 encoded 32 bytes should be longer than 40 chars
@@ -200,7 +200,7 @@ func TestOrganizationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		require.NoError(t, err)
 
 		// Generate first secret key
-		firstSecretKey, err := service.GenerateCCAgentSecretKey(ctx, testOrgID)
+		firstSecretKey, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(testOrgID))
 		require.NoError(t, err)
 
 		// Get the first timestamp
@@ -210,7 +210,7 @@ func TestOrganizationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		firstTimestamp := *maybeOrg.MustGet().CCAgentSecretKeyGeneratedAt
 
 		// Generate second secret key
-		secondSecretKey, err := service.GenerateCCAgentSecretKey(ctx, testOrgID)
+		secondSecretKey, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(testOrgID))
 		require.NoError(t, err)
 
 		// Keys should be different
@@ -259,7 +259,7 @@ func TestOrganizationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		ctx := context.Background()
 		nonExistentOrgID := core.NewID("org")
 
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, nonExistentOrgID)
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(nonExistentOrgID))
 		assert.Error(t, err)
 		assert.Empty(t, secretKey)
 		assert.Contains(t, err.Error(), "organization not found")
@@ -280,10 +280,10 @@ func TestOrganizationsService_GenerateCCAgentSecretKey(t *testing.T) {
 		require.NoError(t, err)
 
 		// Generate secret keys for both organizations
-		secretKey1, err := service.GenerateCCAgentSecretKey(ctx, org1ID)
+		secretKey1, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(org1ID))
 		require.NoError(t, err)
 
-		secretKey2, err := service.GenerateCCAgentSecretKey(ctx, org2ID)
+		secretKey2, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(org2ID))
 		require.NoError(t, err)
 
 		// Keys should be different
@@ -315,7 +315,7 @@ func TestOrganizationsService_GetOrganizationBySecretKey(t *testing.T) {
 		err := repo.CreateOrganization(ctx, createdOrg)
 		require.NoError(t, err)
 
-		secretKey, err := service.GenerateCCAgentSecretKey(ctx, testOrgID)
+		secretKey, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(testOrgID))
 		require.NoError(t, err)
 
 		// Retrieve organization by secret key
@@ -372,10 +372,10 @@ func TestOrganizationsService_GetOrganizationBySecretKey(t *testing.T) {
 		require.NoError(t, err)
 
 		// Generate secret keys for both
-		secretKey1, err := service.GenerateCCAgentSecretKey(ctx, org1ID)
+		secretKey1, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(org1ID))
 		require.NoError(t, err)
 
-		secretKey2, err := service.GenerateCCAgentSecretKey(ctx, org2ID)
+		secretKey2, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(org2ID))
 		require.NoError(t, err)
 
 		// Verify each secret key returns the correct organization
