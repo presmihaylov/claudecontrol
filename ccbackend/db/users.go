@@ -65,31 +65,6 @@ func (r *PostgresUsersRepository) GetUserByAuthProvider(
 	return user, nil
 }
 
-func (r *PostgresUsersRepository) GetUserByClerkID(
-	ctx context.Context,
-	clerkID string,
-) (*models.User, error) {
-	db := dbtx.GetTransactional(ctx, r.db)
-
-	returningStr := strings.Join(usersColumns, ", ")
-
-	query := fmt.Sprintf(`
-		SELECT %s 
-		FROM %s.users 
-		WHERE auth_provider = 'clerk' AND auth_provider_id = $1`,
-		returningStr, r.schema)
-
-	user := &models.User{}
-	err := db.QueryRowxContext(ctx, query, clerkID).StructScan(user)
-	if err != nil {
-		if strings.Contains(err.Error(), "no rows") {
-			return nil, nil // User not found
-		}
-		return nil, fmt.Errorf("failed to get user by clerk ID: %w", err)
-	}
-
-	return user, nil
-}
 
 func (r *PostgresUsersRepository) CreateUser(
 	ctx context.Context,

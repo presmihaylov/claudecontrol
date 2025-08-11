@@ -94,22 +94,3 @@ func (s *UsersService) GetOrCreateUser(
 	return finalUser, nil
 }
 
-func (s *UsersService) GetUserByClerkID(ctx context.Context, clerkID string) (mo.Option[*models.User], error) {
-	log.Printf("📋 Starting to get user by Clerk ID: %s", clerkID)
-	if clerkID == "" {
-		return mo.None[*models.User](), fmt.Errorf("clerk ID cannot be empty")
-	}
-
-	user, err := s.usersRepo.GetUserByClerkID(ctx, clerkID)
-	if err != nil {
-		return mo.None[*models.User](), fmt.Errorf("failed to get user by clerk ID: %w", err)
-	}
-
-	if user == nil {
-		log.Printf("📋 Completed successfully - no user found for Clerk ID: %s", clerkID)
-		return mo.None[*models.User](), nil
-	}
-
-	log.Printf("📋 Completed successfully - retrieved user with ID: %s", user.ID)
-	return mo.Some(user), nil
-}
