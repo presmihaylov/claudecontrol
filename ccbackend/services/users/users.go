@@ -28,7 +28,10 @@ func NewUsersService(
 	}
 }
 
-func (s *UsersService) GetOrCreateUser(ctx context.Context, authProvider, authProviderID, email string) (*models.User, error) {
+func (s *UsersService) GetOrCreateUser(
+	ctx context.Context,
+	authProvider, authProviderID, email string,
+) (*models.User, error) {
 	log.Printf(
 		"📋 Starting to get or create user for authProvider: %s, authProviderID: %s, email: %s",
 		authProvider,
@@ -66,7 +69,13 @@ func (s *UsersService) GetOrCreateUser(ctx context.Context, authProvider, authPr
 		}
 
 		// Create new user with organization_id
-		newUser, err := s.usersRepo.CreateUser(txCtx, authProvider, authProviderID, email, models.OrgID(organization.ID))
+		newUser, err := s.usersRepo.CreateUser(
+			txCtx,
+			authProvider,
+			authProviderID,
+			email,
+			models.OrgID(organization.ID),
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create user: %w", err)
 		}

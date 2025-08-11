@@ -38,7 +38,13 @@ func setupTestDiscordMessagesService(
 
 	// Create user with the same database connection
 	testUserID := core.NewID("u")
-	testUser, err := usersRepo.CreateUser(context.Background(), "test", testUserID, "test@example.com", models.OrgID(testOrgID))
+	testUser, err := usersRepo.CreateUser(
+		context.Background(),
+		"test",
+		testUserID,
+		"test@example.com",
+		models.OrgID(testOrgID),
+	)
 	require.NoError(t, err, "Failed to create test user")
 
 	// Create discord integration using the same organization ID

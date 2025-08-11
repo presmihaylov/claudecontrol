@@ -99,7 +99,12 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	defer testutils.CleanupTestUser(t, dbConn, cfg.DatabaseSchema, testUser.ID)()
 
 	// Test GetOrCreateUser with test user
-	user, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID, testUser.Email)
+	user, err := usersService.GetOrCreateUser(
+		context.Background(),
+		testUser.AuthProvider,
+		testUser.AuthProviderID,
+		testUser.Email,
+	)
 	require.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.Equal(t, testUser.AuthProvider, user.AuthProvider)
@@ -108,7 +113,12 @@ func TestUsersService_GetOrCreateUser_BasicFunctionality(t *testing.T) {
 	assert.Equal(t, testUser.OrgID, user.OrgID, "Should return same user with same organization ID")
 
 	// Test that calling GetOrCreateUser again returns the same user
-	user2, err := usersService.GetOrCreateUser(context.Background(), testUser.AuthProvider, testUser.AuthProviderID, testUser.Email)
+	user2, err := usersService.GetOrCreateUser(
+		context.Background(),
+		testUser.AuthProvider,
+		testUser.AuthProviderID,
+		testUser.Email,
+	)
 	require.NoError(t, err)
 	assert.Equal(t, user.ID, user2.ID)
 	assert.Equal(t, user.AuthProviderID, user2.AuthProviderID)

@@ -75,7 +75,15 @@ func (r *PostgresUsersRepository) CreateUser(
 	// Generate ULID for new users
 	userID := core.NewID("u")
 
-	insertColumns := []string{"id", "auth_provider", "auth_provider_id", "email", "organization_id", "created_at", "updated_at"}
+	insertColumns := []string{
+		"id",
+		"auth_provider",
+		"auth_provider_id",
+		"email",
+		"organization_id",
+		"created_at",
+		"updated_at",
+	}
 	columnsStr := strings.Join(insertColumns, ", ")
 	returningStr := strings.Join(usersColumns, ", ")
 
