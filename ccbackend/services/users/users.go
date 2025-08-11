@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/samber/mo"
-
 	"ccbackend/db"
 	"ccbackend/models"
 	"ccbackend/services"
@@ -93,4 +91,3 @@ func (s *UsersService) GetOrCreateUser(
 	log.Printf("📋 Completed successfully - retrieved/created user with ID: %s", finalUser.ID)
 	return finalUser, nil
 }
-

@@ -65,7 +65,6 @@ func (r *PostgresUsersRepository) GetUserByAuthProvider(
 	return user, nil
 }
 
-
 func (r *PostgresUsersRepository) CreateUser(
 	ctx context.Context,
 	authProvider, authProviderID, email string,
