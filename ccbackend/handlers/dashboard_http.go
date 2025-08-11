@@ -66,6 +66,26 @@ func (h *DashboardHTTPHandler) HandleUserAuthenticate(w http.ResponseWriter, r *
 	h.writeJSONResponse(w, http.StatusOK, apiUser)
 }
 
+func (h *DashboardHTTPHandler) HandleGetUserProfile(w http.ResponseWriter, r *http.Request) {
+	log.Printf("👤 Get user profile request received from %s", r.RemoteAddr)
+
+	// Get user entity from context (set by authentication middleware)
+	user, ok := appctx.GetUser(r.Context())
+	if !ok {
+		log.Printf("❌ User not found in context")
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	log.Printf("✅ User profile retrieved from context: %s (email: %s)", user.ID, user.Email)
+
+	// Convert domain user to API model
+	apiUser := api.DomainUserToAPIUser(user)
+
+	// Return user profile data
+	h.writeJSONResponse(w, http.StatusOK, apiUser)
+}
+
 func (h *DashboardHTTPHandler) HandleListSlackIntegrations(w http.ResponseWriter, r *http.Request) {
 	log.Printf("📋 List Slack integrations request received from %s", r.RemoteAddr)
 
@@ -316,6 +336,10 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	// User authentication endpoint
 	router.HandleFunc("/users/authenticate", authMiddleware.WithAuth(h.HandleUserAuthenticate)).Methods("POST")
 	log.Printf("✅ POST /users/authenticate endpoint registered")
+
+	// User profile endpoint
+	router.HandleFunc("/users/profile", authMiddleware.WithAuth(h.HandleGetUserProfile)).Methods("GET")
+	log.Printf("✅ GET /users/profile endpoint registered")
 
 	// Slack integrations endpoints
 	router.HandleFunc("/slack/integrations", authMiddleware.WithAuth(h.HandleListSlackIntegrations)).Methods("GET")
