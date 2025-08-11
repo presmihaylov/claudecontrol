@@ -15,9 +15,9 @@ type MockUsersService struct {
 
 func (m *MockUsersService) GetOrCreateUser(
 	ctx context.Context,
-	authProvider, authProviderID string,
+	authProvider, authProviderID, email string,
 ) (*models.User, error) {
-	args := m.Called(ctx, authProvider, authProviderID)
+	args := m.Called(ctx, authProvider, authProviderID, email)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

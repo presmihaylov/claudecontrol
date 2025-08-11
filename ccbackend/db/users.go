@@ -24,6 +24,7 @@ var usersColumns = []string{
 	"id",
 	"auth_provider",
 	"auth_provider_id",
+	"email",
 	"organization_id",
 	"created_at",
 	"updated_at",
@@ -66,7 +67,7 @@ func (r *PostgresUsersRepository) GetUserByAuthProvider(
 
 func (r *PostgresUsersRepository) CreateUser(
 	ctx context.Context,
-	authProvider, authProviderID string,
+	authProvider, authProviderID, email string,
 	organizationID models.OrgID,
 ) (*models.User, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
@@ -74,17 +75,17 @@ func (r *PostgresUsersRepository) CreateUser(
 	// Generate ULID for new users
 	userID := core.NewID("u")
 
-	insertColumns := []string{"id", "auth_provider", "auth_provider_id", "organization_id", "created_at", "updated_at"}
+	insertColumns := []string{"id", "auth_provider", "auth_provider_id", "email", "organization_id", "created_at", "updated_at"}
 	columnsStr := strings.Join(insertColumns, ", ")
 	returningStr := strings.Join(usersColumns, ", ")
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.users (%s) 
-		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
 	user := &models.User{}
-	err := db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID, organizationID).StructScan(user)
+	err := db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID, email, organizationID).StructScan(user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
