@@ -4,10 +4,12 @@ import { env } from '@/lib/env';
 import * as crypto from 'node:crypto';
 
 export async function GET(request: NextRequest) {
+  console.log('Chat auth API route called');
   try {
     // Get the authenticated user from Clerk
     const { getToken } = await auth();
     const token = await getToken();
+    console.log('Token obtained:', !!token);
 
     if (!token) {
       return NextResponse.json(
@@ -17,13 +19,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Make request to ccbackend to get user profile
-    const response = await fetch(`${env.CCBACKEND_BASE_URL}/api/users/profile`, {
+    console.log('Making request to:', `${env.CCBACKEND_BASE_URL}/users/profile`);
+    const response = await fetch(`${env.CCBACKEND_BASE_URL}/users/profile`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
+    console.log('Backend response status:', response.status);
 
     if (!response.ok) {
       console.error('Failed to fetch user profile from backend:', response.status, response.statusText);
