@@ -22,7 +22,9 @@ export const metadata: Metadata = {
   title: "Claude Control - AI Agent for Your Team",
   description: "Deploy AI agents that interact with your codebase directly from Slack and Discord. Open pull requests, ask questions, and connect MCP servers with your AI co-worker.",
   icons: {
-    icon: '/favicon.ico',
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
   },
 };
 
@@ -33,6 +35,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
+      <head>
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="shortcut icon" href="/icon.svg" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} antialiased min-h-full bg-black text-white font-sans`}
       >
