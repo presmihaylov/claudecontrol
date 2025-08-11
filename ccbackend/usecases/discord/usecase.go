@@ -83,9 +83,9 @@ func (d *DiscordUseCase) ProcessDiscordMessageEvent(
 		// Check if job exists for this thread - thread replies cannot create new jobs
 		maybeJob, err := d.jobsService.GetJobByDiscordThread(
 			ctx,
+			organizationID,
 			*event.ThreadID,
 			discordIntegrationID,
-			organizationID,
 		)
 		if err != nil {
 			// Error occurred - propagate upstream
@@ -135,12 +135,12 @@ func (d *DiscordUseCase) ProcessDiscordMessageEvent(
 	// Get or create job for this Discord thread
 	jobResult, err := d.jobsService.GetOrCreateJobForDiscordThread(
 		ctx,
+		organizationID,
 		event.MessageID,
 		event.ChannelID,
 		threadID,
 		event.UserID,
 		discordIntegrationID,
-		organizationID,
 	)
 	if err != nil {
 		log.Printf("❌ Failed to get or create job for Discord thread: %v", err)
@@ -190,12 +190,12 @@ func (d *DiscordUseCase) ProcessDiscordMessageEvent(
 	// Store the Discord message as ProcessedDiscordMessage with appropriate status
 	processedMessage, err := d.discordMessagesService.CreateProcessedDiscordMessage(
 		ctx,
+		organizationID,
 		job.ID,
 		event.MessageID,
 		threadID,
 		event.Content,
 		discordIntegrationID,
-		organizationID,
 		messageStatus,
 	)
 	if err != nil {
@@ -269,7 +269,7 @@ func (d *DiscordUseCase) ProcessDiscordReactionEvent(
 	}
 
 	// Find the job by thread ID and channel - the messageID is the thread root
-	maybeJob, err := d.jobsService.GetJobByDiscordThread(ctx, threadID, discordIntegrationID, organizationID)
+	maybeJob, err := d.jobsService.GetJobByDiscordThread(ctx, organizationID, threadID, discordIntegrationID)
 	if err != nil {
 		log.Printf("❌ Failed to get job for message %s in channel %s: %v", event.MessageID, event.ChannelID, err)
 		return fmt.Errorf("failed to get job for reaction: %w", err)
@@ -311,7 +311,7 @@ func (d *DiscordUseCase) ProcessDiscordReactionEvent(
 	// Verify the organization ID matches (already passed as parameter)
 
 	// Get the assigned agent for this job to unassign them
-	maybeAgent, err := d.agentsService.GetAgentByJobID(ctx, job.ID, organizationID)
+	maybeAgent, err := d.agentsService.GetAgentByJobID(ctx, organizationID, job.ID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for job %s: %v", job.ID, err)
 		return fmt.Errorf("failed to get agent by job id: %w", err)
@@ -321,7 +321,7 @@ func (d *DiscordUseCase) ProcessDiscordReactionEvent(
 		// If agent is found, unassign them from the job
 		if maybeAgent.IsPresent() {
 			agent := maybeAgent.MustGet()
-			if err := d.agentsService.UnassignAgentFromJob(ctx, agent.ID, job.ID, organizationID); err != nil {
+			if err := d.agentsService.UnassignAgentFromJob(ctx, organizationID, agent.ID, job.ID); err != nil {
 				log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, job.ID, err)
 				return fmt.Errorf("failed to unassign agent from job: %w", err)
 			}
@@ -330,7 +330,7 @@ func (d *DiscordUseCase) ProcessDiscordReactionEvent(
 		}
 
 		// Delete the job and its associated processed messages
-		if err := d.jobsService.DeleteJob(ctx, job.ID, organizationID); err != nil {
+		if err := d.jobsService.DeleteJob(ctx, organizationID, job.ID); err != nil {
 			log.Printf("❌ Failed to delete completed job %s: %v", job.ID, err)
 			return fmt.Errorf("failed to delete completed job: %w", err)
 		}
@@ -376,8 +376,8 @@ func (d *DiscordUseCase) ProcessProcessingMessage(
 	// Get processed discord message directly using organization_id (optimization)
 	maybeMessage, err := d.discordMessagesService.GetProcessedDiscordMessageByID(
 		ctx,
-		messageID,
 		organizationID,
+		messageID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get processed discord message: %w", err)
@@ -394,7 +394,7 @@ func (d *DiscordUseCase) ProcessProcessingMessage(
 	discordIntegrationID := processedMessage.DiscordIntegrationID
 
 	// Get job to determine if this is a top-level message
-	maybeJob, err := d.jobsService.GetJobByID(ctx, processedMessage.JobID, organizationID)
+	maybeJob, err := d.jobsService.GetJobByID(ctx, organizationID, processedMessage.JobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -436,7 +436,7 @@ func (d *DiscordUseCase) ProcessSystemMessage(
 ) error {
 	log.Printf("📋 Starting to process system message from client %s: %s", clientID, payload.Message)
 	jobID := payload.JobID
-	maybeJob, err := d.jobsService.GetJobByID(ctx, jobID, organizationID)
+	maybeJob, err := d.jobsService.GetJobByID(ctx, organizationID, jobID)
 	if err != nil {
 		log.Printf("❌ Failed to get job %s: %v", jobID, err)
 		return fmt.Errorf("failed to get job: %w", err)
@@ -460,7 +460,7 @@ func (d *DiscordUseCase) ProcessSystemMessage(
 		log.Printf("❌ Detected agent error message for job %s: %s", job.ID, payload.Message)
 
 		// Get the agent that encountered the error
-		maybeAgent, err := d.agentsService.GetAgentByWSConnectionID(ctx, clientID, organizationID)
+		maybeAgent, err := d.agentsService.GetAgentByWSConnectionID(ctx, organizationID, clientID)
 		if err != nil {
 			log.Printf("❌ Failed to find agent for error handling: %v", err)
 			return fmt.Errorf("failed to find agent for error handling: %w", err)
@@ -506,7 +506,7 @@ func (d *DiscordUseCase) ProcessSystemMessage(
 	}
 
 	// Update job timestamp to track activity
-	if err := d.jobsService.UpdateJobTimestamp(ctx, job.ID, organizationID); err != nil {
+	if err := d.jobsService.UpdateJobTimestamp(ctx, organizationID, job.ID); err != nil {
 		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
@@ -530,7 +530,7 @@ func (d *DiscordUseCase) ProcessJobComplete(
 	)
 
 	jobID := payload.JobID
-	maybeJob, err := d.jobsService.GetJobByID(ctx, jobID, organizationID)
+	maybeJob, err := d.jobsService.GetJobByID(ctx, organizationID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -547,7 +547,7 @@ func (d *DiscordUseCase) ProcessJobComplete(
 	discordIntegrationID := job.DiscordPayload.IntegrationID
 
 	// Get the agent by WebSocket connection ID to verify ownership (agents are organization-scoped)
-	maybeAgent, err := d.agentsService.GetAgentByWSConnectionID(ctx, clientID, organizationID)
+	maybeAgent, err := d.agentsService.GetAgentByWSConnectionID(ctx, organizationID, clientID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
 		return fmt.Errorf("failed to find agent for client: %w", err)
@@ -573,14 +573,14 @@ func (d *DiscordUseCase) ProcessJobComplete(
 	// Perform database operations within transaction
 	if err := d.txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// Unassign the agent from the job
-		if err := d.agentsService.UnassignAgentFromJob(ctx, agent.ID, jobID, organizationID); err != nil {
+		if err := d.agentsService.UnassignAgentFromJob(ctx, organizationID, agent.ID, jobID); err != nil {
 			log.Printf("❌ Failed to unassign agent %s from job %s: %v", agent.ID, jobID, err)
 			return fmt.Errorf("failed to unassign agent from job: %w", err)
 		}
 		log.Printf("✅ Unassigned agent %s from completed job %s", agent.ID, jobID)
 
 		// Delete the job and its associated processed messages
-		if err := d.jobsService.DeleteJob(ctx, jobID, organizationID); err != nil {
+		if err := d.jobsService.DeleteJob(ctx, organizationID, jobID); err != nil {
 			log.Printf("❌ Failed to delete completed job %s: %v", jobID, err)
 			return fmt.Errorf("failed to delete completed job: %w", err)
 		}
@@ -622,7 +622,7 @@ func (d *DiscordUseCase) ProcessAssistantMessage(
 	log.Printf("📋 Starting to process assistant message from client %s", clientID)
 
 	// Get the agent by WebSocket connection ID (agents are organization-scoped)
-	maybeAgent, err := d.agentsService.GetAgentByWSConnectionID(ctx, clientID, organizationID)
+	maybeAgent, err := d.agentsService.GetAgentByWSConnectionID(ctx, organizationID, clientID)
 	if err != nil {
 		log.Printf("❌ Failed to find agent for client %s: %v", clientID, err)
 		return fmt.Errorf("failed to find agent for client: %w", err)
@@ -639,7 +639,7 @@ func (d *DiscordUseCase) ProcessAssistantMessage(
 	jobID := payload.JobID
 
 	// Get job directly using organization_id (optimization)
-	maybeJob, err := d.jobsService.GetJobByID(ctx, jobID, organizationID)
+	maybeJob, err := d.jobsService.GetJobByID(ctx, organizationID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -698,7 +698,7 @@ func (d *DiscordUseCase) ProcessAssistantMessage(
 	}
 
 	// Update job timestamp to track activity
-	if err := d.jobsService.UpdateJobTimestamp(ctx, job.ID, organizationID); err != nil {
+	if err := d.jobsService.UpdateJobTimestamp(ctx, organizationID, job.ID); err != nil {
 		log.Printf("⚠️ Failed to update job timestamp for job %s: %v", job.ID, err)
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
@@ -710,10 +710,10 @@ func (d *DiscordUseCase) ProcessAssistantMessage(
 
 	updatedMessage, err := d.discordMessagesService.UpdateProcessedDiscordMessage(
 		ctx,
+		organizationID,
 		messageID,
 		models.ProcessedDiscordMessageStatusCompleted,
 		discordIntegrationID,
-		organizationID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update processed discord message status: %w", err)
@@ -739,9 +739,9 @@ func (d *DiscordUseCase) ProcessAssistantMessage(
 	// Check if this is the latest message in the job and add hand emoji if waiting for next steps
 	maybeLatestMsg, err := d.discordMessagesService.GetLatestProcessedMessageForJob(
 		ctx,
+		organizationID,
 		job.ID,
 		discordIntegrationID,
-		organizationID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get latest message for job: %w", err)
@@ -811,7 +811,7 @@ func (d *DiscordUseCase) CleanupFailedDiscordJob(
 	if err := d.txManager.WithTransaction(ctx, func(ctx context.Context) error {
 		// If agent ID is provided, unassign agent from job
 		if agentID != "" {
-			if err := d.agentsService.UnassignAgentFromJob(ctx, agentID, job.ID, organizationID); err != nil {
+			if err := d.agentsService.UnassignAgentFromJob(ctx, organizationID, agentID, job.ID); err != nil {
 				log.Printf("❌ Failed to unassign agent %s from job %s: %v", agentID, job.ID, err)
 				return fmt.Errorf("failed to unassign agent from job: %w", err)
 			}
@@ -819,7 +819,7 @@ func (d *DiscordUseCase) CleanupFailedDiscordJob(
 		}
 
 		// Delete the job (use the job's discord integration and organization from the job)
-		if err := d.jobsService.DeleteJob(ctx, job.ID, organizationID); err != nil {
+		if err := d.jobsService.DeleteJob(ctx, organizationID, job.ID); err != nil {
 			log.Printf("❌ Failed to delete job %s: %v", job.ID, err)
 			return fmt.Errorf("failed to delete job: %w", err)
 		}
@@ -856,9 +856,9 @@ func (d *DiscordUseCase) ProcessQueuedJobs(ctx context.Context) error {
 		// Get jobs with queued messages for this integration
 		queuedJobs, err := d.jobsService.GetJobsWithQueuedMessages(
 			ctx,
+			integration.OrgID,
 			models.JobTypeDiscord,
 			discordIntegrationID,
-			integration.OrgID,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to get queued jobs for integration %s: %w", discordIntegrationID, err)
@@ -891,10 +891,10 @@ func (d *DiscordUseCase) ProcessQueuedJobs(ctx context.Context) error {
 			// Job was successfully assigned - get queued messages and send them to agent
 			queuedMessages, err := d.discordMessagesService.GetProcessedMessagesByJobIDAndStatus(
 				ctx,
+				integration.OrgID,
 				job.ID,
 				models.ProcessedDiscordMessageStatusQueued,
 				discordIntegrationID,
-				integration.OrgID,
 			)
 			if err != nil {
 				return fmt.Errorf("failed to get queued messages for job %s: %w", job.ID, err)
@@ -907,10 +907,10 @@ func (d *DiscordUseCase) ProcessQueuedJobs(ctx context.Context) error {
 				// Update message status to IN_PROGRESS
 				updatedMessage, err := d.discordMessagesService.UpdateProcessedDiscordMessage(
 					ctx,
+					integration.OrgID,
 					message.ID,
 					models.ProcessedDiscordMessageStatusInProgress,
 					discordIntegrationID,
-					organizationID,
 				)
 				if err != nil {
 					return fmt.Errorf("failed to update message %s status: %w", message.ID, err)

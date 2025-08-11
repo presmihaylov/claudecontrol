@@ -111,12 +111,12 @@ func TestDiscordMessagesService(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			message, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-123",
 				"discord-thread-456",
 				"Hello Discord world!",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusQueued,
 			)
 
@@ -136,9 +136,9 @@ func TestDiscordMessagesService(t *testing.T) {
 			defer func() {
 				service.DeleteProcessedDiscordMessagesByJobID(
 					context.Background(),
+					organizationID,
 					testJob.ID,
 					discordIntegrationID,
-					organizationID,
 				)
 			}()
 		})
@@ -149,29 +149,29 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Create a message first
 			createdMessage, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-get",
 				"discord-thread-get",
 				"Message to retrieve",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusInProgress,
 			)
 			require.NoError(t, err)
 			defer func() {
 				service.DeleteProcessedDiscordMessagesByJobID(
 					context.Background(),
+					organizationID,
 					testJob.ID,
 					discordIntegrationID,
-					organizationID,
 				)
 			}()
 
 			// Retrieve it by ID
 			maybeFetchedMessage, err := service.GetProcessedDiscordMessageByID(
 				context.Background(),
-				createdMessage.ID,
 				organizationID,
+				createdMessage.ID,
 			)
 			require.NoError(t, err)
 			require.True(t, maybeFetchedMessage.IsPresent())
@@ -189,8 +189,8 @@ func TestDiscordMessagesService(t *testing.T) {
 			nonExistentID := core.NewID("pdm")
 			maybeMessage, err := service.GetProcessedDiscordMessageByID(
 				context.Background(),
-				nonExistentID,
 				organizationID,
+				nonExistentID,
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeMessage.IsPresent())
@@ -202,31 +202,31 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Create a message first
 			createdMessage, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-update",
 				"discord-thread-update",
 				"Message to update",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusQueued,
 			)
 			require.NoError(t, err)
 			defer func() {
 				service.DeleteProcessedDiscordMessagesByJobID(
 					context.Background(),
+					organizationID,
 					testJob.ID,
 					discordIntegrationID,
-					organizationID,
 				)
 			}()
 
 			// Update the status
 			updatedMessage, err := service.UpdateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				createdMessage.ID,
 				models.ProcessedDiscordMessageStatusInProgress,
 				discordIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 
@@ -241,36 +241,36 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Create messages with different statuses
 			message1, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-filter-1",
 				"discord-thread-filter",
 				"Queued message 1",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusQueued,
 			)
 			require.NoError(t, err)
 
 			message2, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-filter-2",
 				"discord-thread-filter",
 				"Queued message 2",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusQueued,
 			)
 			require.NoError(t, err)
 
 			message3, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-filter-3",
 				"discord-thread-filter",
 				"In progress message",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusInProgress,
 			)
 			require.NoError(t, err)
@@ -278,19 +278,19 @@ func TestDiscordMessagesService(t *testing.T) {
 			defer func() {
 				service.DeleteProcessedDiscordMessagesByJobID(
 					context.Background(),
+					organizationID,
 					testJob.ID,
 					discordIntegrationID,
-					organizationID,
 				)
 			}()
 
 			// Get only queued messages
 			queuedMessages, err := service.GetProcessedMessagesByJobIDAndStatus(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				models.ProcessedDiscordMessageStatusQueued,
 				discordIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 			require.Len(t, queuedMessages, 2)
@@ -304,10 +304,10 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Get in progress messages
 			inProgressMessages, err := service.GetProcessedMessagesByJobIDAndStatus(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				models.ProcessedDiscordMessageStatusInProgress,
 				discordIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 			require.Len(t, inProgressMessages, 1)
@@ -318,10 +318,10 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Get messages for a status that doesn't exist
 			messages, err := service.GetProcessedMessagesByJobIDAndStatus(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				models.ProcessedDiscordMessageStatusCompleted,
 				discordIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 			assert.Empty(t, messages)
@@ -333,12 +333,12 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Create multiple messages with different timestamps
 			message1, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-latest-1",
 				"discord-thread-latest",
 				"First message",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusQueued,
 			)
 			require.NoError(t, err)
@@ -348,12 +348,12 @@ func TestDiscordMessagesService(t *testing.T) {
 
 			message2, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-latest-2",
 				"discord-thread-latest",
 				"Latest message",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusInProgress,
 			)
 			require.NoError(t, err)
@@ -361,18 +361,18 @@ func TestDiscordMessagesService(t *testing.T) {
 			defer func() {
 				service.DeleteProcessedDiscordMessagesByJobID(
 					context.Background(),
+					organizationID,
 					testJob.ID,
 					discordIntegrationID,
-					organizationID,
 				)
 			}()
 
 			// Get the latest message
 			maybeLatestMessage, err := service.GetLatestProcessedMessageForJob(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				discordIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 			require.True(t, maybeLatestMessage.IsPresent())
@@ -406,9 +406,9 @@ func TestDiscordMessagesService(t *testing.T) {
 
 			maybeMessage, err := service.GetLatestProcessedMessageForJob(
 				context.Background(),
+				organizationID,
 				newTestJob.ID,
 				discordIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeMessage.IsPresent())
@@ -451,36 +451,36 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Add active messages (QUEUED and IN_PROGRESS)
 			_, err = service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				job1.ID,
 				"discord-msg-active-1",
 				"discord-thread-active-1",
 				"Active message 1",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusQueued,
 			)
 			require.NoError(t, err)
 
 			_, err = service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				job1.ID,
 				"discord-msg-active-2",
 				"discord-thread-active-1",
 				"Active message 2",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusInProgress,
 			)
 			require.NoError(t, err)
 
 			_, err = service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				job2.ID,
 				"discord-msg-active-3",
 				"discord-thread-active-2",
 				"Active message 3",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusQueued,
 			)
 			require.NoError(t, err)
@@ -488,12 +488,12 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Add inactive message (COMPLETED)
 			_, err = service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				job2.ID,
 				"discord-msg-inactive",
 				"discord-thread-active-2",
 				"Inactive message",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusCompleted,
 			)
 			require.NoError(t, err)
@@ -501,24 +501,24 @@ func TestDiscordMessagesService(t *testing.T) {
 			defer func() {
 				service.DeleteProcessedDiscordMessagesByJobID(
 					context.Background(),
+					organizationID,
 					job1.ID,
 					discordIntegrationID,
-					organizationID,
 				)
 				service.DeleteProcessedDiscordMessagesByJobID(
 					context.Background(),
+					organizationID,
 					job2.ID,
 					discordIntegrationID,
-					organizationID,
 				)
 			}()
 
 			// Count active messages for both jobs
 			count, err := service.GetActiveMessageCountForJobs(
 				context.Background(),
+				organizationID,
 				[]string{job1.ID, job2.ID},
 				discordIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 			assert.Equal(t, 3, count) // 2 from job1 + 1 from job2 (completed message not counted)
@@ -543,12 +543,12 @@ func TestDiscordMessagesService(t *testing.T) {
 
 			_, err = service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				job.ID,
 				"discord-msg-completed",
 				"discord-thread-completed",
 				"Completed message",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusCompleted,
 			)
 			require.NoError(t, err)
@@ -556,17 +556,17 @@ func TestDiscordMessagesService(t *testing.T) {
 			defer func() {
 				service.DeleteProcessedDiscordMessagesByJobID(
 					context.Background(),
+					organizationID,
 					job.ID,
 					discordIntegrationID,
-					organizationID,
 				)
 			}()
 
 			count, err := service.GetActiveMessageCountForJobs(
 				context.Background(),
+				organizationID,
 				[]string{job.ID},
 				discordIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 			assert.Equal(t, 0, count)
@@ -578,24 +578,24 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Create messages
 			message1, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-delete-1",
 				"discord-thread-delete",
 				"Message to delete 1",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusQueued,
 			)
 			require.NoError(t, err)
 
 			message2, err := service.CreateProcessedDiscordMessage(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				"discord-msg-delete-2",
 				"discord-thread-delete",
 				"Message to delete 2",
 				discordIntegrationID,
-				organizationID,
 				models.ProcessedDiscordMessageStatusInProgress,
 			)
 			require.NoError(t, err)
@@ -603,16 +603,16 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Verify messages exist
 			maybeMessage1, err := service.GetProcessedDiscordMessageByID(
 				context.Background(),
-				message1.ID,
 				organizationID,
+				message1.ID,
 			)
 			require.NoError(t, err)
 			require.True(t, maybeMessage1.IsPresent())
 
 			maybeMessage2, err := service.GetProcessedDiscordMessageByID(
 				context.Background(),
-				message2.ID,
 				organizationID,
+				message2.ID,
 			)
 			require.NoError(t, err)
 			require.True(t, maybeMessage2.IsPresent())
@@ -620,25 +620,25 @@ func TestDiscordMessagesService(t *testing.T) {
 			// Delete all messages for the job
 			err = service.DeleteProcessedDiscordMessagesByJobID(
 				context.Background(),
+				organizationID,
 				testJob.ID,
 				discordIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 
 			// Verify messages are deleted
 			maybeMessage1After, err := service.GetProcessedDiscordMessageByID(
 				context.Background(),
-				message1.ID,
 				organizationID,
+				message1.ID,
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeMessage1After.IsPresent())
 
 			maybeMessage2After, err := service.GetProcessedDiscordMessageByID(
 				context.Background(),
-				message2.ID,
 				organizationID,
+				message2.ID,
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeMessage2After.IsPresent())

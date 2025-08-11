@@ -81,11 +81,11 @@ func TestJobsService(t *testing.T) {
 
 			job, err := service.CreateSlackJob(
 				context.Background(),
+				testIntegration.OrgID,
 				slackThreadTS,
 				slackChannelID,
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 
 			require.NoError(t, err)
@@ -102,11 +102,11 @@ func TestJobsService(t *testing.T) {
 		t.Run("EmptySlackThreadTS", func(t *testing.T) {
 			_, err := service.CreateSlackJob(
 				context.Background(),
+				testIntegration.OrgID,
 				"",
 				"C1234567890",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -116,11 +116,11 @@ func TestJobsService(t *testing.T) {
 		t.Run("EmptySlackChannelID", func(t *testing.T) {
 			_, err := service.CreateSlackJob(
 				context.Background(),
+				testIntegration.OrgID,
 				"test.thread.456",
 				"",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -130,11 +130,11 @@ func TestJobsService(t *testing.T) {
 		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
 			_, err := service.CreateSlackJob(
 				context.Background(),
+				testIntegration.OrgID,
 				"test.thread.456",
 				"C1234567890",
 				"testuser",
 				"",
-				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -147,19 +147,19 @@ func TestJobsService(t *testing.T) {
 			// Create a job first
 			createdJob, err := service.CreateSlackJob(
 				context.Background(),
+				testIntegration.OrgID,
 				"test.thread.789",
 				"C9876543210",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 
 			// Fetch it by ID
 			maybeFetchedJob, err := service.GetJobByID(
 				context.Background(),
-				createdJob.ID,
 				testIntegration.OrgID,
+				createdJob.ID,
 			)
 			require.NoError(t, err)
 			require.True(t, maybeFetchedJob.IsPresent())
@@ -174,14 +174,14 @@ func TestJobsService(t *testing.T) {
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			_, err := service.GetJobByID(context.Background(), "", testIntegration.OrgID)
+			_, err := service.GetJobByID(context.Background(), testIntegration.OrgID, "")
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
 		t.Run("EmptyOrganizationID", func(t *testing.T) {
-			_, err := service.GetJobByID(context.Background(), core.NewID("j"), "")
+			_, err := service.GetJobByID(context.Background(), "", core.NewID("j"))
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
@@ -192,8 +192,8 @@ func TestJobsService(t *testing.T) {
 
 			maybeJob, err := service.GetJobByID(
 				context.Background(),
-				id,
 				testIntegration.OrgID,
+				id,
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeJob.IsPresent())
@@ -208,11 +208,11 @@ func TestJobsService(t *testing.T) {
 
 			result, err := service.GetOrCreateJobForSlackThread(
 				context.Background(),
+				testIntegration.OrgID,
 				slackThreadTS,
 				slackChannelID,
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 
 			require.NoError(t, err)
@@ -227,8 +227,8 @@ func TestJobsService(t *testing.T) {
 			defer func() {
 				service.DeleteJob(
 					context.Background(),
-					result.Job.ID,
 					testIntegration.OrgID,
+					result.Job.ID,
 				)
 			}()
 		})
@@ -241,11 +241,11 @@ func TestJobsService(t *testing.T) {
 			// Create job first
 			firstResult, err := service.GetOrCreateJobForSlackThread(
 				context.Background(),
+				testIntegration.OrgID,
 				slackThreadTS,
 				slackChannelID,
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 			assert.Equal(t, models.JobCreationStatusCreated, firstResult.Status)
@@ -253,11 +253,11 @@ func TestJobsService(t *testing.T) {
 			// Get the same job again
 			secondResult, err := service.GetOrCreateJobForSlackThread(
 				context.Background(),
+				testIntegration.OrgID,
 				slackThreadTS,
 				slackChannelID,
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 			assert.Equal(t, models.JobCreationStatusNA, secondResult.Status)
@@ -274,8 +274,8 @@ func TestJobsService(t *testing.T) {
 			defer func() {
 				service.DeleteJob(
 					context.Background(),
-					firstResult.Job.ID,
 					testIntegration.OrgID,
+					firstResult.Job.ID,
 				)
 			}()
 		})
@@ -283,11 +283,11 @@ func TestJobsService(t *testing.T) {
 		t.Run("EmptySlackThreadTS", func(t *testing.T) {
 			_, err := service.GetOrCreateJobForSlackThread(
 				context.Background(),
+				testIntegration.OrgID,
 				"",
 				"C1234567890",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -297,11 +297,11 @@ func TestJobsService(t *testing.T) {
 		t.Run("EmptySlackChannelID", func(t *testing.T) {
 			_, err := service.GetOrCreateJobForSlackThread(
 				context.Background(),
+				testIntegration.OrgID,
 				"test.thread.999",
 				"",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -311,11 +311,11 @@ func TestJobsService(t *testing.T) {
 		t.Run("EmptySlackIntegrationID", func(t *testing.T) {
 			_, err := service.GetOrCreateJobForSlackThread(
 				context.Background(),
+				testIntegration.OrgID,
 				"test.thread.999",
 				"C1234567890",
 				"testuser",
 				"",
-				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -328,19 +328,19 @@ func TestJobsService(t *testing.T) {
 			// Create a job first
 			job, err := service.CreateSlackJob(
 				context.Background(),
+				testIntegration.OrgID,
 				"delete.test.thread",
 				"C1111111111",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 
 			// Verify job exists
 			maybeFetchedJob, err := service.GetJobByID(
 				context.Background(),
-				job.ID,
 				testIntegration.OrgID,
+				job.ID,
 			)
 			require.NoError(t, err)
 			require.True(t, maybeFetchedJob.IsPresent())
@@ -348,28 +348,28 @@ func TestJobsService(t *testing.T) {
 			assert.Equal(t, job.ID, fetchedJob.ID)
 
 			// Delete the job
-			err = service.DeleteJob(context.Background(), job.ID, testIntegration.OrgID)
+			err = service.DeleteJob(context.Background(), testIntegration.OrgID, job.ID)
 			require.NoError(t, err)
 
 			// Verify job no longer exists
 			maybeJob, err := service.GetJobByID(
 				context.Background(),
-				job.ID,
 				testIntegration.OrgID,
+				job.ID,
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeJob.IsPresent())
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			err := service.DeleteJob(context.Background(), "", testIntegration.OrgID)
+			err := service.DeleteJob(context.Background(), testIntegration.OrgID, "")
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 		})
 
 		t.Run("EmptyOrganizationID", func(t *testing.T) {
-			err := service.DeleteJob(context.Background(), core.NewID("j"), "")
+			err := service.DeleteJob(context.Background(), "", core.NewID("j"))
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
@@ -378,7 +378,7 @@ func TestJobsService(t *testing.T) {
 		t.Run("NotFound", func(t *testing.T) {
 			id := core.NewID("j")
 
-			err := service.DeleteJob(context.Background(), id, testIntegration.OrgID)
+			err := service.DeleteJob(context.Background(), testIntegration.OrgID, id)
 			require.NoError(t, err)
 		})
 	})
@@ -430,30 +430,30 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Create an agent first
 		agent, err := agentsService.UpsertActiveAgent(
 			context.Background(),
-			core.NewID("wsc"),
 			organizationID,
+			core.NewID("wsc"),
 			core.NewID("ccaid"),
 		)
 		require.NoError(t, err)
-		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, organizationID) }()
+		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), organizationID, agent.ID) }()
 
 		// Create a job
 		job, err := jobsService.CreateSlackJob(
 			context.Background(),
+			organizationID,
 			"integration.thread.123",
 			"C1234567890",
 			"testuser",
 			slackIntegrationID,
-			organizationID,
 		)
 		require.NoError(t, err)
 
 		// Assign job to agent
-		err = agentsService.AssignAgentToJob(context.Background(), agent.ID, job.ID, organizationID)
+		err = agentsService.AssignAgentToJob(context.Background(), organizationID, agent.ID, job.ID)
 		require.NoError(t, err)
 
 		// Verify agent has the job assigned
-		maybeUpdatedAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, organizationID)
+		maybeUpdatedAgent, err := agentsService.GetAgentByID(context.Background(), organizationID, agent.ID)
 		require.NoError(t, err)
 		require.True(t, maybeUpdatedAgent.IsPresent())
 		updatedAgent := maybeUpdatedAgent.MustGet()
@@ -461,8 +461,8 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Verify agent has the assigned job
 		jobs, err := agentsService.GetActiveAgentJobAssignments(
 			context.Background(),
-			updatedAgent.ID,
 			organizationID,
+			updatedAgent.ID,
 		)
 		require.NoError(t, err)
 		assert.Len(t, jobs, 1)
@@ -483,7 +483,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		assert.False(t, foundInAvailable, "Agent with assigned job should not be in available list")
 
 		// Unassign the job
-		err = agentsService.UnassignAgentFromJob(context.Background(), agent.ID, job.ID, organizationID)
+		err = agentsService.UnassignAgentFromJob(context.Background(), organizationID, agent.ID, job.ID)
 		require.NoError(t, err)
 
 		// Verify agent is available again
@@ -504,52 +504,52 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Create multiple agents
 		agent1, err := agentsService.UpsertActiveAgent(
 			context.Background(),
-			core.NewID("wsc"),
 			organizationID,
+			core.NewID("wsc"),
 			core.NewID("ccaid"),
 		)
 		require.NoError(t, err)
-		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent1.ID, organizationID) }()
+		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), organizationID, agent1.ID) }()
 
 		agent2, err := agentsService.UpsertActiveAgent(
 			context.Background(),
-			core.NewID("wsc"),
 			organizationID,
+			core.NewID("wsc"),
 			core.NewID("ccaid"),
 		)
 		require.NoError(t, err)
-		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent2.ID, organizationID) }()
+		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), organizationID, agent2.ID) }()
 
 		// Create multiple jobs
 		job1, err := jobsService.CreateSlackJob(
 			context.Background(),
+			organizationID,
 			"multi.thread.1",
 			"C1111111111",
 			"testuser",
 			slackIntegrationID,
-			organizationID,
 		)
 		require.NoError(t, err)
 
 		job2, err := jobsService.CreateSlackJob(
 			context.Background(),
+			organizationID,
 			"multi.thread.2",
 			"C2222222222",
 			"testuser",
 			slackIntegrationID,
-			organizationID,
 		)
 		require.NoError(t, err)
 
 		// Assign different jobs to different agents
-		err = agentsService.AssignAgentToJob(context.Background(), agent1.ID, job1.ID, organizationID)
+		err = agentsService.AssignAgentToJob(context.Background(), organizationID, agent1.ID, job1.ID)
 		require.NoError(t, err)
 
-		err = agentsService.AssignAgentToJob(context.Background(), agent2.ID, job2.ID, organizationID)
+		err = agentsService.AssignAgentToJob(context.Background(), organizationID, agent2.ID, job2.ID)
 		require.NoError(t, err)
 
 		// Verify both agents have their respective jobs
-		maybeUpdatedAgent1, err := agentsService.GetAgentByID(context.Background(), agent1.ID, organizationID)
+		maybeUpdatedAgent1, err := agentsService.GetAgentByID(context.Background(), organizationID, agent1.ID)
 		require.NoError(t, err)
 		require.True(t, maybeUpdatedAgent1.IsPresent())
 		updatedAgent1 := maybeUpdatedAgent1.MustGet()
@@ -557,14 +557,14 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Verify agent1 has the assigned job
 		jobs1, err := agentsService.GetActiveAgentJobAssignments(
 			context.Background(),
-			updatedAgent1.ID,
 			organizationID,
+			updatedAgent1.ID,
 		)
 		require.NoError(t, err)
 		assert.Len(t, jobs1, 1)
 		assert.Equal(t, job1.ID, jobs1[0])
 
-		maybeUpdatedAgent2, err := agentsService.GetAgentByID(context.Background(), agent2.ID, organizationID)
+		maybeUpdatedAgent2, err := agentsService.GetAgentByID(context.Background(), organizationID, agent2.ID)
 		require.NoError(t, err)
 		require.True(t, maybeUpdatedAgent2.IsPresent())
 		updatedAgent2 := maybeUpdatedAgent2.MustGet()
@@ -572,8 +572,8 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Verify agent2 has the assigned job
 		jobs2, err := agentsService.GetActiveAgentJobAssignments(
 			context.Background(),
-			updatedAgent2.ID,
 			organizationID,
+			updatedAgent2.ID,
 		)
 		require.NoError(t, err)
 		assert.Len(t, jobs2, 1)
@@ -597,34 +597,34 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Create an agent and job
 		agent, err := agentsService.UpsertActiveAgent(
 			context.Background(),
-			core.NewID("wsc"),
 			organizationID,
+			core.NewID("wsc"),
 			core.NewID("ccaid"),
 		)
 		require.NoError(t, err)
-		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, organizationID) }()
+		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), organizationID, agent.ID) }()
 
 		job, err := jobsService.CreateSlackJob(
 			context.Background(),
+			organizationID,
 			"job.lookup.thread",
 			"C9999999999",
 			"testuser",
 			slackIntegrationID,
-			organizationID,
 		)
 		require.NoError(t, err)
 
 		// Initially no agent should be assigned to this job
-		maybeFoundAgent, err := agentsService.GetAgentByJobID(context.Background(), job.ID, organizationID)
+		maybeFoundAgent, err := agentsService.GetAgentByJobID(context.Background(), organizationID, job.ID)
 		require.NoError(t, err)
 		assert.False(t, maybeFoundAgent.IsPresent())
 
 		// Assign job to agent
-		err = agentsService.AssignAgentToJob(context.Background(), agent.ID, job.ID, organizationID)
+		err = agentsService.AssignAgentToJob(context.Background(), organizationID, agent.ID, job.ID)
 		require.NoError(t, err)
 
 		// Now we should be able to find the agent by job ID
-		maybeFoundAgent, err = agentsService.GetAgentByJobID(context.Background(), job.ID, organizationID)
+		maybeFoundAgent, err = agentsService.GetAgentByJobID(context.Background(), organizationID, job.ID)
 		require.NoError(t, err)
 		require.True(t, maybeFoundAgent.IsPresent())
 		foundAgent := maybeFoundAgent.MustGet()
@@ -634,8 +634,8 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Verify found agent has the assigned job
 		foundJobs, err := agentsService.GetActiveAgentJobAssignments(
 			context.Background(),
-			foundAgent.ID,
 			organizationID,
+			foundAgent.ID,
 		)
 		require.NoError(t, err)
 		assert.Len(t, foundJobs, 1)
@@ -647,18 +647,18 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		wsConnectionID := core.NewID("wsc")
 		agent, err := agentsService.UpsertActiveAgent(
 			context.Background(),
-			wsConnectionID,
 			organizationID,
+			wsConnectionID,
 			core.NewID("ccaid"),
 		)
 		require.NoError(t, err)
-		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, organizationID) }()
+		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), organizationID, agent.ID) }()
 
 		// Find agent by WebSocket connection ID
 		maybeFoundAgent, err := agentsService.GetAgentByWSConnectionID(
 			context.Background(),
-			wsConnectionID,
 			organizationID,
+			wsConnectionID,
 		)
 		require.NoError(t, err)
 		require.True(t, maybeFoundAgent.IsPresent())
@@ -669,8 +669,8 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Verify agent has no job assignments
 		foundJobs, err := agentsService.GetActiveAgentJobAssignments(
 			context.Background(),
-			foundAgent.ID,
 			organizationID,
+			foundAgent.ID,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, foundJobs)
@@ -678,14 +678,14 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Test with non-existent connection ID
 		maybeAgent, err := agentsService.GetAgentByWSConnectionID(
 			context.Background(),
-			core.NewID("wsc"),
 			organizationID,
+			core.NewID("wsc"),
 		)
 		require.NoError(t, err)
 		assert.False(t, maybeAgent.IsPresent())
 
 		// Test with empty connection ID
-		_, err = agentsService.GetAgentByWSConnectionID(context.Background(), "", organizationID)
+		_, err = agentsService.GetAgentByWSConnectionID(context.Background(), organizationID, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "ws_connection_id must be a valid ULID")
 	})
@@ -694,22 +694,22 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Create a job
 		job, err := jobsService.CreateSlackJob(
 			context.Background(),
+			organizationID,
 			"timestamp.test.thread",
 			"C9999999999",
 			"testuser",
 			slackIntegrationID,
-			organizationID,
 		)
 		require.NoError(t, err)
 
 		originalUpdatedAt := job.UpdatedAt
 
 		// Update the job timestamp
-		err = jobsService.UpdateJobTimestamp(context.Background(), job.ID, organizationID)
+		err = jobsService.UpdateJobTimestamp(context.Background(), organizationID, job.ID)
 		require.NoError(t, err)
 
 		// Get the job again to verify timestamp changed
-		maybeUpdatedJob, err := jobsService.GetJobByID(context.Background(), job.ID, organizationID)
+		maybeUpdatedJob, err := jobsService.GetJobByID(context.Background(), organizationID, job.ID)
 		require.NoError(t, err)
 		require.True(t, maybeUpdatedJob.IsPresent())
 		updatedJob := maybeUpdatedJob.MustGet()
@@ -718,7 +718,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		assert.True(t, updatedJob.UpdatedAt.After(originalUpdatedAt), "Updated timestamp should be later than original")
 
 		// Test with invalid job ID
-		err = jobsService.UpdateJobTimestamp(context.Background(), "", organizationID)
+		err = jobsService.UpdateJobTimestamp(context.Background(), organizationID, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "job ID must be a valid ULID")
 	})
@@ -728,17 +728,17 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			// Create a job with no messages
 			job, err := jobsService.CreateSlackJob(
 				context.Background(),
+				organizationID,
 				"idle.no.messages",
 				"C1111111111",
 				"testuser",
 				slackIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
-			defer func() { _ = jobsService.DeleteJob(context.Background(), job.ID, organizationID) }()
+			defer func() { _ = jobsService.DeleteJob(context.Background(), organizationID, job.ID) }()
 
 			// Since we just created the job, it shouldn't be idle
-			idleJobs, err := jobsService.GetIdleJobs(context.Background(), 1, organizationID)
+			idleJobs, err := jobsService.GetIdleJobs(context.Background(), organizationID, 1)
 			require.NoError(t, err)
 
 			// Filter out our test job - it should not be in idle list
@@ -748,15 +748,15 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			oldTimestamp := time.Now().Add(-10 * time.Minute) // 10 minutes ago
 			err = jobsService.TESTS_UpdateJobUpdatedAt(
 				context.Background(),
+				organizationID,
 				job.ID,
 				oldTimestamp,
 				slackIntegrationID,
-				organizationID,
 			)
 			require.NoError(t, err)
 
 			// Now the job should be idle with 5 minute threshold
-			idleJobs, err = jobsService.GetIdleJobs(context.Background(), 5, organizationID)
+			idleJobs, err = jobsService.GetIdleJobs(context.Background(), organizationID, 5)
 			require.NoError(t, err)
 
 			assert.True(
@@ -768,11 +768,11 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 		t.Run("InvalidIdleMinutes", func(t *testing.T) {
 			// Test with invalid idle minutes
-			_, err := jobsService.GetIdleJobs(context.Background(), 0, organizationID)
+			_, err := jobsService.GetIdleJobs(context.Background(), organizationID, 0)
 			require.Error(t, err)
 			assert.Equal(t, "idle minutes must be greater than 0", err.Error())
 
-			_, err = jobsService.GetIdleJobs(context.Background(), -5, organizationID)
+			_, err = jobsService.GetIdleJobs(context.Background(), organizationID, -5)
 			require.Error(t, err)
 			assert.Equal(t, "idle minutes must be greater than 0", err.Error())
 		})
@@ -782,49 +782,49 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Create an agent and job
 		agent, err := agentsService.UpsertActiveAgent(
 			context.Background(),
-			core.NewID("wsc"),
 			organizationID,
+			core.NewID("wsc"),
 			core.NewID("ccaid"),
 		)
 		require.NoError(t, err)
-		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), agent.ID, organizationID) }()
+		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), organizationID, agent.ID) }()
 
 		job, err := jobsService.CreateSlackJob(
 			context.Background(),
+			organizationID,
 			"delete.assigned.thread",
 			"C8888888888",
 			"testuser",
 			slackIntegrationID,
-			organizationID,
 		)
 		require.NoError(t, err)
 
 		// Assign job to agent
-		err = agentsService.AssignAgentToJob(context.Background(), agent.ID, job.ID, organizationID)
+		err = agentsService.AssignAgentToJob(context.Background(), organizationID, agent.ID, job.ID)
 		require.NoError(t, err)
 
 		// Verify assignment
-		maybeAssignedAgent, err := agentsService.GetAgentByJobID(context.Background(), job.ID, organizationID)
+		maybeAssignedAgent, err := agentsService.GetAgentByJobID(context.Background(), organizationID, job.ID)
 		require.NoError(t, err)
 		require.True(t, maybeAssignedAgent.IsPresent())
 		assignedAgent := maybeAssignedAgent.MustGet()
 		assert.Equal(t, agent.ID, assignedAgent.ID)
 
 		// Unassign agent (simulating cleanup process)
-		err = agentsService.UnassignAgentFromJob(context.Background(), agent.ID, job.ID, organizationID)
+		err = agentsService.UnassignAgentFromJob(context.Background(), organizationID, agent.ID, job.ID)
 		require.NoError(t, err)
 
 		// Delete the job
-		err = jobsService.DeleteJob(context.Background(), job.ID, organizationID)
+		err = jobsService.DeleteJob(context.Background(), organizationID, job.ID)
 		require.NoError(t, err)
 
 		// Verify job is deleted
-		maybeJob, err := jobsService.GetJobByID(context.Background(), job.ID, organizationID)
+		maybeJob, err := jobsService.GetJobByID(context.Background(), organizationID, job.ID)
 		require.NoError(t, err)
 		assert.False(t, maybeJob.IsPresent())
 
 		// Verify agent still exists but has no job assigned
-		maybeRemainingAgent, err := agentsService.GetAgentByID(context.Background(), agent.ID, organizationID)
+		maybeRemainingAgent, err := agentsService.GetAgentByID(context.Background(), organizationID, agent.ID)
 		require.NoError(t, err)
 		require.True(t, maybeRemainingAgent.IsPresent())
 		remainingAgent := maybeRemainingAgent.MustGet()
@@ -832,8 +832,8 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 		// Verify agent has no job assignments
 		remainingJobs, err := agentsService.GetActiveAgentJobAssignments(
 			context.Background(),
-			remainingAgent.ID,
 			organizationID,
+			remainingAgent.ID,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, remainingJobs)

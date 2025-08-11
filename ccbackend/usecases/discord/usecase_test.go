@@ -166,7 +166,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		fixture.mocks.discordClient.On("GetBotUser").Return(botUser, nil)
 		fixture.mocks.discordClient.On("CreatePublicThread", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(threadResponse, nil)
-		fixture.mocks.jobsService.On("GetOrCreateJobForDiscordThread", fixture.ctx, testMessageID, testChannelID, testThreadID, testUserID, testIntegrationID, testOrgID).
+		fixture.mocks.jobsService.On("GetOrCreateJobForDiscordThread", fixture.ctx, testOrgID, testMessageID, testChannelID, testThreadID, testUserID, testIntegrationID).
 			Return(jobResult, nil)
 		fixture.mocks.discordIntegrationsService.On("GetDiscordIntegrationByID", fixture.ctx, testIntegrationID).
 			Return(mo.Some(discordIntegration), nil)
@@ -175,7 +175,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			Return([]*models.ActiveAgent{connectedAgent}, nil)
 		fixture.mocks.agentsUseCase.On("GetOrAssignAgentForJob", fixture.ctx, jobResult.Job, testThreadID, testOrgID).
 			Return(testWSConnectionID, nil)
-		fixture.mocks.discordMessagesService.On("CreateProcessedDiscordMessage", fixture.ctx, testJobID, testMessageID, testThreadID, "Hello bot, help me with something", testIntegrationID, testOrgID, models.ProcessedDiscordMessageStatusInProgress).
+		fixture.mocks.discordMessagesService.On("CreateProcessedDiscordMessage", fixture.ctx, testOrgID, testJobID, testMessageID, testThreadID, "Hello bot, help me with something", testIntegrationID, models.ProcessedDiscordMessageStatusInProgress).
 			Return(processedMessage, nil)
 		fixture.mocks.discordClient.On("AddReaction", testChannelID, testMessageID, EmojiHourglass).Return(nil)
 		fixture.mocks.discordClient.On("RemoveReaction", testChannelID, testMessageID, mock.AnythingOfType("string")).
@@ -187,7 +187,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			Maybe()
 
 		// Expect sendStartConversationToAgent
-		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testJobID, testOrgID).
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).
 			Return(mo.Some(jobResult.Job), nil).Maybe()
 		fixture.mocks.wsClient.On("SendMessage", testWSConnectionID, mock.AnythingOfType("models.BaseMessage")).
 			Return(nil)
@@ -342,14 +342,14 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		mockDiscordClient.On("GetBotUser").Return(botUser, nil)
 		mockDiscordClient.On("CreatePublicThread", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(threadResponse, nil)
-		mockJobsService.On("GetOrCreateJobForDiscordThread", ctx, testMessageID, testChannelID, testThreadID, testUserID, testIntegrationID, testOrgID).
+		mockJobsService.On("GetOrCreateJobForDiscordThread", ctx, testOrgID, testMessageID, testChannelID, testThreadID, testUserID, testIntegrationID).
 			Return(jobResult, nil)
 		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, testIntegrationID).
 			Return(mo.Some(discordIntegration), nil)
 		mockWSClient.On("GetClientIDs").Return([]string{})
 		mockAgentsService.On("GetConnectedActiveAgents", ctx, testOrgID, []string{}).
 			Return([]*models.ActiveAgent{}, nil)
-		mockDiscordMessagesService.On("CreateProcessedDiscordMessage", ctx, testJobID, testMessageID, testThreadID, "Hello bot, help me with something", testIntegrationID, testOrgID, models.ProcessedDiscordMessageStatusQueued).
+		mockDiscordMessagesService.On("CreateProcessedDiscordMessage", ctx, testOrgID, testJobID, testMessageID, testThreadID, "Hello bot, help me with something", testIntegrationID, models.ProcessedDiscordMessageStatusQueued).
 			Return(processedMessage, nil)
 		mockDiscordClient.On("AddReaction", testChannelID, testMessageID, EmojiHourglass).Return(nil)
 		mockDiscordClient.On("RemoveReaction", testChannelID, testMessageID, mock.AnythingOfType("string")).
@@ -424,7 +424,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 
 		// Configure expectations
 		mockDiscordClient.On("GetBotUser").Return(botUser, nil)
-		mockJobsService.On("GetJobByDiscordThread", ctx, testThreadID, testIntegrationID, testOrgID).
+		mockJobsService.On("GetJobByDiscordThread", ctx, testOrgID, testThreadID, testIntegrationID).
 			Return(mo.None[*models.Job](), nil) // No existing job
 		// Expect sendSystemMessage call for error
 		mockDiscordClient.On("PostMessage", testChannelID, mock.MatchedBy(func(params clients.DiscordMessageParams) bool {
@@ -517,7 +517,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		mockDiscordClient.On("GetBotUser").Return(botUser, nil)
 		mockDiscordClient.On("CreatePublicThread", testChannelID, testMessageID, mock.AnythingOfType("string")).
 			Return(threadResponse, nil)
-		mockJobsService.On("GetOrCreateJobForDiscordThread", ctx, testMessageID, testChannelID, testThreadID, testUserID, testIntegrationID, testOrgID).
+		mockJobsService.On("GetOrCreateJobForDiscordThread", ctx, testOrgID, testMessageID, testChannelID, testThreadID, testUserID, testIntegrationID).
 			Return(jobResult, nil)
 		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, testIntegrationID).
 			Return(mo.None[*models.DiscordIntegration](), nil) // Integration not found
@@ -604,7 +604,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByDiscordThread", ctx, testMessageID, testIntegrationID, testOrgID).
+		mockJobsService.On("GetJobByDiscordThread", ctx, testOrgID, testMessageID, testIntegrationID).
 			Return(mo.Some(job), nil)
 		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, testIntegrationID).
 			Return(mo.Some(discordIntegration), nil)
@@ -701,7 +701,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByDiscordThread", ctx, testMessageID, testIntegrationID, testOrgID).
+		mockJobsService.On("GetJobByDiscordThread", ctx, testOrgID, testMessageID, testIntegrationID).
 			Return(mo.Some(job), nil)
 
 		// Execute
@@ -753,7 +753,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByDiscordThread", ctx, testMessageID, testIntegrationID, testOrgID).
+		mockJobsService.On("GetJobByDiscordThread", ctx, testOrgID, testMessageID, testIntegrationID).
 			Return(mo.None[*models.Job](), nil)
 
 		// Execute
