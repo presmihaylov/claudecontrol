@@ -72,50 +72,39 @@ func getSocketIOHeader(headers map[string][]string, headerName string) (string, 
 	return "", false
 }
 
-func (ws *Server) handleSocketIOConnection(sock *socket.Socket) {
-	log.Printf("🔗 New Socket.IO connection attempt, socket ID: %s", sock.Id())
-
+// validateConnectionAuth validates authentication headers and returns organizationID and agentID
+func (ws *Server) validateConnectionAuth(sock *socket.Socket) (string, string, error) {
 	headers := sock.Handshake().Headers
+	
 	apiKey, exists := getSocketIOHeader(headers, "X-CCAGENT-API-KEY")
 	if !exists {
-		log.Printf("❌ Rejecting Socket.IO connection: missing X-CCAGENT-API-KEY header")
-		sock.Disconnect(true)
-		return
+		return "", "", fmt.Errorf("missing X-CCAGENT-API-KEY header")
 	}
 
 	agentID, exists := getSocketIOHeader(headers, "X-CCAGENT-ID")
 	if !exists {
-		log.Printf("❌ No X-CCAGENT-ID provided, rejecting connection")
-		sock.Disconnect(true)
-		return
+		return "", "", fmt.Errorf("missing X-CCAGENT-ID header")
 	}
 
 	if !core.IsValidULID(agentID) {
-		log.Printf("❌ Rejecting Socket.IO connection: agent ID must be a valid ULID")
-		sock.Disconnect(true)
-		return
+		return "", "", fmt.Errorf("agent ID must be a valid ULID")
 	}
 
 	// Validate API key
 	organizationID, err := ws.apiKeyValidator(apiKey)
 	if err != nil {
-		log.Printf("❌ Rejecting Socket.IO connection: invalid API key: %v", err)
-		sock.Disconnect(true)
-		return
+		return "", "", fmt.Errorf("invalid API key: %w", err)
 	}
 
-	client := &clients.Client{
-		ID:      core.NewID("cl"),
-		Socket:  sock,
-		OrgID:   models.OrgID(organizationID),
-		AgentID: agentID,
-	}
-	ws.addClient(client)
-	log.Printf("✅ Socket.IO client connected with ID: %s, socket ID: %s", client.ID, sock.Id())
-	ws.invokeConnectionHooks(client)
+	return organizationID, agentID, nil
+}
 
+// setupClientHandlers sets up all Socket.IO event handlers for an authenticated client
+func (ws *Server) setupClientHandlers(client *clients.Client) {
+	sock := client.Socket
+	
 	// Set up message handler for cc_message event
-	err = sock.On("cc_message", func(data ...any) {
+	err := sock.On("cc_message", func(data ...any) {
 		if len(data) == 0 {
 			log.Printf("❌ No message data received for client %s", client.ID)
 			return
@@ -145,6 +134,34 @@ func (ws *Server) handleSocketIOConnection(sock *socket.Socket) {
 	)
 
 	log.Printf("👂 Message listener setup complete for client %s", client.ID)
+}
+
+func (ws *Server) handleSocketIOConnection(sock *socket.Socket) {
+	log.Printf("🔗 Authenticating Socket.IO connection, socket ID: %s", sock.Id())
+
+	// Validate authentication IMMEDIATELY before any setup
+	organizationID, agentID, err := ws.validateConnectionAuth(sock)
+	if err != nil {
+		log.Printf("❌ Authentication failed for socket %s: %v", sock.Id(), err)
+		sock.Disconnect(true)
+		return // Exit immediately, don't set up anything
+	}
+
+	log.Printf("✅ Authentication successful for socket %s", sock.Id())
+
+	// ONLY proceed with client setup after authentication succeeds
+	client := &clients.Client{
+		ID:      core.NewID("cl"),
+		Socket:  sock,
+		OrgID:   models.OrgID(organizationID),
+		AgentID: agentID,
+	}
+
+	ws.addClient(client)
+	log.Printf("✅ Socket.IO client connected with ID: %s, socket ID: %s", client.ID, sock.Id())
+	
+	ws.setupClientHandlers(client)
+	ws.invokeConnectionHooks(client)
 }
 
 func (ws *Server) addClient(client *clients.Client) {
