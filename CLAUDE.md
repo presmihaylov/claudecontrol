@@ -759,3 +759,11 @@ services/
 ```
 
 This co-located approach keeps mocks close to their implementations and makes them easy to find and maintain.
+
+## Linear Workflow Guidelines
+
+### Ticket Status Management
+- **Never Move to Done**: NEVER move Linear tickets to "Done" status unless explicitly instructed by the user
+- **In Progress Movement**: When starting work on a ticket, move it to "In Progress" status  
+- **Status Updates**: Only move tickets between statuses when explicitly requested or when beginning work
+- **User Authorization Required**: All ticket completion must be user-authorized - Claude Control cannot determine when work is truly complete from the user's perspective
