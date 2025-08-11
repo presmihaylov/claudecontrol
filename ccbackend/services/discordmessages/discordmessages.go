@@ -25,9 +25,9 @@ func NewDiscordMessagesService(repo *db.PostgresProcessedDiscordMessagesReposito
 
 func (s *DiscordMessagesService) CreateProcessedDiscordMessage(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	discordMessageID, discordThreadID, textContent, discordIntegrationID string,
-	organizationID models.OrgID,
 	status models.ProcessedDiscordMessageStatus,
 ) (*models.ProcessedDiscordMessage, error) {
 	log.Printf(
@@ -81,10 +81,10 @@ func (s *DiscordMessagesService) CreateProcessedDiscordMessage(
 
 func (s *DiscordMessagesService) UpdateProcessedDiscordMessage(
 	ctx context.Context,
+	organizationID models.OrgID,
 	id string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID models.OrgID,
 ) (*models.ProcessedDiscordMessage, error) {
 	log.Printf("📋 Starting to update processed discord message: %s with status: %s", id, status)
 	if !core.IsValidULID(id) {
@@ -113,10 +113,10 @@ func (s *DiscordMessagesService) UpdateProcessedDiscordMessage(
 
 func (s *DiscordMessagesService) GetProcessedMessagesByJobIDAndStatus(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID models.OrgID,
 ) ([]*models.ProcessedDiscordMessage, error) {
 	log.Printf("📋 Starting to get processed discord messages by job ID: %s and status: %s", jobID, status)
 	if !core.IsValidULID(jobID) {
@@ -145,8 +145,8 @@ func (s *DiscordMessagesService) GetProcessedMessagesByJobIDAndStatus(
 
 func (s *DiscordMessagesService) GetProcessedDiscordMessageByID(
 	ctx context.Context,
-	id string,
 	organizationID models.OrgID,
+	id string,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	log.Printf("📋 Starting to get processed discord message by ID: %s", id)
 	if !core.IsValidULID(id) {
@@ -177,9 +177,9 @@ func (s *DiscordMessagesService) GetProcessedDiscordMessageByID(
 
 func (s *DiscordMessagesService) GetLatestProcessedMessageForJob(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	discordIntegrationID string,
-	organizationID models.OrgID,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	log.Printf("📋 Starting to get latest processed discord message for job: %s", jobID)
 	if !core.IsValidULID(jobID) {
@@ -213,9 +213,9 @@ func (s *DiscordMessagesService) GetLatestProcessedMessageForJob(
 
 func (s *DiscordMessagesService) GetActiveMessageCountForJobs(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobIDs []string,
 	discordIntegrationID string,
-	organizationID models.OrgID,
 ) (int, error) {
 	log.Printf("📋 Starting to get active message count for %d jobs", len(jobIDs))
 	if !core.IsValidULID(discordIntegrationID) {
@@ -244,10 +244,10 @@ func (s *DiscordMessagesService) GetActiveMessageCountForJobs(
 
 func (s *DiscordMessagesService) TESTS_UpdateProcessedDiscordMessageUpdatedAt(
 	ctx context.Context,
+	organizationID models.OrgID,
 	id string,
 	updatedAt time.Time,
 	discordIntegrationID string,
-	organizationID models.OrgID,
 ) error {
 	log.Printf(
 		"📋 Starting to update processed discord message updated_at for testing purposes: %s to %s",
@@ -276,9 +276,9 @@ func (s *DiscordMessagesService) TESTS_UpdateProcessedDiscordMessageUpdatedAt(
 
 func (s *DiscordMessagesService) DeleteProcessedDiscordMessagesByJobID(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	discordIntegrationID string,
-	organizationID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to delete processed discord messages by job ID: %s", jobID)
 	if !core.IsValidULID(jobID) {

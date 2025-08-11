@@ -16,12 +16,12 @@ type MockSlackMessagesService struct {
 
 func (m *MockSlackMessagesService) CreateProcessedSlackMessage(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	slackChannelID, slackTS, textContent, slackIntegrationID string,
-	organizationID models.OrgID,
 	status models.ProcessedSlackMessageStatus,
 ) (*models.ProcessedSlackMessage, error) {
-	args := m.Called(ctx, jobID, slackChannelID, slackTS, textContent, slackIntegrationID, organizationID, status)
+	args := m.Called(ctx, organizationID, jobID, slackChannelID, slackTS, textContent, slackIntegrationID, status)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -30,12 +30,12 @@ func (m *MockSlackMessagesService) CreateProcessedSlackMessage(
 
 func (m *MockSlackMessagesService) UpdateProcessedSlackMessage(
 	ctx context.Context,
+	organizationID models.OrgID,
 	id string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) (*models.ProcessedSlackMessage, error) {
-	args := m.Called(ctx, id, status, slackIntegrationID, organizationID)
+	args := m.Called(ctx, organizationID, id, status, slackIntegrationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -44,12 +44,12 @@ func (m *MockSlackMessagesService) UpdateProcessedSlackMessage(
 
 func (m *MockSlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) ([]*models.ProcessedSlackMessage, error) {
-	args := m.Called(ctx, jobID, status, slackIntegrationID, organizationID)
+	args := m.Called(ctx, organizationID, jobID, status, slackIntegrationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -58,10 +58,10 @@ func (m *MockSlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 
 func (m *MockSlackMessagesService) GetProcessedSlackMessageByID(
 	ctx context.Context,
-	id string,
 	organizationID models.OrgID,
+	id string,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
-	args := m.Called(ctx, id, organizationID)
+	args := m.Called(ctx, organizationID, id)
 	if args.Get(0) == nil {
 		return mo.None[*models.ProcessedSlackMessage](), args.Error(1)
 	}
@@ -70,11 +70,11 @@ func (m *MockSlackMessagesService) GetProcessedSlackMessageByID(
 
 func (m *MockSlackMessagesService) GetLatestProcessedMessageForJob(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
-	args := m.Called(ctx, jobID, slackIntegrationID, organizationID)
+	args := m.Called(ctx, organizationID, jobID, slackIntegrationID)
 	if args.Get(0) == nil {
 		return mo.None[*models.ProcessedSlackMessage](), args.Error(1)
 	}
@@ -83,31 +83,31 @@ func (m *MockSlackMessagesService) GetLatestProcessedMessageForJob(
 
 func (m *MockSlackMessagesService) GetActiveMessageCountForJobs(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobIDs []string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) (int, error) {
-	args := m.Called(ctx, jobIDs, slackIntegrationID, organizationID)
+	args := m.Called(ctx, organizationID, jobIDs, slackIntegrationID)
 	return args.Int(0), args.Error(1)
 }
 
 func (m *MockSlackMessagesService) TESTS_UpdateProcessedSlackMessageUpdatedAt(
 	ctx context.Context,
+	organizationID models.OrgID,
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) error {
-	args := m.Called(ctx, id, updatedAt, slackIntegrationID, organizationID)
+	args := m.Called(ctx, organizationID, id, updatedAt, slackIntegrationID)
 	return args.Error(0)
 }
 
 func (m *MockSlackMessagesService) DeleteProcessedSlackMessagesByJobID(
 	ctx context.Context,
+	organizationID models.OrgID,
 	jobID string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
 ) error {
-	args := m.Called(ctx, jobID, slackIntegrationID, organizationID)
+	args := m.Called(ctx, organizationID, jobID, slackIntegrationID)
 	return args.Error(0)
 }

@@ -18,7 +18,7 @@ func (d *DiscordUseCase) sendStartConversationToAgent(
 	message *models.ProcessedDiscordMessage,
 ) error {
 	// Get job to access thread information
-	maybeJob, err := d.jobsService.GetJobByID(ctx, message.JobID, message.OrgID)
+	maybeJob, err := d.jobsService.GetJobByID(ctx, message.OrgID, message.JobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -85,7 +85,7 @@ func (d *DiscordUseCase) sendUserMessageToAgent(
 	message *models.ProcessedDiscordMessage,
 ) error {
 	// Get job to access thread information
-	maybeJob, err := d.jobsService.GetJobByID(ctx, message.JobID, message.OrgID)
+	maybeJob, err := d.jobsService.GetJobByID(ctx, message.OrgID, message.JobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}

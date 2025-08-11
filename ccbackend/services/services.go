@@ -27,7 +27,8 @@ type OrganizationsService interface {
 type SlackIntegrationsService interface {
 	CreateSlackIntegration(
 		ctx context.Context,
-		organizationID models.OrgID, slackAuthCode, redirectURL string,
+		organizationID models.OrgID,
+		slackAuthCode, redirectURL string,
 	) (*models.SlackIntegration, error)
 	GetSlackIntegrationsByOrganizationID(
 		ctx context.Context,
@@ -43,7 +44,8 @@ type SlackIntegrationsService interface {
 type DiscordIntegrationsService interface {
 	CreateDiscordIntegration(
 		ctx context.Context,
-		organizationID models.OrgID, discordAuthCode, guildID, redirectURL string,
+		organizationID models.OrgID,
+		discordAuthCode, guildID, redirectURL string,
 	) (*models.DiscordIntegration, error)
 	GetDiscordIntegrationsByOrganizationID(
 		ctx context.Context,
@@ -59,12 +61,13 @@ type DiscordIntegrationsService interface {
 type AgentsService interface {
 	UpsertActiveAgent(
 		ctx context.Context,
-		wsConnectionID string, organizationID models.OrgID,
+		organizationID models.OrgID,
+		wsConnectionID string,
 		agentID string,
 	) (*models.ActiveAgent, error)
-	DeleteActiveAgentByWsConnectionID(ctx context.Context, wsConnectionID string, organizationID models.OrgID) error
-	DeleteActiveAgent(ctx context.Context, id string, organizationID models.OrgID) error
-	GetAgentByID(ctx context.Context, id string, organizationID models.OrgID) (mo.Option[*models.ActiveAgent], error)
+	DeleteActiveAgentByWsConnectionID(ctx context.Context, organizationID models.OrgID, wsConnectionID string) error
+	DeleteActiveAgent(ctx context.Context, organizationID models.OrgID, id string) error
+	GetAgentByID(ctx context.Context, organizationID models.OrgID, id string) (mo.Option[*models.ActiveAgent], error)
 	GetAvailableAgents(ctx context.Context, organizationID models.OrgID) ([]*models.ActiveAgent, error)
 	GetConnectedActiveAgents(
 		ctx context.Context,
@@ -77,19 +80,20 @@ type AgentsService interface {
 		connectedClientIDs []string,
 	) ([]*models.ActiveAgent, error)
 	CheckAgentHasActiveConnection(agent *models.ActiveAgent, connectedClientIDs []string) bool
-	AssignAgentToJob(ctx context.Context, agentID, jobID string, organizationID models.OrgID) error
-	UnassignAgentFromJob(ctx context.Context, agentID, jobID string, organizationID models.OrgID) error
+	AssignAgentToJob(ctx context.Context, organizationID models.OrgID, agentID, jobID string) error
+	UnassignAgentFromJob(ctx context.Context, organizationID models.OrgID, agentID, jobID string) error
 	GetAgentByJobID(
 		ctx context.Context,
-		jobID string,
 		organizationID models.OrgID,
+		jobID string,
 	) (mo.Option[*models.ActiveAgent], error)
 	GetAgentByWSConnectionID(
 		ctx context.Context,
-		wsConnectionID string, organizationID models.OrgID,
+		organizationID models.OrgID,
+		wsConnectionID string,
 	) (mo.Option[*models.ActiveAgent], error)
-	GetActiveAgentJobAssignments(ctx context.Context, agentID string, organizationID models.OrgID) ([]string, error)
-	UpdateAgentLastActiveAt(ctx context.Context, wsConnectionID string, organizationID models.OrgID) error
+	GetActiveAgentJobAssignments(ctx context.Context, organizationID models.OrgID, agentID string) ([]string, error)
+	UpdateAgentLastActiveAt(ctx context.Context, organizationID models.OrgID, wsConnectionID string) error
 	GetInactiveAgents(
 		ctx context.Context,
 		organizationID models.OrgID,
@@ -101,54 +105,54 @@ type AgentsService interface {
 type SlackMessagesService interface {
 	CreateProcessedSlackMessage(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobID string,
 		slackChannelID, slackTS, textContent, slackIntegrationID string,
-		organizationID models.OrgID,
 		status models.ProcessedSlackMessageStatus,
 	) (*models.ProcessedSlackMessage, error)
 	UpdateProcessedSlackMessage(
 		ctx context.Context,
+		organizationID models.OrgID,
 		id string,
 		status models.ProcessedSlackMessageStatus,
 		slackIntegrationID string,
-		organizationID models.OrgID,
 	) (*models.ProcessedSlackMessage, error)
 	GetProcessedMessagesByJobIDAndStatus(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobID string,
 		status models.ProcessedSlackMessageStatus,
 		slackIntegrationID string,
-		organizationID models.OrgID,
 	) ([]*models.ProcessedSlackMessage, error)
 	GetProcessedSlackMessageByID(
 		ctx context.Context,
-		id string,
 		organizationID models.OrgID,
+		id string,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
 	GetLatestProcessedMessageForJob(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobID string,
 		slackIntegrationID string,
-		organizationID models.OrgID,
 	) (mo.Option[*models.ProcessedSlackMessage], error)
 	GetActiveMessageCountForJobs(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobIDs []string,
 		slackIntegrationID string,
-		organizationID models.OrgID,
 	) (int, error)
 	TESTS_UpdateProcessedSlackMessageUpdatedAt(
 		ctx context.Context,
+		organizationID models.OrgID,
 		id string,
 		updatedAt time.Time,
 		slackIntegrationID string,
-		organizationID models.OrgID,
 	) error
 	DeleteProcessedSlackMessagesByJobID(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobID string,
 		slackIntegrationID string,
-		organizationID models.OrgID,
 	) error
 }
 
@@ -156,54 +160,54 @@ type SlackMessagesService interface {
 type DiscordMessagesService interface {
 	CreateProcessedDiscordMessage(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobID string,
 		discordMessageID, discordThreadID, textContent, discordIntegrationID string,
-		organizationID models.OrgID,
 		status models.ProcessedDiscordMessageStatus,
 	) (*models.ProcessedDiscordMessage, error)
 	UpdateProcessedDiscordMessage(
 		ctx context.Context,
+		organizationID models.OrgID,
 		id string,
 		status models.ProcessedDiscordMessageStatus,
 		discordIntegrationID string,
-		organizationID models.OrgID,
 	) (*models.ProcessedDiscordMessage, error)
 	GetProcessedMessagesByJobIDAndStatus(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobID string,
 		status models.ProcessedDiscordMessageStatus,
 		discordIntegrationID string,
-		organizationID models.OrgID,
 	) ([]*models.ProcessedDiscordMessage, error)
 	GetProcessedDiscordMessageByID(
 		ctx context.Context,
-		id string,
 		organizationID models.OrgID,
+		id string,
 	) (mo.Option[*models.ProcessedDiscordMessage], error)
 	GetLatestProcessedMessageForJob(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobID string,
 		discordIntegrationID string,
-		organizationID models.OrgID,
 	) (mo.Option[*models.ProcessedDiscordMessage], error)
 	GetActiveMessageCountForJobs(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobIDs []string,
 		discordIntegrationID string,
-		organizationID models.OrgID,
 	) (int, error)
 	TESTS_UpdateProcessedDiscordMessageUpdatedAt(
 		ctx context.Context,
+		organizationID models.OrgID,
 		id string,
 		updatedAt time.Time,
 		discordIntegrationID string,
-		organizationID models.OrgID,
 	) error
 	DeleteProcessedDiscordMessagesByJobID(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobID string,
 		discordIntegrationID string,
-		organizationID models.OrgID,
 	) error
 }
 
@@ -211,51 +215,51 @@ type DiscordMessagesService interface {
 type JobsService interface {
 	GetJobByID(
 		ctx context.Context,
-		id string,
 		organizationID models.OrgID,
+		id string,
 	) (mo.Option[*models.Job], error)
-	UpdateJobTimestamp(ctx context.Context, jobID string, organizationID models.OrgID) error
-	GetIdleJobs(ctx context.Context, idleMinutes int, organizationID models.OrgID) ([]*models.Job, error)
-	DeleteJob(ctx context.Context, id string, organizationID models.OrgID) error
+	UpdateJobTimestamp(ctx context.Context, organizationID models.OrgID, jobID string) error
+	GetIdleJobs(ctx context.Context, organizationID models.OrgID, idleMinutes int) ([]*models.Job, error)
+	DeleteJob(ctx context.Context, organizationID models.OrgID, id string) error
 	GetJobsWithQueuedMessages(
 		ctx context.Context,
+		organizationID models.OrgID,
 		jobType models.JobType,
 		integrationID string,
-		organizationID models.OrgID,
 	) ([]*models.Job, error)
 
 	// Slack-specific methods
 	CreateSlackJob(
 		ctx context.Context,
-		slackThreadTS, slackChannelID, slackUserID, slackIntegrationID string,
 		organizationID models.OrgID,
+		slackThreadTS, slackChannelID, slackUserID, slackIntegrationID string,
 	) (*models.Job, error)
 	GetJobBySlackThread(
 		ctx context.Context,
-		threadTS, channelID, slackIntegrationID string,
 		organizationID models.OrgID,
+		threadTS, channelID, slackIntegrationID string,
 	) (mo.Option[*models.Job], error)
 	GetOrCreateJobForSlackThread(
 		ctx context.Context,
-		threadTS, channelID, slackUserID, slackIntegrationID string,
 		organizationID models.OrgID,
+		threadTS, channelID, slackUserID, slackIntegrationID string,
 	) (*models.JobCreationResult, error)
 
 	// Discord-specific methods
 	CreateDiscordJob(
 		ctx context.Context,
-		discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
 		organizationID models.OrgID,
+		discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
 	) (*models.Job, error)
 	GetJobByDiscordThread(
 		ctx context.Context,
-		threadID, discordIntegrationID string,
 		organizationID models.OrgID,
+		threadID, discordIntegrationID string,
 	) (mo.Option[*models.Job], error)
 	GetOrCreateJobForDiscordThread(
 		ctx context.Context,
-		discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
 		organizationID models.OrgID,
+		discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
 	) (*models.JobCreationResult, error)
 }
 
