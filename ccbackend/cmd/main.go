@@ -78,8 +78,6 @@ func run() error {
 
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
-
-	agentsService := agentsservice.NewAgentsService(agentsRepo)
 	slackMessagesService := slackmessages.NewSlackMessagesService(processedSlackMessagesRepo)
 	discordMessagesService := discordmessages.NewDiscordMessagesService(processedDiscordMessagesRepo)
 	jobsService := jobs.NewJobsService(jobsRepo, slackMessagesService, discordMessagesService, txManager)
@@ -115,6 +113,9 @@ func run() error {
 	}
 
 	wsClient := socketioclient.NewSocketIOClient(apiKeyValidator)
+
+	// Create agents service after wsClient is available
+	agentsService := agentsservice.NewAgentsService(agentsRepo, wsClient)
 
 	// Create use cases in dependency order
 	agentsUseCase := agents.NewAgentsUseCase(wsClient, agentsService)
@@ -168,6 +169,8 @@ func run() error {
 		slackIntegrationsService,
 		discordIntegrationsService,
 		organizationsService,
+		agentsService,
+		txManager,
 	)
 	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
 	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkSecretKey)

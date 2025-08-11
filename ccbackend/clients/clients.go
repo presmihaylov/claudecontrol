@@ -72,6 +72,7 @@ type SocketIOClient interface {
 	GetClientIDs() []string
 	GetClientByID(clientID string) any // Returns *socketio.Client but we use any for interface
 	SendMessage(clientID string, msg any) error
+	DisconnectClientByID(clientID string) error
 
 	// Event handlers
 	RegisterMessageHandler(handler MessageHandlerFunc)

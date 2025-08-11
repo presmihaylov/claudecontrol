@@ -420,7 +420,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	slackMessagesService := slackmessages.NewSlackMessagesService(processedSlackMessagesRepo)
 	discordMessagesService := discordmessages.NewDiscordMessagesService(processedDiscordMessagesRepo)
 	jobsService := NewJobsService(jobsRepo, slackMessagesService, discordMessagesService, txManager)
-	agentsService := agents.NewAgentsService(agentsRepo)
+	agentsService := agents.NewAgentsService(agentsRepo, nil)
 
 	// Use the shared integration ID
 	slackIntegrationID := testIntegration.ID

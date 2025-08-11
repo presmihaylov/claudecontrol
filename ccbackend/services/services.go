@@ -99,6 +99,7 @@ type AgentsService interface {
 		organizationID models.OrgID,
 		inactiveThresholdMinutes int,
 	) ([]*models.ActiveAgent, error)
+	DisconnectAllActiveAgentsByOrganization(ctx context.Context, organizationID models.OrgID) error
 }
 
 // SlackMessagesService defines the interface for processed slack message operations

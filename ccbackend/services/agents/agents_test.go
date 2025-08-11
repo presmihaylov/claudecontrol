@@ -3,12 +3,14 @@ package agents
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"ccbackend/clients/socketio"
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
@@ -42,7 +44,7 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 	require.NoError(t, err, "Failed to create test slack integration")
 
 	txManager := txmanager.NewTransactionManager(dbConn)
-	agentsService := NewAgentsService(agentsRepo)
+	agentsService := NewAgentsService(agentsRepo, nil)
 	slackMessagesService := slackmessages.NewSlackMessagesService(messagesRepo)
 	discordMessagesService := discordmessages.NewDiscordMessagesService(discordMessagesRepo)
 	jobsService := jobs.NewJobsService(jobsRepo, slackMessagesService, discordMessagesService, txManager)
@@ -681,6 +683,137 @@ func TestAgentsService(t *testing.T) {
 			_, err = agentsService.GetInactiveAgents(context.Background(), organizationID, -5)
 			require.Error(t, err)
 			assert.Equal(t, "inactive threshold must be positive", err.Error())
+		})
+	})
+
+	t.Run("DisconnectAllActiveAgentsByOrganization", func(t *testing.T) {
+		// Create a mock Socket.IO client for these tests
+		mockSocketIO := &socketio.MockSocketIOClient{}
+
+		// Create test service with mock
+		cfg, err := testutils.LoadTestConfig()
+		require.NoError(t, err)
+		dbConn, err := db.NewConnection(cfg.DatabaseURL)
+		require.NoError(t, err, "Failed to create database connection")
+		defer dbConn.Close()
+
+		agentsRepo := db.NewPostgresAgentsRepository(dbConn, cfg.DatabaseSchema)
+		testServiceWithMock := NewAgentsService(agentsRepo, mockSocketIO)
+
+		t.Run("Success - disconnects all agents", func(t *testing.T) {
+			// Create multiple test agents
+			agentID1 := core.NewID("ccaid")
+			agent1, err := testServiceWithMock.UpsertActiveAgent(
+				context.Background(),
+				organizationID,
+				core.NewID("wsc"),
+				agentID1,
+			)
+			require.NoError(t, err)
+			defer func() { _ = testServiceWithMock.DeleteActiveAgent(context.Background(), organizationID, agent1.ID) }()
+
+			agentID2 := core.NewID("ccaid")
+			agent2, err := testServiceWithMock.UpsertActiveAgent(
+				context.Background(),
+				organizationID,
+				core.NewID("wsc"),
+				agentID2,
+			)
+			require.NoError(t, err)
+			defer func() { _ = testServiceWithMock.DeleteActiveAgent(context.Background(), organizationID, agent2.ID) }()
+
+			// Set up mock expectations - both agents should be disconnected
+			mockSocketIO.On("DisconnectClientByID", agentID1).Return(nil)
+			mockSocketIO.On("DisconnectClientByID", agentID2).Return(nil)
+
+			// Call the disconnect function
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), organizationID)
+			require.NoError(t, err)
+
+			// Verify all mock expectations were met
+			mockSocketIO.AssertExpectations(t)
+		})
+
+		t.Run("Success - no agents to disconnect", func(t *testing.T) {
+			// Reset mock for this test
+			mockSocketIO.ExpectedCalls = nil
+			mockSocketIO.Calls = nil
+
+			// Call disconnect with no agents
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), organizationID)
+			require.NoError(t, err)
+
+			// Should not call DisconnectClientByID at all
+			mockSocketIO.AssertNotCalled(t, "DisconnectClientByID")
+		})
+
+		t.Run("Fails immediately on first disconnect error", func(t *testing.T) {
+			// Reset mock for this test
+			mockSocketIO.ExpectedCalls = nil
+			mockSocketIO.Calls = nil
+
+			// Create test agents
+			agentID1 := core.NewID("ccaid")
+			agent1, err := testServiceWithMock.UpsertActiveAgent(
+				context.Background(),
+				organizationID,
+				core.NewID("wsc"),
+				agentID1,
+			)
+			require.NoError(t, err)
+			defer func() { _ = testServiceWithMock.DeleteActiveAgent(context.Background(), organizationID, agent1.ID) }()
+
+			agentID2 := core.NewID("ccaid")
+			agent2, err := testServiceWithMock.UpsertActiveAgent(
+				context.Background(),
+				organizationID,
+				core.NewID("wsc"),
+				agentID2,
+			)
+			require.NoError(t, err)
+			defer func() { _ = testServiceWithMock.DeleteActiveAgent(context.Background(), organizationID, agent2.ID) }()
+
+			// Set up mock expectations - first succeeds, second fails
+			mockSocketIO.On("DisconnectClientByID", agentID1).Return(nil)
+			mockSocketIO.On("DisconnectClientByID", agentID2).Return(fmt.Errorf("disconnect failed"))
+
+			// Call the disconnect function
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), organizationID)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "failed to disconnect agent")
+			assert.Contains(t, err.Error(), agentID2) // Should mention the specific agent that failed
+			assert.Contains(t, err.Error(), "disconnect failed")
+
+			// Verify all mock expectations were met (both calls should still happen)
+			mockSocketIO.AssertExpectations(t)
+		})
+
+		t.Run("Error - empty organization ID", func(t *testing.T) {
+			// Reset mock for this test
+			mockSocketIO.ExpectedCalls = nil
+			mockSocketIO.Calls = nil
+
+			// Call with empty organization ID
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), "")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "organization ID must be a valid ULID")
+
+			// Should not call DisconnectClientByID
+			mockSocketIO.AssertNotCalled(t, "DisconnectClientByID")
+		})
+
+		t.Run("Error - invalid organization ULID", func(t *testing.T) {
+			// Reset mock for this test
+			mockSocketIO.ExpectedCalls = nil
+			mockSocketIO.Calls = nil
+
+			// Call with invalid organization ID
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), "invalid-ulid")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "organization ID must be a valid ULID")
+
+			// Should not call DisconnectClientByID
+			mockSocketIO.AssertNotCalled(t, "DisconnectClientByID")
 		})
 	})
 }

@@ -34,6 +34,11 @@ func (m *MockSocketIOClient) SendMessage(clientID string, msg any) error {
 	return args.Error(0)
 }
 
+func (m *MockSocketIOClient) DisconnectClientByID(clientID string) error {
+	args := m.Called(clientID)
+	return args.Error(0)
+}
+
 func (m *MockSocketIOClient) RegisterMessageHandler(handler clients.MessageHandlerFunc) {
 	m.Called(handler)
 }
