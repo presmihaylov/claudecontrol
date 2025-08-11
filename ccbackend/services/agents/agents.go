@@ -7,17 +7,23 @@ import (
 
 	"github.com/samber/mo"
 
+	"ccbackend/appctx"
+	"ccbackend/clients"
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
 )
 
 type AgentsService struct {
-	agentsRepo *db.PostgresAgentsRepository
+	agentsRepo     *db.PostgresAgentsRepository
+	socketIOClient clients.SocketIOClient
 }
 
-func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
-	return &AgentsService{agentsRepo: repo}
+func NewAgentsService(repo *db.PostgresAgentsRepository, socketIOClient clients.SocketIOClient) *AgentsService {
+	return &AgentsService{
+		agentsRepo:     repo,
+		socketIOClient: socketIOClient,
+	}
 }
 
 func (s *AgentsService) UpsertActiveAgent(
@@ -434,4 +440,61 @@ func (s *AgentsService) GetInactiveAgents(
 
 	log.Printf("📋 Completed successfully - found %d inactive agents", len(agents))
 	return agents, nil
+}
+
+func (s *AgentsService) DisconnectAllActiveAgentsByOrganization(ctx context.Context) error {
+	log.Printf("📋 Starting to disconnect all active agents by organization")
+
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return fmt.Errorf("organization not found in context")
+	}
+
+	if org.ID == "" {
+		return fmt.Errorf("organization ID is empty in context")
+	}
+	if !core.IsValidULID(org.ID) {
+		return fmt.Errorf("organization ID must be a valid ULID: %s", org.ID)
+	}
+
+	organizationID := models.OrgID(org.ID)
+	log.Printf("📋 Disconnecting agents for organization: %s", organizationID)
+
+	// Get all active agents for the organization
+	agents, err := s.agentsRepo.GetAllActiveAgents(ctx, organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get active agents: %w", err)
+	}
+
+	if len(agents) == 0 {
+		log.Printf("📋 No active agents found for organization %s", organizationID)
+		return nil
+	}
+
+	log.Printf("📋 Found %d active agents to disconnect", len(agents))
+
+	// Disconnect each agent
+	disconnectedCount := 0
+	var disconnectErrors []error
+
+	for _, agent := range agents {
+		log.Printf("🔍 Attempting to disconnect agent %s", agent.CCAgentID)
+		err := s.socketIOClient.DisconnectClientByID(agent.CCAgentID)
+		if err != nil {
+			log.Printf("❌ Failed to disconnect agent %s: %v", agent.CCAgentID, err)
+			disconnectErrors = append(disconnectErrors, fmt.Errorf("agent %s: %w", agent.CCAgentID, err))
+		} else {
+			log.Printf("📋 Successfully disconnected agent %s", agent.CCAgentID)
+			disconnectedCount++
+		}
+	}
+
+	log.Printf("📋 Completed successfully - disconnected %d out of %d agents", disconnectedCount, len(agents))
+
+	// Return aggregated errors if any disconnects failed
+	if len(disconnectErrors) > 0 {
+		return fmt.Errorf("failed to disconnect %d agents: %v", len(disconnectErrors), disconnectErrors)
+	}
+
+	return nil
 }

@@ -15,6 +15,7 @@ type DashboardAPIHandler struct {
 	slackIntegrationsService   services.SlackIntegrationsService
 	discordIntegrationsService services.DiscordIntegrationsService
 	organizationsService       services.OrganizationsService
+	agentsService              services.AgentsService
 }
 
 func NewDashboardAPIHandler(
@@ -22,12 +23,14 @@ func NewDashboardAPIHandler(
 	slackIntegrationsService services.SlackIntegrationsService,
 	discordIntegrationsService services.DiscordIntegrationsService,
 	organizationsService services.OrganizationsService,
+	agentsService services.AgentsService,
 ) *DashboardAPIHandler {
 	return &DashboardAPIHandler{
 		usersService:               usersService,
 		slackIntegrationsService:   slackIntegrationsService,
 		discordIntegrationsService: discordIntegrationsService,
 		organizationsService:       organizationsService,
+		agentsService:              agentsService,
 	}
 }
 
@@ -164,6 +167,15 @@ func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context) (str
 	if err != nil {
 		log.Printf("❌ Failed to generate CCAgent secret key: %v", err)
 		return "", err
+	}
+
+	// Disconnect all active agents since the API key has changed
+	log.Printf("🔌 Disconnecting all active agents for organization: %s", org.ID)
+	if err := h.agentsService.DisconnectAllActiveAgentsByOrganization(ctx); err != nil {
+		log.Printf("⚠️ Failed to disconnect some agents after API key regeneration: %v", err)
+		// Don't fail the request - key generation succeeded
+	} else {
+		log.Printf("✅ All agents disconnected successfully after API key regeneration")
 	}
 
 	log.Printf("✅ CCAgent secret key generated successfully for organization: %s", org.ID)

@@ -158,3 +158,8 @@ func (m *MockAgentsService) GetInactiveAgents(
 	}
 	return args.Get(0).([]*models.ActiveAgent), args.Error(1)
 }
+
+func (m *MockAgentsService) DisconnectAllActiveAgentsByOrganization(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}

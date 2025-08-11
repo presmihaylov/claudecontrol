@@ -42,7 +42,7 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 	require.NoError(t, err, "Failed to create test slack integration")
 
 	txManager := txmanager.NewTransactionManager(dbConn)
-	agentsService := NewAgentsService(agentsRepo)
+	agentsService := NewAgentsService(agentsRepo, nil)
 	slackMessagesService := slackmessages.NewSlackMessagesService(messagesRepo)
 	discordMessagesService := discordmessages.NewDiscordMessagesService(discordMessagesRepo)
 	jobsService := jobs.NewJobsService(jobsRepo, slackMessagesService, discordMessagesService, txManager)
