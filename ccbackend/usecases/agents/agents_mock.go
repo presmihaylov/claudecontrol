@@ -36,7 +36,7 @@ func (m *MockAgentsUseCase) AssignJobToAvailableAgent(
 func (m *MockAgentsUseCase) TryAssignJobToAgent(
 	ctx context.Context,
 	jobID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (string, bool, error) {
 	args := m.Called(ctx, jobID, organizationID)
 	return args.String(0), args.Bool(1), args.Error(2)
@@ -45,7 +45,7 @@ func (m *MockAgentsUseCase) TryAssignJobToAgent(
 func (m *MockAgentsUseCase) ValidateJobBelongsToAgent(
 	ctx context.Context,
 	agentID, jobID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	args := m.Called(ctx, agentID, jobID, organizationID)
 	return args.Error(0)

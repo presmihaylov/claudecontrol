@@ -96,7 +96,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		testBotID := testutils.GenerateDiscordBotID()
 		testThreadID := testutils.GenerateDiscordThreadID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testJobID := testutils.GenerateJobID()
 		testWSConnectionID := testutils.GenerateWSConnectionID()
 		testProcessedID := testutils.GenerateProcessedMessageID()
@@ -123,8 +123,8 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     testMessageID,
 				ChannelID:     testChannelID,
@@ -141,14 +141,14 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 
 		discordIntegration := &models.DiscordIntegration{
 			ID:             testIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			DiscordGuildID: testGuildID,
 		}
 
 		connectedAgent := &models.ActiveAgent{
 			ID:             testutils.GenerateAgentID(),
 			WSConnectionID: testWSConnectionID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 		}
 
 		processedMessage := &models.ProcessedDiscordMessage{
@@ -158,7 +158,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			DiscordThreadID:      testThreadID,
 			TextContent:          "Hello bot, help me with something",
 			DiscordIntegrationID: testIntegrationID,
-			OrganizationID:       testOrgID,
+			OrgID:                testOrgID,
 			Status:               models.ProcessedDiscordMessageStatusInProgress,
 		}
 
@@ -193,7 +193,12 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			Return(nil)
 
 		// Execute
-		err := fixture.useCase.ProcessDiscordMessageEvent(fixture.ctx, event, testIntegrationID, testOrgID)
+		err := fixture.useCase.ProcessDiscordMessageEvent(
+			fixture.ctx,
+			event,
+			testIntegrationID,
+			testOrgID,
+		)
 
 		// Assert
 		assert.NoError(t, err)
@@ -210,7 +215,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		testUserID := testutils.GenerateDiscordUserID()
 		testBotID := testutils.GenerateDiscordBotID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 
 		event := models.DiscordMessageEvent{
 			MessageID: testMessageID,
@@ -232,7 +237,12 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		fixture.mocks.discordClient.On("GetBotUser").Return(botUser, nil)
 
 		// Execute
-		err := fixture.useCase.ProcessDiscordMessageEvent(fixture.ctx, event, testIntegrationID, testOrgID)
+		err := fixture.useCase.ProcessDiscordMessageEvent(
+			fixture.ctx,
+			event,
+			testIntegrationID,
+			testOrgID,
+		)
 
 		// Assert
 		assert.NoError(t, err)
@@ -270,7 +280,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		testBotID := testutils.GenerateDiscordBotID()
 		testThreadID := testutils.GenerateDiscordThreadID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testJobID := testutils.GenerateJobID()
 		testProcessedID := testutils.GenerateProcessedMessageID()
 		testBotUsername := testutils.GenerateDiscordBotUsername()
@@ -298,8 +308,8 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 
 		jobResult := &models.JobCreationResult{
 			Job: &models.Job{
-				ID:             testJobID,
-				OrganizationID: testOrgID,
+				ID:    testJobID,
+				OrgID: testOrgID,
 				DiscordPayload: &models.DiscordJobPayload{
 					MessageID:     testMessageID,
 					ChannelID:     testChannelID,
@@ -313,7 +323,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 
 		discordIntegration := &models.DiscordIntegration{
 			ID:             testIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			DiscordGuildID: testGuildID,
 		}
 
@@ -324,7 +334,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			DiscordThreadID:      testThreadID,
 			TextContent:          "Hello bot, help me with something",
 			DiscordIntegrationID: testIntegrationID,
-			OrganizationID:       testOrgID,
+			OrgID:                testOrgID,
 			Status:               models.ProcessedDiscordMessageStatusQueued,
 		}
 
@@ -393,7 +403,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		testBotID := testutils.GenerateDiscordBotID()
 		testThreadID := testutils.GenerateDiscordThreadID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testBotUsername := testutils.GenerateDiscordBotUsername()
 
 		event := models.DiscordMessageEvent{
@@ -463,7 +473,7 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		testBotID := testutils.GenerateDiscordBotID()
 		testThreadID := testutils.GenerateDiscordThreadID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testJobID := testutils.GenerateJobID()
 		testBotUsername := testutils.GenerateDiscordBotUsername()
 
@@ -490,8 +500,8 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 
 		jobResult := &models.JobCreationResult{
 			Job: &models.Job{
-				ID:             testJobID,
-				OrganizationID: testOrgID,
+				ID:    testJobID,
+				OrgID: testOrgID,
 				DiscordPayload: &models.DiscordJobPayload{
 					MessageID:     testMessageID,
 					ChannelID:     testChannelID,
@@ -555,7 +565,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		testUserID := testutils.GenerateDiscordUserID()
 		testThreadID := testutils.GenerateDiscordThreadID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testJobID := testutils.GenerateJobID()
 		testAgentID := testutils.GenerateAgentID()
 		testWSConnectionID := testutils.GenerateWSConnectionID()
@@ -570,8 +580,8 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     testMessageID,
 				ChannelID:     testChannelID,
@@ -583,14 +593,14 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 
 		discordIntegration := &models.DiscordIntegration{
 			ID:             testIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			DiscordGuildID: testGuildID,
 		}
 
 		agent := &models.ActiveAgent{
 			ID:             testAgentID,
 			WSConnectionID: testWSConnectionID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 		}
 
 		// Configure expectations
@@ -665,7 +675,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		testUserID := testutils.GenerateDiscordUserID()
 		testThreadID := testutils.GenerateDiscordThreadID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testJobID := testutils.GenerateJobID()
 		testDifferentUserID := testutils.GenerateDiscordUserID() // Different user
 
@@ -679,8 +689,8 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     testMessageID,
 				ChannelID:     testChannelID,
@@ -731,7 +741,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		testGuildID := testutils.GenerateDiscordGuildID()
 		testUserID := testutils.GenerateDiscordUserID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 
 		event := models.DiscordReactionEvent{
 			MessageID: testMessageID,
@@ -787,7 +797,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		testThreadID := testutils.GenerateDiscordThreadID()
 		testUserID := testutils.GenerateDiscordUserID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testClientID := testutils.GenerateClientID()
 		testTopLevelMessageID := testutils.GenerateDiscordMessageID() // Different from processed message
 
@@ -801,12 +811,12 @@ func TestProcessProcessingMessage(t *testing.T) {
 			DiscordMessageID:     testMessageID, // Not the top-level message
 			DiscordThreadID:      testThreadID,
 			DiscordIntegrationID: testIntegrationID,
-			OrganizationID:       testOrgID,
+			OrgID:                testOrgID,
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     testTopLevelMessageID, // Different from processed message
 				ChannelID:     testChannelID,
@@ -862,7 +872,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		// Generate consistent test data for this test case
 		testProcessedID := testutils.GenerateProcessedMessageID()
 		testClientID := testutils.GenerateClientID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 
 		payload := models.ProcessingMessagePayload{
 			ProcessedMessageID: testProcessedID,
@@ -909,7 +919,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 		testMessageID := testutils.GenerateDiscordMessageID()
 		testThreadID := testutils.GenerateDiscordThreadID()
 		testIntegrationID := testutils.GenerateDiscordIntegrationID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testClientID := testutils.GenerateClientID()
 
 		payload := models.ProcessingMessagePayload{
@@ -922,7 +932,7 @@ func TestProcessProcessingMessage(t *testing.T) {
 			DiscordMessageID:     testMessageID,
 			DiscordThreadID:      testThreadID,
 			DiscordIntegrationID: testIntegrationID,
-			OrganizationID:       testOrgID,
+			OrgID:                testOrgID,
 		}
 
 		// Configure expectations
@@ -970,7 +980,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 		testProcessedID := testutils.GenerateProcessedMessageID()
 		testAgentID := testutils.GenerateAgentID()
 		testWSConnectionID := testutils.GenerateWSConnectionID()
-		testOrgID := testutils.GenerateOrganizationID()
+		testOrgID := testutils.GenerateOrgID()
 		testMessageID := testutils.GenerateDiscordMessageID()
 		testChannelID := testutils.GenerateDiscordChannelID()
 		testThreadID := testutils.GenerateDiscordThreadID()
@@ -989,12 +999,12 @@ func TestProcessAssistantMessage(t *testing.T) {
 		agent := &models.ActiveAgent{
 			ID:             testAgentID,
 			WSConnectionID: testWSConnectionID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 		}
 
 		job := &models.Job{
-			ID:             testJobID,
-			OrganizationID: testOrgID,
+			ID:    testJobID,
+			OrgID: testOrgID,
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     testMessageID,
 				ChannelID:     testChannelID,
@@ -1006,7 +1016,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 
 		discordIntegration := &models.DiscordIntegration{
 			ID:             testIntegrationID,
-			OrganizationID: testOrgID,
+			OrgID:          testOrgID,
 			DiscordGuildID: testGuildID,
 		}
 
@@ -1016,7 +1026,7 @@ func TestProcessAssistantMessage(t *testing.T) {
 			DiscordMessageID:     testNonTopLevelMessageID, // Not top-level
 			DiscordThreadID:      testThreadID,
 			DiscordIntegrationID: testIntegrationID,
-			OrganizationID:       testOrgID,
+			OrgID:                testOrgID,
 			Status:               models.ProcessedDiscordMessageStatusCompleted,
 		}
 
@@ -1092,11 +1102,11 @@ func TestProcessAssistantMessage(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", "org-456").
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", models.OrgID("org-456")).
 			Return(mo.None[*models.ActiveAgent](), nil)
 
 		// Execute
-		err := useCase.ProcessAssistantMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessAssistantMessage(ctx, "client-123", payload, models.OrgID("org-456"))
 
 		// Assert
 		assert.Error(t, err)
@@ -1136,17 +1146,17 @@ func TestProcessAssistantMessage(t *testing.T) {
 		agent := &models.ActiveAgent{
 			ID:             "agent-111",
 			WSConnectionID: "ws-222",
-			OrganizationID: "org-456",
+			OrgID:          models.OrgID("org-456"),
 		}
 
 		// Configure expectations
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", "org-456").
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", models.OrgID("org-456")).
 			Return(mo.Some(agent), nil)
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
 			Return(mo.None[*models.Job](), nil)
 
 		// Execute
-		err := useCase.ProcessAssistantMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessAssistantMessage(ctx, "client-123", payload, models.OrgID("org-456"))
 
 		// Assert
 		assert.NoError(t, err)
@@ -1185,8 +1195,8 @@ func TestProcessSystemMessage(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:    "job-111",
+			OrgID: models.OrgID("org-456"),
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     "msg-123",
 				ChannelID:     "channel-456",
@@ -1198,12 +1208,12 @@ func TestProcessSystemMessage(t *testing.T) {
 
 		discordIntegration := &models.DiscordIntegration{
 			ID:             "discord-int-123",
-			OrganizationID: "org-456",
+			OrgID:          models.OrgID("org-456"),
 			DiscordGuildID: "guild-789",
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
 			Return(mo.Some(job), nil)
 		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
 			Return(mo.Some(discordIntegration), nil)
@@ -1212,10 +1222,10 @@ func TestProcessSystemMessage(t *testing.T) {
 				params.ThreadID != nil && *params.ThreadID == "thread-123"
 		})).
 			Return(&clients.DiscordPostMessageResponse{}, nil)
-		mockJobsService.On("UpdateJobTimestamp", ctx, "job-111", "org-456").Return(nil)
+		mockJobsService.On("UpdateJobTimestamp", ctx, "job-111", models.OrgID("org-456")).Return(nil)
 
 		// Execute
-		err := useCase.ProcessSystemMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessSystemMessage(ctx, "client-123", payload, models.OrgID("org-456"))
 
 		// Assert
 		assert.NoError(t, err)
@@ -1253,8 +1263,8 @@ func TestProcessSystemMessage(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:    "job-111",
+			OrgID: models.OrgID("org-456"),
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     "msg-123",
 				ChannelID:     "channel-456",
@@ -1267,19 +1277,19 @@ func TestProcessSystemMessage(t *testing.T) {
 		agent := &models.ActiveAgent{
 			ID:             "agent-111",
 			WSConnectionID: "ws-222",
-			OrganizationID: "org-456",
+			OrgID:          models.OrgID("org-456"),
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
 			Return(mo.Some(job), nil)
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", "org-456").
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", models.OrgID("org-456")).
 			Return(mo.Some(agent), nil)
 		// Expected CleanupFailedDiscordJob behavior
 		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
 			Return(mo.Some(&models.DiscordIntegration{
 				ID:             "discord-int-123",
-				OrganizationID: "org-456",
+				OrgID:          models.OrgID("org-456"),
 				DiscordGuildID: "guild-789",
 			}), nil)
 		mockDiscordClient.On("PostMessage", "channel-456", mock.MatchedBy(func(params clients.DiscordMessageParams) bool {
@@ -1295,11 +1305,11 @@ func TestProcessSystemMessage(t *testing.T) {
 				txFunc := args.Get(1).(func(context.Context) error)
 				txFunc(ctx)
 			}).Return(nil)
-		mockAgentsService.On("UnassignAgentFromJob", ctx, "agent-111", "job-111", "org-456").Return(nil)
-		mockJobsService.On("DeleteJob", ctx, "job-111", "org-456").Return(nil)
+		mockAgentsService.On("UnassignAgentFromJob", ctx, "agent-111", "job-111", models.OrgID("org-456")).Return(nil)
+		mockJobsService.On("DeleteJob", ctx, "job-111", models.OrgID("org-456")).Return(nil)
 
 		// Execute
-		err := useCase.ProcessSystemMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessSystemMessage(ctx, "client-123", payload, models.OrgID("org-456"))
 
 		// Assert
 		assert.NoError(t, err)
@@ -1338,11 +1348,11 @@ func TestProcessSystemMessage(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
 			Return(mo.None[*models.Job](), nil)
 
 		// Execute
-		err := useCase.ProcessSystemMessage(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessSystemMessage(ctx, "client-123", payload, models.OrgID("org-456"))
 
 		// Assert
 		assert.NoError(t, err)
@@ -1380,8 +1390,8 @@ func TestProcessJobComplete(t *testing.T) {
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:    "job-111",
+			OrgID: models.OrgID("org-456"),
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     "msg-123",
 				ChannelID:     "channel-456",
@@ -1394,21 +1404,21 @@ func TestProcessJobComplete(t *testing.T) {
 		agent := &models.ActiveAgent{
 			ID:             "agent-111",
 			WSConnectionID: "ws-222",
-			OrganizationID: "org-456",
+			OrgID:          models.OrgID("org-456"),
 		}
 
 		discordIntegration := &models.DiscordIntegration{
 			ID:             "discord-int-123",
-			OrganizationID: "org-456",
+			OrgID:          models.OrgID("org-456"),
 			DiscordGuildID: "guild-789",
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
 			Return(mo.Some(job), nil)
-		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", "org-456").
+		mockAgentsService.On("GetAgentByWSConnectionID", ctx, "client-123", models.OrgID("org-456")).
 			Return(mo.Some(agent), nil)
-		mockAgentsUseCase.On("ValidateJobBelongsToAgent", ctx, "agent-111", "job-111", "org-456").
+		mockAgentsUseCase.On("ValidateJobBelongsToAgent", ctx, "agent-111", "job-111", models.OrgID("org-456")).
 			Return(nil)
 		mockDiscordClient.On("AddReaction", "channel-456", "msg-123", EmojiCheckMark).Return(nil)
 		mockDiscordClient.On("RemoveReaction", "channel-456", "msg-123", mock.AnythingOfType("string")).
@@ -1419,8 +1429,8 @@ func TestProcessJobComplete(t *testing.T) {
 				txFunc := args.Get(1).(func(context.Context) error)
 				txFunc(ctx)
 			}).Return(nil)
-		mockAgentsService.On("UnassignAgentFromJob", ctx, "agent-111", "job-111", "org-456").Return(nil)
-		mockJobsService.On("DeleteJob", ctx, "job-111", "org-456").Return(nil)
+		mockAgentsService.On("UnassignAgentFromJob", ctx, "agent-111", "job-111", models.OrgID("org-456")).Return(nil)
+		mockJobsService.On("DeleteJob", ctx, "job-111", models.OrgID("org-456")).Return(nil)
 		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
 			Return(mo.Some(discordIntegration), nil)
 		mockDiscordClient.On("PostMessage", "channel-456", mock.MatchedBy(func(params clients.DiscordMessageParams) bool {
@@ -1429,7 +1439,7 @@ func TestProcessJobComplete(t *testing.T) {
 			Return(&clients.DiscordPostMessageResponse{}, nil)
 
 		// Execute
-		err := useCase.ProcessJobComplete(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessJobComplete(ctx, "client-123", payload, models.OrgID("org-456"))
 
 		// Assert
 		assert.NoError(t, err)
@@ -1470,11 +1480,11 @@ func TestProcessJobComplete(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
 			Return(mo.None[*models.Job](), nil)
 
 		// Execute
-		err := useCase.ProcessJobComplete(ctx, "client-123", payload, "org-456")
+		err := useCase.ProcessJobComplete(ctx, "client-123", payload, models.OrgID("org-456"))
 
 		// Assert
 		assert.NoError(t, err)
@@ -1507,13 +1517,13 @@ func TestProcessQueuedJobs(t *testing.T) {
 		)
 
 		integration := &models.DiscordIntegration{
-			ID:             "discord-int-123",
-			OrganizationID: "org-456",
+			ID:    "discord-int-123",
+			OrgID: models.OrgID("org-456"),
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:    "job-111",
+			OrgID: models.OrgID("org-456"),
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     "msg-123",
 				ChannelID:     "channel-456",
@@ -1530,7 +1540,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 			DiscordThreadID:      "thread-123",
 			TextContent:          "Queued message content",
 			DiscordIntegrationID: "discord-int-123",
-			OrganizationID:       "org-456",
+			OrgID:                models.OrgID("org-456"),
 			Status:               models.ProcessedDiscordMessageStatusQueued,
 		}
 
@@ -1541,20 +1551,20 @@ func TestProcessQueuedJobs(t *testing.T) {
 			DiscordThreadID:      "thread-123",
 			TextContent:          "Queued message content",
 			DiscordIntegrationID: "discord-int-123",
-			OrganizationID:       "org-456",
+			OrgID:                models.OrgID("org-456"),
 			Status:               models.ProcessedDiscordMessageStatusInProgress,
 		}
 
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
 			Return([]*models.DiscordIntegration{integration}, nil)
-		mockJobsService.On("GetJobsWithQueuedMessages", ctx, models.JobTypeDiscord, "discord-int-123", "org-456").
+		mockJobsService.On("GetJobsWithQueuedMessages", ctx, models.JobTypeDiscord, "discord-int-123", models.OrgID("org-456")).
 			Return([]*models.Job{job}, nil)
-		mockAgentsUseCase.On("TryAssignJobToAgent", ctx, "job-111", "org-456").
+		mockAgentsUseCase.On("TryAssignJobToAgent", ctx, "job-111", models.OrgID("org-456")).
 			Return("client-123", true, nil)
-		mockDiscordMessagesService.On("GetProcessedMessagesByJobIDAndStatus", ctx, "job-111", models.ProcessedDiscordMessageStatusQueued, "discord-int-123", "org-456").
+		mockDiscordMessagesService.On("GetProcessedMessagesByJobIDAndStatus", ctx, "job-111", models.ProcessedDiscordMessageStatusQueued, "discord-int-123", models.OrgID("org-456")).
 			Return([]*models.ProcessedDiscordMessage{queuedMessage}, nil)
-		mockDiscordMessagesService.On("UpdateProcessedDiscordMessage", ctx, "processed-123", models.ProcessedDiscordMessageStatusInProgress, "discord-int-123", "org-456").
+		mockDiscordMessagesService.On("UpdateProcessedDiscordMessage", ctx, "processed-123", models.ProcessedDiscordMessageStatusInProgress, "discord-int-123", models.OrgID("org-456")).
 			Return(updatedMessage, nil)
 		// Update reaction for new conversation (top-level message)
 		mockDiscordClient.On("AddReaction", "channel-456", "msg-123", EmojiEyes).Return(nil)
@@ -1562,7 +1572,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 			Return(nil).
 			Maybe()
 		// Send start conversation to agent
-		mockJobsService.On("GetJobByID", ctx, "job-111", "org-456").
+		mockJobsService.On("GetJobByID", ctx, "job-111", models.OrgID("org-456")).
 			Return(mo.Some(job), nil).Maybe()
 		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
 			Return(mo.Some(integration), nil).Maybe()
@@ -1640,14 +1650,14 @@ func TestProcessQueuedJobs(t *testing.T) {
 		)
 
 		integration := &models.DiscordIntegration{
-			ID:             "discord-int-123",
-			OrganizationID: "org-456",
+			ID:    "discord-int-123",
+			OrgID: models.OrgID("org-456"),
 		}
 
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
 			Return([]*models.DiscordIntegration{integration}, nil)
-		mockJobsService.On("GetJobsWithQueuedMessages", ctx, models.JobTypeDiscord, "discord-int-123", "org-456").
+		mockJobsService.On("GetJobsWithQueuedMessages", ctx, models.JobTypeDiscord, "discord-int-123", models.OrgID("org-456")).
 			Return([]*models.Job{}, nil)
 
 		// Execute
@@ -1683,13 +1693,13 @@ func TestProcessQueuedJobs(t *testing.T) {
 		)
 
 		integration := &models.DiscordIntegration{
-			ID:             "discord-int-123",
-			OrganizationID: "org-456",
+			ID:    "discord-int-123",
+			OrgID: models.OrgID("org-456"),
 		}
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:    "job-111",
+			OrgID: models.OrgID("org-456"),
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     "msg-123",
 				ChannelID:     "channel-456",
@@ -1702,9 +1712,9 @@ func TestProcessQueuedJobs(t *testing.T) {
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
 			Return([]*models.DiscordIntegration{integration}, nil)
-		mockJobsService.On("GetJobsWithQueuedMessages", ctx, models.JobTypeDiscord, "discord-int-123", "org-456").
+		mockJobsService.On("GetJobsWithQueuedMessages", ctx, models.JobTypeDiscord, "discord-int-123", models.OrgID("org-456")).
 			Return([]*models.Job{job}, nil)
-		mockAgentsUseCase.On("TryAssignJobToAgent", ctx, "job-111", "org-456").
+		mockAgentsUseCase.On("TryAssignJobToAgent", ctx, "job-111", models.OrgID("org-456")).
 			Return("", false, nil) // No agent assigned
 
 		// Execute
@@ -1743,8 +1753,8 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 		)
 
 		job := &models.Job{
-			ID:             "job-111",
-			OrganizationID: "org-456",
+			ID:    "job-111",
+			OrgID: models.OrgID("org-456"),
 			DiscordPayload: &models.DiscordJobPayload{
 				MessageID:     "msg-123",
 				ChannelID:     "channel-456",
@@ -1756,7 +1766,7 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 
 		discordIntegration := &models.DiscordIntegration{
 			ID:             "discord-int-123",
-			OrganizationID: "org-456",
+			OrgID:          models.OrgID("org-456"),
 			DiscordGuildID: "guild-789",
 		}
 
@@ -1776,8 +1786,8 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 				txFunc := args.Get(1).(func(context.Context) error)
 				txFunc(ctx)
 			}).Return(nil)
-		mockAgentsService.On("UnassignAgentFromJob", ctx, "agent-111", "job-111", "org-456").Return(nil)
-		mockJobsService.On("DeleteJob", ctx, "job-111", "org-456").Return(nil)
+		mockAgentsService.On("UnassignAgentFromJob", ctx, "agent-111", "job-111", models.OrgID("org-456")).Return(nil)
+		mockJobsService.On("DeleteJob", ctx, "job-111", models.OrgID("org-456")).Return(nil)
 
 		// Execute
 		err := useCase.CleanupFailedDiscordJob(ctx, job, "agent-111", "Agent failed to process")
@@ -1816,7 +1826,7 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 
 		job := &models.Job{
 			ID:             "job-111",
-			OrganizationID: "org-456",
+			OrgID:          models.OrgID("org-456"),
 			DiscordPayload: nil, // No Discord payload
 		}
 

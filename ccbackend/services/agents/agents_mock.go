@@ -16,7 +16,7 @@ type MockAgentsService struct {
 
 func (m *MockAgentsService) UpsertActiveAgent(
 	ctx context.Context,
-	wsConnectionID, organizationID models.OrgID,
+	wsConnectionID string, organizationID models.OrgID,
 	agentID string,
 ) (*models.ActiveAgent, error) {
 	args := m.Called(ctx, wsConnectionID, organizationID, agentID)
@@ -28,7 +28,7 @@ func (m *MockAgentsService) UpsertActiveAgent(
 
 func (m *MockAgentsService) DeleteActiveAgentByWsConnectionID(
 	ctx context.Context,
-	wsConnectionID, organizationID models.OrgID,
+	wsConnectionID string, organizationID models.OrgID,
 ) error {
 	args := m.Called(ctx, wsConnectionID, organizationID)
 	return args.Error(0)
@@ -117,7 +117,7 @@ func (m *MockAgentsService) GetAgentByJobID(
 
 func (m *MockAgentsService) GetAgentByWSConnectionID(
 	ctx context.Context,
-	wsConnectionID, organizationID models.OrgID,
+	wsConnectionID string, organizationID models.OrgID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	args := m.Called(ctx, wsConnectionID, organizationID)
 	return args.Get(0).(mo.Option[*models.ActiveAgent]), args.Error(1)
@@ -137,7 +137,7 @@ func (m *MockAgentsService) GetActiveAgentJobAssignments(
 
 func (m *MockAgentsService) UpdateAgentLastActiveAt(
 	ctx context.Context,
-	wsConnectionID, organizationID models.OrgID,
+	wsConnectionID string, organizationID models.OrgID,
 ) error {
 	args := m.Called(ctx, wsConnectionID, organizationID)
 	return args.Error(0)

@@ -119,7 +119,7 @@ func TestDiscordIntegrationsService_CreateDiscordIntegration_Success(t *testing.
 	assert.NotNil(t, result)
 	assert.Equal(t, guildID, result.DiscordGuildID)
 	assert.Equal(t, "Test Guild", result.DiscordGuildName)
-	assert.Equal(t, organizationID, result.OrgID)
+	assert.Equal(t, models.OrgID(organizationID), result.OrgID)
 	// DiscordAuthToken field was removed from the model
 	assert.True(t, core.IsValidULID(result.ID))
 
@@ -233,7 +233,7 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_Succe
 		},
 	}
 
-	mockRepo.On("GetDiscordIntegrationsByOrganizationID", ctx, organizationID).
+	mockRepo.On("GetDiscordIntegrationsByOrganizationID", ctx, models.OrgID(organizationID)).
 		Return(expectedIntegrations, nil)
 
 	// Act
@@ -257,7 +257,7 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_Repos
 	ctx := context.Background()
 	organizationID := core.NewID("org")
 
-	mockRepo.On("GetDiscordIntegrationsByOrganizationID", ctx, organizationID).
+	mockRepo.On("GetDiscordIntegrationsByOrganizationID", ctx, models.OrgID(organizationID)).
 		Return(nil, fmt.Errorf("database connection error"))
 
 	// Act
@@ -315,7 +315,7 @@ func TestDiscordIntegrationsService_DeleteDiscordIntegration_Success(t *testing.
 	organizationID := core.NewID("org")
 	integrationID := core.NewID("di")
 
-	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, organizationID).Return(true, nil)
+	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, models.OrgID(organizationID)).Return(true, nil)
 
 	// Act
 	err := service.DeleteDiscordIntegration(ctx, models.OrgID(organizationID), integrationID)
@@ -338,7 +338,7 @@ func TestDiscordIntegrationsService_DeleteDiscordIntegration_NotFound(t *testing
 	organizationID := core.NewID("org")
 	integrationID := core.NewID("di")
 
-	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, organizationID).Return(false, nil)
+	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, models.OrgID(organizationID)).Return(false, nil)
 
 	// Act
 	err := service.DeleteDiscordIntegration(ctx, models.OrgID(organizationID), integrationID)

@@ -193,6 +193,11 @@ func GenerateOrganizationID() string {
 	return core.NewID("org")
 }
 
+// GenerateOrgID generates a random organization ID using ULID and returns models.OrgID type
+func GenerateOrgID() models.OrgID {
+	return models.OrgID(core.NewID("org"))
+}
+
 // GenerateDiscordGuildID generates a random Discord guild ID
 func GenerateDiscordGuildID() string {
 	n, _ := rand.Int(rand.Reader, big.NewInt(900000))

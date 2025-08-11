@@ -33,7 +33,7 @@ func (m *MockSlackMessagesService) UpdateProcessedSlackMessage(
 	id string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (*models.ProcessedSlackMessage, error) {
 	args := m.Called(ctx, id, status, slackIntegrationID, organizationID)
 	if args.Get(0) == nil {
@@ -47,7 +47,7 @@ func (m *MockSlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 	jobID string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) ([]*models.ProcessedSlackMessage, error) {
 	args := m.Called(ctx, jobID, status, slackIntegrationID, organizationID)
 	if args.Get(0) == nil {
@@ -59,7 +59,7 @@ func (m *MockSlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 func (m *MockSlackMessagesService) GetProcessedSlackMessageByID(
 	ctx context.Context,
 	id string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	args := m.Called(ctx, id, organizationID)
 	if args.Get(0) == nil {
@@ -72,7 +72,7 @@ func (m *MockSlackMessagesService) GetLatestProcessedMessageForJob(
 	ctx context.Context,
 	jobID string,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	args := m.Called(ctx, jobID, slackIntegrationID, organizationID)
 	if args.Get(0) == nil {
@@ -85,7 +85,7 @@ func (m *MockSlackMessagesService) GetActiveMessageCountForJobs(
 	ctx context.Context,
 	jobIDs []string,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) (int, error) {
 	args := m.Called(ctx, jobIDs, slackIntegrationID, organizationID)
 	return args.Int(0), args.Error(1)
@@ -96,7 +96,7 @@ func (m *MockSlackMessagesService) TESTS_UpdateProcessedSlackMessageUpdatedAt(
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	args := m.Called(ctx, id, updatedAt, slackIntegrationID, organizationID)
 	return args.Error(0)
@@ -106,7 +106,7 @@ func (m *MockSlackMessagesService) DeleteProcessedSlackMessagesByJobID(
 	ctx context.Context,
 	jobID string,
 	slackIntegrationID string,
-	organizationID string,
+	organizationID models.OrgID,
 ) error {
 	args := m.Called(ctx, jobID, slackIntegrationID, organizationID)
 	return args.Error(0)

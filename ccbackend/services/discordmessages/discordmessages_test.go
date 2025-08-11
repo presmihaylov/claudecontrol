@@ -48,9 +48,9 @@ func setupTestDiscordMessagesService(
 
 	// Create a test job for message operations
 	testJob := &models.Job{
-		ID:             core.NewID("j"),
-		JobType:        models.JobTypeDiscord,
-		OrganizationID: testIntegration.OrganizationID,
+		ID:      core.NewID("j"),
+		JobType: models.JobTypeDiscord,
+		OrgID:   testIntegration.OrgID,
 		DiscordPayload: &models.DiscordJobPayload{
 			MessageID:     "test-discord-message-123",
 			ThreadID:      "test-discord-thread-456",
@@ -68,9 +68,9 @@ func setupTestDiscordMessagesService(
 		_, _ = discordIntegrationsRepo.DeleteDiscordIntegrationByID(
 			context.Background(),
 			testIntegration.ID,
-			testUser.ID,
+			testUser.OrgID,
 		)
-		_, _ = jobsRepo.DeleteJob(context.Background(), testJob.ID, testIntegration.OrganizationID)
+		_, _ = jobsRepo.DeleteJob(context.Background(), testJob.ID, testIntegration.OrgID)
 		dbConn.Close()
 	}
 
@@ -82,7 +82,7 @@ func TestDiscordMessagesService(t *testing.T) {
 	defer cleanup()
 
 	discordIntegrationID := testIntegration.ID
-	organizationID := testIntegration.OrganizationID
+	organizationID := testIntegration.OrgID
 
 	// Create a test job for these tests
 	cfg, err := testutils.LoadTestConfig()
@@ -93,9 +93,9 @@ func TestDiscordMessagesService(t *testing.T) {
 
 	jobsRepo := db.NewPostgresJobsRepository(dbConn, cfg.DatabaseSchema)
 	testJob := &models.Job{
-		ID:             core.NewID("j"),
-		JobType:        models.JobTypeDiscord,
-		OrganizationID: organizationID,
+		ID:      core.NewID("j"),
+		JobType: models.JobTypeDiscord,
+		OrgID:   organizationID,
 		DiscordPayload: &models.DiscordJobPayload{
 			MessageID:     "test-message-create",
 			ThreadID:      "test-thread-create",
@@ -128,7 +128,7 @@ func TestDiscordMessagesService(t *testing.T) {
 			assert.Equal(t, "Hello Discord world!", message.TextContent)
 			assert.Equal(t, models.ProcessedDiscordMessageStatusQueued, message.Status)
 			assert.Equal(t, discordIntegrationID, message.DiscordIntegrationID)
-			assert.Equal(t, organizationID, message.OrganizationID)
+			assert.Equal(t, organizationID, message.OrgID)
 			assert.False(t, message.CreatedAt.IsZero())
 			assert.False(t, message.UpdatedAt.IsZero())
 
@@ -390,9 +390,9 @@ func TestDiscordMessagesService(t *testing.T) {
 		t.Run("NoMessages", func(t *testing.T) {
 			// Create a new job with no messages
 			newTestJob := &models.Job{
-				ID:             core.NewID("j"),
-				JobType:        models.JobTypeDiscord,
-				OrganizationID: organizationID,
+				ID:      core.NewID("j"),
+				JobType: models.JobTypeDiscord,
+				OrgID:   organizationID,
 				DiscordPayload: &models.DiscordJobPayload{
 					MessageID:     "test-message-no-msg",
 					ThreadID:      "test-thread-no-msg",
@@ -419,9 +419,9 @@ func TestDiscordMessagesService(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			// Create two jobs
 			job1 := &models.Job{
-				ID:             core.NewID("j"),
-				JobType:        models.JobTypeDiscord,
-				OrganizationID: organizationID,
+				ID:      core.NewID("j"),
+				JobType: models.JobTypeDiscord,
+				OrgID:   organizationID,
 				DiscordPayload: &models.DiscordJobPayload{
 					MessageID:     "test-message-count-1",
 					ThreadID:      "test-thread-count-1",
@@ -434,9 +434,9 @@ func TestDiscordMessagesService(t *testing.T) {
 			defer func() { _, _ = jobsRepo.DeleteJob(context.Background(), job1.ID, organizationID) }()
 
 			job2 := &models.Job{
-				ID:             core.NewID("j"),
-				JobType:        models.JobTypeDiscord,
-				OrganizationID: organizationID,
+				ID:      core.NewID("j"),
+				JobType: models.JobTypeDiscord,
+				OrgID:   organizationID,
 				DiscordPayload: &models.DiscordJobPayload{
 					MessageID:     "test-message-count-2",
 					ThreadID:      "test-thread-count-2",
@@ -527,9 +527,9 @@ func TestDiscordMessagesService(t *testing.T) {
 		t.Run("NoActiveMessages", func(t *testing.T) {
 			// Create a job with only completed messages
 			job := &models.Job{
-				ID:             core.NewID("j"),
-				JobType:        models.JobTypeDiscord,
-				OrganizationID: organizationID,
+				ID:      core.NewID("j"),
+				JobType: models.JobTypeDiscord,
+				OrgID:   organizationID,
 				DiscordPayload: &models.DiscordJobPayload{
 					MessageID:     "test-message-no-active",
 					ThreadID:      "test-thread-no-active",

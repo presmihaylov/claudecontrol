@@ -45,7 +45,7 @@ func setupTestJobsService(t *testing.T) (*JobsService, *models.SlackIntegration,
 
 	// Create test user and slack integration
 	testUser := testutils.CreateTestUser(t, usersRepo)
-	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrganizationID)
+	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrgID)
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 
@@ -57,7 +57,11 @@ func setupTestJobsService(t *testing.T) (*JobsService, *models.SlackIntegration,
 
 	cleanup := func() {
 		// Clean up test data
-		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
+		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(
+			context.Background(),
+			testIntegration.ID,
+			testUser.OrgID,
+		)
 		dbConn.Close()
 	}
 
@@ -81,7 +85,7 @@ func TestJobsService(t *testing.T) {
 				slackChannelID,
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 
 			require.NoError(t, err)
@@ -102,7 +106,7 @@ func TestJobsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -116,7 +120,7 @@ func TestJobsService(t *testing.T) {
 				"",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -130,7 +134,7 @@ func TestJobsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				"",
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -147,7 +151,7 @@ func TestJobsService(t *testing.T) {
 				"C9876543210",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 
@@ -155,7 +159,7 @@ func TestJobsService(t *testing.T) {
 			maybeFetchedJob, err := service.GetJobByID(
 				context.Background(),
 				createdJob.ID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 			require.True(t, maybeFetchedJob.IsPresent())
@@ -170,7 +174,7 @@ func TestJobsService(t *testing.T) {
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			_, err := service.GetJobByID(context.Background(), "", testIntegration.OrganizationID)
+			_, err := service.GetJobByID(context.Background(), "", testIntegration.OrgID)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
@@ -189,7 +193,7 @@ func TestJobsService(t *testing.T) {
 			maybeJob, err := service.GetJobByID(
 				context.Background(),
 				id,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeJob.IsPresent())
@@ -208,7 +212,7 @@ func TestJobsService(t *testing.T) {
 				slackChannelID,
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 
 			require.NoError(t, err)
@@ -224,7 +228,7 @@ func TestJobsService(t *testing.T) {
 				service.DeleteJob(
 					context.Background(),
 					result.Job.ID,
-					testIntegration.OrganizationID,
+					testIntegration.OrgID,
 				)
 			}()
 		})
@@ -241,7 +245,7 @@ func TestJobsService(t *testing.T) {
 				slackChannelID,
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 			assert.Equal(t, models.JobCreationStatusCreated, firstResult.Status)
@@ -253,7 +257,7 @@ func TestJobsService(t *testing.T) {
 				slackChannelID,
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 			assert.Equal(t, models.JobCreationStatusNA, secondResult.Status)
@@ -271,7 +275,7 @@ func TestJobsService(t *testing.T) {
 				service.DeleteJob(
 					context.Background(),
 					firstResult.Job.ID,
-					testIntegration.OrganizationID,
+					testIntegration.OrgID,
 				)
 			}()
 		})
@@ -283,7 +287,7 @@ func TestJobsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -297,7 +301,7 @@ func TestJobsService(t *testing.T) {
 				"",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -311,7 +315,7 @@ func TestJobsService(t *testing.T) {
 				"C1234567890",
 				"testuser",
 				"",
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 
 			require.Error(t, err)
@@ -328,7 +332,7 @@ func TestJobsService(t *testing.T) {
 				"C1111111111",
 				"testuser",
 				slackIntegrationID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 
@@ -336,7 +340,7 @@ func TestJobsService(t *testing.T) {
 			maybeFetchedJob, err := service.GetJobByID(
 				context.Background(),
 				job.ID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 			require.True(t, maybeFetchedJob.IsPresent())
@@ -344,21 +348,21 @@ func TestJobsService(t *testing.T) {
 			assert.Equal(t, job.ID, fetchedJob.ID)
 
 			// Delete the job
-			err = service.DeleteJob(context.Background(), job.ID, testIntegration.OrganizationID)
+			err = service.DeleteJob(context.Background(), job.ID, testIntegration.OrgID)
 			require.NoError(t, err)
 
 			// Verify job no longer exists
 			maybeJob, err := service.GetJobByID(
 				context.Background(),
 				job.ID,
-				testIntegration.OrganizationID,
+				testIntegration.OrgID,
 			)
 			require.NoError(t, err)
 			assert.False(t, maybeJob.IsPresent())
 		})
 
 		t.Run("NilUUID", func(t *testing.T) {
-			err := service.DeleteJob(context.Background(), "", testIntegration.OrganizationID)
+			err := service.DeleteJob(context.Background(), "", testIntegration.OrgID)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
@@ -374,7 +378,7 @@ func TestJobsService(t *testing.T) {
 		t.Run("NotFound", func(t *testing.T) {
 			id := core.NewID("j")
 
-			err := service.DeleteJob(context.Background(), id, testIntegration.OrganizationID)
+			err := service.DeleteJob(context.Background(), id, testIntegration.OrgID)
 			require.NoError(t, err)
 		})
 	})
@@ -400,11 +404,15 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 	// Create shared test user and slack integration
 	testUser := testutils.CreateTestUser(t, usersRepo)
 
-	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrganizationID)
+	testIntegration := testutils.CreateTestSlackIntegration(testUser.OrgID)
 	err = slackIntegrationsRepo.CreateSlackIntegration(context.Background(), testIntegration)
 	require.NoError(t, err, "Failed to create test slack integration")
 	defer func() {
-		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.ID)
+		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(
+			context.Background(),
+			testIntegration.ID,
+			testUser.OrgID,
+		)
 	}()
 
 	// Create both services using the same integration
@@ -416,7 +424,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 
 	// Use the shared integration ID
 	slackIntegrationID := testIntegration.ID
-	organizationID := testIntegration.OrganizationID
+	organizationID := testIntegration.OrgID
 
 	t.Run("JobAssignmentWorkflow", func(t *testing.T) {
 		// Create an agent first
