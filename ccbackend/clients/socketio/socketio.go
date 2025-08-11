@@ -217,6 +217,20 @@ func (ws *Server) SendMessage(clientID string, msg any) error {
 	return nil
 }
 
+func (ws *Server) DisconnectClientByID(clientID string) error {
+	log.Printf("🔌 Attempting to disconnect client %s", clientID)
+	client := ws.getClientByID(clientID)
+	if client == nil {
+		log.Printf("❌ Cannot disconnect: client %s not found", clientID)
+		return fmt.Errorf("client with ID %s not found", clientID)
+	}
+
+	// Force disconnect the Socket.IO client
+	client.Socket.Disconnect(true)
+	log.Printf("✅ Client %s disconnected successfully", clientID)
+	return nil
+}
+
 // Interface methods with proper type signatures
 func (ws *Server) RegisterMessageHandler(handler clients.MessageHandlerFunc) {
 	ws.mutex.Lock()

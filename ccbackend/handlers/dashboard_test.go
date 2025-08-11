@@ -17,11 +17,37 @@ import (
 	"ccbackend/appctx"
 	"ccbackend/models"
 	"ccbackend/models/api"
+	agents "ccbackend/services/agents"
 	discordintegrations "ccbackend/services/discord_integrations"
 	organizations "ccbackend/services/organizations"
 	slackintegrations "ccbackend/services/slack_integrations"
+	"ccbackend/services/txmanager"
 	users "ccbackend/services/users"
 )
+
+// ErrorResponse represents a generic error response
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// Simple transaction manager for tests that just executes the function
+type simpleTxManager struct{}
+
+func (s *simpleTxManager) WithTransaction(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
+}
+
+func (s *simpleTxManager) BeginTransaction(ctx context.Context) (context.Context, error) {
+	return ctx, nil
+}
+
+func (s *simpleTxManager) CommitTransaction(ctx context.Context) error {
+	return nil
+}
+
+func (s *simpleTxManager) RollbackTransaction(ctx context.Context) error {
+	return nil
+}
 
 // Test data
 var (
@@ -87,6 +113,8 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 			mockUsersService := &users.MockUsersService{}
 			mockSlackIntegrationsService := &slackintegrations.MockSlackIntegrationsService{}
 			mockOrganizationsService := &organizations.MockOrganizationsService{}
+			mockAgentsService := &agents.MockAgentsService{}
+			mockTxManager := &txmanager.MockTransactionManager{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
 			mockDiscordIntegrationsService := &discordintegrations.MockDiscordIntegrationsService{}
@@ -95,6 +123,8 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 				mockSlackIntegrationsService,
 				mockDiscordIntegrationsService,
 				mockOrganizationsService,
+				mockAgentsService,
+				mockTxManager,
 			)
 
 			result, err := handler.ListSlackIntegrations(context.Background(), tt.user)
@@ -144,6 +174,8 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 			mockUsersService := &users.MockUsersService{}
 			mockSlackIntegrationsService := &slackintegrations.MockSlackIntegrationsService{}
 			mockOrganizationsService := &organizations.MockOrganizationsService{}
+			mockAgentsService := &agents.MockAgentsService{}
+			mockTxManager := &txmanager.MockTransactionManager{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
 			mockDiscordIntegrationsService := &discordintegrations.MockDiscordIntegrationsService{}
@@ -152,6 +184,8 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 				mockSlackIntegrationsService,
 				mockDiscordIntegrationsService,
 				mockOrganizationsService,
+				mockAgentsService,
+				mockTxManager,
 			)
 
 			result, err := handler.CreateSlackIntegration(
@@ -214,6 +248,8 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 			mockUsersService := &users.MockUsersService{}
 			mockSlackIntegrationsService := &slackintegrations.MockSlackIntegrationsService{}
 			mockOrganizationsService := &organizations.MockOrganizationsService{}
+			mockAgentsService := &agents.MockAgentsService{}
+			mockTxManager := &txmanager.MockTransactionManager{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
 			mockDiscordIntegrationsService := &discordintegrations.MockDiscordIntegrationsService{}
@@ -222,6 +258,8 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 				mockSlackIntegrationsService,
 				mockDiscordIntegrationsService,
 				mockOrganizationsService,
+				mockAgentsService,
+				mockTxManager,
 			)
 
 			err := handler.DeleteSlackIntegration(tt.ctx, tt.integrationID)
@@ -247,18 +285,30 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 	tests := []struct {
 		name           string
 		ctx            context.Context
-		mockSetup      func(*organizations.MockOrganizationsService)
+		mockSetup      func(*organizations.MockOrganizationsService, *agents.MockAgentsService)
 		expectedResult string
 		expectedError  string
 	}{
 		{
 			name: "success - generates key",
 			ctx:  ctx,
-			mockSetup: func(m *organizations.MockOrganizationsService) {
-				m.On("GenerateCCAgentSecretKey", ctx, models.OrgID(testOrg.ID)).Return(expectedSecretKey, nil)
+			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
+				orgMock.On("GenerateCCAgentSecretKey", ctx, models.OrgID(testOrg.ID)).Return(expectedSecretKey, nil)
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", ctx, models.OrgID(testOrg.ID)).Return(nil)
 			},
 			expectedResult: expectedSecretKey,
 			expectedError:  "",
+		},
+		{
+			name: "fails when agent disconnect fails",
+			ctx:  ctx,
+			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
+				orgMock.On("GenerateCCAgentSecretKey", ctx, models.OrgID(testOrg.ID)).Return(expectedSecretKey, nil)
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", ctx, models.OrgID(testOrg.ID)).
+					Return(fmt.Errorf("failed to disconnect agents"))
+			},
+			expectedResult: "",
+			expectedError:  "API key generation transaction failed",
 		},
 	}
 
@@ -267,7 +317,10 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			mockUsersService := &users.MockUsersService{}
 			mockSlackIntegrationsService := &slackintegrations.MockSlackIntegrationsService{}
 			mockOrganizationsService := &organizations.MockOrganizationsService{}
-			tt.mockSetup(mockOrganizationsService)
+			mockAgentsService := &agents.MockAgentsService{}
+			// Create a simple custom transaction manager that just executes the function
+			mockTxManager := &simpleTxManager{}
+			tt.mockSetup(mockOrganizationsService, mockAgentsService)
 
 			mockDiscordIntegrationsService := &discordintegrations.MockDiscordIntegrationsService{}
 			handler := NewDashboardAPIHandler(
@@ -275,6 +328,8 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 				mockSlackIntegrationsService,
 				mockDiscordIntegrationsService,
 				mockOrganizationsService,
+				mockAgentsService,
+				mockTxManager,
 			)
 
 			result, err := handler.GenerateCCAgentSecretKey(tt.ctx)
@@ -291,6 +346,7 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			mockUsersService.AssertExpectations(t)
 			mockSlackIntegrationsService.AssertExpectations(t)
 			mockOrganizationsService.AssertExpectations(t)
+			mockAgentsService.AssertExpectations(t)
 		})
 	}
 }
@@ -326,12 +382,16 @@ func TestDashboardHTTPHandler_HandleUserAuthenticate(t *testing.T) {
 			mockUsersService := &users.MockUsersService{}
 			mockSlackIntegrationsService := &slackintegrations.MockSlackIntegrationsService{}
 			mockOrganizationsService := &organizations.MockOrganizationsService{}
+			mockAgentsService := &agents.MockAgentsService{}
+			mockTxManager := &txmanager.MockTransactionManager{}
 			mockDiscordIntegrationsService := &discordintegrations.MockDiscordIntegrationsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
 				mockDiscordIntegrationsService,
 				mockOrganizationsService,
+				mockAgentsService,
+				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
@@ -391,6 +451,8 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 			mockUsersService := &users.MockUsersService{}
 			mockSlackIntegrationsService := &slackintegrations.MockSlackIntegrationsService{}
 			mockOrganizationsService := &organizations.MockOrganizationsService{}
+			mockAgentsService := &agents.MockAgentsService{}
+			mockTxManager := &txmanager.MockTransactionManager{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
 			mockDiscordIntegrationsService := &discordintegrations.MockDiscordIntegrationsService{}
@@ -399,6 +461,8 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 				mockSlackIntegrationsService,
 				mockDiscordIntegrationsService,
 				mockOrganizationsService,
+				mockAgentsService,
+				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
@@ -478,6 +542,8 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 			mockUsersService := &users.MockUsersService{}
 			mockSlackIntegrationsService := &slackintegrations.MockSlackIntegrationsService{}
 			mockOrganizationsService := &organizations.MockOrganizationsService{}
+			mockAgentsService := &agents.MockAgentsService{}
+			mockTxManager := &txmanager.MockTransactionManager{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
 			mockDiscordIntegrationsService := &discordintegrations.MockDiscordIntegrationsService{}
@@ -486,6 +552,8 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 				mockSlackIntegrationsService,
 				mockDiscordIntegrationsService,
 				mockOrganizationsService,
+				mockAgentsService,
+				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
@@ -542,6 +610,8 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 			mockUsersService := &users.MockUsersService{}
 			mockSlackIntegrationsService := &slackintegrations.MockSlackIntegrationsService{}
 			mockOrganizationsService := &organizations.MockOrganizationsService{}
+			mockAgentsService := &agents.MockAgentsService{}
+			mockTxManager := &txmanager.MockTransactionManager{}
 			tt.mockSetup(mockSlackIntegrationsService)
 
 			mockDiscordIntegrationsService := &discordintegrations.MockDiscordIntegrationsService{}
@@ -550,6 +620,8 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 				mockSlackIntegrationsService,
 				mockDiscordIntegrationsService,
 				mockOrganizationsService,
+				mockAgentsService,
+				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
@@ -579,21 +651,36 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		mockSetup      func(*organizations.MockOrganizationsService)
+		mockSetup      func(*organizations.MockOrganizationsService, *agents.MockAgentsService)
 		expectedStatus int
 		validateBody   func(*testing.T, []byte)
 	}{
 		{
 			name: "success - generates key",
-			mockSetup: func(m *organizations.MockOrganizationsService) {
-				m.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
+			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
+				orgMock.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
 					Return(expectedSecretKey, nil)
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
+					Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			validateBody: func(t *testing.T, body []byte) {
 				var response CCAgentSecretKeyResponse
 				require.NoError(t, json.Unmarshal(body, &response))
 				assert.Equal(t, expectedSecretKey, response.SecretKey)
+			},
+		},
+		{
+			name: "fails when agent disconnect fails",
+			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
+				orgMock.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
+					Return(expectedSecretKey, nil)
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
+					Return(fmt.Errorf("failed to disconnect agents"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			validateBody: func(t *testing.T, body []byte) {
+				assert.Contains(t, string(body), "failed to generate secret key")
 			},
 		},
 	}
@@ -603,7 +690,10 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 			mockUsersService := &users.MockUsersService{}
 			mockSlackIntegrationsService := &slackintegrations.MockSlackIntegrationsService{}
 			mockOrganizationsService := &organizations.MockOrganizationsService{}
-			tt.mockSetup(mockOrganizationsService)
+			mockAgentsService := &agents.MockAgentsService{}
+			// Create a simple custom transaction manager that just executes the function
+			mockTxManager := &simpleTxManager{}
+			tt.mockSetup(mockOrganizationsService, mockAgentsService)
 
 			mockDiscordIntegrationsService := &discordintegrations.MockDiscordIntegrationsService{}
 			handler := NewDashboardAPIHandler(
@@ -611,6 +701,8 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 				mockSlackIntegrationsService,
 				mockDiscordIntegrationsService,
 				mockOrganizationsService,
+				mockAgentsService,
+				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)
 
@@ -630,6 +722,7 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 			mockUsersService.AssertExpectations(t)
 			mockSlackIntegrationsService.AssertExpectations(t)
 			mockOrganizationsService.AssertExpectations(t)
+			mockAgentsService.AssertExpectations(t)
 		})
 	}
 }

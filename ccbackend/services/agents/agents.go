@@ -7,17 +7,22 @@ import (
 
 	"github.com/samber/mo"
 
+	"ccbackend/clients"
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
 )
 
 type AgentsService struct {
-	agentsRepo *db.PostgresAgentsRepository
+	agentsRepo     *db.PostgresAgentsRepository
+	socketIOClient clients.SocketIOClient
 }
 
-func NewAgentsService(repo *db.PostgresAgentsRepository) *AgentsService {
-	return &AgentsService{agentsRepo: repo}
+func NewAgentsService(repo *db.PostgresAgentsRepository, socketIOClient clients.SocketIOClient) *AgentsService {
+	return &AgentsService{
+		agentsRepo:     repo,
+		socketIOClient: socketIOClient,
+	}
 }
 
 func (s *AgentsService) UpsertActiveAgent(
@@ -434,4 +439,42 @@ func (s *AgentsService) GetInactiveAgents(
 
 	log.Printf("📋 Completed successfully - found %d inactive agents", len(agents))
 	return agents, nil
+}
+
+func (s *AgentsService) DisconnectAllActiveAgentsByOrganization(
+	ctx context.Context,
+	organizationID models.OrgID,
+) error {
+	log.Printf("📋 Starting to disconnect all active agents for organization: %s", organizationID)
+
+	if !core.IsValidULID(string(organizationID)) {
+		return fmt.Errorf("organization ID must be a valid ULID: %s", organizationID)
+	}
+
+	// Get all active agents for the organization
+	agents, err := s.agentsRepo.GetAllActiveAgents(ctx, organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get active agents: %w", err)
+	}
+
+	if len(agents) == 0 {
+		log.Printf("📋 No active agents found for organization %s", organizationID)
+		return nil
+	}
+
+	log.Printf("📋 Found %d active agents to disconnect", len(agents))
+
+	// Disconnect each agent
+	for _, agent := range agents {
+		log.Printf("🔍 Attempting to disconnect agent %s", agent.CCAgentID)
+		err := s.socketIOClient.DisconnectClientByID(agent.CCAgentID)
+		if err != nil {
+			log.Printf("❌ Failed to disconnect agent %s: %v", agent.CCAgentID, err)
+			return fmt.Errorf("failed to disconnect agent %s: %w", agent.CCAgentID, err)
+		}
+		log.Printf("📋 Successfully disconnected agent %s", agent.CCAgentID)
+	}
+
+	log.Printf("📋 Completed successfully - disconnected all %d agents", len(agents))
+	return nil
 }
