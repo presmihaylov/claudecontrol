@@ -526,7 +526,7 @@ export default function Home() {
 							<div className="flex gap-4">
 								<Button
 									size="lg"
-									className="flex items-center gap-2 cursor-pointer"
+									className="flex items-center gap-2 cursor-pointer bg-black text-white hover:bg-black/90"
 									onClick={handleAddToSlack}
 								>
 									<SlackIcon className="h-5 w-5" color="white" />
@@ -534,7 +534,7 @@ export default function Home() {
 								</Button>
 								<Button
 									size="lg"
-									className="flex items-center gap-2 cursor-pointer"
+									className="flex items-center gap-2 cursor-pointer bg-black text-white hover:bg-black/90"
 									onClick={handleAddToDiscord}
 								>
 									<DiscordIcon className="h-5 w-5" color="white" />
@@ -699,11 +699,11 @@ export default function Home() {
 						{/* Connect another workspace buttons */}
 						<div className="flex justify-center pt-4">
 							<div className="flex gap-4">
-								<Button size="lg" className="flex items-center gap-2" onClick={handleAddToSlack}>
+								<Button size="lg" className="flex items-center gap-2 bg-black text-white hover:bg-black/90" onClick={handleAddToSlack}>
 									<SlackIcon className="h-5 w-5" color="white" />
 									Connect Slack
 								</Button>
-								<Button size="lg" className="flex items-center gap-2" onClick={handleAddToDiscord}>
+								<Button size="lg" className="flex items-center gap-2 bg-black text-white hover:bg-black/90" onClick={handleAddToDiscord}>
 									<DiscordIcon className="h-5 w-5" color="white" />
 									Connect Discord
 								</Button>
