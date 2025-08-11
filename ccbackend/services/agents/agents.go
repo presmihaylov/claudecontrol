@@ -7,7 +7,6 @@ import (
 
 	"github.com/samber/mo"
 
-	"ccbackend/appctx"
 	"ccbackend/clients"
 	"ccbackend/core"
 	"ccbackend/db"
@@ -442,23 +441,15 @@ func (s *AgentsService) GetInactiveAgents(
 	return agents, nil
 }
 
-func (s *AgentsService) DisconnectAllActiveAgentsByOrganization(ctx context.Context) error {
-	log.Printf("📋 Starting to disconnect all active agents by organization")
+func (s *AgentsService) DisconnectAllActiveAgentsByOrganization(
+	ctx context.Context,
+	organizationID models.OrgID,
+) error {
+	log.Printf("📋 Starting to disconnect all active agents for organization: %s", organizationID)
 
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return fmt.Errorf("organization not found in context")
+	if !core.IsValidULID(string(organizationID)) {
+		return fmt.Errorf("organization ID must be a valid ULID: %s", organizationID)
 	}
-
-	if org.ID == "" {
-		return fmt.Errorf("organization ID is empty in context")
-	}
-	if !core.IsValidULID(org.ID) {
-		return fmt.Errorf("organization ID must be a valid ULID: %s", org.ID)
-	}
-
-	organizationID := models.OrgID(org.ID)
-	log.Printf("📋 Disconnecting agents for organization: %s", organizationID)
 
 	// Get all active agents for the organization
 	agents, err := s.agentsRepo.GetAllActiveAgents(ctx, organizationID)

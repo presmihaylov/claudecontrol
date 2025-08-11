@@ -171,7 +171,7 @@ func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context) (str
 
 	// Disconnect all active agents since the API key has changed
 	log.Printf("🔌 Disconnecting all active agents for organization: %s", org.ID)
-	if err := h.agentsService.DisconnectAllActiveAgentsByOrganization(ctx); err != nil {
+	if err := h.agentsService.DisconnectAllActiveAgentsByOrganization(ctx, models.OrgID(org.ID)); err != nil {
 		log.Printf("❌ Failed to disconnect agents after API key regeneration: %v", err)
 		return "", fmt.Errorf("API key generated but failed to disconnect agents: %w", err)
 	}

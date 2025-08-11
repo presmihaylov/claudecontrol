@@ -268,7 +268,7 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			ctx:  ctx,
 			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
 				orgMock.On("GenerateCCAgentSecretKey", ctx, models.OrgID(testOrg.ID)).Return(expectedSecretKey, nil)
-				agentsMock.On("DisconnectAllActiveAgentsByOrganization", ctx).Return(nil)
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", ctx, models.OrgID(testOrg.ID)).Return(nil)
 			},
 			expectedResult: expectedSecretKey,
 			expectedError:  "",
@@ -278,7 +278,7 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			ctx:  ctx,
 			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
 				orgMock.On("GenerateCCAgentSecretKey", ctx, models.OrgID(testOrg.ID)).Return(expectedSecretKey, nil)
-				agentsMock.On("DisconnectAllActiveAgentsByOrganization", ctx).
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", ctx, models.OrgID(testOrg.ID)).
 					Return(fmt.Errorf("failed to disconnect agents"))
 			},
 			expectedResult: "",
@@ -623,7 +623,7 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
 				orgMock.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
 					Return(expectedSecretKey, nil)
-				agentsMock.On("DisconnectAllActiveAgentsByOrganization", mock.AnythingOfType("*context.valueCtx")).
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
 					Return(nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -638,7 +638,7 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 			mockSetup: func(orgMock *organizations.MockOrganizationsService, agentsMock *agents.MockAgentsService) {
 				orgMock.On("GenerateCCAgentSecretKey", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
 					Return(expectedSecretKey, nil)
-				agentsMock.On("DisconnectAllActiveAgentsByOrganization", mock.AnythingOfType("*context.valueCtx")).
+				agentsMock.On("DisconnectAllActiveAgentsByOrganization", mock.AnythingOfType("*context.valueCtx"), models.OrgID(testOrg.ID)).
 					Return(fmt.Errorf("failed to disconnect agents"))
 			},
 			expectedStatus: http.StatusInternalServerError,

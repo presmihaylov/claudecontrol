@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"ccbackend/appctx"
 	"ccbackend/clients/socketio"
 	"ccbackend/core"
 	"ccbackend/db"
@@ -701,12 +700,6 @@ func TestAgentsService(t *testing.T) {
 		agentsRepo := db.NewPostgresAgentsRepository(dbConn, cfg.DatabaseSchema)
 		testServiceWithMock := NewAgentsService(agentsRepo, mockSocketIO)
 
-		// Create a test organization context
-		testOrg := &models.Organization{
-			ID: string(organizationID),
-		}
-		ctx := appctx.SetOrganization(context.Background(), testOrg)
-
 		t.Run("Success - disconnects all agents", func(t *testing.T) {
 			// Create multiple test agents
 			agentID1 := core.NewID("ccaid")
@@ -734,7 +727,7 @@ func TestAgentsService(t *testing.T) {
 			mockSocketIO.On("DisconnectClientByID", agentID2).Return(nil)
 
 			// Call the disconnect function
-			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(ctx)
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), organizationID)
 			require.NoError(t, err)
 
 			// Verify all mock expectations were met
@@ -747,7 +740,7 @@ func TestAgentsService(t *testing.T) {
 			mockSocketIO.Calls = nil
 
 			// Call disconnect with no agents
-			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(ctx)
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), organizationID)
 			require.NoError(t, err)
 
 			// Should not call DisconnectClientByID at all
@@ -785,7 +778,7 @@ func TestAgentsService(t *testing.T) {
 			mockSocketIO.On("DisconnectClientByID", agentID2).Return(fmt.Errorf("disconnect failed"))
 
 			// Call the disconnect function
-			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(ctx)
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), organizationID)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "failed to disconnect 1 agents")
 			assert.Contains(t, err.Error(), "disconnect failed")
@@ -794,34 +787,15 @@ func TestAgentsService(t *testing.T) {
 			mockSocketIO.AssertExpectations(t)
 		})
 
-		t.Run("Error - organization not found in context", func(t *testing.T) {
-			// Reset mock for this test
-			mockSocketIO.ExpectedCalls = nil
-			mockSocketIO.Calls = nil
-
-			// Call without organization context
-			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background())
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "organization not found in context")
-
-			// Should not call DisconnectClientByID
-			mockSocketIO.AssertNotCalled(t, "DisconnectClientByID")
-		})
-
 		t.Run("Error - empty organization ID", func(t *testing.T) {
 			// Reset mock for this test
 			mockSocketIO.ExpectedCalls = nil
 			mockSocketIO.Calls = nil
 
-			// Create context with empty organization ID
-			emptyOrg := &models.Organization{
-				ID: "",
-			}
-			ctxWithEmptyOrg := appctx.SetOrganization(context.Background(), emptyOrg)
-
-			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(ctxWithEmptyOrg)
+			// Call with empty organization ID
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), "")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "organization ID is empty in context")
+			assert.Contains(t, err.Error(), "organization ID must be a valid ULID")
 
 			// Should not call DisconnectClientByID
 			mockSocketIO.AssertNotCalled(t, "DisconnectClientByID")
@@ -832,13 +806,8 @@ func TestAgentsService(t *testing.T) {
 			mockSocketIO.ExpectedCalls = nil
 			mockSocketIO.Calls = nil
 
-			// Create context with invalid organization ID
-			invalidOrg := &models.Organization{
-				ID: "invalid-ulid",
-			}
-			ctxWithInvalidOrg := appctx.SetOrganization(context.Background(), invalidOrg)
-
-			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(ctxWithInvalidOrg)
+			// Call with invalid organization ID
+			err = testServiceWithMock.DisconnectAllActiveAgentsByOrganization(context.Background(), "invalid-ulid")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "organization ID must be a valid ULID")
 
