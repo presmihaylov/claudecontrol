@@ -458,32 +458,6 @@ func (s *JobsService) TESTS_UpdateJobUpdatedAt(
 	return nil
 }
 
-// GetJobsWithQueuedMessages returns jobs that have at least one message in QUEUED status
-func (s *JobsService) GetJobsWithQueuedMessages(
-	ctx context.Context,
-	organizationID models.OrgID,
-	jobType models.JobType,
-	integrationID string,
-) ([]*models.Job, error) {
-	log.Printf("📋 Starting to get jobs with queued messages for job type: %s", jobType)
-	if jobType == "" {
-		return nil, fmt.Errorf("job_type cannot be empty")
-	}
-	if !core.IsValidULID(integrationID) {
-		return nil, fmt.Errorf("integration_id must be a valid ULID")
-	}
-	if !core.IsValidULID(string(organizationID)) {
-		return nil, fmt.Errorf("organization_id must be a valid ULID")
-	}
-
-	jobs, err := s.jobsRepo.GetJobsWithQueuedMessages(ctx, jobType, integrationID, organizationID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs with queued messages: %w", err)
-	}
-
-	log.Printf("📋 Completed successfully - found %d jobs with queued messages for job type: %s", len(jobs), jobType)
-	return jobs, nil
-}
 
 // Discord-specific job methods
 

@@ -265,3 +265,12 @@ func trimDiscordMessage(message string) string {
 
 	return message[:trimmedLength] + truncationSuffix
 }
+
+// groupDiscordMessagesByJobID groups processed Discord messages by their job ID
+func groupDiscordMessagesByJobID(messages []*models.ProcessedDiscordMessage) map[string][]*models.ProcessedDiscordMessage {
+	grouped := make(map[string][]*models.ProcessedDiscordMessage)
+	for _, msg := range messages {
+		grouped[msg.JobID] = append(grouped[msg.JobID], msg)
+	}
+	return grouped
+}

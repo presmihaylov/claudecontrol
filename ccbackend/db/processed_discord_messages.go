@@ -263,3 +263,26 @@ func (r *PostgresProcessedDiscordMessagesRepository) DeleteProcessedDiscordMessa
 
 	return nil
 }
+
+func (r *PostgresProcessedDiscordMessagesRepository) GetProcessedMessagesByStatus(
+	ctx context.Context,
+	status models.ProcessedDiscordMessageStatus,
+	integrationID string,
+	organizationID models.OrgID,
+) ([]*models.ProcessedDiscordMessage, error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.processed_discord_messages 
+		WHERE status = $1 AND discord_integration_id = $2 AND organization_id = $3
+		ORDER BY created_at ASC`, columnsStr, r.schema)
+
+	var messages []*models.ProcessedDiscordMessage
+	err := db.SelectContext(ctx, &messages, query, status, integrationID, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processed messages by status: %w", err)
+	}
+
+	return messages, nil
+}

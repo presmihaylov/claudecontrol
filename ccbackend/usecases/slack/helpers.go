@@ -300,3 +300,12 @@ func isAgentErrorMessage(message string) bool {
 	// Check if message starts with the specific error prefix from ccagent
 	return strings.HasPrefix(message, "ccagent encountered error:")
 }
+
+// groupMessagesByJobID groups processed Slack messages by their job ID
+func groupMessagesByJobID(messages []*models.ProcessedSlackMessage) map[string][]*models.ProcessedSlackMessage {
+	grouped := make(map[string][]*models.ProcessedSlackMessage)
+	for _, msg := range messages {
+		grouped[msg.JobID] = append(grouped[msg.JobID], msg)
+	}
+	return grouped
+}

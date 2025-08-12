@@ -280,3 +280,26 @@ func (r *PostgresProcessedSlackMessagesRepository) GetLatestProcessedMessageForJ
 
 	return mo.Some(message), nil
 }
+
+func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByStatus(
+	ctx context.Context,
+	status models.ProcessedSlackMessageStatus,
+	integrationID string,
+	organizationID models.OrgID,
+) ([]*models.ProcessedSlackMessage, error) {
+	db := dbtx.GetTransactional(ctx, r.db)
+	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.processed_slack_messages 
+		WHERE status = $1 AND slack_integration_id = $2 AND organization_id = $3
+		ORDER BY created_at ASC`, columnsStr, r.schema)
+
+	var messages []*models.ProcessedSlackMessage
+	err := db.SelectContext(ctx, &messages, query, status, integrationID, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processed messages by status: %w", err)
+	}
+
+	return messages, nil
+}

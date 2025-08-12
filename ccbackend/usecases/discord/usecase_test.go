@@ -1558,8 +1558,10 @@ func TestProcessQueuedJobs(t *testing.T) {
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
 			Return([]*models.DiscordIntegration{integration}, nil)
-		mockJobsService.On("GetJobsWithQueuedMessages", ctx, models.OrgID("org-456"), models.JobTypeDiscord, "discord-int-123").
-			Return([]*models.Job{job}, nil)
+		mockDiscordMessagesService.On("GetProcessedMessagesByStatus", ctx, models.OrgID("org-456"), models.ProcessedDiscordMessageStatusQueued, "discord-int-123").
+			Return([]*models.ProcessedDiscordMessage{queuedMessage}, nil)
+		mockJobsService.On("GetJobByID", ctx, models.OrgID("org-456"), "job-111").
+			Return(mo.Some(job), nil)
 		mockAgentsUseCase.On("TryAssignJobToAgent", ctx, "job-111", models.OrgID("org-456")).
 			Return("client-123", true, nil)
 		mockDiscordMessagesService.On("GetProcessedMessagesByJobIDAndStatus", ctx, models.OrgID("org-456"), "job-111", models.ProcessedDiscordMessageStatusQueued, "discord-int-123").
@@ -1657,8 +1659,8 @@ func TestProcessQueuedJobs(t *testing.T) {
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
 			Return([]*models.DiscordIntegration{integration}, nil)
-		mockJobsService.On("GetJobsWithQueuedMessages", ctx, models.OrgID("org-456"), models.JobTypeDiscord, "discord-int-123").
-			Return([]*models.Job{}, nil)
+		mockDiscordMessagesService.On("GetProcessedMessagesByStatus", ctx, models.OrgID("org-456"), models.ProcessedDiscordMessageStatusQueued, "discord-int-123").
+			Return([]*models.ProcessedDiscordMessage{}, nil)
 
 		// Execute
 		err := useCase.ProcessQueuedJobs(ctx)
@@ -1709,11 +1711,24 @@ func TestProcessQueuedJobs(t *testing.T) {
 			},
 		}
 
+		queuedMessage := &models.ProcessedDiscordMessage{
+			ID:                   "processed-123",
+			JobID:                "job-111",
+			DiscordMessageID:     "msg-123",
+			DiscordThreadID:      "thread-123",
+			TextContent:          "Queued message content",
+			DiscordIntegrationID: "discord-int-123",
+			OrgID:                models.OrgID("org-456"),
+			Status:               models.ProcessedDiscordMessageStatusQueued,
+		}
+
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
 			Return([]*models.DiscordIntegration{integration}, nil)
-		mockJobsService.On("GetJobsWithQueuedMessages", ctx, models.OrgID("org-456"), models.JobTypeDiscord, "discord-int-123").
-			Return([]*models.Job{job}, nil)
+		mockDiscordMessagesService.On("GetProcessedMessagesByStatus", ctx, models.OrgID("org-456"), models.ProcessedDiscordMessageStatusQueued, "discord-int-123").
+			Return([]*models.ProcessedDiscordMessage{queuedMessage}, nil)
+		mockJobsService.On("GetJobByID", ctx, models.OrgID("org-456"), "job-111").
+			Return(mo.Some(job), nil)
 		mockAgentsUseCase.On("TryAssignJobToAgent", ctx, "job-111", models.OrgID("org-456")).
 			Return("", false, nil) // No agent assigned
 

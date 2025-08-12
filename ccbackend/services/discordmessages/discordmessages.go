@@ -300,3 +300,29 @@ func (s *DiscordMessagesService) DeleteProcessedDiscordMessagesByJobID(
 	log.Printf("📋 Completed successfully - deleted processed discord messages for job ID: %s", jobID)
 	return nil
 }
+
+func (s *DiscordMessagesService) GetProcessedMessagesByStatus(
+	ctx context.Context,
+	organizationID models.OrgID,
+	status models.ProcessedDiscordMessageStatus,
+	discordIntegrationID string,
+) ([]*models.ProcessedDiscordMessage, error) {
+	log.Printf("📋 Starting to get processed discord messages with status: %s", status)
+	if status == "" {
+		return nil, fmt.Errorf("status cannot be empty")
+	}
+	if !core.IsValidULID(discordIntegrationID) {
+		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
+	}
+	if !core.IsValidULID(string(organizationID)) {
+		return nil, fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	messages, err := s.processedDiscordMessagesRepo.GetProcessedMessagesByStatus(ctx, status, discordIntegrationID, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processed messages by status: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found %d processed discord messages with status: %s", len(messages), status)
+	return messages, nil
+}
