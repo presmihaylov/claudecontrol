@@ -273,11 +273,7 @@ func (s *SlackUseCase) ProcessReactionAdded(
 			log.Printf("✅ Unassigned agent %s from manually completed job %s", agent.ID, job.ID)
 		}
 
-		// Delete the job and its associated processed messages
-		if err := s.jobsService.DeleteJob(ctx, organizationID, job.ID); err != nil {
-			log.Printf("❌ Failed to delete completed job %s: %v", job.ID, err)
-			return fmt.Errorf("failed to delete completed job: %w", err)
-		}
+		// Note: Job and messages are preserved for record keeping (PMI-976)
 
 		return nil
 	}); err != nil {
@@ -544,12 +540,8 @@ func (s *SlackUseCase) ProcessJobComplete(
 		}
 		log.Printf("✅ Unassigned agent %s from completed job %s", agent.ID, jobID)
 
-		// Delete the job and its associated processed messages
-		if err := s.jobsService.DeleteJob(ctx, organizationID, jobID); err != nil {
-			log.Printf("❌ Failed to delete completed job %s: %v", jobID, err)
-			return fmt.Errorf("failed to delete completed job: %w", err)
-		}
-		log.Printf("🗑️ Deleted completed job %s", jobID)
+		// Note: Job and messages are preserved for record keeping (PMI-976)
+		log.Printf("✅ Completed job %s (preserved for record keeping)", jobID)
 
 		return nil
 	}); err != nil {
@@ -605,12 +597,8 @@ func (s *SlackUseCase) CleanupFailedSlackJob(
 			log.Printf("🔗 Unassigned agent %s from job %s", agentID, job.ID)
 		}
 
-		// Delete the job (use the job's slack integration and organization from the job)
-		if err := s.jobsService.DeleteJob(ctx, organizationID, job.ID); err != nil {
-			log.Printf("❌ Failed to delete job %s: %v", job.ID, err)
-			return fmt.Errorf("failed to delete job: %w", err)
-		}
-		log.Printf("🗑️ Deleted job %s", job.ID)
+		// Note: Job and messages are preserved for record keeping (PMI-976)
+		log.Printf("✅ Cleaned up job %s (preserved for record keeping)", job.ID)
 
 		return nil
 	}); err != nil {

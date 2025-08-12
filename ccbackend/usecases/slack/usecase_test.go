@@ -305,7 +305,7 @@ func TestProcessReactionAdded(t *testing.T) {
 			}).Return(nil)
 		fixture.mocks.agentsService.On("UnassignAgentFromJob", fixture.ctx, testOrgID, testAgentID, testJobID).
 			Return(nil)
-		fixture.mocks.jobsService.On("DeleteJob", fixture.ctx, testOrgID, testJobID).Return(nil)
+		// Note: DeleteJob expectation removed due to PMI-976 - jobs are preserved for record keeping
 
 		// Mock Slack client for sending system message
 		fixture.mocks.slackClient.MockPostMessage = func(channelID string, params clients.SlackMessageParams) (*clients.SlackPostMessageResponse, error) {
@@ -489,7 +489,7 @@ func TestProcessJobComplete(t *testing.T) {
 			}).Return(nil)
 		fixture.mocks.agentsService.On("UnassignAgentFromJob", fixture.ctx, testOrgID, testAgentID, testJobID).
 			Return(nil)
-		fixture.mocks.jobsService.On("DeleteJob", fixture.ctx, testOrgID, testJobID).Return(nil)
+		// Note: DeleteJob expectation removed due to PMI-976 - jobs are preserved for record keeping
 
 		// Mock system message sending
 		fixture.mocks.slackClient.MockPostMessage = func(channelID string, params clients.SlackMessageParams) (*clients.SlackPostMessageResponse, error) {

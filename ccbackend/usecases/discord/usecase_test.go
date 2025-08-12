@@ -619,7 +619,7 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 				txFunc(ctx) // Execute with same context for simplicity
 			}).Return(nil)
 		mockAgentsService.On("UnassignAgentFromJob", ctx, testOrgID, testAgentID, testJobID).Return(nil)
-		mockJobsService.On("DeleteJob", ctx, testOrgID, testJobID).Return(nil)
+		// Note: DeleteJob expectation removed due to PMI-976 - jobs are preserved for record keeping
 
 		// Discord reaction update
 		mockDiscordClient.On("AddReaction", testChannelID, testMessageID, EmojiCheckMark).Return(nil)
@@ -1306,7 +1306,7 @@ func TestProcessSystemMessage(t *testing.T) {
 				txFunc(ctx)
 			}).Return(nil)
 		mockAgentsService.On("UnassignAgentFromJob", ctx, models.OrgID("org-456"), "agent-111", "job-111").Return(nil)
-		mockJobsService.On("DeleteJob", ctx, models.OrgID("org-456"), "job-111").Return(nil)
+		// Note: DeleteJob expectation removed due to PMI-976 - jobs are preserved for record keeping
 
 		// Execute
 		err := useCase.ProcessSystemMessage(ctx, "client-123", payload, models.OrgID("org-456"))
@@ -1430,7 +1430,7 @@ func TestProcessJobComplete(t *testing.T) {
 				txFunc(ctx)
 			}).Return(nil)
 		mockAgentsService.On("UnassignAgentFromJob", ctx, models.OrgID("org-456"), "agent-111", "job-111").Return(nil)
-		mockJobsService.On("DeleteJob", ctx, models.OrgID("org-456"), "job-111").Return(nil)
+		// Note: DeleteJob expectation removed due to PMI-976 - jobs are preserved for record keeping
 		mockDiscordIntegrationsService.On("GetDiscordIntegrationByID", ctx, "discord-int-123").
 			Return(mo.Some(discordIntegration), nil)
 		mockDiscordClient.On("PostMessage", "channel-456", mock.MatchedBy(func(params clients.DiscordMessageParams) bool {
@@ -1802,7 +1802,7 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 				txFunc(ctx)
 			}).Return(nil)
 		mockAgentsService.On("UnassignAgentFromJob", ctx, models.OrgID("org-456"), "agent-111", "job-111").Return(nil)
-		mockJobsService.On("DeleteJob", ctx, models.OrgID("org-456"), "job-111").Return(nil)
+		// Note: DeleteJob expectation removed due to PMI-976 - jobs are preserved for record keeping
 
 		// Execute
 		err := useCase.CleanupFailedDiscordJob(ctx, job, "agent-111", "Agent failed to process")
