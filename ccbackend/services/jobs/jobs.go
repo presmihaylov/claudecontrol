@@ -239,13 +239,179 @@ func (s *JobsService) GetIdleJobs(
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	jobs, err := s.jobsRepo.GetIdleJobs(ctx, idleMinutes, organizationID)
+	// Get potentially idle jobs from database (keep current simple query)
+	candidateJobs, err := s.jobsRepo.GetIdleJobs(ctx, idleMinutes, organizationID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get idle jobs: %w", err)
+		return nil, fmt.Errorf("failed to get candidate idle jobs: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - found %d idle jobs", len(jobs))
-	return jobs, nil
+	log.Printf("🔍 Found %d candidate idle jobs, checking for active messages", len(candidateJobs))
+
+	// Filter out jobs that have active messages using batch approach to avoid N+1 queries
+	jobsWithActiveMessages, err := s.batchCheckActiveMessages(ctx, candidateJobs, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to batch check active messages: %w", err)
+	}
+
+	var trulyIdleJobs []*models.Job
+	for _, job := range candidateJobs {
+		if !jobsWithActiveMessages[job.ID] {
+			trulyIdleJobs = append(trulyIdleJobs, job)
+			log.Printf("✅ Job %s confirmed idle (no active messages)", job.ID)
+		} else {
+			log.Printf("🔄 Job %s has active messages - not marking as idle", job.ID)
+		}
+	}
+
+	log.Printf(
+		"📋 Completed successfully - found %d truly idle jobs out of %d candidates",
+		len(trulyIdleJobs),
+		len(candidateJobs),
+	)
+	return trulyIdleJobs, nil
+}
+
+// batchCheckActiveMessages efficiently checks multiple jobs for active messages to avoid N+1 queries
+// Returns a map of jobID -> hasActiveMessages
+func (s *JobsService) batchCheckActiveMessages(
+	ctx context.Context,
+	candidateJobs []*models.Job,
+	organizationID models.OrgID,
+) (map[string]bool, error) {
+	result := make(map[string]bool)
+
+	// Group jobs by type and integration ID for efficient batch queries
+	slackJobsByIntegration := make(map[string][]string) // integrationID -> []jobIDs
+	discordJobsByIntegration := make(map[string][]string)
+
+	for _, job := range candidateJobs {
+		switch job.JobType {
+		case models.JobTypeSlack:
+			if job.SlackPayload != nil {
+				integrationID := job.SlackPayload.IntegrationID
+				slackJobsByIntegration[integrationID] = append(slackJobsByIntegration[integrationID], job.ID)
+			}
+		case models.JobTypeDiscord:
+			if job.DiscordPayload != nil {
+				integrationID := job.DiscordPayload.IntegrationID
+				discordJobsByIntegration[integrationID] = append(discordJobsByIntegration[integrationID], job.ID)
+			}
+		}
+	}
+
+	// Batch check Slack jobs
+	for integrationID, jobIDs := range slackJobsByIntegration {
+		activeJobIDs, err := s.getSlackJobsWithActiveMessages(ctx, jobIDs, integrationID, organizationID)
+		if err != nil {
+			log.Printf("⚠️ Failed to check active messages for Slack integration %s: %v", integrationID, err)
+			// On error, be conservative and mark all jobs as having active messages
+			for _, jobID := range jobIDs {
+				result[jobID] = true
+			}
+			continue
+		}
+		// Mark jobs with active messages
+		for _, jobID := range activeJobIDs {
+			result[jobID] = true
+		}
+		// Jobs not in activeJobIDs are idle (result[jobID] defaults to false)
+	}
+
+	// Batch check Discord jobs
+	for integrationID, jobIDs := range discordJobsByIntegration {
+		activeJobIDs, err := s.getDiscordJobsWithActiveMessages(ctx, jobIDs, integrationID, organizationID)
+		if err != nil {
+			log.Printf("⚠️ Failed to check active messages for Discord integration %s: %v", integrationID, err)
+			// On error, be conservative and mark all jobs as having active messages
+			for _, jobID := range jobIDs {
+				result[jobID] = true
+			}
+			continue
+		}
+		// Mark jobs with active messages
+		for _, jobID := range activeJobIDs {
+			result[jobID] = true
+		}
+		// Jobs not in activeJobIDs are idle (result[jobID] defaults to false)
+	}
+
+	return result, nil
+}
+
+// getSlackJobsWithActiveMessages returns job IDs that have QUEUED or IN_PROGRESS Slack messages
+func (s *JobsService) getSlackJobsWithActiveMessages(
+	ctx context.Context,
+	jobIDs []string,
+	slackIntegrationID string,
+	organizationID models.OrgID,
+) ([]string, error) {
+	var activeJobIDs []string
+
+	// Check each job for active messages - this could be optimized further with a custom query
+	for _, jobID := range jobIDs {
+		// Check QUEUED messages
+		queuedMsgs, err := s.slackMessagesService.GetProcessedMessagesByJobIDAndStatus(
+			ctx, organizationID, jobID, models.ProcessedSlackMessageStatusQueued, slackIntegrationID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check queued messages for job %s: %w", jobID, err)
+		}
+		if len(queuedMsgs) > 0 {
+			activeJobIDs = append(activeJobIDs, jobID)
+			continue // Job has active messages, no need to check IN_PROGRESS
+		}
+
+		// Check IN_PROGRESS messages
+		inProgressMsgs, err := s.slackMessagesService.GetProcessedMessagesByJobIDAndStatus(
+			ctx, organizationID, jobID, models.ProcessedSlackMessageStatusInProgress, slackIntegrationID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check in-progress messages for job %s: %w", jobID, err)
+		}
+		if len(inProgressMsgs) > 0 {
+			activeJobIDs = append(activeJobIDs, jobID)
+		}
+	}
+
+	return activeJobIDs, nil
+}
+
+// getDiscordJobsWithActiveMessages returns job IDs that have QUEUED or IN_PROGRESS Discord messages
+func (s *JobsService) getDiscordJobsWithActiveMessages(
+	ctx context.Context,
+	jobIDs []string,
+	discordIntegrationID string,
+	organizationID models.OrgID,
+) ([]string, error) {
+	var activeJobIDs []string
+
+	// Check each job for active messages - this could be optimized further with a custom query
+	for _, jobID := range jobIDs {
+		// Check QUEUED messages
+		queuedMsgs, err := s.discordMessagesService.GetProcessedMessagesByJobIDAndStatus(
+			ctx, organizationID, jobID, models.ProcessedDiscordMessageStatusQueued, discordIntegrationID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check queued Discord messages for job %s: %w", jobID, err)
+		}
+		if len(queuedMsgs) > 0 {
+			activeJobIDs = append(activeJobIDs, jobID)
+			continue // Job has active messages, no need to check IN_PROGRESS
+		}
+
+		// Check IN_PROGRESS messages
+		inProgressMsgs, err := s.discordMessagesService.GetProcessedMessagesByJobIDAndStatus(
+			ctx, organizationID, jobID, models.ProcessedDiscordMessageStatusInProgress, discordIntegrationID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check in-progress Discord messages for job %s: %w", jobID, err)
+		}
+		if len(inProgressMsgs) > 0 {
+			activeJobIDs = append(activeJobIDs, jobID)
+		}
+	}
+
+	return activeJobIDs, nil
 }
 
 func (s *JobsService) DeleteJob(
