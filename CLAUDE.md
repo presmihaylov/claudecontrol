@@ -100,6 +100,16 @@ The Socket.IO implementation provides real-time communication:
 - Organization-scoped agent tracking
 - Integration with Slack and Discord webhooks
 
+### ccagent Integration (External Binary)
+The ccagent is a separate Go CLI tool that connects to this backend via Socket.IO:
+- **Purpose**: CLI agent that connects Claude Code or Cursor to the backend for job execution
+- **Connection**: Uses Socket.IO client to maintain persistent connection to ccbackend
+- **Authentication**: Authenticates using API keys configured per organization
+- **Job Processing**: Receives jobs from backend, executes them using Claude Code/Cursor, reports status back
+- **Git Integration**: Creates branches, manages PRs, handles git operations for each job
+- **Agent Support**: Supports both Claude Code (`--agent claude`) and Cursor (`--agent cursor`)
+- **Deployment**: Runs as separate binary, typically on developer machines or CI environments
+
 ### Environment Configuration
 ccbackend requires environment variables (copy `.env.example` to `.env` and configure):
 ```
@@ -113,9 +123,10 @@ DATABASE_URL=<postgresql_connection_string>
 ### Key Integration Points
 - **Slack Webhooks**: `/slack/events` endpoint for app mentions and URL verification
 - **Discord Webhooks**: `/discord/events` endpoint for Discord message events
-- **Socket.IO Endpoint**: Socket.IO server for real-time agent connections with API key authentication
+- **Socket.IO Endpoint**: Socket.IO server for real-time ccagent connections with API key authentication
 - **Dashboard API**: `/api/dashboard/*` endpoints with Clerk JWT authentication
 - **Clerk Authentication**: JWT-based user authentication with automatic user creation
+- **ccagent Communication**: External ccagent binary connects via Socket.IO for job processing
 
 ## Go Code Standards
 - Use `any` instead of `interface{}` for generic types
