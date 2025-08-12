@@ -566,8 +566,10 @@ Claude Code has access to specialized subagents for specific tasks. These should
   - Run `supabase status` or equivalent to verify database availability
   - If Supabase is not running, immediately stop execution and instruct user to run `supabase start`
   - All tests will fail without a running database, making test fixing impossible
-- **Capabilities**: Fixes Go tests in ccbackend, suggests new test coverage, runs test suites autonomously
+- **Scope**: Works only with ccbackend and ccfrontend modules in this repository
+- **Capabilities**: Fixes Go tests in ccbackend and frontend tests in ccfrontend, suggests new test coverage, runs test suites autonomously
 - **Usage**: Available for automated test management and fixing test issues, but only after confirming database availability
+- **Limitation**: Does not work with ccagent tests as ccagent is in a separate repository
 
 ## Mock Architecture
 
