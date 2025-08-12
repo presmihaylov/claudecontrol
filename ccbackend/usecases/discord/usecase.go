@@ -878,12 +878,10 @@ func (d *DiscordUseCase) ProcessQueuedJobs(ctx context.Context) error {
 			// Only fetch job if we need job payload for processing
 			maybeJob, err := d.jobsService.GetJobByID(ctx, integration.OrgID, jobID)
 			if err != nil {
-				log.Printf("❌ Failed to get job %s: %v", jobID, err)
-				continue
+				return fmt.Errorf("failed to get job %s for integration %s: %w", jobID, discordIntegrationID, err)
 			}
 			if maybeJob.IsAbsent() {
-				log.Printf("❌ Job %s not found, skipping messages", jobID)
-				continue
+				return fmt.Errorf("job %s not found for integration %s", jobID, discordIntegrationID)
 			}
 			job := maybeJob.MustGet()
 

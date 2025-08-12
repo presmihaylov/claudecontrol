@@ -386,12 +386,10 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 			// Only fetch job if we need job payload for processing
 			maybeJob, err := s.jobsService.GetJobByID(ctx, integration.OrgID, jobID)
 			if err != nil {
-				log.Printf("❌ Failed to get job %s: %v", jobID, err)
-				continue
+				return fmt.Errorf("failed to get job %s for integration %s: %w", jobID, slackIntegrationID, err)
 			}
 			if maybeJob.IsAbsent() {
-				log.Printf("❌ Job %s not found, skipping messages", jobID)
-				continue
+				return fmt.Errorf("job %s not found for integration %s", jobID, slackIntegrationID)
 			}
 			job := maybeJob.MustGet()
 
