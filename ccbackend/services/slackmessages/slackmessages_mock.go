@@ -111,3 +111,16 @@ func (m *MockSlackMessagesService) DeleteProcessedSlackMessagesByJobID(
 	args := m.Called(ctx, organizationID, jobID, slackIntegrationID)
 	return args.Error(0)
 }
+
+func (m *MockSlackMessagesService) GetProcessedMessagesByStatus(
+	ctx context.Context,
+	organizationID models.OrgID,
+	status models.ProcessedSlackMessageStatus,
+	slackIntegrationID string,
+) ([]*models.ProcessedSlackMessage, error) {
+	args := m.Called(ctx, organizationID, status, slackIntegrationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.ProcessedSlackMessage), args.Error(1)
+}

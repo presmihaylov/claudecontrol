@@ -98,19 +98,6 @@ func (m *MockJobsService) TESTS_UpdateJobUpdatedAt(
 	return args.Error(0)
 }
 
-func (m *MockJobsService) GetJobsWithQueuedMessages(
-	ctx context.Context,
-	organizationID models.OrgID,
-	jobType models.JobType,
-	integrationID string,
-) ([]*models.Job, error) {
-	args := m.Called(ctx, organizationID, jobType, integrationID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*models.Job), args.Error(1)
-}
-
 // Discord-specific methods
 
 func (m *MockJobsService) CreateDiscordJob(
