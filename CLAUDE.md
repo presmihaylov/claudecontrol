@@ -289,6 +289,8 @@ All core entities are scoped to organization_id for proper data isolation.
   layer instead of being passed explicitly as a parameter
 - **Context First Parameter**: All functions in the service layer should take
   `ctx context.Context` as the first argument to ensure proper request context propagation
+- **Organization ID Parameter Position**: When passing organization ID as an explicit parameter,
+  it should always be the second parameter (right after context): `func(ctx context.Context, organizationID string, ...)`
 
 ## Service Architecture Pattern
 
