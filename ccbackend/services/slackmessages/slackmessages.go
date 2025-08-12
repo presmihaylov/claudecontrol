@@ -315,7 +315,12 @@ func (s *SlackMessagesService) GetProcessedMessagesByStatus(
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	messages, err := s.processedSlackMessagesRepo.GetProcessedMessagesByStatus(ctx, status, slackIntegrationID, organizationID)
+	messages, err := s.processedSlackMessagesRepo.GetProcessedMessagesByStatus(
+		ctx,
+		status,
+		slackIntegrationID,
+		organizationID,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed messages by status: %w", err)
 	}

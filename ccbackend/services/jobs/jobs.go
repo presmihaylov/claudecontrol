@@ -458,7 +458,6 @@ func (s *JobsService) TESTS_UpdateJobUpdatedAt(
 	return nil
 }
 
-
 // Discord-specific job methods
 
 func (s *JobsService) CreateDiscordJob(

@@ -389,7 +389,7 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 				log.Printf("❌ Failed to get job %s: %v", jobID, err)
 				continue
 			}
-			if maybeJob.IsNone() {
+			if maybeJob.IsAbsent() {
 				log.Printf("❌ Job %s not found, skipping messages", jobID)
 				continue
 			}

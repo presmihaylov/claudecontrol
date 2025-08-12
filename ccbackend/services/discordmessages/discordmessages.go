@@ -318,7 +318,12 @@ func (s *DiscordMessagesService) GetProcessedMessagesByStatus(
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	messages, err := s.processedDiscordMessagesRepo.GetProcessedMessagesByStatus(ctx, status, discordIntegrationID, organizationID)
+	messages, err := s.processedDiscordMessagesRepo.GetProcessedMessagesByStatus(
+		ctx,
+		status,
+		discordIntegrationID,
+		organizationID,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed messages by status: %w", err)
 	}

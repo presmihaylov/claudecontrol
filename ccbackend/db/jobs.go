@@ -387,4 +387,3 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(
 
 	return rowsAffected > 0, nil
 }
-
