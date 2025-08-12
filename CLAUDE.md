@@ -271,16 +271,21 @@ All core entities are scoped to organization_id for proper data isolation.
 - **Multi-Platform Support**: Jobs can be created from both Slack and Discord interactions
 
 ## Error Handling Guidelines
-- **Error Propagation**: Never log errors silently and proceed with control flow. Always
-  propagate the error upstream unless explicitly instructed to log the error and ignore
-- **No Silent Failures**: Avoid patterns like `if err != nil { log.Printf(...); }` without
-  returning the error. This hides failures and makes debugging difficult
+- **Never Silent Error Logging**: NEVER log errors silently and continue with normal control flow. 
+  This pattern (`if err != nil { log.Printf(...); }` without returning the error) hides failures 
+  and makes debugging extremely difficult
+- **Error Propagation**: Always propagate errors upstream unless explicitly instructed to log 
+  and ignore the error for a specific business reason
 - **Proper Error Wrapping**: Use `fmt.Errorf("context: %w", err)` to wrap errors with context
   when propagating upstream
 - **Critical Operations**: For critical operations (database writes, external API calls, job
   cleanup), always return errors to the caller
-- **Log and Return**: When an error occurs, log it for debugging AND return it for proper
+- **Log and Return Pattern**: When an error occurs, log it for debugging AND return it for proper
   handling: `log.Printf(...); return fmt.Errorf(...)`
+- **Error Handling Requirements**: Every error must be either:
+  1. Returned to the caller for handling
+  2. Explicitly handled with appropriate recovery logic
+  3. Logged with explicit justification for why it's being ignored (rare cases only)
 
 ## Service Layer Architecture Rules
 - **Organization-Scoped Entities**: All entities in the database should be scoped to an organization ID.
