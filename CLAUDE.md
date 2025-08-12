@@ -19,20 +19,6 @@ go mod tidy                 # Update dependencies
 go fmt ./...                # Format Go source files
 ```
 
-### ccagent (Go CLI Agent)
-```bash
-cd ccagent
-make run                    # Run agent (default: Claude)
-make build                  # Build binary to bin/ccagent
-make clean                  # Remove build artifacts
-make build-prod             # Build production binaries for multiple platforms
-make lint                   # Run golangci-lint checks
-make lint-fix               # Run golangci-lint and fix issues automatically
-go run cmd/*.go             # Run agent directly (default: Claude)
-go run cmd/*.go --claude-bypass-permissions  # Run with bypass permissions (sandbox only)
-go run cmd/*.go --agent claude       # Run with Claude agent (default)
-go run cmd/*.go --agent cursor       # Run with Cursor agent
-```
 
 ### ccfrontend (Next.js Frontend)
 ```bash
@@ -88,9 +74,8 @@ go run main.go             # Demonstrate worker pool usage
 
 ### Multi-Module Structure
 - **ccbackend**: Go HTTP/Socket.IO server handling Slack and Discord integrations with Supabase database, Clerk authentication
-- **ccagent**: Go CLI tool for Claude Code interaction with Socket.IO connection to backend
 - **ccfrontend**: Next.js 15 frontend application with React 19, Tailwind CSS 4, and Clerk authentication
-- **examples/websockets**: Reference WebSocket implementations (deprecated - see ccagent for current Socket.IO patterns)
+- **examples/websockets**: Reference WebSocket implementations (deprecated)
 - **examples/socketio**: Socket.IO client/server examples
 - **examples/discord-bot**: Discord bot integration example
 
@@ -125,19 +110,12 @@ DB_SCHEMA=<database_schema_name>
 DATABASE_URL=<postgresql_connection_string>
 ```
 
-ccagent requires environment variables:
-```
-CCAGENT_API_KEY=<ccagent_api_key>
-CCAGENT_SOCKET_URL=<socketio_server_url>  # Optional, defaults to production
-```
-
 ### Key Integration Points
 - **Slack Webhooks**: `/slack/events` endpoint for app mentions and URL verification
 - **Discord Webhooks**: `/discord/events` endpoint for Discord message events
-- **Socket.IO Endpoint**: Socket.IO server for real-time ccagent connections with API key authentication
+- **Socket.IO Endpoint**: Socket.IO server for real-time agent connections with API key authentication
 - **Dashboard API**: `/api/dashboard/*` endpoints with Clerk JWT authentication
 - **Clerk Authentication**: JWT-based user authentication with automatic user creation
-- **Claude Code Integration**: ccagent connects via Socket.IO with retry logic and job management
 
 ## Go Code Standards
 - Use `any` instead of `interface{}` for generic types
@@ -163,14 +141,6 @@ CCAGENT_SOCKET_URL=<socketio_server_url>  # Optional, defaults to production
 - **CORS**: Cross-origin requests (`github.com/rs/cors`)
 - **Testify**: Testing assertions (`github.com/stretchr/testify`)
 - **Godotenv**: Environment management (`github.com/joho/godotenv`)
-
-### ccagent Dependencies
-- **Socket.IO Client**: Socket.IO client connection (`github.com/zishang520/socket.io-client-go`)
-- **Worker Pool**: Concurrent message processing (`github.com/gammazero/workerpool`)
-- **Go Flags**: Command-line argument parsing (`github.com/jessevdk/go-flags`)
-- **UUID**: UUID generation (`github.com/google/uuid`)
-- **Codename**: Branch name generation (`github.com/lucasepe/codename`)
-- **File Lock**: Directory locking (`github.com/gofrs/flock`)
 
 ### ccfrontend Dependencies
 - **Next.js 15**: React framework with App Router
@@ -268,7 +238,6 @@ All core entities are scoped to organization_id for proper data isolation.
 
 ### Build Verification
 - **Backend Build**: `cd ccbackend && make build`
-- **Agent Build**: `cd ccagent && make build`  
 - **Frontend Build**: `cd ccfrontend && bun run build`
 
 ### Code Quality Tools
@@ -285,7 +254,7 @@ All core entities are scoped to organization_id for proper data isolation.
 ```
 
 ## Message Handling Guidelines
-- **Slack Message Conversion**: Anytime you send a message to slack coming from the ccagent,
+- **Slack Message Conversion**: Anytime you send a message to slack coming from an agent,
   you should ensure it goes through the `utils.ConvertMarkdownToSlack` function
 - **Discord Message Support**: Discord integration supports message events and responses
 - **Multi-Platform Support**: Jobs can be created from both Slack and Discord interactions
@@ -531,28 +500,6 @@ This pattern ensures consistency, maintainability, and proper separation of conc
 - **Biome**: Fast linting and formatting (replaces ESLint/Prettier)
 - **HTTPS Development**: Custom server setup for secure local development
 
-## Agent Architecture (ccagent)
-
-### Socket.IO Communication
-- **Persistent Connection**: Maintains connection to ccbackend Socket.IO server
-- **Retry Logic**: Exponential backoff on connection failures
-- **Message Types**: Structured message protocol for different operations
-- **Worker Pool**: Sequential message processing with job queuing
-
-### Job Management
-- **Branch-Based Workflows**: Each job creates/uses a Git branch
-- **Pull Request Integration**: Automatic PR creation and management
-- **State Persistence**: In-memory job state with branch tracking
-- **Idle Job Detection**: Automatic job completion based on PR status
-
-### CLI Agent Integration
-- **Multiple Agents**: Support for both Claude Code (`--agent claude`) and Cursor (`--agent cursor`)
-- **Session Management**: Persistent agent sessions per job with automatic resumption
-- **Git Environment**: Automatic Git repository validation and setup
-- **Permission Modes**: Support for both `acceptEdits` and `bypassPermissions` (Claude only)
-- **Logging**: Comprehensive logging with agent-specific file output and optional stdout
-- **Default Agent**: Claude Code is the default agent when no `--agent` flag is specified
-
 ## Authentication Architecture
 
 ### Clerk Integration (ccbackend)
@@ -608,7 +555,7 @@ Claude Code has access to specialized subagents for specific tasks. These should
   - Run `supabase status` or equivalent to verify database availability
   - If Supabase is not running, immediately stop execution and instruct user to run `supabase start`
   - All tests will fail without a running database, making test fixing impossible
-- **Capabilities**: Fixes Go tests in ccbackend and ccagent, suggests new test coverage, runs test suites autonomously
+- **Capabilities**: Fixes Go tests in ccbackend, suggests new test coverage, runs test suites autonomously
 - **Usage**: Available for automated test management and fixing test issues, but only after confirming database availability
 
 ## Mock Architecture
