@@ -120,3 +120,16 @@ func (m *MockDiscordMessagesService) DeleteProcessedDiscordMessagesByJobID(
 	args := m.Called(ctx, organizationID, jobID, discordIntegrationID)
 	return args.Error(0)
 }
+
+func (m *MockDiscordMessagesService) GetProcessedMessagesByStatus(
+	ctx context.Context,
+	organizationID models.OrgID,
+	status models.ProcessedDiscordMessageStatus,
+	discordIntegrationID string,
+) ([]*models.ProcessedDiscordMessage, error) {
+	args := m.Called(ctx, organizationID, status, discordIntegrationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.ProcessedDiscordMessage), args.Error(1)
+}

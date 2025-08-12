@@ -155,6 +155,12 @@ type SlackMessagesService interface {
 		jobID string,
 		slackIntegrationID string,
 	) error
+	GetProcessedMessagesByStatus(
+		ctx context.Context,
+		organizationID models.OrgID,
+		status models.ProcessedSlackMessageStatus,
+		slackIntegrationID string,
+	) ([]*models.ProcessedSlackMessage, error)
 }
 
 // DiscordMessagesService defines the interface for processed discord message operations
@@ -210,6 +216,12 @@ type DiscordMessagesService interface {
 		jobID string,
 		discordIntegrationID string,
 	) error
+	GetProcessedMessagesByStatus(
+		ctx context.Context,
+		organizationID models.OrgID,
+		status models.ProcessedDiscordMessageStatus,
+		discordIntegrationID string,
+	) ([]*models.ProcessedDiscordMessage, error)
 }
 
 // JobsService defines the interface for job-related operations
@@ -222,12 +234,6 @@ type JobsService interface {
 	UpdateJobTimestamp(ctx context.Context, organizationID models.OrgID, jobID string) error
 	GetIdleJobs(ctx context.Context, organizationID models.OrgID, idleMinutes int) ([]*models.Job, error)
 	DeleteJob(ctx context.Context, organizationID models.OrgID, id string) error
-	GetJobsWithQueuedMessages(
-		ctx context.Context,
-		organizationID models.OrgID,
-		jobType models.JobType,
-		integrationID string,
-	) ([]*models.Job, error)
 
 	// Slack-specific methods
 	CreateSlackJob(

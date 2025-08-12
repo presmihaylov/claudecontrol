@@ -853,26 +853,39 @@ func (d *DiscordUseCase) ProcessQueuedJobs(ctx context.Context) error {
 	for _, integration := range integrations {
 		discordIntegrationID := integration.ID
 
-		// Get jobs with queued messages for this integration
-		queuedJobs, err := d.jobsService.GetJobsWithQueuedMessages(
+		// Get queued messages for this integration
+		queuedMessages, err := d.discordMessagesService.GetProcessedMessagesByStatus(
 			ctx,
 			integration.OrgID,
-			models.JobTypeDiscord,
+			models.ProcessedDiscordMessageStatusQueued,
 			discordIntegrationID,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to get queued jobs for integration %s: %w", discordIntegrationID, err)
+			return fmt.Errorf("failed to get queued messages for integration %s: %w", discordIntegrationID, err)
 		}
 
-		if len(queuedJobs) == 0 {
+		if len(queuedMessages) == 0 {
 			continue
 		}
 
-		log.Printf("🔍 Found %d jobs with queued messages for integration %s", len(queuedJobs), discordIntegrationID)
+		log.Printf("🔍 Found %d queued messages for integration %s", len(queuedMessages), discordIntegrationID)
 
-		// Try to assign each queued job to an available agent
-		for _, job := range queuedJobs {
-			log.Printf("🔄 Processing queued job %s", job.ID)
+		// Group messages by job ID for efficient processing
+		jobMessagesMap := groupDiscordMessagesByJobID(queuedMessages)
+
+		// Try to assign each job with queued messages to an available agent
+		for jobID, messages := range jobMessagesMap {
+			// Only fetch job if we need job payload for processing
+			maybeJob, err := d.jobsService.GetJobByID(ctx, integration.OrgID, jobID)
+			if err != nil {
+				return fmt.Errorf("failed to get job %s for integration %s: %w", jobID, discordIntegrationID, err)
+			}
+			if maybeJob.IsAbsent() {
+				return fmt.Errorf("job %s not found for integration %s", jobID, discordIntegrationID)
+			}
+			job := maybeJob.MustGet()
+
+			log.Printf("🔄 Processing %d queued messages for job %s", len(messages), job.ID)
 
 			// Get organization ID for this integration
 			organizationID := integration.OrgID

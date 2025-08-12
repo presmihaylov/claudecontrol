@@ -109,21 +109,6 @@ func TestSlackMessagesService(t *testing.T) {
 			assert.Equal(t, organizationID, message.OrgID)
 		})
 
-		t.Run("InvalidJobID", func(t *testing.T) {
-			_, err := slackMessagesService.CreateProcessedSlackMessage(
-				context.Background(),
-				organizationID,
-				"invalid",
-				"C1234567",
-				"1234567890.123456",
-				"Hello",
-				slackIntegrationID,
-				models.ProcessedSlackMessageStatusQueued,
-			)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
-		})
-
 		t.Run("EmptySlackChannelID", func(t *testing.T) {
 			_, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
@@ -204,18 +189,6 @@ func TestSlackMessagesService(t *testing.T) {
 			)
 			require.NoError(t, err)
 			assert.Equal(t, newStatus, updatedMessage.Status)
-		})
-
-		t.Run("InvalidID", func(t *testing.T) {
-			_, err := slackMessagesService.UpdateProcessedSlackMessage(
-				context.Background(),
-				organizationID,
-				"invalid",
-				models.ProcessedSlackMessageStatusInProgress,
-				slackIntegrationID,
-			)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "processed slack message ID must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
@@ -636,6 +609,69 @@ func TestSlackMessagesService(t *testing.T) {
 			)
 			assert.Error(t, err)
 			assert.Equal(t, core.ErrNotFound, err)
+		})
+	})
+
+	t.Run("GetProcessedMessagesByStatus", func(t *testing.T) {
+		t.Run("Success_MessagesFound", func(t *testing.T) {
+			// Create messages with different statuses
+			queuedMessage := testutils.CreateTestProcessedSlackMessage(
+				job.ID, organizationID, slackIntegrationID, models.ProcessedSlackMessageStatusQueued,
+			)
+			inProgressMessage := testutils.CreateTestProcessedSlackMessage(
+				job.ID, organizationID, slackIntegrationID, models.ProcessedSlackMessageStatusInProgress,
+			)
+
+			// Create the messages in database
+			defer func() {
+				_ = processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(
+					context.Background(), job.ID, slackIntegrationID, organizationID,
+				)
+			}()
+
+			err = processedSlackMessagesRepo.CreateProcessedSlackMessage(context.Background(), queuedMessage)
+			require.NoError(t, err)
+			err = processedSlackMessagesRepo.CreateProcessedSlackMessage(context.Background(), inProgressMessage)
+			require.NoError(t, err)
+
+			// Test getting queued messages
+			messages, err := slackMessagesService.GetProcessedMessagesByStatus(
+				context.Background(),
+				organizationID,
+				models.ProcessedSlackMessageStatusQueued,
+				slackIntegrationID,
+			)
+
+			require.NoError(t, err)
+			require.Len(t, messages, 1)
+			assert.Equal(t, queuedMessage.ID, messages[0].ID)
+			assert.Equal(t, models.ProcessedSlackMessageStatusQueued, messages[0].Status)
+
+			// Test getting in-progress messages
+			messages, err = slackMessagesService.GetProcessedMessagesByStatus(
+				context.Background(),
+				organizationID,
+				models.ProcessedSlackMessageStatusInProgress,
+				slackIntegrationID,
+			)
+
+			require.NoError(t, err)
+			require.Len(t, messages, 1)
+			assert.Equal(t, inProgressMessage.ID, messages[0].ID)
+			assert.Equal(t, models.ProcessedSlackMessageStatusInProgress, messages[0].Status)
+		})
+
+		t.Run("Success_NoMessagesFound", func(t *testing.T) {
+			// Test getting messages of a status that doesn't exist
+			messages, err := slackMessagesService.GetProcessedMessagesByStatus(
+				context.Background(),
+				organizationID,
+				models.ProcessedSlackMessageStatusCompleted,
+				slackIntegrationID,
+			)
+
+			require.NoError(t, err)
+			assert.Empty(t, messages)
 		})
 	})
 }

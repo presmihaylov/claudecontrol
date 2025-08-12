@@ -297,3 +297,34 @@ func (s *SlackMessagesService) DeleteProcessedSlackMessagesByJobID(
 	log.Printf("📋 Completed successfully - deleted processed slack messages for job: %s", jobID)
 	return nil
 }
+
+func (s *SlackMessagesService) GetProcessedMessagesByStatus(
+	ctx context.Context,
+	organizationID models.OrgID,
+	status models.ProcessedSlackMessageStatus,
+	slackIntegrationID string,
+) ([]*models.ProcessedSlackMessage, error) {
+	log.Printf("📋 Starting to get processed slack messages with status: %s", status)
+	if status == "" {
+		return nil, fmt.Errorf("status cannot be empty")
+	}
+	if !core.IsValidULID(slackIntegrationID) {
+		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
+	}
+	if !core.IsValidULID(string(organizationID)) {
+		return nil, fmt.Errorf("organization_id must be a valid ULID")
+	}
+
+	messages, err := s.processedSlackMessagesRepo.GetProcessedMessagesByStatus(
+		ctx,
+		status,
+		slackIntegrationID,
+		organizationID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processed messages by status: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found %d processed slack messages with status: %s", len(messages), status)
+	return messages, nil
+}

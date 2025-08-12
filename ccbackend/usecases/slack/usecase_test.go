@@ -747,8 +747,10 @@ func TestProcessQueuedJobs(t *testing.T) {
 		// Configure expectations
 		fixture.mocks.slackIntegrationsService.On("GetAllSlackIntegrations", fixture.ctx).
 			Return([]*models.SlackIntegration{integration}, nil)
-		fixture.mocks.jobsService.On("GetJobsWithQueuedMessages", fixture.ctx, testOrgID, models.JobTypeSlack, testSlackIntegrationID).
-			Return([]*models.Job{queuedJob}, nil)
+		fixture.mocks.slackMessagesService.On("GetProcessedMessagesByStatus", fixture.ctx, testOrgID, models.ProcessedSlackMessageStatusQueued, testSlackIntegrationID).
+			Return([]*models.ProcessedSlackMessage{queuedMessage}, nil)
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).
+			Return(mo.Some(queuedJob), nil)
 		fixture.mocks.agentsUseCase.On("TryAssignJobToAgent", fixture.ctx, queuedJob.ID, testOrgID).
 			Return(testWSConnectionID, true, nil)
 		fixture.mocks.slackMessagesService.On("GetProcessedMessagesByJobIDAndStatus", fixture.ctx, testOrgID, testJobID, models.ProcessedSlackMessageStatusQueued, testSlackIntegrationID).
@@ -829,11 +831,24 @@ func TestProcessQueuedJobs(t *testing.T) {
 			},
 		}
 
+		queuedMessage := &models.ProcessedSlackMessage{
+			ID:                 testutils.GenerateProcessedMessageID(),
+			JobID:              testJobID,
+			SlackTS:            testThreadTS,
+			SlackChannelID:     testChannelID,
+			TextContent:        "Queued message content",
+			SlackIntegrationID: testSlackIntegrationID,
+			OrgID:              testOrgID,
+			Status:             models.ProcessedSlackMessageStatusQueued,
+		}
+
 		// Configure expectations
 		fixture.mocks.slackIntegrationsService.On("GetAllSlackIntegrations", fixture.ctx).
 			Return([]*models.SlackIntegration{integration}, nil)
-		fixture.mocks.jobsService.On("GetJobsWithQueuedMessages", fixture.ctx, testOrgID, models.JobTypeSlack, testSlackIntegrationID).
-			Return([]*models.Job{queuedJob}, nil)
+		fixture.mocks.slackMessagesService.On("GetProcessedMessagesByStatus", fixture.ctx, testOrgID, models.ProcessedSlackMessageStatusQueued, testSlackIntegrationID).
+			Return([]*models.ProcessedSlackMessage{queuedMessage}, nil)
+		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).
+			Return(mo.Some(queuedJob), nil)
 		fixture.mocks.agentsUseCase.On("TryAssignJobToAgent", fixture.ctx, queuedJob.ID, testOrgID).
 			Return("", false, nil) // No agents available
 

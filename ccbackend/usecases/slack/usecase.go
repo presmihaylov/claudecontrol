@@ -361,26 +361,39 @@ func (s *SlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
 	for _, integration := range integrations {
 		slackIntegrationID := integration.ID
 
-		// Get jobs with queued messages for this integration
-		queuedJobs, err := s.jobsService.GetJobsWithQueuedMessages(
+		// Get queued messages for this integration
+		queuedMessages, err := s.slackMessagesService.GetProcessedMessagesByStatus(
 			ctx,
 			integration.OrgID,
-			models.JobTypeSlack,
+			models.ProcessedSlackMessageStatusQueued,
 			slackIntegrationID,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to get queued jobs for integration %s: %w", slackIntegrationID, err)
+			return fmt.Errorf("failed to get queued messages for integration %s: %w", slackIntegrationID, err)
 		}
 
-		if len(queuedJobs) == 0 {
+		if len(queuedMessages) == 0 {
 			continue
 		}
 
-		log.Printf("🔍 Found %d jobs with queued messages for integration %s", len(queuedJobs), slackIntegrationID)
+		log.Printf("🔍 Found %d queued messages for integration %s", len(queuedMessages), slackIntegrationID)
 
-		// Try to assign each queued job to an available agent
-		for _, job := range queuedJobs {
-			log.Printf("🔄 Processing queued job %s", job.ID)
+		// Group messages by job ID for efficient processing
+		jobMessagesMap := groupMessagesByJobID(queuedMessages)
+
+		// Try to assign each job with queued messages to an available agent
+		for jobID, messages := range jobMessagesMap {
+			// Only fetch job if we need job payload for processing
+			maybeJob, err := s.jobsService.GetJobByID(ctx, integration.OrgID, jobID)
+			if err != nil {
+				return fmt.Errorf("failed to get job %s for integration %s: %w", jobID, slackIntegrationID, err)
+			}
+			if maybeJob.IsAbsent() {
+				return fmt.Errorf("job %s not found for integration %s", jobID, slackIntegrationID)
+			}
+			job := maybeJob.MustGet()
+
+			log.Printf("🔄 Processing %d queued messages for job %s", len(messages), job.ID)
 
 			// Get organization ID for this integration
 			organizationID := integration.OrgID
