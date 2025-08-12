@@ -722,8 +722,20 @@ This co-located approach keeps mocks close to their implementations and makes th
 
 ## Linear Workflow Guidelines
 
+### Agent Label Identification
+- **Claude Control Tickets**: All tickets assigned to Claude Control have the **`agent`** label
+- **Ticket Ownership**: When users say "look at your tickets" or "check your tickets", they refer specifically to tickets with the `agent` label
+- **Filter Priority**: Always filter Linear searches by the `agent` label when looking for Claude Control's assigned work
+
 ### Ticket Status Management
 - **Never Move to Done**: NEVER move Linear tickets to "Done" status unless explicitly instructed by the user
 - **In Progress Movement**: When starting work on a ticket, move it to "In Progress" status  
 - **Status Updates**: Only move tickets between statuses when explicitly requested or when beginning work
 - **User Authorization Required**: All ticket completion must be user-authorized - Claude Control cannot determine when work is truly complete from the user's perspective
+
+### Linear Integration Workflow
+- **Ticket Discovery**: Use Linear MCP tools to query tickets with `agent` label
+- **Work Assignment**: Prioritize tickets based on user direction or ticket priority levels
+- **Status Tracking**: Update ticket status to reflect current work progress
+- **Communication**: Comment on tickets to provide status updates and progress reports
+- **Branch Correlation**: Link git branches to Linear tickets when working on implementation
