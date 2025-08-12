@@ -305,43 +305,23 @@ func (r *PostgresJobsRepository) UpdateJobTimestamp(
 	return nil
 }
 
-func (r *PostgresJobsRepository) GetIdleJobs(
+func (r *PostgresJobsRepository) GetJobs(
 	ctx context.Context,
-	idleMinutes int,
 	organizationID models.OrgID,
 ) ([]*models.Job, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
-	// Build column list with j. prefix for table alias
-	var aliasedColumns []string
-	for _, col := range jobsColumns {
-		aliasedColumns = append(aliasedColumns, "j."+col)
-	}
-	columnsStr := strings.Join(aliasedColumns, ", ")
+	columnsStr := strings.Join(jobsColumns, ", ")
 
 	query := fmt.Sprintf(`
 		SELECT %s 
-		FROM %s.jobs j
-		WHERE j.organization_id = $1
-		AND NOT EXISTS (
-			-- No messages that are not COMPLETED
-			SELECT 1 FROM %s.processed_slack_messages psm 
-			WHERE psm.job_id = j.id 
-			AND psm.status != 'COMPLETED'
-		)
-		AND (
-			-- Either no messages at all (use job updated_at)
-			(NOT EXISTS (SELECT 1 FROM %s.processed_slack_messages psm WHERE psm.job_id = j.id)
-			 AND j.updated_at < NOW() - INTERVAL '%d minutes')
-			OR
-			-- Or last COMPLETED message is older than threshold
-			(SELECT MAX(psm.updated_at) FROM %s.processed_slack_messages psm 
-			 WHERE psm.job_id = j.id AND psm.status = 'COMPLETED') < NOW() - INTERVAL '%d minutes'
-		)`, columnsStr, r.schema, r.schema, r.schema, idleMinutes, r.schema, idleMinutes)
+		FROM %s.jobs 
+		WHERE organization_id = $1
+		ORDER BY created_at ASC`, columnsStr, r.schema)
 
 	var dbJobs []DBJob
 	err := db.SelectContext(ctx, &dbJobs, query, organizationID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get idle jobs: %w", err)
+		return nil, fmt.Errorf("failed to get jobs: %w", err)
 	}
 
 	// Convert DBJobs to models.Job
@@ -349,7 +329,7 @@ func (r *PostgresJobsRepository) GetIdleJobs(
 	for _, dbJob := range dbJobs {
 		convertedJob, err := dbJobToModel(&dbJob)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert idle job: %w", err)
+			return nil, fmt.Errorf("failed to convert job: %w", err)
 		}
 		jobs = append(jobs, convertedJob)
 	}
