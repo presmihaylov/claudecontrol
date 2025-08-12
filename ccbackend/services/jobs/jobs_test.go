@@ -766,6 +766,235 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			)
 		})
 
+		t.Run("JobWithQueuedMessages", func(t *testing.T) {
+			// Create a job with QUEUED messages
+			job, err := jobsService.CreateSlackJob(
+				context.Background(),
+				organizationID,
+				"idle.queued.messages",
+				"C2222222222",
+				"testuser",
+				slackIntegrationID,
+			)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(context.Background(), organizationID, job.ID) }()
+
+			// Make the job old enough to be considered for idle status
+			oldTimestamp := time.Now().Add(-10 * time.Minute)
+			err = jobsService.TESTS_UpdateJobUpdatedAt(
+				context.Background(),
+				organizationID,
+				job.ID,
+				oldTimestamp,
+				slackIntegrationID,
+			)
+			require.NoError(t, err)
+
+			// Add a QUEUED message for this job
+			queuedMessage := &models.ProcessedSlackMessage{
+				ID:                 core.NewID("psm"),
+				JobID:              job.ID,
+				SlackChannelID:     "C2222222222",
+				SlackTS:            "msg-queued-123.1234",
+				TextContent:        "Test queued message",
+				Status:             models.ProcessedSlackMessageStatusQueued,
+				SlackIntegrationID: slackIntegrationID,
+				OrgID:              organizationID,
+			}
+			err = processedSlackMessagesRepo.CreateProcessedSlackMessage(context.Background(), queuedMessage)
+			require.NoError(t, err)
+			defer func() {
+				_ = processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(
+					context.Background(),
+					job.ID,
+					slackIntegrationID,
+					organizationID,
+				)
+			}()
+
+			// Job should NOT be idle because it has QUEUED messages
+			idleJobs, err := jobsService.GetIdleJobs(context.Background(), organizationID, 5)
+			require.NoError(t, err)
+
+			assert.False(
+				t,
+				jobFoundInIdleList(job.ID, idleJobs),
+				"Job with QUEUED messages should not be idle",
+			)
+		})
+
+		t.Run("JobWithInProgressMessages", func(t *testing.T) {
+			// Create a job with IN_PROGRESS messages
+			job, err := jobsService.CreateSlackJob(
+				context.Background(),
+				organizationID,
+				"idle.inprogress.messages",
+				"C3333333333",
+				"testuser",
+				slackIntegrationID,
+			)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(context.Background(), organizationID, job.ID) }()
+
+			// Make the job old enough to be considered for idle status
+			oldTimestamp := time.Now().Add(-10 * time.Minute)
+			err = jobsService.TESTS_UpdateJobUpdatedAt(
+				context.Background(),
+				organizationID,
+				job.ID,
+				oldTimestamp,
+				slackIntegrationID,
+			)
+			require.NoError(t, err)
+
+			// Add an IN_PROGRESS message for this job
+			inProgressMessage := &models.ProcessedSlackMessage{
+				ID:                 core.NewID("psm"),
+				JobID:              job.ID,
+				SlackChannelID:     "C3333333333",
+				SlackTS:            "msg-inprogress-123.5678",
+				TextContent:        "Test in-progress message",
+				Status:             models.ProcessedSlackMessageStatusInProgress,
+				SlackIntegrationID: slackIntegrationID,
+				OrgID:              organizationID,
+			}
+			err = processedSlackMessagesRepo.CreateProcessedSlackMessage(context.Background(), inProgressMessage)
+			require.NoError(t, err)
+			defer func() {
+				_ = processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(
+					context.Background(),
+					job.ID,
+					slackIntegrationID,
+					organizationID,
+				)
+			}()
+
+			// Job should NOT be idle because it has IN_PROGRESS messages
+			idleJobs, err := jobsService.GetIdleJobs(context.Background(), organizationID, 5)
+			require.NoError(t, err)
+
+			assert.False(
+				t,
+				jobFoundInIdleList(job.ID, idleJobs),
+				"Job with IN_PROGRESS messages should not be idle",
+			)
+		})
+
+		t.Run("JobWithOnlyCompletedMessages", func(t *testing.T) {
+			// Create a job with only COMPLETED messages
+			job, err := jobsService.CreateSlackJob(
+				context.Background(),
+				organizationID,
+				"idle.completed.messages",
+				"C4444444444",
+				"testuser",
+				slackIntegrationID,
+			)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(context.Background(), organizationID, job.ID) }()
+
+			// Make the job old enough to be considered for idle status
+			oldTimestamp := time.Now().Add(-10 * time.Minute)
+			err = jobsService.TESTS_UpdateJobUpdatedAt(
+				context.Background(),
+				organizationID,
+				job.ID,
+				oldTimestamp,
+				slackIntegrationID,
+			)
+			require.NoError(t, err)
+
+			// Add a COMPLETED message for this job
+			completedMessage := &models.ProcessedSlackMessage{
+				ID:                 core.NewID("psm"),
+				JobID:              job.ID,
+				SlackChannelID:     "C4444444444",
+				SlackTS:            "msg-completed-123.9012",
+				TextContent:        "Test completed message",
+				Status:             models.ProcessedSlackMessageStatusCompleted,
+				SlackIntegrationID: slackIntegrationID,
+				OrgID:              organizationID,
+			}
+			err = processedSlackMessagesRepo.CreateProcessedSlackMessage(context.Background(), completedMessage)
+			require.NoError(t, err)
+			defer func() {
+				_ = processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(
+					context.Background(),
+					job.ID,
+					slackIntegrationID,
+					organizationID,
+				)
+			}()
+
+			// Job SHOULD be idle because it only has COMPLETED messages (no active ones)
+			idleJobs, err := jobsService.GetIdleJobs(context.Background(), organizationID, 5)
+			require.NoError(t, err)
+
+			assert.True(
+				t,
+				jobFoundInIdleList(job.ID, idleJobs),
+				"Job with only COMPLETED messages should be idle",
+			)
+		})
+
+		t.Run("OldJobWithActiveMessages", func(t *testing.T) {
+			// Create a job that's 2+ hours old but has IN_PROGRESS messages
+			job, err := jobsService.CreateSlackJob(
+				context.Background(),
+				organizationID,
+				"old.active.messages",
+				"C5555555555",
+				"testuser",
+				slackIntegrationID,
+			)
+			require.NoError(t, err)
+			defer func() { _ = jobsService.DeleteJob(context.Background(), organizationID, job.ID) }()
+
+			// Make the job very old (2+ hours) to pass time filter
+			veryOldTimestamp := time.Now().Add(-2*time.Hour - 30*time.Minute)
+			err = jobsService.TESTS_UpdateJobUpdatedAt(
+				context.Background(),
+				organizationID,
+				job.ID,
+				veryOldTimestamp,
+				slackIntegrationID,
+			)
+			require.NoError(t, err)
+
+			// Add an IN_PROGRESS message for this job
+			inProgressMessage := &models.ProcessedSlackMessage{
+				ID:                 core.NewID("psm"),
+				JobID:              job.ID,
+				SlackChannelID:     "C5555555555",
+				SlackTS:            "msg-old-active-123.4567",
+				TextContent:        "Test old job with active message",
+				Status:             models.ProcessedSlackMessageStatusInProgress,
+				SlackIntegrationID: slackIntegrationID,
+				OrgID:              organizationID,
+			}
+			err = processedSlackMessagesRepo.CreateProcessedSlackMessage(context.Background(), inProgressMessage)
+			require.NoError(t, err)
+			defer func() {
+				_ = processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(
+					context.Background(),
+					job.ID,
+					slackIntegrationID,
+					organizationID,
+				)
+			}()
+
+			// Job should NOT be idle despite being old because it has active IN_PROGRESS messages
+			// This tests both time filter (job passes) AND active message filter (job fails)
+			idleJobs, err := jobsService.GetIdleJobs(context.Background(), organizationID, 60)
+			require.NoError(t, err)
+
+			assert.False(
+				t,
+				jobFoundInIdleList(job.ID, idleJobs),
+				"Old job with IN_PROGRESS messages should not be idle despite age",
+			)
+		})
+
 		t.Run("InvalidIdleMinutes", func(t *testing.T) {
 			// Test with invalid idle minutes
 			_, err := jobsService.GetIdleJobs(context.Background(), organizationID, 0)

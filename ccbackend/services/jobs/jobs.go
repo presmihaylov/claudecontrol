@@ -239,13 +239,131 @@ func (s *JobsService) GetIdleJobs(
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	jobs, err := s.jobsRepo.GetIdleJobs(ctx, idleMinutes, organizationID)
+	// Get all jobs from database
+	allJobs, err := s.jobsRepo.GetJobs(ctx, organizationID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get idle jobs: %w", err)
+		return nil, fmt.Errorf("failed to get jobs: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - found %d idle jobs", len(jobs))
-	return jobs, nil
+	log.Printf("🔍 Found %d total jobs, filtering for idle jobs older than %d minutes", len(allJobs), idleMinutes)
+
+	var idleJobs []*models.Job
+
+	// Check each job for idle status and active messages using direct repository calls
+	idleThreshold := time.Now().Add(-time.Duration(idleMinutes) * time.Minute)
+
+	for _, job := range allJobs {
+		// First check if job is old enough to be considered for idle status
+		if job.UpdatedAt.After(idleThreshold) {
+			continue // Job is too recent, skip
+		}
+
+		hasActiveMessages := false
+		switch job.JobType {
+		case models.JobTypeSlack:
+			active, err := s.hasActiveSlackMessages(ctx, organizationID, job)
+			if err != nil {
+				log.Printf(
+					"⚠️ Failed to check active Slack messages for job %s: %v - being conservative and marking as active",
+					job.ID,
+					err,
+				)
+				return nil, fmt.Errorf("failed to check active Slack messages for job %s: %w", job.ID, err)
+			}
+
+			hasActiveMessages = active
+		case models.JobTypeDiscord:
+			active, err := s.hasActiveDiscordMessages(ctx, organizationID, job)
+			if err != nil {
+				log.Printf(
+					"⚠️ Failed to check active Discord messages for job %s: %v - being conservative and marking as active",
+					job.ID,
+					err,
+				)
+				return nil, fmt.Errorf("failed to check active Discord messages for job %s: %w", job.ID, err)
+			}
+
+			hasActiveMessages = active
+		}
+
+		if !hasActiveMessages {
+			idleJobs = append(idleJobs, job)
+			log.Printf("✅ Job %s confirmed idle (no active messages)", job.ID)
+		} else {
+			log.Printf("🔄 Job %s has active messages - not marking as idle", job.ID)
+		}
+	}
+
+	log.Printf(
+		"📋 Completed successfully - found %d idle jobs out of %d total jobs",
+		len(idleJobs),
+		len(allJobs),
+	)
+	return idleJobs, nil
+}
+
+// hasActiveSlackMessages checks if a Slack job has any QUEUED or IN_PROGRESS messages
+func (s *JobsService) hasActiveSlackMessages(
+	ctx context.Context,
+	organizationID models.OrgID,
+	job *models.Job,
+) (bool, error) {
+	if job.SlackPayload == nil {
+		return false, nil
+	}
+
+	// Check for QUEUED messages
+	queuedMsgs, err := s.slackMessagesService.GetProcessedMessagesByJobIDAndStatus(
+		ctx, organizationID, job.ID, models.ProcessedSlackMessageStatusQueued, job.SlackPayload.IntegrationID,
+	)
+	if err != nil {
+		return true, fmt.Errorf("failed to check queued messages for job %s: %w", job.ID, err)
+	}
+	if len(queuedMsgs) > 0 {
+		return true, nil
+	}
+
+	// Check for IN_PROGRESS messages
+	inProgressMsgs, err := s.slackMessagesService.GetProcessedMessagesByJobIDAndStatus(
+		ctx, organizationID, job.ID, models.ProcessedSlackMessageStatusInProgress, job.SlackPayload.IntegrationID,
+	)
+	if err != nil {
+		return true, fmt.Errorf("failed to check in-progress messages for job %s: %w", job.ID, err)
+	}
+
+	return len(inProgressMsgs) > 0, nil
+}
+
+// hasActiveDiscordMessages checks if a Discord job has any QUEUED or IN_PROGRESS messages
+func (s *JobsService) hasActiveDiscordMessages(
+	ctx context.Context,
+	organizationID models.OrgID,
+	job *models.Job,
+) (bool, error) {
+	if job.DiscordPayload == nil {
+		return false, nil
+	}
+
+	// Check for QUEUED messages
+	queuedMsgs, err := s.discordMessagesService.GetProcessedMessagesByJobIDAndStatus(
+		ctx, organizationID, job.ID, models.ProcessedDiscordMessageStatusQueued, job.DiscordPayload.IntegrationID,
+	)
+	if err != nil {
+		return true, fmt.Errorf("failed to check queued Discord messages for job %s: %w", job.ID, err)
+	}
+	if len(queuedMsgs) > 0 {
+		return true, nil
+	}
+
+	// Check for IN_PROGRESS messages
+	inProgressMsgs, err := s.discordMessagesService.GetProcessedMessagesByJobIDAndStatus(
+		ctx, organizationID, job.ID, models.ProcessedDiscordMessageStatusInProgress, job.DiscordPayload.IntegrationID,
+	)
+	if err != nil {
+		return true, fmt.Errorf("failed to check in-progress Discord messages for job %s: %w", job.ID, err)
+	}
+
+	return len(inProgressMsgs) > 0, nil
 }
 
 func (s *JobsService) DeleteJob(
