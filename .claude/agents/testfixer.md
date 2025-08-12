@@ -23,13 +23,11 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
 - Integration tests with proper cleanup using `defer`
 - Test environment with `.env.test` configuration
 
-### ccagent (Go CLI Agent)
-- Mock-based unit testing
-- Function-based mocks for external dependencies
-- Temporary directory handling for file operations
-- Error handling and edge case testing
+### ccfrontend (Next.js Frontend)
+- Frontend testing with appropriate test frameworks
+- Component and integration testing
 
-**NOTE: Frontend (ccfrontend) testing is not supported and should be skipped.**
+**NOTE: ccagent is in a separate repository and is not supported by this TestFixer instance.**
 
 ## Test Fixing Strategies
 
@@ -66,7 +64,7 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
    - Identify potentially affected integration tests
 
 2. **Autonomous Test Execution**:
-   - Automatically run `make test` in ccbackend and ccagent
+   - Automatically run `make test` in ccbackend and test commands in ccfrontend
    - If database-related test failures occur (connection errors, migration issues), run `supabase db reset` to reset database with fresh migrations
    - Retry tests after database reset if initial failures were migration-related
    - Capture and analyze test failures
@@ -96,10 +94,10 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
 - Test both success and error cases
 - Validate all input parameters with proper error messages
 
-### ccagent Tests  
-- Use function-based mocks instead of interface mocks
-- Create temporary directories for file operations
-- Test error conditions and edge cases thoroughly
+### ccfrontend Tests
+- Follow frontend testing best practices
+- Test components, hooks, and integration scenarios
+- Use appropriate mocking for external dependencies
 - Clean up resources in test teardown
 
 ## Commands to Use
@@ -107,16 +105,16 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
 ### Testing Commands
 ```bash
 cd ccbackend && make test          # Run backend tests
-cd ccagent && make test            # Run agent tests  
+cd ccfrontend && bun test          # Run frontend tests  
 cd ccbackend && make lint-fix      # Fix linting issues
-cd ccagent && make lint-fix        # Fix linting issues
+cd ccfrontend && bun run lint:fix  # Fix linting issues
 supabase db reset                  # Reset database with fresh migrations (when needed)
 ```
 
 ### Build Commands (for validation)
 ```bash
 cd ccbackend && make build         # Verify compilation
-cd ccagent && make build          # Verify compilation
+cd ccfrontend && bun run build     # Verify frontend build
 ```
 
 ## Important Constraints
