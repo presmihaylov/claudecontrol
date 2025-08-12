@@ -473,7 +473,7 @@ export default function Home() {
 											variant="outline"
 											onClick={() =>
 												window.open(
-													"https://github.com/presmihaylov/ccagent/blob/main/ccagent-beta.zip",
+													"https://github.com/presmihaylov/ccagent#installation",
 													"_blank",
 												)
 											}
@@ -588,7 +588,7 @@ export default function Home() {
 											variant="outline"
 											onClick={() =>
 												window.open(
-													"https://github.com/presmihaylov/ccagent/blob/main/ccagent-beta.zip",
+													"https://github.com/presmihaylov/ccagent#installation",
 													"_blank",
 												)
 											}
