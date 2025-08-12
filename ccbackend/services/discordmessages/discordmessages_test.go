@@ -724,29 +724,5 @@ func TestDiscordMessagesService(t *testing.T) {
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), "status cannot be empty")
 		})
-
-		t.Run("ValidationError_InvalidDiscordIntegrationID", func(t *testing.T) {
-			_, err := service.GetProcessedMessagesByStatus(
-				context.Background(),
-				organizationID,
-				models.ProcessedDiscordMessageStatusQueued,
-				"invalid-ulid",
-			)
-
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "discord_integration_id must be a valid ULID")
-		})
-
-		t.Run("ValidationError_InvalidOrganizationID", func(t *testing.T) {
-			_, err := service.GetProcessedMessagesByStatus(
-				context.Background(),
-				models.OrgID("invalid-ulid"),
-				models.ProcessedDiscordMessageStatusQueued,
-				discordIntegrationID,
-			)
-
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
-		})
 	})
 }

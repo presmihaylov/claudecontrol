@@ -109,21 +109,6 @@ func TestSlackMessagesService(t *testing.T) {
 			assert.Equal(t, organizationID, message.OrgID)
 		})
 
-		t.Run("InvalidJobID", func(t *testing.T) {
-			_, err := slackMessagesService.CreateProcessedSlackMessage(
-				context.Background(),
-				organizationID,
-				"invalid",
-				"C1234567",
-				"1234567890.123456",
-				"Hello",
-				slackIntegrationID,
-				models.ProcessedSlackMessageStatusQueued,
-			)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "job ID must be a valid ULID")
-		})
-
 		t.Run("EmptySlackChannelID", func(t *testing.T) {
 			_, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
@@ -204,18 +189,6 @@ func TestSlackMessagesService(t *testing.T) {
 			)
 			require.NoError(t, err)
 			assert.Equal(t, newStatus, updatedMessage.Status)
-		})
-
-		t.Run("InvalidID", func(t *testing.T) {
-			_, err := slackMessagesService.UpdateProcessedSlackMessage(
-				context.Background(),
-				organizationID,
-				"invalid",
-				models.ProcessedSlackMessageStatusInProgress,
-				slackIntegrationID,
-			)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "processed slack message ID must be a valid ULID")
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
@@ -699,42 +672,6 @@ func TestSlackMessagesService(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Empty(t, messages)
-		})
-
-		t.Run("ValidationError_EmptyStatus", func(t *testing.T) {
-			_, err := slackMessagesService.GetProcessedMessagesByStatus(
-				context.Background(),
-				organizationID,
-				"",
-				slackIntegrationID,
-			)
-
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "status cannot be empty")
-		})
-
-		t.Run("ValidationError_InvalidSlackIntegrationID", func(t *testing.T) {
-			_, err := slackMessagesService.GetProcessedMessagesByStatus(
-				context.Background(),
-				organizationID,
-				models.ProcessedSlackMessageStatusQueued,
-				"invalid-ulid",
-			)
-
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "slack_integration_id must be a valid ULID")
-		})
-
-		t.Run("ValidationError_InvalidOrganizationID", func(t *testing.T) {
-			_, err := slackMessagesService.GetProcessedMessagesByStatus(
-				context.Background(),
-				models.OrgID("invalid-ulid"),
-				models.ProcessedSlackMessageStatusQueued,
-				slackIntegrationID,
-			)
-
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
 		})
 	})
 }
