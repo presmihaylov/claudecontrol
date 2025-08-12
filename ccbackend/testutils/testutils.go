@@ -286,3 +286,31 @@ func GenerateSlackToken() string {
 	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
 	return fmt.Sprintf("xoxb-test-token-%d", n.Int64()+100000)
 }
+
+// CreateTestProcessedSlackMessage creates a test processed Slack message
+func CreateTestProcessedSlackMessage(jobID string, organizationID models.OrgID, slackIntegrationID string, status models.ProcessedSlackMessageStatus) *models.ProcessedSlackMessage {
+	return &models.ProcessedSlackMessage{
+		ID:                 core.NewID("psm"),
+		JobID:              jobID,
+		SlackChannelID:     GenerateSlackChannelID(),
+		SlackTS:            GenerateSlackThreadTS(),
+		TextContent:        "Test message content",
+		Status:             status,
+		SlackIntegrationID: slackIntegrationID,
+		OrgID:              organizationID,
+	}
+}
+
+// CreateTestProcessedDiscordMessage creates a test processed Discord message
+func CreateTestProcessedDiscordMessage(jobID string, organizationID models.OrgID, discordIntegrationID string, status models.ProcessedDiscordMessageStatus) *models.ProcessedDiscordMessage {
+	return &models.ProcessedDiscordMessage{
+		ID:                   core.NewID("pdm"),
+		JobID:                jobID,
+		DiscordMessageID:     GenerateDiscordMessageID(),
+		DiscordThreadID:      GenerateDiscordThreadID(),
+		TextContent:          "Test message content",
+		Status:               status,
+		DiscordIntegrationID: discordIntegrationID,
+		OrgID:                organizationID,
+	}
+}

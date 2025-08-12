@@ -650,4 +650,103 @@ func TestDiscordMessagesService(t *testing.T) {
 			assert.False(t, maybeMessage2After.IsPresent())
 		})
 	})
+
+	t.Run("GetProcessedMessagesByStatus", func(t *testing.T) {
+		t.Run("Success_MessagesFound", func(t *testing.T) {
+			// Create messages with different statuses
+			queuedMessage := testutils.CreateTestProcessedDiscordMessage(
+				testJob.ID, organizationID, discordIntegrationID, models.ProcessedDiscordMessageStatusQueued,
+			)
+			inProgressMessage := testutils.CreateTestProcessedDiscordMessage(
+				testJob.ID, organizationID, discordIntegrationID, models.ProcessedDiscordMessageStatusInProgress,
+			)
+
+			// Create the messages in database
+			defer func() {
+				_ = service.DeleteProcessedDiscordMessagesByJobID(
+					context.Background(), organizationID, testJob.ID, discordIntegrationID,
+				)
+			}()
+
+			_, err = service.CreateProcessedDiscordMessage(context.Background(), organizationID, testJob.ID, queuedMessage.DiscordMessageID, queuedMessage.DiscordThreadID, queuedMessage.TextContent, discordIntegrationID, models.ProcessedDiscordMessageStatusQueued)
+			require.NoError(t, err)
+			_, err = service.CreateProcessedDiscordMessage(context.Background(), organizationID, testJob.ID, inProgressMessage.DiscordMessageID, inProgressMessage.DiscordThreadID, inProgressMessage.TextContent, discordIntegrationID, models.ProcessedDiscordMessageStatusInProgress)
+			require.NoError(t, err)
+
+			// Test getting queued messages
+			messages, err := service.GetProcessedMessagesByStatus(
+				context.Background(),
+				organizationID,
+				models.ProcessedDiscordMessageStatusQueued,
+				discordIntegrationID,
+			)
+
+			require.NoError(t, err)
+			require.Len(t, messages, 1)
+			assert.Equal(t, queuedMessage.DiscordMessageID, messages[0].DiscordMessageID)
+			assert.Equal(t, models.ProcessedDiscordMessageStatusQueued, messages[0].Status)
+
+			// Test getting in-progress messages
+			messages, err = service.GetProcessedMessagesByStatus(
+				context.Background(),
+				organizationID,
+				models.ProcessedDiscordMessageStatusInProgress,
+				discordIntegrationID,
+			)
+
+			require.NoError(t, err)
+			require.Len(t, messages, 1)
+			assert.Equal(t, inProgressMessage.DiscordMessageID, messages[0].DiscordMessageID)
+			assert.Equal(t, models.ProcessedDiscordMessageStatusInProgress, messages[0].Status)
+		})
+
+		t.Run("Success_NoMessagesFound", func(t *testing.T) {
+			// Test getting messages of a status that doesn't exist
+			messages, err := service.GetProcessedMessagesByStatus(
+				context.Background(),
+				organizationID,
+				models.ProcessedDiscordMessageStatusCompleted,
+				discordIntegrationID,
+			)
+
+			require.NoError(t, err)
+			assert.Empty(t, messages)
+		})
+
+		t.Run("ValidationError_EmptyStatus", func(t *testing.T) {
+			_, err := service.GetProcessedMessagesByStatus(
+				context.Background(),
+				organizationID,
+				"",
+				discordIntegrationID,
+			)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "status cannot be empty")
+		})
+
+		t.Run("ValidationError_InvalidDiscordIntegrationID", func(t *testing.T) {
+			_, err := service.GetProcessedMessagesByStatus(
+				context.Background(),
+				organizationID,
+				models.ProcessedDiscordMessageStatusQueued,
+				"invalid-ulid",
+			)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "discord_integration_id must be a valid ULID")
+		})
+
+		t.Run("ValidationError_InvalidOrganizationID", func(t *testing.T) {
+			_, err := service.GetProcessedMessagesByStatus(
+				context.Background(),
+				models.OrgID("invalid-ulid"),
+				models.ProcessedDiscordMessageStatusQueued,
+				discordIntegrationID,
+			)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
+		})
+	})
 }
