@@ -28,8 +28,8 @@ export default function PlainChat() {
           style: {
             brandColor: '#000000',
             brandBackgroundColor: '#ffffff',
-            launcherBackgroundColor: '#ffffff',
-            launcherIconColor: '#000000'
+            launcherBackgroundColor: '#000000',
+            launcherIconColor: '#ffffff'
           },
           
           // Position the chat widget
@@ -43,7 +43,7 @@ export default function PlainChat() {
             {
               icon: 'email',
               text: 'Email Support',
-              url: 'mailto:support@pmihaylov.com'
+              url: 'mailto:support@claudecontrol.com'
             }
           ]
         });
