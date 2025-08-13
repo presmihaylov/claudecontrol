@@ -7,11 +7,11 @@ import PlainChat from "./components/plain-chat";
 
 export default function Home() {
 	return (
-		<main className="flex min-h-screen flex-col items-center justify-between md:pl-12 md:pr-12 pb-0">
+		<main className="flex min-h-screen flex-col items-center justify-between pb-0">
 			<PlainChat />
 			{/* Hero Section */}
-			<div className="z-10 w-full max-w-5xl mx-auto items-center justify-center font-sans">
-				<section className="flex flex-col items-center justify-center text-center py-12 md:pb-20 md:pt-32">
+			<div className="z-10 w-full mx-auto items-center justify-center font-sans">
+				<section className="flex flex-col items-center justify-center text-center py-12 md:pb-0 md:pt-32">
 					<AnimateOnScroll>
 						<h1 className="p-4 md:p-0 scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl mb-4">
 							Deploy{" "}
@@ -21,8 +21,8 @@ export default function Home() {
 					</AnimateOnScroll>
 					<AnimateOnScroll delay={0.1}>
 						<p className="p-4 md:p-0 text-xl leading-7 mb-8 max-w-2xl text-gray-600">
-							Open pull requests, ask questions about your codebase, and connect
-							any MCP server. Self-hosted and open source.
+							Enable your whole team to open pull requests and ask questions
+							about your codebase.
 						</p>
 					</AnimateOnScroll>
 					<AnimateOnScroll delay={0.2}>
@@ -36,27 +36,27 @@ export default function Home() {
 
 					{/* Platform Preview */}
 					<AnimateOnScroll delay={0.4}>
-						<div className="mt-16 w-full max-w-7xl">
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+						<div className="mt-12 mb-12 w-full">
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-start">
 								{/* Slack Preview */}
-								<div className="md:rounded-lg md:overflow-hidden md:h-[700px] md:bg-gray-100">
+								<div className="h-[400px] md:h-[600px] flex items-center justify-center">
 									<Image
-										src="/slack-example.jpeg"
+										src="/slack-white.png"
 										alt="Claude Control Slack Integration Example"
 										width={800}
 										height={600}
-										className="w-full h-auto md:h-full md:object-contain rounded-lg md:rounded-none"
+										className="w-full h-full object-contain"
 									/>
 								</div>
 
 								{/* Discord Preview */}
-								<div className="md:rounded-lg md:overflow-hidden md:h-[700px] md:bg-gray-100">
+								<div className="h-[400px] md:h-[600px] flex items-center justify-center">
 									<Image
-										src="/discord-example.jpeg"
+										src="/discord-white.png"
 										alt="Claude Control Discord Integration Example"
 										width={800}
 										height={600}
-										className="w-full h-auto md:h-full md:object-contain rounded-lg md:rounded-none"
+										className="w-full h-full object-contain"
 									/>
 								</div>
 							</div>
@@ -108,7 +108,7 @@ export default function Home() {
 									How does it work?
 								</h3>
 								<p className="text-gray-600 leading-7">
-									Deploy the{" "}
+									Deploy the open source{" "}
 									<a
 										href="https://github.com/presmihaylov/ccagent"
 										target="_blank"
@@ -132,7 +132,9 @@ export default function Home() {
 									How much does it cost?
 								</h3>
 								<p className="text-gray-600 leading-7">
-									It's free during beta.
+									It's free during beta. The current priority is getting a good
+									cohort of early testers who'll help shape the product
+									direction.
 								</p>
 							</div>
 						</AnimateOnScroll>
