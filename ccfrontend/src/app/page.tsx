@@ -450,7 +450,7 @@ export default function Home() {
 											variant="outline"
 											onClick={() =>
 												window.open(
-													"https://www.youtube.com/watch?v=mZZu9h-980A",
+													"https://drive.google.com/file/d/11G1btpviFYzehqx0-ji3o1QhKmTR991U/view?usp=sharing",
 													"_blank",
 												)
 											}
@@ -565,7 +565,7 @@ export default function Home() {
 											variant="outline"
 											onClick={() =>
 												window.open(
-													"https://www.youtube.com/watch?v=mZZu9h-980A",
+													"https://drive.google.com/file/d/11G1btpviFYzehqx0-ji3o1QhKmTR991U/view?usp=sharing",
 													"_blank",
 												)
 											}
