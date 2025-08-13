@@ -30,7 +30,7 @@ export default function Home() {
 							href="https://app.claudecontrol.com"
 							className="cursor-pointer inline-flex h-12 items-center justify-center rounded-md bg-black text-white px-8 py-3 text-lg font-medium shadow transition-all hover:bg-gray-800"
 						>
-							Get Started
+							Join Open Beta
 						</Link>
 					</AnimateOnScroll>
 
