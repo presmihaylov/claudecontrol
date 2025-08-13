@@ -82,7 +82,7 @@ export default function Home() {
 							>
 								<iframe
 									className="absolute top-0 left-0 w-full h-full rounded-lg"
-									src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+									src="https://www.youtube.com/embed/mZZu9h-980A"
 									title="Claude Control Demo"
 									frameBorder="0"
 									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
