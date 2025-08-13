@@ -20,7 +20,7 @@ export default function Home() {
 						</h1>
 					</AnimateOnScroll>
 					<AnimateOnScroll delay={0.1}>
-						<p className="p-4 md:p-0 text-xl leading-7 mb-8 max-w-2xl text-gray-300">
+						<p className="p-4 md:p-0 text-xl leading-7 mb-8 max-w-2xl text-gray-600">
 							Open pull requests, ask questions about your codebase, and connect
 							any MCP server. Self-hosted and open source.
 						</p>
@@ -28,9 +28,9 @@ export default function Home() {
 					<AnimateOnScroll delay={0.2}>
 						<Link
 							href="https://app.claudecontrol.com"
-							className="cursor-pointer inline-flex h-12 items-center justify-center rounded-md bg-white text-black px-8 py-3 text-lg font-medium shadow transition-all hover:bg-gray-200"
+							className="cursor-pointer inline-flex h-12 items-center justify-center rounded-md bg-black text-white px-8 py-3 text-lg font-medium shadow transition-all hover:bg-gray-800"
 						>
-							Get Started
+							Join Open Beta
 						</Link>
 					</AnimateOnScroll>
 
@@ -39,7 +39,7 @@ export default function Home() {
 						<div className="mt-16 w-full max-w-7xl">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
 								{/* Slack Preview */}
-								<div className="md:rounded-lg md:overflow-hidden md:h-[700px] md:bg-gray-900">
+								<div className="md:rounded-lg md:overflow-hidden md:h-[700px] md:bg-gray-100">
 									<Image
 										src="/slack-example.jpeg"
 										alt="Claude Control Slack Integration Example"
@@ -50,7 +50,7 @@ export default function Home() {
 								</div>
 
 								{/* Discord Preview */}
-								<div className="md:rounded-lg md:overflow-hidden md:h-[700px] md:bg-gray-900">
+								<div className="md:rounded-lg md:overflow-hidden md:h-[700px] md:bg-gray-100">
 									<Image
 										src="/discord-example.jpeg"
 										alt="Claude Control Discord Integration Example"
@@ -65,7 +65,7 @@ export default function Home() {
 				</section>
 
 				{/* See it in action */}
-				<hr className="border-gray-800 w-full max-w-4xl mx-auto" />
+				<hr className="border-gray-300 w-full max-w-4xl mx-auto" />
 				<section className="py-12 rounded-lg pb-8 pt-8 max-w-4xl mx-auto">
 					<AnimateOnScroll>
 						<h2 className="text-4xl font-bold text-center mb-8">
@@ -94,7 +94,7 @@ export default function Home() {
 				</section>
 
 				{/* FAQ */}
-				<hr className="border-gray-800 w-full max-w-4xl mx-auto" />
+				<hr className="border-gray-300 w-full max-w-4xl mx-auto" />
 				<section className="py-12 rounded-lg pb-8 pt-8 max-w-4xl mx-auto">
 					<AnimateOnScroll>
 						<h2 className="text-4xl font-bold text-center mb-8">FAQ</h2>
@@ -104,16 +104,16 @@ export default function Home() {
 						{/* First FAQ */}
 						<AnimateOnScroll delay={0.1}>
 							<div className="p-4 md:p-0">
-								<h3 className="text-xl font-semibold mb-4 text-gray-200">
+								<h3 className="text-xl font-semibold mb-4 text-gray-900">
 									How does it work?
 								</h3>
-								<p className="text-gray-300 leading-7">
+								<p className="text-gray-600 leading-7">
 									Deploy the{" "}
 									<a
 										href="https://github.com/presmihaylov/ccagent"
 										target="_blank"
 										rel="noopener noreferrer"
-										className="text-blue-400 hover:text-blue-300 underline transition-colors"
+										className="text-blue-600 hover:text-blue-800 underline transition-colors"
 									>
 										ccagent binary
 									</a>{" "}
@@ -128,10 +128,10 @@ export default function Home() {
 						{/* Second FAQ */}
 						<AnimateOnScroll delay={0.2}>
 							<div className="p-4 md:p-0">
-								<h3 className="text-xl font-semibold mb-4 text-gray-200">
+								<h3 className="text-xl font-semibold mb-4 text-gray-900">
 									How much does it cost?
 								</h3>
-								<p className="text-gray-300 leading-7">
+								<p className="text-gray-600 leading-7">
 									It's free during beta.
 								</p>
 							</div>
@@ -140,14 +140,14 @@ export default function Home() {
 						{/* Third FAQ */}
 						<AnimateOnScroll delay={0.3}>
 							<div className="p-4 md:p-0">
-								<h3 className="text-xl font-semibold mb-4 text-gray-200">
+								<h3 className="text-xl font-semibold mb-4 text-gray-900">
 									How can I share feedback?
 								</h3>
-								<p className="text-gray-300 leading-7">
+								<p className="text-gray-600 leading-7">
 									Contact me at{" "}
 									<a
 										href="mailto:support@pmihaylov.com"
-										className="text-blue-400 hover:text-blue-300 underline transition-colors"
+										className="text-blue-600 hover:text-blue-800 underline transition-colors"
 									>
 										support@pmihaylov.com
 									</a>{" "}
@@ -160,13 +160,13 @@ export default function Home() {
 			</div>
 
 			{/* Footer */}
-			<footer className="w-full max-w-5xl mx-auto border-t border-gray-800 p-6">
-				<div className="flex justify-between items-center text-sm text-gray-400">
+			<footer className="w-full max-w-5xl mx-auto border-t border-gray-300 p-6">
+				<div className="flex justify-between items-center text-sm text-gray-600">
 					<div>© 2025 Claude Control. All rights reserved.</div>
 					<div className="flex gap-6">
 						<Link
 							href="/privacy"
-							className="hover:text-white transition-colors"
+							className="hover:text-black transition-colors"
 						>
 							Privacy Policy
 						</Link>
