@@ -144,12 +144,12 @@ export default function Home() {
 									How can I share feedback?
 								</h3>
 								<p className="text-gray-600 leading-7">
-									Contact me at{" "}
+									Contact us at{" "}
 									<a
-										href="mailto:support@pmihaylov.com"
+										href="mailto:support@claudecontrol.com"
 										className="text-blue-600 hover:text-blue-800 underline transition-colors"
 									>
-										support@pmihaylov.com
+										support@claudecontrol.com
 									</a>{" "}
 									or use the chat widget in the app.
 								</p>
