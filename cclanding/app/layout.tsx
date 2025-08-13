@@ -40,7 +40,7 @@ export default function RootLayout({
         <link rel="shortcut icon" href="/icon.svg" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} antialiased min-h-full bg-black text-white font-sans`}
+        className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} antialiased min-h-full bg-white text-black font-sans`}
       >
         {children}
       </body>
