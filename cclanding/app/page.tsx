@@ -82,7 +82,7 @@ export default function Home() {
 							>
 								<iframe
 									className="absolute top-0 left-0 w-full h-full rounded-lg"
-									src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+									src="https://www.youtube.com/embed/mZZu9h-980A"
 									title="Claude Control Demo"
 									frameBorder="0"
 									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -144,12 +144,12 @@ export default function Home() {
 									How can I share feedback?
 								</h3>
 								<p className="text-gray-600 leading-7">
-									Contact me at{" "}
+									Contact us at{" "}
 									<a
-										href="mailto:support@pmihaylov.com"
+										href="mailto:support@claudecontrol.com"
 										className="text-blue-600 hover:text-blue-800 underline transition-colors"
 									>
-										support@pmihaylov.com
+										support@claudecontrol.com
 									</a>{" "}
 									or use the chat widget in the app.
 								</p>
