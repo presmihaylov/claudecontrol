@@ -2,12 +2,12 @@ import Link from "next/link";
 
 export default function TermsOfService() {
 	return (
-		<main className="min-h-screen bg-black text-white">
+		<main className="min-h-screen bg-white text-black">
 			{/* Header */}
 			<header className="w-full max-w-4xl mx-auto flex justify-between items-center p-6">
 				<Link
 					href="/"
-					className="text-xl font-bold hover:text-gray-300 transition-colors"
+					className="text-xl font-bold hover:text-gray-700 transition-colors"
 				>
 					Claude Control
 				</Link>
@@ -15,7 +15,7 @@ export default function TermsOfService() {
 
 			<div className="max-w-4xl mx-auto p-6">
 				<h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
-				<p className="text-gray-400 mb-8">Last updated: August 11, 2025</p>
+				<p className="text-gray-600 mb-8">Last updated: August 11, 2025</p>
 
 				<div className="prose max-w-none space-y-8">
 					<section>
@@ -229,10 +229,10 @@ export default function TermsOfService() {
 					</section>
 				</div>
 
-				<div className="mt-12 pt-8 border-t border-gray-800">
+				<div className="mt-12 pt-8 border-t border-gray-300">
 					<Link
 						href="/"
-						className="text-blue-400 hover:text-blue-300 transition-colors"
+						className="text-blue-600 hover:text-blue-800 transition-colors"
 					>
 						← Back to Home
 					</Link>
