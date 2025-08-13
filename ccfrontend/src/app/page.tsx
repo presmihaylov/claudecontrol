@@ -11,6 +11,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DiscordIcon, SlackIcon } from "@/icons";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
@@ -377,10 +378,15 @@ export default function Home() {
 				<header className="border-b">
 					<div className="container mx-auto px-4 py-4 flex items-center justify-between">
 						<div className="hidden sm:block" />
-						<h1 className="text-xl sm:text-2xl font-semibold text-center sm:text-left">Claude Control</h1>
-						<Button variant="secondary" size="sm" onClick={() => signOut()}>
-							Logout
-						</Button>
+						<h1 className="text-xl sm:text-2xl font-semibold text-center sm:text-left">
+							Claude Control
+						</h1>
+						<div className="flex items-center gap-2">
+							<ThemeToggle />
+							<Button variant="secondary" size="sm" onClick={() => signOut()}>
+								Logout
+							</Button>
+						</div>
 					</div>
 				</header>
 				<div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -421,10 +427,15 @@ export default function Home() {
 			<header className="border-b">
 				<div className="container mx-auto px-4 py-4 flex items-center justify-between">
 					<div className="hidden sm:block" />
-					<h1 className="text-xl sm:text-2xl font-semibold text-center sm:text-left">Claude Control</h1>
-					<Button variant="secondary" size="sm" onClick={() => signOut()}>
-						Logout
-					</Button>
+					<h1 className="text-xl sm:text-2xl font-semibold text-center sm:text-left">
+						Claude Control
+					</h1>
+					<div className="flex items-center gap-2">
+						<ThemeToggle />
+						<Button variant="secondary" size="sm" onClick={() => signOut()}>
+							Logout
+						</Button>
+					</div>
 				</div>
 			</header>
 			<div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -699,11 +710,19 @@ export default function Home() {
 						{/* Connect another workspace buttons */}
 						<div className="flex justify-center pt-4">
 							<div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-								<Button size="lg" className="flex items-center gap-2 w-full sm:w-auto" onClick={handleAddToSlack}>
+								<Button
+									size="lg"
+									className="flex items-center gap-2 w-full sm:w-auto"
+									onClick={handleAddToSlack}
+								>
 									<SlackIcon className="h-5 w-5" color="white" />
 									Connect Slack
 								</Button>
-								<Button size="lg" className="flex items-center gap-2 w-full sm:w-auto" onClick={handleAddToDiscord}>
+								<Button
+									size="lg"
+									className="flex items-center gap-2 w-full sm:w-auto"
+									onClick={handleAddToDiscord}
+								>
 									<DiscordIcon className="h-5 w-5" color="white" />
 									Connect Discord
 								</Button>

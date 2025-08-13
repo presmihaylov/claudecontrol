@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
 import PlainChatAuthenticated from "@/components/plain-chat-authenticated";
+import { ThemeProvider } from "@/lib/theme-context";
+import { ClerkProvider } from "@clerk/nextjs";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -18,9 +19,9 @@ export const metadata: Metadata = {
 	title: "Claude Control",
 	description: "Claude Control Dashboard",
 	icons: {
-		icon: '/icon.svg',
-		shortcut: '/icon.svg',
-		apple: '/icon.svg',
+		icon: "/icon.svg",
+		shortcut: "/icon.svg",
+		apple: "/icon.svg",
 	},
 };
 
@@ -39,8 +40,10 @@ export default function RootLayout({
 				<body
 					className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-full bg-background`}
 				>
-					{children}
-					<PlainChatAuthenticated />
+					<ThemeProvider>
+						{children}
+						<PlainChatAuthenticated />
+					</ThemeProvider>
 				</body>
 			</html>
 		</ClerkProvider>
