@@ -355,8 +355,8 @@ export default function Home() {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
 				<div className="animate-pulse">
-					<div className="h-8 w-32 bg-muted rounded mb-4" />
-					<div className="h-4 w-48 bg-muted rounded" />
+					<div className="h-8 w-32 bg-gray-200 rounded mb-4" />
+					<div className="h-4 w-48 bg-gray-200 rounded" />
 				</div>
 			</div>
 		);
@@ -365,7 +365,7 @@ export default function Home() {
 	if (!isSignedIn) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-muted-foreground">Redirecting to sign in...</div>
+				<div className="text-gray-600">Redirecting to sign in...</div>
 			</div>
 		);
 	}
@@ -373,7 +373,7 @@ export default function Home() {
 	// Show error if backend authentication failed
 	if (!loading && authError) {
 		return (
-			<div className="min-h-screen bg-background">
+			<div className="min-h-screen bg-white">
 				<header className="border-b">
 					<div className="container mx-auto px-4 py-4 flex items-center justify-between">
 						<div className="hidden sm:block" />
@@ -387,11 +387,11 @@ export default function Home() {
 					<div className="flex flex-col items-center justify-center min-h-[60vh]">
 						<div className="text-center space-y-4">
 							<h2 className="text-xl font-semibold text-destructive">Authentication Failed</h2>
-							<p className="text-muted-foreground max-w-md">
+							<p className="text-gray-600 max-w-md">
 								Unable to authenticate with the backend server. Please try refreshing the page or
 								contact support if the issue persists.
 							</p>
-							<div className="text-sm text-muted-foreground bg-muted p-3 rounded-md font-mono">
+							<div className="text-sm text-gray-600 bg-gray-100 p-3 rounded-md font-mono">
 								{authError}
 							</div>
 							<div className="space-x-2">
@@ -411,13 +411,13 @@ export default function Home() {
 	if (!loading && !backendAuthenticated) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-muted-foreground">Authenticating with backend...</div>
+				<div className="text-gray-600">Authenticating with backend...</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="min-h-screen bg-white">
 			<header className="border-b">
 				<div className="container mx-auto px-4 py-4 flex items-center justify-between">
 					<div className="hidden sm:block" />
@@ -439,10 +439,10 @@ export default function Home() {
 								</CardHeader>
 								<CardContent className="space-y-4">
 									{/* Setup Tutorial Link */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">Getting Started</h4>
-											<p className="text-sm text-muted-foreground">
+											<p className="text-sm text-gray-600">
 												How to set up and use Claude Control
 											</p>
 										</div>
@@ -461,10 +461,10 @@ export default function Home() {
 									</div>
 
 									{/* Download ccagent Button */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">Download CCAgent</h4>
-											<p className="text-sm text-muted-foreground">
+											<p className="text-sm text-gray-600">
 												Download the ccagent CLI tool to start using Claude Control with your Slack
 												workspaces.
 											</p>
@@ -485,10 +485,10 @@ export default function Home() {
 									</div>
 
 									{/* CCAgent API Key Section */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">CCAgent API Key</h4>
-											<p className="text-sm text-muted-foreground">
+											<p className="text-sm text-gray-600">
 												The secret key used to authenticate ccagent against your organization
 											</p>
 										</div>
@@ -520,7 +520,7 @@ export default function Home() {
 						)}
 
 						<div className="flex flex-col items-center justify-center">
-							<p className="text-base sm:text-lg text-muted-foreground mb-6 text-center px-4">
+							<p className="text-base sm:text-lg text-gray-600 mb-6 text-center px-4">
 								Connect your workspace to get started with Claude Control
 							</p>
 							<div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
@@ -554,10 +554,10 @@ export default function Home() {
 								</CardHeader>
 								<CardContent className="space-y-4">
 									{/* Setup Tutorial Link */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">Getting Started</h4>
-											<p className="text-sm text-muted-foreground">
+											<p className="text-sm text-gray-600">
 												How to set up and use Claude Control
 											</p>
 										</div>
@@ -576,10 +576,10 @@ export default function Home() {
 									</div>
 
 									{/* Download ccagent Button */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">Download CCAgent</h4>
-											<p className="text-sm text-muted-foreground">
+											<p className="text-sm text-gray-600">
 												Download the ccagent CLI tool to start using Claude Control with your Slack
 												workspaces.
 											</p>
@@ -600,10 +600,10 @@ export default function Home() {
 									</div>
 
 									{/* CCAgent API Key Section */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50 gap-4">
 										<div className="space-y-1">
 											<h4 className="font-medium">CCAgent API Key</h4>
-											<p className="text-sm text-muted-foreground">
+											<p className="text-sm text-gray-600">
 												The secret key used to authenticate ccagent against your organization
 											</p>
 										</div>
@@ -644,7 +644,7 @@ export default function Home() {
 												<SlackIcon className="h-6 w-6" color="black" />
 												<div>
 													<h3 className="font-semibold">{integration.slack_team_name}</h3>
-													<p className="text-sm text-muted-foreground">
+													<p className="text-sm text-gray-600">
 														Slack • Connected on{" "}
 														{new Date(integration.created_at).toLocaleDateString()}
 													</p>
@@ -672,7 +672,7 @@ export default function Home() {
 												<DiscordIcon className="h-6 w-6" color="black" />
 												<div>
 													<h3 className="font-semibold">{integration.discord_guild_name}</h3>
-													<p className="text-sm text-muted-foreground">
+													<p className="text-sm text-gray-600">
 														Discord • Connected on{" "}
 														{new Date(integration.created_at).toLocaleDateString()}
 													</p>
