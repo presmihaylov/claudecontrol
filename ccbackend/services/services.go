@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/samber/mo"
+	"github.com/shopspring/decimal"
 
 	"ccbackend/models"
 )
@@ -279,4 +280,25 @@ type TransactionManager interface {
 	BeginTransaction(ctx context.Context) (context.Context, error)
 	CommitTransaction(ctx context.Context) error
 	RollbackTransaction(ctx context.Context) error
+}
+
+// ConversationCostService defines the interface for conversation cost tracking operations
+type ConversationCostService interface {
+	TrackUsage(ctx context.Context, jobID string, inputTokens, outputTokens int) error
+	GetJobCosts(ctx context.Context, jobID string) (mo.Option[*models.ConversationCost], error)
+	UpdateJobCosts(ctx context.Context, jobID string, inputTokens, outputTokens int) error
+	EstimateCost(inputTokens, outputTokens int) decimal.Decimal
+	GetOrganizationCosts(ctx context.Context) ([]*models.ConversationCost, error)
+	DeleteJobCosts(ctx context.Context, jobID string) error
+}
+
+// ConversationContextService defines the interface for conversation context management operations
+type ConversationContextService interface {
+	AppendMessage(ctx context.Context, jobID string, message string) error
+	GetCurrentContext(ctx context.Context, jobID string) (mo.Option[*models.ConversationContext], error)
+	SummarizeIfNeeded(ctx context.Context, jobID string, maxTokens int) error
+	GetLeftoverContext(ctx context.Context, jobID string) (string, error)
+	UpdateContext(ctx context.Context, jobID string, fullContext string, tokenCount int) error
+	CreateContextForJob(ctx context.Context, jobID string, initialMessage string, tokenCount int) (*models.ConversationContext, error)
+	DeleteJobContext(ctx context.Context, jobID string) error
 }

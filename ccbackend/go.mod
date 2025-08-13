@@ -10,6 +10,7 @@ require (
 require github.com/lib/pq v1.10.9
 
 require (
+	github.com/anthropics/anthropic-sdk-go v1.9.1
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/clerk/clerk-sdk-go/v2 v2.3.1
 	github.com/gorilla/mux v1.8.1
@@ -17,6 +18,7 @@ require (
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/rs/cors v1.11.1
 	github.com/samber/mo v1.14.0
+	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.10.0
 	github.com/zishang520/socket.io/v2 v2.0.5
 )
@@ -38,6 +40,10 @@ require (
 	github.com/quic-go/quic-go v0.40.0 // indirect
 	github.com/quic-go/webtransport-go v0.6.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
@@ -45,12 +51,12 @@ require (
 	github.com/zishang520/engine.io/v2 v2.0.3 // indirect
 	github.com/zishang520/socket.io-go-parser/v2 v2.0.4 // indirect
 	go.uber.org/mock v0.3.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
+	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
 	golang.org/x/tools v0.34.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
