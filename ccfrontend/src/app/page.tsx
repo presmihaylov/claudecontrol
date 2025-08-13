@@ -680,7 +680,7 @@ export default function Home() {
 									<Card key={integration.id} className="p-4">
 										<div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-4">
 											<div className="flex items-center gap-3">
-												<DiscordIcon className="h-6 w-6" color="black" />
+												<DiscordIcon className="h-6 w-6" color="#5865F2" />
 												<div>
 													<h3 className="font-semibold">{integration.discord_guild_name}</h3>
 													<p className="text-sm text-muted-foreground">
