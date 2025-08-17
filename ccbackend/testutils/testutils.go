@@ -288,7 +288,12 @@ func GenerateSlackToken() string {
 }
 
 // CreateTestProcessedSlackMessage creates a test processed Slack message
-func CreateTestProcessedSlackMessage(jobID string, organizationID models.OrgID, slackIntegrationID string, status models.ProcessedSlackMessageStatus) *models.ProcessedSlackMessage {
+func CreateTestProcessedSlackMessage(
+	jobID string,
+	organizationID models.OrgID,
+	slackIntegrationID string,
+	status models.ProcessedSlackMessageStatus,
+) *models.ProcessedSlackMessage {
 	return &models.ProcessedSlackMessage{
 		ID:                 core.NewID("psm"),
 		JobID:              jobID,
@@ -302,7 +307,12 @@ func CreateTestProcessedSlackMessage(jobID string, organizationID models.OrgID, 
 }
 
 // CreateTestProcessedDiscordMessage creates a test processed Discord message
-func CreateTestProcessedDiscordMessage(jobID string, organizationID models.OrgID, discordIntegrationID string, status models.ProcessedDiscordMessageStatus) *models.ProcessedDiscordMessage {
+func CreateTestProcessedDiscordMessage(
+	jobID string,
+	organizationID models.OrgID,
+	discordIntegrationID string,
+	status models.ProcessedDiscordMessageStatus,
+) *models.ProcessedDiscordMessage {
 	return &models.ProcessedDiscordMessage{
 		ID:                   core.NewID("pdm"),
 		JobID:                jobID,

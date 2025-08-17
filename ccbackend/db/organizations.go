@@ -26,6 +26,7 @@ var organizationsColumns = []string{
 	"id",
 	"ccagent_secret_key",
 	"ccagent_secret_key_generated_at",
+	"cc_agent_system_secret_key",
 	"created_at",
 	"updated_at",
 }
@@ -42,6 +43,7 @@ func (r *PostgresOrganizationsRepository) CreateOrganization(
 
 	insertColumns := []string{
 		"id",
+		"cc_agent_system_secret_key",
 		"created_at",
 		"updated_at",
 	}
@@ -50,10 +52,11 @@ func (r *PostgresOrganizationsRepository) CreateOrganization(
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.organizations (%s) 
-		VALUES ($1, NOW(), NOW()) 
+		VALUES ($1, $2, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := db.QueryRowxContext(ctx, query, organization.ID).StructScan(organization)
+	err := db.QueryRowxContext(ctx, query, organization.ID, organization.CCAgentSystemSecretKey).
+		StructScan(organization)
 	if err != nil {
 		return fmt.Errorf("failed to create organization: %w", err)
 	}
@@ -138,6 +141,34 @@ func (r *PostgresOrganizationsRepository) GetOrganizationBySecretKey(
 			return mo.None[*models.Organization](), nil
 		}
 		return mo.None[*models.Organization](), fmt.Errorf("failed to get organization by secret key: %w", err)
+	}
+
+	return mo.Some(&organization), nil
+}
+
+func (r *PostgresOrganizationsRepository) GetOrganizationBySystemSecretKey(
+	ctx context.Context,
+	systemSecretKey string,
+) (mo.Option[*models.Organization], error) {
+	if systemSecretKey == "" {
+		return mo.None[*models.Organization](), fmt.Errorf("system secret key cannot be empty")
+	}
+
+	db := dbtx.GetTransactional(ctx, r.db)
+
+	columnsStr := strings.Join(organizationsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s 
+		FROM %s.organizations 
+		WHERE cc_agent_system_secret_key = $1`, columnsStr, r.schema)
+
+	var organization models.Organization
+	err := db.GetContext(ctx, &organization, query, systemSecretKey)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return mo.None[*models.Organization](), nil
+		}
+		return mo.None[*models.Organization](), fmt.Errorf("failed to get organization by system secret key: %w", err)
 	}
 
 	return mo.Some(&organization), nil

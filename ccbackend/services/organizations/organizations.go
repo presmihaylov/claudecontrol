@@ -25,8 +25,14 @@ func NewOrganizationsService(repo *db.PostgresOrganizationsRepository) *Organiza
 func (s *OrganizationsService) CreateOrganization(ctx context.Context) (*models.Organization, error) {
 	log.Printf("📋 Starting to create organization")
 
+	systemSecretKey, err := core.NewSecretKey("sys")
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate system secret key: %w", err)
+	}
+
 	organization := &models.Organization{
-		ID: core.NewID("org"),
+		ID:                     core.NewID("org"),
+		CCAgentSystemSecretKey: systemSecretKey,
 	}
 
 	if err := s.organizationsRepo.CreateOrganization(ctx, organization); err != nil {
@@ -106,6 +112,28 @@ func (s *OrganizationsService) GetOrganizationBySecretKey(
 		log.Printf("📋 Completed successfully - retrieved organization by secret key")
 	} else {
 		log.Printf("📋 Completed successfully - organization not found for secret key")
+	}
+	return maybeOrg, nil
+}
+
+func (s *OrganizationsService) GetOrganizationBySystemSecretKey(
+	ctx context.Context,
+	systemSecretKey string,
+) (mo.Option[*models.Organization], error) {
+	log.Printf("📋 Starting to get organization by system secret key")
+	if systemSecretKey == "" {
+		return mo.None[*models.Organization](), fmt.Errorf("system secret key cannot be empty")
+	}
+
+	maybeOrg, err := s.organizationsRepo.GetOrganizationBySystemSecretKey(ctx, systemSecretKey)
+	if err != nil {
+		return mo.None[*models.Organization](), fmt.Errorf("failed to get organization by system secret key: %w", err)
+	}
+
+	if maybeOrg.IsPresent() {
+		log.Printf("📋 Completed successfully - retrieved organization by system secret key")
+	} else {
+		log.Printf("📋 Completed successfully - organization not found for system secret key")
 	}
 	return maybeOrg, nil
 }

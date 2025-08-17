@@ -53,3 +53,14 @@ func (m *MockOrganizationsService) GetOrganizationBySecretKey(
 	args := m.Called(ctx, secretKey)
 	return args.Get(0).(mo.Option[*models.Organization]), args.Error(1)
 }
+
+func (m *MockOrganizationsService) GetOrganizationBySystemSecretKey(
+	ctx context.Context,
+	systemSecretKey string,
+) (mo.Option[*models.Organization], error) {
+	args := m.Called(ctx, systemSecretKey)
+	if args.Get(0) == nil {
+		return mo.None[*models.Organization](), args.Error(1)
+	}
+	return args.Get(0).(mo.Option[*models.Organization]), args.Error(1)
+}
