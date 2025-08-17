@@ -43,6 +43,7 @@ export default function TestimonialCarousel() {
 	const repeatTimes = 5;
 	const animateDuration = 15;
 	const totalWidth = testimonials.length * testimonialWidth;
+	const carousel = Array(10).fill(testimonials).flat();
 
 	return (
 		<div className="w-full overflow-hidden">
@@ -58,7 +59,7 @@ export default function TestimonialCarousel() {
 				}}
 			>
 				{/* Render testimonials twice for seamless loop */}
-				{[...testimonials, ...testimonials].map((testimonial, index) => (
+				{carousel.map((testimonial, index) => (
 					<div key={index} className="flex-shrink-0 w-[460px] mx-2">
 						<a
 							href={testimonial.link}
