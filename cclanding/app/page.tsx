@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { AnimateOnScroll } from "./components/animate-on-scroll";
 import PlainChat from "./components/plain-chat";
+import TestimonialCarousel from "./components/testimonial-carousel";
 
 export default function Home() {
 	return (
@@ -90,6 +91,19 @@ export default function Home() {
 								></iframe>
 							</div>
 						</div>
+					</AnimateOnScroll>
+				</section>
+
+				{/* Testimonials Section */}
+				<hr className="border-gray-300 w-full max-w-4xl mx-auto" />
+				<section className="py-12 rounded-lg pb-8 pt-8 max-w-4xl mx-auto">
+					<AnimateOnScroll>
+						<h2 className="text-4xl font-bold text-center mb-8">
+							What everyone's saying
+						</h2>
+					</AnimateOnScroll>
+					<AnimateOnScroll delay={0.2}>
+						<TestimonialCarousel />
 					</AnimateOnScroll>
 				</section>
 
