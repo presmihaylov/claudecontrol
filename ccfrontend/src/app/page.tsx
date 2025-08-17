@@ -650,7 +650,7 @@ export default function Home() {
 											</div>
 											<div className="flex items-center gap-2">
 												<Button
-													variant="secondary"
+													variant="destructive"
 													size="sm"
 													onClick={() => handleDeleteIntegration(integration)}
 													disabled={deleting === integration.id}
@@ -678,7 +678,7 @@ export default function Home() {
 											</div>
 											<div className="flex items-center gap-2">
 												<Button
-													variant="secondary"
+													variant="destructive"
 													size="sm"
 													onClick={() => handleDeleteDiscordIntegration(integration)}
 													disabled={deleting === integration.id}
@@ -725,7 +725,7 @@ export default function Home() {
 								Cancel
 							</Button>
 							<Button
-								variant="secondary"
+								variant="destructive"
 								onClick={confirmDeleteIntegration}
 								disabled={deleting === integrationToDelete?.id}
 							>
@@ -750,7 +750,7 @@ export default function Home() {
 								Cancel
 							</Button>
 							<Button
-								variant="secondary"
+								variant="destructive"
 								onClick={confirmDeleteDiscordIntegration}
 								disabled={deleting === discordIntegrationToDelete?.id}
 							>
