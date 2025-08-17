@@ -62,7 +62,12 @@ func CreateTestUser(t *testing.T, usersRepo *db.PostgresUsersRepository) *models
 
 	// Create organization first
 	testOrgID := core.NewID("org")
-	organization := &models.Organization{ID: testOrgID}
+	systemSecretKey, err := core.NewSecretKey("sys")
+	require.NoError(t, err, "Failed to generate system secret key")
+	organization := &models.Organization{
+		ID:                     testOrgID,
+		CCAgentSystemSecretKey: systemSecretKey,
+	}
 	err = organizationsRepo.CreateOrganization(context.Background(), organization)
 	require.NoError(t, err, "Failed to create test organization")
 
