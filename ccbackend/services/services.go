@@ -21,10 +21,6 @@ type OrganizationsService interface {
 	GetAllOrganizations(ctx context.Context) ([]*models.Organization, error)
 	GenerateCCAgentSecretKey(ctx context.Context, organizationID models.OrgID) (string, error)
 	GetOrganizationBySecretKey(ctx context.Context, secretKey string) (mo.Option[*models.Organization], error)
-	GetOrganizationBySystemSecretKey(
-		ctx context.Context,
-		systemSecretKey string,
-	) (mo.Option[*models.Organization], error)
 }
 
 // SlackIntegrationsService defines the interface for Slack integration operations

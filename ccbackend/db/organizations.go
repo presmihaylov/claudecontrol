@@ -132,7 +132,8 @@ func (r *PostgresOrganizationsRepository) GetOrganizationBySecretKey(
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.organizations 
-		WHERE ccagent_secret_key = $1 AND ccagent_secret_key IS NOT NULL`, columnsStr, r.schema)
+		WHERE (ccagent_secret_key = $1 AND ccagent_secret_key IS NOT NULL) 
+		   OR cc_agent_system_secret_key = $1`, columnsStr, r.schema)
 
 	var organization models.Organization
 	err := db.GetContext(ctx, &organization, query, secretKey)
@@ -141,34 +142,6 @@ func (r *PostgresOrganizationsRepository) GetOrganizationBySecretKey(
 			return mo.None[*models.Organization](), nil
 		}
 		return mo.None[*models.Organization](), fmt.Errorf("failed to get organization by secret key: %w", err)
-	}
-
-	return mo.Some(&organization), nil
-}
-
-func (r *PostgresOrganizationsRepository) GetOrganizationBySystemSecretKey(
-	ctx context.Context,
-	systemSecretKey string,
-) (mo.Option[*models.Organization], error) {
-	if systemSecretKey == "" {
-		return mo.None[*models.Organization](), fmt.Errorf("system secret key cannot be empty")
-	}
-
-	db := dbtx.GetTransactional(ctx, r.db)
-
-	columnsStr := strings.Join(organizationsColumns, ", ")
-	query := fmt.Sprintf(`
-		SELECT %s 
-		FROM %s.organizations 
-		WHERE cc_agent_system_secret_key = $1`, columnsStr, r.schema)
-
-	var organization models.Organization
-	err := db.GetContext(ctx, &organization, query, systemSecretKey)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return mo.None[*models.Organization](), nil
-		}
-		return mo.None[*models.Organization](), fmt.Errorf("failed to get organization by system secret key: %w", err)
 	}
 
 	return mo.Some(&organization), nil

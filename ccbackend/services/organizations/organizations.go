@@ -2,8 +2,6 @@ package organizations
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"log"
 
@@ -74,13 +72,10 @@ func (s *OrganizationsService) GenerateCCAgentSecretKey(
 		return "", fmt.Errorf("organization ID must be a valid ULID")
 	}
 
-	// Generate a random 32-byte secret key
-	secretBytes := make([]byte, 32)
-	_, err := rand.Read(secretBytes)
+	secretKey, err := core.NewSecretKey("ccagent")
 	if err != nil {
-		return "", fmt.Errorf("failed to generate random secret key: %w", err)
+		return "", fmt.Errorf("failed to generate secret key: %w", err)
 	}
-	secretKey := base64.URLEncoding.EncodeToString(secretBytes)
 
 	updated, err := s.organizationsRepo.GenerateCCAgentSecretKey(ctx, organizationID, secretKey)
 	if err != nil {
@@ -98,7 +93,7 @@ func (s *OrganizationsService) GetOrganizationBySecretKey(
 	ctx context.Context,
 	secretKey string,
 ) (mo.Option[*models.Organization], error) {
-	log.Printf("📋 Starting to get organization by secret key")
+	log.Printf("📋 Starting to get organization by secret key (ccagent or system)")
 	if secretKey == "" {
 		return mo.None[*models.Organization](), fmt.Errorf("secret key cannot be empty")
 	}
@@ -112,28 +107,6 @@ func (s *OrganizationsService) GetOrganizationBySecretKey(
 		log.Printf("📋 Completed successfully - retrieved organization by secret key")
 	} else {
 		log.Printf("📋 Completed successfully - organization not found for secret key")
-	}
-	return maybeOrg, nil
-}
-
-func (s *OrganizationsService) GetOrganizationBySystemSecretKey(
-	ctx context.Context,
-	systemSecretKey string,
-) (mo.Option[*models.Organization], error) {
-	log.Printf("📋 Starting to get organization by system secret key")
-	if systemSecretKey == "" {
-		return mo.None[*models.Organization](), fmt.Errorf("system secret key cannot be empty")
-	}
-
-	maybeOrg, err := s.organizationsRepo.GetOrganizationBySystemSecretKey(ctx, systemSecretKey)
-	if err != nil {
-		return mo.None[*models.Organization](), fmt.Errorf("failed to get organization by system secret key: %w", err)
-	}
-
-	if maybeOrg.IsPresent() {
-		log.Printf("📋 Completed successfully - retrieved organization by system secret key")
-	} else {
-		log.Printf("📋 Completed successfully - organization not found for system secret key")
 	}
 	return maybeOrg, nil
 }
