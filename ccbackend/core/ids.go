@@ -3,6 +3,8 @@ package core
 import (
 	"ccbackend/utils"
 	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"strings"
 	"time"
 
@@ -65,4 +67,22 @@ func IsValidULID(id string) bool {
 	// Try to parse as ULID to validate format
 	_, err := ulid.Parse(ulidPart)
 	return err == nil
+}
+
+// NewSecretKey generates a new cryptographically secure secret key with the given prefix.
+// The format is: prefix_base64EncodedRandomBytes
+// Uses 32 random bytes for high entropy.
+func NewSecretKey(prefix string) (string, error) {
+	utils.AssertInvariant(prefix != "" && strings.TrimSpace(prefix) != "", "prefix cannot be empty")
+
+	// Generate 32 random bytes for high entropy
+	secretBytes := make([]byte, 32)
+	_, err := rand.Read(secretBytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate random secret key: %w", err)
+	}
+
+	// Encode using URL-safe base64 and add prefix
+	secretKey := strings.ToLower(strings.TrimSpace(prefix)) + "_" + base64.URLEncoding.EncodeToString(secretBytes)
+	return secretKey, nil
 }
