@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { motion } from "motion/react";
+import { animate } from "motion";
 
 const testimonials = [
 	{
@@ -38,28 +39,27 @@ const testimonials = [
 
 export default function TestimonialCarousel() {
 	// Calculate total width for smooth infinite scroll
-	const testimonialWidth = 464; // 460px + 4px margin
+	const testimonialWidth = 460 + 70; // 460px + 70px margin
+	const repeatTimes = 5;
+	const animateDuration = 15;
 	const totalWidth = testimonials.length * testimonialWidth;
 
 	return (
 		<div className="w-full overflow-hidden">
-			<motion.div 
+			<motion.div
 				className="flex"
 				animate={{
-					x: [0, -totalWidth]
+					x: [0, -totalWidth * repeatTimes],
 				}}
 				transition={{
-					duration: 20,
+					duration: animateDuration * repeatTimes,
 					repeat: Infinity,
-					ease: "linear"
+					ease: "linear",
 				}}
 			>
 				{/* Render testimonials twice for seamless loop */}
 				{[...testimonials, ...testimonials].map((testimonial, index) => (
-					<div
-						key={index}
-						className="flex-shrink-0 w-[460px] mx-2"
-					>
+					<div key={index} className="flex-shrink-0 w-[460px] mx-2">
 						<a
 							href={testimonial.link}
 							target="_blank"
