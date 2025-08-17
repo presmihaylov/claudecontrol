@@ -124,12 +124,12 @@ export default function Home() {
 							<h2 className="text-3xl font-bold mb-4">Hey, I'm Pres!</h2>
 							<p className="text-lg text-gray-600 leading-7 mb-4">
 								I use Claude Code every day and saw how tremendously useful it
-								is for development work. I wanted to spread this knowledge to my
-								team, so I decided to build this tool that lets you run Claude
-								Code alongside them effortlessly.
+								is not just for dev work. I wanted to spread this knowledge to
+								my team, so I built this tool that lets you run Claude Code
+								alongside them effortlessly.
 							</p>
 							<p className="text-lg text-gray-600 leading-7">
-								I hope you find this useful too and would love to hear your
+								I hope you find it useful too and would love to hear your
 								thoughts and feedback. <br /> Thanks for checking out what I'm
 								building!
 							</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { motion } from "motion/react";
 
 const testimonials = [
 	{
@@ -36,16 +37,28 @@ const testimonials = [
 ];
 
 export default function TestimonialCarousel() {
-	// Duplicate the testimonials array to create seamless infinite scroll
-	const duplicatedTestimonials = [...testimonials, ...testimonials];
+	// Calculate total width for smooth infinite scroll
+	const testimonialWidth = 464; // 460px + 4px margin
+	const totalWidth = testimonials.length * testimonialWidth;
 
 	return (
 		<div className="w-full overflow-hidden">
-			<div className="flex animate-scroll">
-				{duplicatedTestimonials.map((testimonial, index) => (
+			<motion.div 
+				className="flex"
+				animate={{
+					x: [0, -totalWidth]
+				}}
+				transition={{
+					duration: 20,
+					repeat: Infinity,
+					ease: "linear"
+				}}
+			>
+				{/* Render testimonials twice for seamless loop */}
+				{[...testimonials, ...testimonials].map((testimonial, index) => (
 					<div
 						key={index}
-						className="flex-shrink-0 w-[460px] mx-4"
+						className="flex-shrink-0 w-[460px] mx-2"
 					>
 						<a
 							href={testimonial.link}
@@ -53,34 +66,19 @@ export default function TestimonialCarousel() {
 							rel="noopener noreferrer"
 							className="block hover:opacity-90 transition-opacity"
 						>
-							<div className="rounded-lg shadow-lg bg-white overflow-hidden">
+							<div className="rounded-lg bg-white overflow-hidden h-64 flex items-center justify-center p-2">
 								<Image
 									src={testimonial.image}
 									alt={testimonial.alt}
 									width={480}
 									height={240}
-									className="w-full h-auto"
+									className="max-w-full max-h-full object-contain"
 								/>
 							</div>
 						</a>
 					</div>
 				))}
-			</div>
-			
-			<style jsx>{`
-				@keyframes scroll {
-					0% {
-						transform: translateX(0);
-					}
-					100% {
-						transform: translateX(-50%);
-					}
-				}
-				
-				.animate-scroll {
-					animation: scroll 20s linear infinite;
-				}
-			`}</style>
+			</motion.div>
 		</div>
 	);
 }
