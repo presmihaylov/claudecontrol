@@ -441,9 +441,9 @@ export default function Home() {
 									{/* Setup Tutorial Link */}
 									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
-											<h4 className="font-medium">Getting Started</h4>
+											<h4 className="font-medium">New here? Let's get you started!</h4>
 											<p className="text-sm text-muted-foreground">
-												How to set up and use Claude Control
+												Watch our quick tutorial to see how Claude Control transforms your team workflow
 											</p>
 										</div>
 										<Button
@@ -463,10 +463,9 @@ export default function Home() {
 									{/* Download ccagent Button */}
 									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
-											<h4 className="font-medium">Download CCAgent</h4>
+											<h4 className="font-medium">Get Your Personal Claude Assistant</h4>
 											<p className="text-sm text-muted-foreground">
-												Download the ccagent CLI tool to start using Claude Control with your Slack
-												workspaces.
+												Download CCAgent - your bridge to bringing Claude's capabilities directly into your team conversations.
 											</p>
 										</div>
 										<Button
@@ -487,9 +486,9 @@ export default function Home() {
 									{/* CCAgent API Key Section */}
 									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
-											<h4 className="font-medium">CCAgent API Key</h4>
+											<h4 className="font-medium">Your Secure Connection Key</h4>
 											<p className="text-sm text-muted-foreground">
-												The secret key used to authenticate ccagent against your organization
+												This private key ensures your Claude assistant connects securely to your team's workspace
 											</p>
 										</div>
 										<div className="flex gap-2 w-full sm:w-auto">
@@ -521,7 +520,7 @@ export default function Home() {
 
 						<div className="flex flex-col items-center justify-center">
 							<p className="text-base sm:text-lg text-muted-foreground mb-6 text-center px-4">
-								Connect your workspace to get started with Claude Control
+								Ready to supercharge your team's productivity? Let's connect your workspace and bring Claude's intelligence directly to your conversations.
 							</p>
 							<div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
 								<Button
@@ -556,9 +555,9 @@ export default function Home() {
 									{/* Setup Tutorial Link */}
 									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
-											<h4 className="font-medium">Getting Started</h4>
+											<h4 className="font-medium">New here? Let's get you started!</h4>
 											<p className="text-sm text-muted-foreground">
-												How to set up and use Claude Control
+												Watch our quick tutorial to see how Claude Control transforms your team workflow
 											</p>
 										</div>
 										<Button
@@ -578,10 +577,9 @@ export default function Home() {
 									{/* Download ccagent Button */}
 									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
-											<h4 className="font-medium">Download CCAgent</h4>
+											<h4 className="font-medium">Get Your Personal Claude Assistant</h4>
 											<p className="text-sm text-muted-foreground">
-												Download the ccagent CLI tool to start using Claude Control with your Slack
-												workspaces.
+												Download CCAgent - your bridge to bringing Claude's capabilities directly into your team conversations.
 											</p>
 										</div>
 										<Button
@@ -602,9 +600,9 @@ export default function Home() {
 									{/* CCAgent API Key Section */}
 									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
 										<div className="space-y-1">
-											<h4 className="font-medium">CCAgent API Key</h4>
+											<h4 className="font-medium">Your Secure Connection Key</h4>
 											<p className="text-sm text-muted-foreground">
-												The secret key used to authenticate ccagent against your organization
+												This private key ensures your Claude assistant connects securely to your team's workspace
 											</p>
 										</div>
 										<div className="flex gap-2 w-full sm:w-auto">
@@ -635,7 +633,7 @@ export default function Home() {
 						)}
 
 						<div>
-							<h2 className="text-2xl font-semibold mb-4">Connected Workspaces</h2>
+							<h2 className="text-2xl font-semibold mb-4">Your Connected Teams</h2>
 							<div className="grid gap-4">
 								{integrations.map((integration) => (
 									<Card key={integration.id} className="p-4">
