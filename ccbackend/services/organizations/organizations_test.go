@@ -46,6 +46,12 @@ func TestOrganizationsService_CreateOrganization(t *testing.T) {
 		assert.False(t, organization.UpdatedAt.IsZero())
 		assert.Nil(t, organization.CCAgentSecretKey)
 		assert.Nil(t, organization.CCAgentSecretKeyGeneratedAt)
+		assert.NotEmpty(t, organization.CCAgentSystemSecretKey)
+		assert.True(
+			t,
+			len(organization.CCAgentSystemSecretKey) > 4 && organization.CCAgentSystemSecretKey[:4] == "sys_",
+			"system secret key should have sys_ prefix",
+		)
 
 		// Verify organization was stored in database
 		maybeOrg, err := repo.GetOrganizationByID(ctx, organization.ID)
@@ -98,8 +104,13 @@ func TestOrganizationsService_GetOrganizationByID(t *testing.T) {
 
 		// Create organization directly through repository for testing
 		testOrgID := core.NewID("org")
-		createdOrg := &models.Organization{ID: testOrgID}
-		err := repo.CreateOrganization(ctx, createdOrg)
+		systemSecretKey, err := core.NewSecretKey("sys")
+		require.NoError(t, err)
+		createdOrg := &models.Organization{
+			ID:                     testOrgID,
+			CCAgentSystemSecretKey: systemSecretKey,
+		}
+		err = repo.CreateOrganization(ctx, createdOrg)
 		require.NoError(t, err)
 
 		// Retrieve organization through service
@@ -159,8 +170,13 @@ func TestOrganizationsService_GenerateCCAgentSecretKey(t *testing.T) {
 
 		// Create organization first
 		testOrgID := core.NewID("org")
-		createdOrg := &models.Organization{ID: testOrgID}
-		err := repo.CreateOrganization(ctx, createdOrg)
+		systemSecretKey, err := core.NewSecretKey("sys")
+		require.NoError(t, err)
+		createdOrg := &models.Organization{
+			ID:                     testOrgID,
+			CCAgentSystemSecretKey: systemSecretKey,
+		}
+		err = repo.CreateOrganization(ctx, createdOrg)
 		require.NoError(t, err)
 
 		// Generate secret key
@@ -195,8 +211,13 @@ func TestOrganizationsService_GenerateCCAgentSecretKey(t *testing.T) {
 
 		// Create organization first
 		testOrgID := core.NewID("org")
-		createdOrg := &models.Organization{ID: testOrgID}
-		err := repo.CreateOrganization(ctx, createdOrg)
+		systemSecretKey, err := core.NewSecretKey("sys")
+		require.NoError(t, err)
+		createdOrg := &models.Organization{
+			ID:                     testOrgID,
+			CCAgentSystemSecretKey: systemSecretKey,
+		}
+		err = repo.CreateOrganization(ctx, createdOrg)
 		require.NoError(t, err)
 
 		// Generate first secret key
@@ -270,12 +291,22 @@ func TestOrganizationsService_GenerateCCAgentSecretKey(t *testing.T) {
 
 		// Create two organizations
 		org1ID := core.NewID("org")
-		org1 := &models.Organization{ID: org1ID}
-		err := repo.CreateOrganization(ctx, org1)
+		systemSecretKey1, err := core.NewSecretKey("sys")
+		require.NoError(t, err)
+		org1 := &models.Organization{
+			ID:                     org1ID,
+			CCAgentSystemSecretKey: systemSecretKey1,
+		}
+		err = repo.CreateOrganization(ctx, org1)
 		require.NoError(t, err)
 
 		org2ID := core.NewID("org")
-		org2 := &models.Organization{ID: org2ID}
+		systemSecretKey2, err := core.NewSecretKey("sys")
+		require.NoError(t, err)
+		org2 := &models.Organization{
+			ID:                     org2ID,
+			CCAgentSystemSecretKey: systemSecretKey2,
+		}
 		err = repo.CreateOrganization(ctx, org2)
 		require.NoError(t, err)
 
@@ -311,8 +342,13 @@ func TestOrganizationsService_GetOrganizationBySecretKey(t *testing.T) {
 
 		// Create organization and generate secret key
 		testOrgID := core.NewID("org")
-		createdOrg := &models.Organization{ID: testOrgID}
-		err := repo.CreateOrganization(ctx, createdOrg)
+		systemSecretKey, err := core.NewSecretKey("sys")
+		require.NoError(t, err)
+		createdOrg := &models.Organization{
+			ID:                     testOrgID,
+			CCAgentSystemSecretKey: systemSecretKey,
+		}
+		err = repo.CreateOrganization(ctx, createdOrg)
 		require.NoError(t, err)
 
 		secretKey, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(testOrgID))
@@ -362,12 +398,22 @@ func TestOrganizationsService_GetOrganizationBySecretKey(t *testing.T) {
 
 		// Create two organizations
 		org1ID := core.NewID("org")
-		org1 := &models.Organization{ID: org1ID}
-		err := repo.CreateOrganization(ctx, org1)
+		systemSecretKey1, err := core.NewSecretKey("sys")
+		require.NoError(t, err)
+		org1 := &models.Organization{
+			ID:                     org1ID,
+			CCAgentSystemSecretKey: systemSecretKey1,
+		}
+		err = repo.CreateOrganization(ctx, org1)
 		require.NoError(t, err)
 
 		org2ID := core.NewID("org")
-		org2 := &models.Organization{ID: org2ID}
+		systemSecretKey2, err := core.NewSecretKey("sys")
+		require.NoError(t, err)
+		org2 := &models.Organization{
+			ID:                     org2ID,
+			CCAgentSystemSecretKey: systemSecretKey2,
+		}
 		err = repo.CreateOrganization(ctx, org2)
 		require.NoError(t, err)
 
@@ -404,8 +450,13 @@ func TestOrganizationsService_GetOrganizationBySecretKey(t *testing.T) {
 
 		// Create organization without generating a secret key
 		testOrgID := core.NewID("org")
-		createdOrg := &models.Organization{ID: testOrgID}
-		err := repo.CreateOrganization(ctx, createdOrg)
+		systemSecretKey, err := core.NewSecretKey("sys")
+		require.NoError(t, err)
+		createdOrg := &models.Organization{
+			ID:                     testOrgID,
+			CCAgentSystemSecretKey: systemSecretKey,
+		}
+		err = repo.CreateOrganization(ctx, createdOrg)
 		require.NoError(t, err)
 
 		// Try to find organization with random secret key
@@ -425,129 +476,127 @@ func TestOrganizationsService_GetOrganizationBySecretKey(t *testing.T) {
 	})
 }
 
-func TestOrganizationsService_GetAllOrganizations(t *testing.T) {
-	service, repo, cleanup := setupOrganizationsTest(t)
+func TestOrganizationsService_GetOrganizationBySecretKey_UnifiedBehavior(t *testing.T) {
+	service, _, cleanup := setupOrganizationsTest(t)
 	defer cleanup()
 
-	t.Run("successful retrieval of all organizations", func(t *testing.T) {
+	t.Run("retrieves organization by ccagent secret key", func(t *testing.T) {
 		ctx := context.Background()
 
-		// Create multiple organizations
-		org1ID := core.NewID("org")
-		org1 := &models.Organization{ID: org1ID}
-		err := repo.CreateOrganization(ctx, org1)
+		// Create organization with system secret key
+		organization, err := service.CreateOrganization(ctx)
 		require.NoError(t, err)
+		require.NotEmpty(t, organization.CCAgentSystemSecretKey)
 
-		org2ID := core.NewID("org")
-		org2 := &models.Organization{ID: org2ID}
-		err = repo.CreateOrganization(ctx, org2)
+		// Generate a ccagent secret key
+		ccagentSecretKey, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(organization.ID))
 		require.NoError(t, err)
+		require.NotEmpty(t, ccagentSecretKey)
+		assert.True(
+			t,
+			len(ccagentSecretKey) > 8 && ccagentSecretKey[:8] == "ccagent_",
+			"ccagent key should have ccagent_ prefix",
+		)
 
-		org3ID := core.NewID("org")
-		org3 := &models.Organization{ID: org3ID}
-		err = repo.CreateOrganization(ctx, org3)
+		// Retrieve organization using ccagent secret key
+		maybeOrg, err := service.GetOrganizationBySecretKey(ctx, ccagentSecretKey)
 		require.NoError(t, err)
+		require.True(t, maybeOrg.IsPresent())
 
-		// Retrieve all organizations
-		organizations, err := service.GetAllOrganizations(ctx)
-		require.NoError(t, err)
-
-		// Should contain at least our 3 test organizations (there might be others from other tests)
-		assert.GreaterOrEqual(t, len(organizations), 3)
-
-		// Find our test organizations in the results
-		orgIDs := make(map[string]bool)
-		for _, org := range organizations {
-			orgIDs[org.ID] = true
-			assert.True(t, core.IsValidULID(org.ID))
-			assert.False(t, org.CreatedAt.IsZero())
-			assert.False(t, org.UpdatedAt.IsZero())
-		}
-
-		assert.True(t, orgIDs[org1ID], "org1 should be in results")
-		assert.True(t, orgIDs[org2ID], "org2 should be in results")
-		assert.True(t, orgIDs[org3ID], "org3 should be in results")
+		retrievedOrg := maybeOrg.MustGet()
+		assert.Equal(t, organization.ID, retrievedOrg.ID)
+		assert.NotNil(t, retrievedOrg.CCAgentSecretKey)
+		assert.Equal(t, ccagentSecretKey, *retrievedOrg.CCAgentSecretKey)
 
 		// Clean up
 		defer func() {
 			cfg, _ := testutils.LoadTestConfig()
 			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
 			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.organizations WHERE id IN ($1, $2, $3)", cfg.DatabaseSchema)
-			dbConn.Exec(query, org1ID, org2ID, org3ID)
+			query := fmt.Sprintf("DELETE FROM %s.organizations WHERE id = $1", cfg.DatabaseSchema)
+			dbConn.Exec(query, organization.ID)
 		}()
 	})
 
-	t.Run("returns empty list when no organizations exist", func(t *testing.T) {
+	t.Run("retrieves organization by system secret key", func(t *testing.T) {
 		ctx := context.Background()
 
-		// Clean up any existing organizations first
-		cfg, err := testutils.LoadTestConfig()
+		// Create organization with auto-generated system secret key
+		organization, err := service.CreateOrganization(ctx)
 		require.NoError(t, err)
-		dbConn, err := db.NewConnection(cfg.DatabaseURL)
+		require.NotEmpty(t, organization.CCAgentSystemSecretKey)
+		assert.True(
+			t,
+			len(organization.CCAgentSystemSecretKey) > 4 && organization.CCAgentSystemSecretKey[:4] == "sys_",
+			"system key should have sys_ prefix",
+		)
+
+		// Retrieve organization using system secret key
+		maybeOrg, err := service.GetOrganizationBySecretKey(ctx, organization.CCAgentSystemSecretKey)
 		require.NoError(t, err)
-		defer dbConn.Close()
+		require.True(t, maybeOrg.IsPresent())
 
-		// Delete all organizations to ensure clean state
-		query := fmt.Sprintf("DELETE FROM %s.organizations", cfg.DatabaseSchema)
-		_, err = dbConn.Exec(query)
-		require.NoError(t, err)
-
-		// Retrieve all organizations
-		organizations, err := service.GetAllOrganizations(ctx)
-		require.NoError(t, err)
-		assert.Empty(t, organizations)
-	})
-
-	t.Run("organizations are ordered by created_at ASC", func(t *testing.T) {
-		ctx := context.Background()
-
-		// Create organizations one by one to ensure different creation times
-		org1ID := core.NewID("org")
-		org1 := &models.Organization{ID: org1ID}
-		err := repo.CreateOrganization(ctx, org1)
-		require.NoError(t, err)
-
-		org2ID := core.NewID("org")
-		org2 := &models.Organization{ID: org2ID}
-		err = repo.CreateOrganization(ctx, org2)
-		require.NoError(t, err)
-
-		// Retrieve all organizations
-		organizations, err := service.GetAllOrganizations(ctx)
-		require.NoError(t, err)
-
-		// Should have at least 2 organizations
-		assert.GreaterOrEqual(t, len(organizations), 2)
-
-		// Find our organizations in results and verify ordering
-		var org1Idx, org2Idx int = -1, -1
-		for i, org := range organizations {
-			if org.ID == org1ID {
-				org1Idx = i
-			}
-			if org.ID == org2ID {
-				org2Idx = i
-			}
-		}
-
-		assert.NotEqual(t, -1, org1Idx, "org1 should be found")
-		assert.NotEqual(t, -1, org2Idx, "org2 should be found")
-		assert.Less(t, org1Idx, org2Idx, "org1 should come before org2 (created first)")
-
-		// Verify the ordering is consistent with creation time
-		if org1Idx < len(organizations) && org2Idx < len(organizations) {
-			assert.True(t, organizations[org1Idx].CreatedAt.Before(organizations[org2Idx].CreatedAt) ||
-				organizations[org1Idx].CreatedAt.Equal(organizations[org2Idx].CreatedAt))
-		}
+		retrievedOrg := maybeOrg.MustGet()
+		assert.Equal(t, organization.ID, retrievedOrg.ID)
+		assert.Equal(t, organization.CCAgentSystemSecretKey, retrievedOrg.CCAgentSystemSecretKey)
 
 		// Clean up
 		defer func() {
 			cfg, _ := testutils.LoadTestConfig()
 			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
 			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.organizations WHERE id IN ($1, $2)", cfg.DatabaseSchema)
-			dbConn.Exec(query, org1ID, org2ID)
+			query := fmt.Sprintf("DELETE FROM %s.organizations WHERE id = $1", cfg.DatabaseSchema)
+			dbConn.Exec(query, organization.ID)
+		}()
+	})
+
+	t.Run("retrieves same organization with both key types", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create organization with system secret key
+		organization, err := service.CreateOrganization(ctx)
+		require.NoError(t, err)
+		systemSecretKey := organization.CCAgentSystemSecretKey
+		require.NotEmpty(t, systemSecretKey)
+
+		// Generate ccagent secret key for the same organization
+		ccagentSecretKey, err := service.GenerateCCAgentSecretKey(ctx, models.OrgID(organization.ID))
+		require.NoError(t, err)
+		require.NotEmpty(t, ccagentSecretKey)
+
+		// Verify keys are different
+		assert.NotEqual(t, systemSecretKey, ccagentSecretKey)
+
+		// Retrieve organization using system secret key
+		maybeOrgBySystem, err := service.GetOrganizationBySecretKey(ctx, systemSecretKey)
+		require.NoError(t, err)
+		require.True(t, maybeOrgBySystem.IsPresent())
+
+		// Retrieve organization using ccagent secret key
+		maybeOrgByAgent, err := service.GetOrganizationBySecretKey(ctx, ccagentSecretKey)
+		require.NoError(t, err)
+		require.True(t, maybeOrgByAgent.IsPresent())
+
+		// Both should return the same organization
+		orgBySystem := maybeOrgBySystem.MustGet()
+		orgByAgent := maybeOrgByAgent.MustGet()
+		assert.Equal(t, organization.ID, orgBySystem.ID)
+		assert.Equal(t, organization.ID, orgByAgent.ID)
+		assert.Equal(t, orgBySystem.ID, orgByAgent.ID)
+
+		// Verify the organization has both keys
+		assert.Equal(t, systemSecretKey, orgBySystem.CCAgentSystemSecretKey)
+		assert.Equal(t, systemSecretKey, orgByAgent.CCAgentSystemSecretKey)
+		assert.NotNil(t, orgByAgent.CCAgentSecretKey)
+		assert.Equal(t, ccagentSecretKey, *orgByAgent.CCAgentSecretKey)
+
+		// Clean up
+		defer func() {
+			cfg, _ := testutils.LoadTestConfig()
+			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
+			defer dbConn.Close()
+			query := fmt.Sprintf("DELETE FROM %s.organizations WHERE id = $1", cfg.DatabaseSchema)
+			dbConn.Exec(query, organization.ID)
 		}()
 	})
 }

@@ -2,8 +2,6 @@ package organizations
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"log"
 
@@ -25,8 +23,14 @@ func NewOrganizationsService(repo *db.PostgresOrganizationsRepository) *Organiza
 func (s *OrganizationsService) CreateOrganization(ctx context.Context) (*models.Organization, error) {
 	log.Printf("📋 Starting to create organization")
 
+	systemSecretKey, err := core.NewSecretKey("sys")
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate system secret key: %w", err)
+	}
+
 	organization := &models.Organization{
-		ID: core.NewID("org"),
+		ID:                     core.NewID("org"),
+		CCAgentSystemSecretKey: systemSecretKey,
 	}
 
 	if err := s.organizationsRepo.CreateOrganization(ctx, organization); err != nil {
@@ -68,13 +72,10 @@ func (s *OrganizationsService) GenerateCCAgentSecretKey(
 		return "", fmt.Errorf("organization ID must be a valid ULID")
 	}
 
-	// Generate a random 32-byte secret key
-	secretBytes := make([]byte, 32)
-	_, err := rand.Read(secretBytes)
+	secretKey, err := core.NewSecretKey("ccagent")
 	if err != nil {
-		return "", fmt.Errorf("failed to generate random secret key: %w", err)
+		return "", fmt.Errorf("failed to generate secret key: %w", err)
 	}
-	secretKey := base64.URLEncoding.EncodeToString(secretBytes)
 
 	updated, err := s.organizationsRepo.GenerateCCAgentSecretKey(ctx, organizationID, secretKey)
 	if err != nil {
@@ -92,7 +93,7 @@ func (s *OrganizationsService) GetOrganizationBySecretKey(
 	ctx context.Context,
 	secretKey string,
 ) (mo.Option[*models.Organization], error) {
-	log.Printf("📋 Starting to get organization by secret key")
+	log.Printf("📋 Starting to get organization by secret key (ccagent or system)")
 	if secretKey == "" {
 		return mo.None[*models.Organization](), fmt.Errorf("secret key cannot be empty")
 	}
