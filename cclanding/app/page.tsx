@@ -93,6 +93,36 @@ export default function Home() {
 					</AnimateOnScroll>
 				</section>
 
+				{/* About Me */}
+				<hr className="border-gray-300 w-full max-w-4xl mx-auto" />
+				<section className="py-12 rounded-lg pb-8 pt-8 max-w-4xl mx-auto">
+					<AnimateOnScroll>
+						<div className="flex flex-col items-center text-center max-w-3xl mx-auto">
+							<div className="mb-6">
+								<Image
+									src="/profile.png"
+									alt="Preslav Mihaylov"
+									width={120}
+									height={120}
+									className="rounded-full shadow-lg"
+								/>
+							</div>
+							<h2 className="text-3xl font-bold mb-4">Hey, I'm Pres!</h2>
+							<p className="text-lg text-gray-600 leading-7 mb-4">
+								I use Claude Code every day and saw how tremendously useful it
+								is for development work. I wanted to spread this knowledge to my
+								team, so I decided to build this tool that lets you run Claude
+								Code alongside them effortlessly.
+							</p>
+							<p className="text-lg text-gray-600 leading-7">
+								I hope you find this useful too and would love to hear your
+								thoughts and feedback. <br /> Thanks for checking out what I'm
+								building!
+							</p>
+						</div>
+					</AnimateOnScroll>
+				</section>
+
 				{/* FAQ */}
 				<hr className="border-gray-300 w-full max-w-4xl mx-auto" />
 				<section className="py-12 rounded-lg pb-8 pt-8 max-w-4xl mx-auto">
@@ -115,7 +145,7 @@ export default function Home() {
 										rel="noopener noreferrer"
 										className="text-blue-600 hover:text-blue-800 underline transition-colors"
 									>
-										ccagent binary
+										ccagent
 									</a>{" "}
 									on your laptop or server. The agent communicates with the CC
 									server, which sends messages to Slack and Discord.
@@ -133,7 +163,7 @@ export default function Home() {
 								</h3>
 								<p className="text-gray-600 leading-7">
 									It's free during beta. The current priority is getting a good
-									cohort of early testers who'll help shape the product
+									cohort of early testers who'll help me shape the product
 									direction.
 								</p>
 							</div>
@@ -146,7 +176,7 @@ export default function Home() {
 									How can I share feedback?
 								</h3>
 								<p className="text-gray-600 leading-7">
-									Contact us at{" "}
+									Contact me at{" "}
 									<a
 										href="mailto:support@claudecontrol.com"
 										className="text-blue-600 hover:text-blue-800 underline transition-colors"
