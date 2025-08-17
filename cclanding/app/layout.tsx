@@ -26,6 +26,18 @@ export const metadata: Metadata = {
     shortcut: '/icon.svg',
     apple: '/icon.svg',
   },
+  openGraph: {
+    title: "Claude Control - AI Agent for Your Team",
+    description: "Deploy AI agents that interact with your codebase directly from Slack and Discord. Open pull requests, ask questions, and connect MCP servers with your AI co-worker.",
+    images: ['/ogimage.png'],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "Claude Control - AI Agent for Your Team",
+    description: "Deploy AI agents that interact with your codebase directly from Slack and Discord. Open pull requests, ask questions, and connect MCP servers with your AI co-worker.",
+    images: ['/ogimage.png'],
+  },
 };
 
 export default function RootLayout({
