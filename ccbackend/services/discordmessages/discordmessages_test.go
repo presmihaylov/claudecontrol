@@ -668,9 +668,27 @@ func TestDiscordMessagesService(t *testing.T) {
 				)
 			}()
 
-			_, err = service.CreateProcessedDiscordMessage(context.Background(), organizationID, testJob.ID, queuedMessage.DiscordMessageID, queuedMessage.DiscordThreadID, queuedMessage.TextContent, discordIntegrationID, models.ProcessedDiscordMessageStatusQueued)
+			_, err = service.CreateProcessedDiscordMessage(
+				context.Background(),
+				organizationID,
+				testJob.ID,
+				queuedMessage.DiscordMessageID,
+				queuedMessage.DiscordThreadID,
+				queuedMessage.TextContent,
+				discordIntegrationID,
+				models.ProcessedDiscordMessageStatusQueued,
+			)
 			require.NoError(t, err)
-			_, err = service.CreateProcessedDiscordMessage(context.Background(), organizationID, testJob.ID, inProgressMessage.DiscordMessageID, inProgressMessage.DiscordThreadID, inProgressMessage.TextContent, discordIntegrationID, models.ProcessedDiscordMessageStatusInProgress)
+			_, err = service.CreateProcessedDiscordMessage(
+				context.Background(),
+				organizationID,
+				testJob.ID,
+				inProgressMessage.DiscordMessageID,
+				inProgressMessage.DiscordThreadID,
+				inProgressMessage.TextContent,
+				discordIntegrationID,
+				models.ProcessedDiscordMessageStatusInProgress,
+			)
 			require.NoError(t, err)
 
 			// Test getting queued messages
