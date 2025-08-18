@@ -7,12 +7,13 @@ services:
       - GITHUB_INSTALLATION_ID=78910  # Replace with your Installation ID
       - GITHUB_APP_PRIVATE_KEY_PATH=/workspace/cc.pem
       
-      # Repository to clone at startup (optional)
+      # Repository to clone at startup
       - REPO_URL=github.com/owner/repo-name  # Replace with your repo URL
       
       # API Keys
       - CCAGENT_API_KEY=${CCAGENT_API_KEY}  # Your ccagent API key
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}  # Your Anthropic/Claude API key
+      # - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN} # In case you have a claude max plan
     volumes:
       # Mount your GitHub App private key
       - ./cc.pem:/workspace/cc.pem:ro
