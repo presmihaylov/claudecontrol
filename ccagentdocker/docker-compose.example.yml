@@ -1,0 +1,26 @@
+services:
+  ccagent-test:
+    image: preslavmihaylov/ccagent-docker:latest
+    environment:
+      # GitHub App Configuration
+      - GITHUB_APP_ID=123456  # Replace with your GitHub App ID
+      - GITHUB_INSTALLATION_ID=78910  # Replace with your Installation ID
+      - GITHUB_APP_PRIVATE_KEY_PATH=/workspace/cc.pem
+      
+      # Repository to clone at startup
+      - REPO_URL=github.com/owner/repo-name  # Replace with your repo URL
+      
+      # API Keys
+      - CCAGENT_API_KEY=${CCAGENT_API_KEY}  # Your ccagent API key
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}  # Your Anthropic/Claude API key
+      # - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN} # In case you have a claude max plan
+    volumes:
+      # Mount your GitHub App private key
+      - ./cc.pem:/workspace/cc.pem:ro
+      
+      # Mount home directory to persist user state
+      - ./ccagent-test:/home/ccagent # dont forget to run "sudo chown 1000:1000 <dirname>"
+      
+    working_dir: /workspace
+    stdin_open: true
+    tty: true

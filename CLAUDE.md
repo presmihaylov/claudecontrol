@@ -68,6 +68,10 @@ go run main.go             # Run Discord bot example
 # Worker Pool Example
 cd examples/workerpool
 go run main.go             # Demonstrate worker pool usage
+
+# GitHub Integration Example
+cd examples/github-integration
+go run main.go             # Run GitHub OAuth integration flow
 ```
 
 ## Architecture Overview
@@ -78,6 +82,7 @@ go run main.go             # Demonstrate worker pool usage
 - **examples/websockets**: Reference WebSocket implementations (deprecated)
 - **examples/socketio**: Socket.IO client/server examples
 - **examples/discord-bot**: Discord bot integration example
+- **examples/github-integration**: GitHub OAuth integration with repository access
 
 ### Backend Component Organization
 - `cmd/main.go`: Server setup, environment loading, port 8080
