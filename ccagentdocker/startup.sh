@@ -6,8 +6,12 @@ set -e
 
 # Source token environment
 sleep 2  # Give token rotation time to complete initial run
-if [[ -f /tmp/gh_token_env ]]; then
-  source /tmp/gh_token_env
+
+# Source from ccagent config directory
+if [[ -f /home/ccagent/.config/ccagent/.env ]]; then
+  set -a  # automatically export all variables
+  source /home/ccagent/.config/ccagent/.env
+  set +a  # disable automatic export
 fi
 
 # Configure git with claudecontrol identity
@@ -24,9 +28,14 @@ if [[ -n "${REPO_URL:-}" ]]; then
   while [[ -z "${GH_TOKEN:-}" && $timeout -gt 0 ]]; do
     echo "Waiting for GH_TOKEN to be available..."
     sleep 1
-    if [[ -f /tmp/gh_token_env ]]; then
-      source /tmp/gh_token_env
+    
+    # Try to source from ccagent config
+    if [[ -f /home/ccagent/.config/ccagent/.env ]]; then
+      set -a
+      source /home/ccagent/.config/ccagent/.env
+      set +a
     fi
+    
     timeout=$((timeout - 1))
   done
   
