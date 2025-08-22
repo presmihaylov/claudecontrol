@@ -56,15 +56,22 @@ rotate_token() {
 
   # Set the token as environment variable
   export GH_TOKEN="$TOKEN"
-  echo "export GH_TOKEN=\"$TOKEN\"" > /tmp/gh_token_env
+  
+  # Create ccagent config directory if it doesn't exist
+  mkdir -p /home/ccagent/.config/ccagent
+  
+  # Write token to ccagent config file
+  echo "GH_TOKEN=\"$TOKEN\"" > /home/ccagent/.config/ccagent/.env
   
   echo "$(date): Token rotated successfully. Expires at: $EXPIRES"
   return 0
 }
 
 # Source the token environment if it exists
-if [[ -f /tmp/gh_token_env ]]; then
-  source /tmp/gh_token_env
+if [[ -f /home/ccagent/.config/ccagent/.env ]]; then
+  set -a
+  source /home/ccagent/.config/ccagent/.env
+  set +a
 fi
 
 # If this script is called with "rotate" argument, just rotate once and exit
