@@ -15,6 +15,7 @@ type DashboardAPIHandler struct {
 	slackIntegrationsService   services.SlackIntegrationsService
 	discordIntegrationsService services.DiscordIntegrationsService
 	githubService              services.GitHubIntegrationsService
+	anthropicService           services.AnthropicIntegrationsService
 	organizationsService       services.OrganizationsService
 	agentsService              services.AgentsService
 	txManager                  services.TransactionManager
@@ -25,6 +26,7 @@ func NewDashboardAPIHandler(
 	slackIntegrationsService services.SlackIntegrationsService,
 	discordIntegrationsService services.DiscordIntegrationsService,
 	githubService services.GitHubIntegrationsService,
+	anthropicService services.AnthropicIntegrationsService,
 	organizationsService services.OrganizationsService,
 	agentsService services.AgentsService,
 	txManager services.TransactionManager,
@@ -34,6 +36,7 @@ func NewDashboardAPIHandler(
 		slackIntegrationsService:   slackIntegrationsService,
 		discordIntegrationsService: discordIntegrationsService,
 		githubService:              githubService,
+		anthropicService:           anthropicService,
 		organizationsService:       organizationsService,
 		agentsService:              agentsService,
 		txManager:                  txManager,
@@ -276,5 +279,81 @@ func (h *DashboardAPIHandler) DeleteGitHubIntegration(ctx context.Context, integ
 	}
 
 	log.Printf("✅ GitHub integration deleted successfully: %s", integrationID)
+	return nil
+}
+
+// ListAnthropicIntegrations returns all Anthropic integrations for an organization
+func (h *DashboardAPIHandler) ListAnthropicIntegrations(
+	ctx context.Context,
+	user *models.User,
+) ([]models.AnthropicIntegration, error) {
+	log.Printf("📋 Listing Anthropic integrations for organization: %s", user.OrgID)
+	integrations, err := h.anthropicService.ListAnthropicIntegrations(ctx, user.OrgID)
+	if err != nil {
+		log.Printf("❌ Failed to get Anthropic integrations: %v", err)
+		return nil, err
+	}
+	log.Printf("✅ Retrieved %d Anthropic integrations for organization: %s", len(integrations), user.OrgID)
+	return integrations, nil
+}
+
+// CreateAnthropicIntegration creates a new Anthropic integration for an organization
+func (h *DashboardAPIHandler) CreateAnthropicIntegration(
+	ctx context.Context,
+	apiKey, oauthToken *string,
+	user *models.User,
+) (*models.AnthropicIntegration, error) {
+	log.Printf("➕ Creating Anthropic integration for organization: %s", user.OrgID)
+	integration, err := h.anthropicService.CreateAnthropicIntegration(
+		ctx,
+		user.OrgID,
+		apiKey,
+		oauthToken,
+	)
+	if err != nil {
+		log.Printf("❌ Failed to create Anthropic integration: %v", err)
+		return nil, err
+	}
+	log.Printf("✅ Anthropic integration created successfully: %s", integration.ID)
+	return integration, nil
+}
+
+// GetAnthropicIntegrationByID returns an Anthropic integration by ID
+func (h *DashboardAPIHandler) GetAnthropicIntegrationByID(
+	ctx context.Context,
+	integrationID string,
+) (*models.AnthropicIntegration, error) {
+	log.Printf("📋 Getting Anthropic integration by ID: %s", integrationID)
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		log.Printf("❌ Organization not found in context")
+		return nil, fmt.Errorf("organization not found in context")
+	}
+	integrationOpt, err := h.anthropicService.GetAnthropicIntegrationByID(ctx, models.OrgID(org.ID), integrationID)
+	if err != nil {
+		log.Printf("❌ Failed to get Anthropic integration: %v", err)
+		return nil, err
+	}
+	integration, ok := integrationOpt.Get()
+	if !ok {
+		log.Printf("❌ Anthropic integration not found: %s", integrationID)
+		return nil, fmt.Errorf("anthropic integration not found")
+	}
+	log.Printf("✅ Retrieved Anthropic integration: %s", integrationID)
+	return integration, nil
+}
+
+// DeleteAnthropicIntegration deletes an Anthropic integration by ID
+func (h *DashboardAPIHandler) DeleteAnthropicIntegration(ctx context.Context, integrationID string) error {
+	log.Printf("🗑️ Deleting Anthropic integration: %s", integrationID)
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return fmt.Errorf("organization not found in context")
+	}
+	if err := h.anthropicService.DeleteAnthropicIntegration(ctx, models.OrgID(org.ID), integrationID); err != nil {
+		log.Printf("❌ Failed to delete Anthropic integration: %v", err)
+		return err
+	}
+	log.Printf("✅ Anthropic integration deleted successfully: %s", integrationID)
 	return nil
 }

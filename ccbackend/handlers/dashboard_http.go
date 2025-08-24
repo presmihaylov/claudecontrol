@@ -463,6 +463,136 @@ func (h *DashboardHTTPHandler) HandleDeleteGitHubIntegration(w http.ResponseWrit
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// AnthropicIntegrationRequest represents the request body for creating an Anthropic integration
+type AnthropicIntegrationRequest struct {
+	APIKey     *string `json:"api_key,omitempty"`
+	OAuthToken *string `json:"oauth_token,omitempty"`
+}
+
+func (h *DashboardHTTPHandler) HandleListAnthropicIntegrations(w http.ResponseWriter, r *http.Request) {
+	log.Printf("📋 List Anthropic integrations request received from %s", r.RemoteAddr)
+
+	// Get user entity from context (set by authentication middleware)
+	user, ok := appctx.GetUser(r.Context())
+	if !ok {
+		log.Printf("❌ User not found in context")
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	integrations, err := h.handler.ListAnthropicIntegrations(r.Context(), user)
+	if err != nil {
+		log.Printf("❌ Failed to list Anthropic integrations: %v", err)
+		http.Error(w, "failed to list Anthropic integrations", http.StatusInternalServerError)
+		return
+	}
+
+	// Convert domain integrations to API models
+	apiIntegrations := api.DomainAnthropicIntegrationsToAPIAnthropicIntegrations(integrations)
+
+	log.Printf("✅ Successfully retrieved %d Anthropic integrations", len(integrations))
+	h.writeJSONResponse(w, http.StatusOK, apiIntegrations)
+}
+
+func (h *DashboardHTTPHandler) HandleCreateAnthropicIntegration(w http.ResponseWriter, r *http.Request) {
+	log.Printf("➕ Create Anthropic integration request received from %s", r.RemoteAddr)
+
+	// Get user entity from context (set by authentication middleware)
+	user, ok := appctx.GetUser(r.Context())
+	if !ok {
+		log.Printf("❌ User not found in context")
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	var req AnthropicIntegrationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("❌ Failed to decode request: %v", err)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate request
+	if req.APIKey == nil && req.OAuthToken == nil {
+		log.Printf("❌ Neither API key nor OAuth token provided")
+		http.Error(w, "either api_key or oauth_token must be provided", http.StatusBadRequest)
+		return
+	}
+	if req.APIKey != nil && req.OAuthToken != nil {
+		log.Printf("❌ Both API key and OAuth token provided")
+		http.Error(w, "only one of api_key or oauth_token can be provided", http.StatusBadRequest)
+		return
+	}
+
+	integration, err := h.handler.CreateAnthropicIntegration(r.Context(), req.APIKey, req.OAuthToken, user)
+	if err != nil {
+		log.Printf("❌ Failed to create Anthropic integration: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert domain integration to API model
+	apiIntegration := api.DomainAnthropicIntegrationToAPIAnthropicIntegration(integration)
+
+	log.Printf("✅ Anthropic integration created successfully: %s", integration.ID)
+	h.writeJSONResponse(w, http.StatusCreated, apiIntegration)
+}
+
+func (h *DashboardHTTPHandler) HandleGetAnthropicIntegrationByID(w http.ResponseWriter, r *http.Request) {
+	log.Printf("📋 Get Anthropic integration request received from %s", r.RemoteAddr)
+
+	vars := mux.Vars(r)
+	integrationIDStr, ok := vars["id"]
+	if !ok || !core.IsValidULID(integrationIDStr) {
+		log.Printf("❌ Missing or invalid integration ID in URL path")
+		http.Error(w, "integration ID must be a valid ULID", http.StatusBadRequest)
+		return
+	}
+
+	integration, err := h.handler.GetAnthropicIntegrationByID(r.Context(), integrationIDStr)
+	if err != nil {
+		log.Printf("❌ Failed to get Anthropic integration: %v", err)
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "integration not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "failed to get Anthropic integration", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Convert domain integration to API model
+	apiIntegration := api.DomainAnthropicIntegrationToAPIAnthropicIntegration(integration)
+
+	log.Printf("✅ Successfully retrieved Anthropic integration: %s", integrationIDStr)
+	h.writeJSONResponse(w, http.StatusOK, apiIntegration)
+}
+
+func (h *DashboardHTTPHandler) HandleDeleteAnthropicIntegration(w http.ResponseWriter, r *http.Request) {
+	log.Printf("🗑️ Delete Anthropic integration request received from %s", r.RemoteAddr)
+
+	vars := mux.Vars(r)
+	integrationIDStr, ok := vars["id"]
+	if !ok || !core.IsValidULID(integrationIDStr) {
+		log.Printf("❌ Missing or invalid integration ID in URL path")
+		http.Error(w, "integration ID must be a valid ULID", http.StatusBadRequest)
+		return
+	}
+
+	err := h.handler.DeleteAnthropicIntegration(r.Context(), integrationIDStr)
+	if err != nil {
+		log.Printf("❌ Failed to delete Anthropic integration: %v", err)
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "integration not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "failed to delete Anthropic integration", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	log.Printf("✅ Anthropic integration deleted successfully: %s", integrationIDStr)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware *middleware.ClerkAuthMiddleware) {
 	log.Printf("🚀 Registering dashboard API endpoints")
 
@@ -511,6 +641,18 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	router.HandleFunc("/github/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteGitHubIntegration)).
 		Methods("DELETE")
 	log.Printf("✅ DELETE /github/integrations/{id} endpoint registered")
+
+	// Anthropic integrations endpoints
+	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleListAnthropicIntegrations)).Methods("GET")
+	log.Printf("✅ GET /anthropic/integrations endpoint registered")
+	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleCreateAnthropicIntegration)).Methods("POST")
+	log.Printf("✅ POST /anthropic/integrations endpoint registered")
+	router.HandleFunc("/anthropic/integrations/{id}", authMiddleware.WithAuth(h.HandleGetAnthropicIntegrationByID)).
+		Methods("GET")
+	log.Printf("✅ GET /anthropic/integrations/{id} endpoint registered")
+	router.HandleFunc("/anthropic/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteAnthropicIntegration)).
+		Methods("DELETE")
+	log.Printf("✅ DELETE /anthropic/integrations/{id} endpoint registered")
 
 	// Organization endpoints
 	router.HandleFunc("/organizations", authMiddleware.WithAuth(h.HandleGetOrganization)).Methods("GET")
