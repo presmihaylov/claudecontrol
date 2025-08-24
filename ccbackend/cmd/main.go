@@ -26,6 +26,7 @@ import (
 	"ccbackend/middleware"
 	agentsservice "ccbackend/services/agents"
 	anthropicintegrations "ccbackend/services/anthropic_integrations"
+	ccagentcontainerintegrations "ccbackend/services/ccagent_container_integrations"
 	discordintegrations "ccbackend/services/discord_integrations"
 	discordmessages "ccbackend/services/discordmessages"
 	githubintegrations "ccbackend/services/github_integrations"
@@ -81,6 +82,7 @@ func run() error {
 	discordIntegrationsRepo := db.NewPostgresDiscordIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	githubIntegrationsRepo := db.NewPostgresGitHubIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	anthropicIntegrationsRepo := db.NewPostgresAnthropicIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+	ccAgentContainerIntegrationsRepo := db.NewPostgresCCAgentContainerIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
@@ -121,6 +123,7 @@ func run() error {
 	}
 	githubService := githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, githubClient)
 	anthropicService := anthropicintegrations.NewAnthropicIntegrationsService(anthropicIntegrationsRepo)
+	ccAgentContainerService := ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(ccAgentContainerIntegrationsRepo)
 
 	// Create API key validator using organizationsService directly
 	apiKeyValidator := func(apiKey string) (string, error) {
@@ -192,6 +195,7 @@ func run() error {
 		discordIntegrationsService,
 		githubService,
 		anthropicService,
+		ccAgentContainerService,
 		organizationsService,
 		agentsService,
 		txManager,

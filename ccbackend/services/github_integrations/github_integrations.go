@@ -151,3 +151,35 @@ func (s *GitHubIntegrationsService) DeleteGitHubIntegration(
 	log.Printf("📋 Completed successfully - deleted GitHub integration: %s", integrationID)
 	return nil
 }
+
+func (s *GitHubIntegrationsService) ListAvailableRepositories(
+	ctx context.Context,
+	organizationID models.OrgID,
+) ([]models.GitHubRepository, error) {
+	log.Printf("📋 Starting to list available GitHub repositories for org: %s", organizationID)
+
+	if organizationID == "" {
+		return nil, fmt.Errorf("organization ID cannot be empty")
+	}
+
+	// Get the GitHub integration for the organization
+	integrations, err := s.githubRepo.GetGitHubIntegrationsByOrganizationID(ctx, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub integrations: %w", err)
+	}
+	if len(integrations) == 0 {
+		return []models.GitHubRepository{}, nil
+	}
+
+	// Use the first integration (typically there's only one per org)
+	integration := integrations[0]
+
+	// Get repositories accessible by the GitHub App installation
+	repositories, err := s.githubClient.ListInstallationRepositories(ctx, integration.GitHubInstallationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list GitHub repositories: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found %d accessible repositories", len(repositories))
+	return repositories, nil
+}

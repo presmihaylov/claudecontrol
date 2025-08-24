@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { CheckCircle, ExternalLink, GitBranch, Key, Loader2, Trash2, User } from "lucide-react";
+import { CheckCircle, ExternalLink, GitBranch, Key, Loader2, MessageCircle, Server, Trash2, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -26,6 +27,24 @@ interface AnthropicIntegration {
 	organization_id: string;
 	created_at: string;
 	updated_at: string;
+}
+
+interface CCAgentContainerIntegration {
+	id: string;
+	instances_count: number;
+	repo_url: string;
+	organization_id: string;
+	created_at: string;
+	updated_at: string;
+}
+
+interface GitHubRepository {
+	id: number;
+	name: string;
+	full_name: string;
+	html_url: string;
+	description?: string;
+	private: boolean;
 }
 
 // OAuth configuration from ccoauth example
@@ -63,6 +82,10 @@ export default function OnboardingPage() {
 	const [anthropicIntegration, setAnthropicIntegration] = useState<AnthropicIntegration | null>(
 		null,
 	);
+	const [ccAgentIntegration, setCCAgentIntegration] = useState<CCAgentContainerIntegration | null>(
+		null,
+	);
+	const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
 	const [error, setError] = useState<string | null>(null);
 
 	// Anthropic integration state
@@ -71,10 +94,23 @@ export default function OnboardingPage() {
 	const [integrationMethod, setIntegrationMethod] = useState<"api-key" | "oauth">("api-key");
 	const [savingAnthropic, setSavingAnthropic] = useState(false);
 
+	// CCAgent integration state
+	const [selectedRepo, setSelectedRepo] = useState("");
+	const [instancesCount] = useState(1);
+	const [savingCCAgent, setSavingCCAgent] = useState(false);
+	const [loadingRepos, setLoadingRepos] = useState(false);
+
 	// Check for existing integrations on mount
 	useEffect(() => {
 		checkExistingIntegrations();
 	}, []);
+
+	// Load repositories when reaching step 3
+	useEffect(() => {
+		if (currentStep === 3 && githubIntegration && repositories.length === 0) {
+			loadGitHubRepositories();
+		}
+	}, [currentStep, githubIntegration]);
 
 	const checkExistingIntegrations = async () => {
 		try {
@@ -113,6 +149,23 @@ export default function OnboardingPage() {
 					setAnthropicIntegration(anthropicIntegrations[0]);
 					if (githubIntegration) {
 						setCurrentStep(3);
+					}
+				}
+			}
+
+			// Check CCAgent Container integration
+			const ccAgentResponse = await fetch(`${env.CCBACKEND_BASE_URL}/ccagent-container/integrations`, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			});
+
+			if (ccAgentResponse.ok) {
+				const integration = await ccAgentResponse.json();
+				if (integration) {
+					setCCAgentIntegration(integration);
+					if (githubIntegration && anthropicIntegration) {
+						setCurrentStep(4);
 					}
 				}
 			}
@@ -296,6 +349,121 @@ export default function OnboardingPage() {
 		}
 	};
 
+	const loadGitHubRepositories = async () => {
+		setLoadingRepos(true);
+		try {
+			const token = await getToken();
+			if (!token) {
+				setError("Authentication required");
+				return;
+			}
+
+			const response = await fetch(`${env.CCBACKEND_BASE_URL}/github/repositories`, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error("Failed to load repositories");
+			}
+
+			const repos: GitHubRepository[] = await response.json();
+			setRepositories(repos);
+		} catch (err) {
+			console.error("Error loading repositories:", err);
+			setError("Failed to load GitHub repositories");
+		} finally {
+			setLoadingRepos(false);
+		}
+	};
+
+	const handleSaveCCAgent = async () => {
+		setSavingCCAgent(true);
+		setError(null);
+
+		try {
+			const token = await getToken();
+			if (!token) {
+				setError("Authentication required");
+				return;
+			}
+
+			if (!selectedRepo) {
+				setError("Please select a repository");
+				return;
+			}
+
+			const response = await fetch(`${env.CCBACKEND_BASE_URL}/ccagent-container/integrations`, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					instances_count: instancesCount,
+					repo_url: selectedRepo,
+				}),
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(errorText || "Failed to create CCAgent integration");
+			}
+
+			const integration: CCAgentContainerIntegration = await response.json();
+			setCCAgentIntegration(integration);
+			setCurrentStep(4);
+		} catch (err) {
+			console.error("Error saving CCAgent integration:", err);
+			setError(err instanceof Error ? err.message : "Failed to save CCAgent integration");
+		} finally {
+			setSavingCCAgent(false);
+		}
+	};
+
+	const handleDisconnectCCAgent = async () => {
+		if (!ccAgentIntegration) return;
+
+		const confirmed = window.confirm(
+			"Are you sure you want to disconnect this CCAgent integration?",
+		);
+
+		if (!confirmed) return;
+
+		setLoading(true);
+		try {
+			const token = await getToken();
+			if (!token) {
+				setError("Authentication required");
+				return;
+			}
+
+			const response = await fetch(
+				`${env.CCBACKEND_BASE_URL}/ccagent-container/integrations/${ccAgentIntegration.id}`,
+				{
+					method: "DELETE",
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				},
+			);
+
+			if (!response.ok) {
+				throw new Error("Failed to disconnect CCAgent integration");
+			}
+
+			setCCAgentIntegration(null);
+			setCurrentStep(githubIntegration && anthropicIntegration ? 3 : 2);
+			setError(null);
+		} catch (err) {
+			console.error("Error disconnecting CCAgent integration:", err);
+			setError("Failed to disconnect CCAgent integration");
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	const handleContinueToDashboard = () => {
 		router.push("/");
 	};
@@ -308,7 +476,7 @@ export default function OnboardingPage() {
 		);
 	}
 
-	const isComplete = githubIntegration && anthropicIntegration;
+	const isComplete = githubIntegration && anthropicIntegration && ccAgentIntegration;
 
 	return (
 		<div className="flex min-h-screen items-center justify-center p-4">
@@ -349,10 +517,21 @@ export default function OnboardingPage() {
 						<div className="flex items-center gap-2">
 							<div
 								className={`flex h-8 w-8 items-center justify-center rounded-full ${
+									currentStep >= 3 ? "bg-primary text-primary-foreground" : "bg-muted"
+								}`}
+							>
+								{ccAgentIntegration ? <CheckCircle className="h-5 w-5" /> : "3"}
+							</div>
+							<span className="text-sm font-medium">CCAgent</span>
+						</div>
+						<div className="h-px flex-1 bg-muted mx-4" />
+						<div className="flex items-center gap-2">
+							<div
+								className={`flex h-8 w-8 items-center justify-center rounded-full ${
 									isComplete ? "bg-primary text-primary-foreground" : "bg-muted"
 								}`}
 							>
-								{isComplete ? <CheckCircle className="h-5 w-5" /> : "3"}
+								{isComplete ? <CheckCircle className="h-5 w-5" /> : "4"}
 							</div>
 							<span className="text-sm font-medium">Complete</span>
 						</div>
@@ -590,21 +769,162 @@ export default function OnboardingPage() {
 										</Button>
 									</div>
 								</div>
-								{isComplete ? (
-									<Button onClick={() => setCurrentStep(3)} className="w-full">
-										View Summary
-									</Button>
-								) : (
-									<Button onClick={() => setCurrentStep(1)} variant="outline" className="w-full">
-										Back to GitHub Setup
-									</Button>
-								)}
+								<Button onClick={() => setCurrentStep(3)} className="w-full">
+									Continue to CCAgent Setup
+								</Button>
 							</CardContent>
 						</Card>
 					)}
 
-					{/* Step 3: Complete */}
-					{currentStep === 3 && isComplete && (
+					{/* Step 3: CCAgent Container Integration */}
+					{currentStep === 3 && !ccAgentIntegration && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2">
+									<Server className="h-5 w-5" />
+									Configure CCAgent
+								</CardTitle>
+								<CardDescription>
+									Set up your CCAgent container to run automated tasks
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<div className="space-y-2">
+									<Label htmlFor="repository">Repository</Label>
+									<Select value={selectedRepo} onValueChange={setSelectedRepo} disabled={loadingRepos}>
+										<SelectTrigger id="repository">
+											<SelectValue placeholder={loadingRepos ? "Loading repositories..." : "Select a repository"} />
+										</SelectTrigger>
+										<SelectContent>
+											{repositories.map((repo) => (
+												<SelectItem key={repo.id} value={repo.html_url}>
+													{repo.full_name}
+													{repo.private && " 🔒"}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<p className="text-xs text-muted-foreground">
+										Select the repository where CCAgent will work
+									</p>
+								</div>
+
+								<div className="space-y-2">
+									<Label>Instances</Label>
+									<div className="space-y-2">
+										<div className="flex items-center justify-between p-3 border rounded-lg">
+											<div className="flex items-center gap-3">
+												<input
+													type="radio"
+													id="instance-1"
+													name="instances"
+													value="1"
+													checked={instancesCount === 1}
+													readOnly
+													className="h-4 w-4"
+												/>
+												<label htmlFor="instance-1" className="text-sm font-medium cursor-pointer">
+													1 Instance
+												</label>
+											</div>
+											<span className="text-xs text-muted-foreground">Default</span>
+										</div>
+										{[2, 3, 4, 5].map((count) => (
+											<div key={count} className="flex items-center justify-between p-3 border rounded-lg opacity-50">
+												<div className="flex items-center gap-3">
+													<input
+														type="radio"
+														id={`instance-${count}`}
+														name="instances"
+														value={count.toString()}
+														disabled
+														className="h-4 w-4"
+													/>
+													<label htmlFor={`instance-${count}`} className="text-sm font-medium">
+														{count} Instances
+													</label>
+												</div>
+												<div className="flex items-center gap-2 text-xs text-muted-foreground">
+													<MessageCircle className="h-3 w-3" />
+													<span>Reach out if you need more</span>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+
+								<Button
+									onClick={handleSaveCCAgent}
+									disabled={!selectedRepo || savingCCAgent}
+									className="w-full"
+								>
+									{savingCCAgent ? (
+										<>
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											Saving...
+										</>
+									) : (
+										<>
+											<Server className="mr-2 h-4 w-4" />
+											Save Configuration
+										</>
+									)}
+								</Button>
+							</CardContent>
+						</Card>
+					)}
+
+					{/* CCAgent Connected State */}
+					{ccAgentIntegration && currentStep === 3 && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
+									<CheckCircle className="h-5 w-5" />
+									CCAgent Configured
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<div className="rounded-lg border bg-muted/50 p-4">
+									<div className="flex items-start justify-between">
+										<div className="flex-1">
+											<dl className="space-y-1 text-sm">
+												<div>
+													<dt className="inline font-medium text-muted-foreground">Repository:</dt>{" "}
+													<dd className="inline">{ccAgentIntegration.repo_url}</dd>
+												</div>
+												<div>
+													<dt className="inline font-medium text-muted-foreground">Instances:</dt>{" "}
+													<dd className="inline">{ccAgentIntegration.instances_count}</dd>
+												</div>
+												<div>
+													<dt className="inline font-medium text-muted-foreground">Created:</dt>{" "}
+													<dd className="inline">
+														{new Date(ccAgentIntegration.created_at).toLocaleDateString()}
+													</dd>
+												</div>
+											</dl>
+										</div>
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={handleDisconnectCCAgent}
+											disabled={loading}
+											className="text-muted-foreground hover:text-destructive"
+										>
+											<Trash2 className="h-4 w-4 mr-2" />
+											{loading ? "Disconnecting..." : "Disconnect"}
+										</Button>
+									</div>
+								</div>
+								<Button onClick={() => setCurrentStep(4)} className="w-full">
+									View Summary
+								</Button>
+							</CardContent>
+						</Card>
+					)}
+
+					{/* Step 4: Complete */}
+					{currentStep === 4 && isComplete && (
 						<Card>
 							<CardHeader>
 								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -614,7 +934,7 @@ export default function OnboardingPage() {
 								<CardDescription>You're all set up and ready to use Claude Control</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<div className="grid gap-4 md:grid-cols-2">
+								<div className="grid gap-4 md:grid-cols-3">
 									<div className="rounded-lg border bg-muted/50 p-4">
 										<div className="flex items-center gap-2 mb-2">
 											<GitBranch className="h-4 w-4" />
@@ -633,6 +953,15 @@ export default function OnboardingPage() {
 											{anthropicIntegration?.has_api_key
 												? "API Key configured"
 												: "OAuth token configured"}
+										</p>
+									</div>
+									<div className="rounded-lg border bg-muted/50 p-4">
+										<div className="flex items-center gap-2 mb-2">
+											<Server className="h-4 w-4" />
+											<span className="font-medium text-sm">CCAgent</span>
+										</div>
+										<p className="text-xs text-muted-foreground">
+											{ccAgentIntegration?.instances_count} instance(s) configured
 										</p>
 									</div>
 								</div>
