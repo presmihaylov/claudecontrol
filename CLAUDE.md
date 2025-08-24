@@ -141,6 +141,16 @@ DATABASE_URL=<postgresql_connection_string>
 - **Prefer `slices.Contains`**: Use `slices.Contains(slice, value)` instead of manual loops when
   checking for membership in a slice
 - **ULID IDs**: Use prefixed ULIDs generated via `core.NewID(prefix)` for all entity identifiers
+- **Slice Initialization**: When initializing slices to be returned from functions, always initialize 
+  them as empty arrays to avoid JSON null serialization issues:
+  ```go
+  // Good - returns empty JSON array []
+  integrations := []models.SlackIntegration{}
+  
+  // Bad - can return JSON null
+  var integrations []models.SlackIntegration
+  ```
+  This ensures API endpoints always return `[]` instead of `null` for empty collections
 
 ## Module Dependencies
 

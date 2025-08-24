@@ -63,6 +63,12 @@ type SlackClient interface {
 	RemoveReaction(name string, item SlackItemRef) error
 }
 
+// GitHubClient defines the interface for GitHub API operations
+type GitHubClient interface {
+	ExchangeCodeForAccessToken(ctx context.Context, code string) (string, error)
+	UninstallApp(ctx context.Context, installationID string) error
+}
+
 // SocketIOClient defines the interface for Socket.IO client operations
 type SocketIOClient interface {
 	// Router registration

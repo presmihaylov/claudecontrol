@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"ccbackend/clients"
 	discordclient "ccbackend/clients/discord"
+	githubclient "ccbackend/clients/github"
 	slackclient "ccbackend/clients/slack"
 	socketioclient "ccbackend/clients/socketio"
 	"ccbackend/config"
@@ -25,6 +27,7 @@ import (
 	agentsservice "ccbackend/services/agents"
 	discordintegrations "ccbackend/services/discord_integrations"
 	discordmessages "ccbackend/services/discordmessages"
+	githubintegrations "ccbackend/services/github_integrations"
 	jobs "ccbackend/services/jobs"
 	organizations "ccbackend/services/organizations"
 	slackintegrations "ccbackend/services/slack_integrations"
@@ -75,6 +78,7 @@ func run() error {
 	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	discordIntegrationsRepo := db.NewPostgresDiscordIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+	githubIntegrationsRepo := db.NewPostgresGitHubIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
@@ -99,6 +103,21 @@ func run() error {
 		cfg.DiscordClientID,
 		cfg.DiscordClientSecret,
 	)
+	// Create GitHub client
+	privateKey, err := base64.StdEncoding.DecodeString(cfg.GitHubAppPrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to decode GitHub private key: %w", err)
+	}
+	githubClient, err := githubclient.NewGitHubClient(
+		cfg.GitHubClientID,
+		cfg.GitHubClientSecret,
+		cfg.GitHubAppID,
+		privateKey,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create GitHub client: %w", err)
+	}
+	githubService := githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, githubClient)
 
 	// Create API key validator using organizationsService directly
 	apiKeyValidator := func(apiKey string) (string, error) {
@@ -168,6 +187,7 @@ func run() error {
 		usersService,
 		slackIntegrationsService,
 		discordIntegrationsService,
+		githubService,
 		organizationsService,
 		agentsService,
 		txManager,

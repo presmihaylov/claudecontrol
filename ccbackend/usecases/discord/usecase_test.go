@@ -1557,7 +1557,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
-			Return([]*models.DiscordIntegration{integration}, nil)
+			Return([]models.DiscordIntegration{*integration}, nil)
 		mockDiscordMessagesService.On("GetProcessedMessagesByStatus", ctx, models.OrgID("org-456"), models.ProcessedDiscordMessageStatusQueued, "discord-int-123").
 			Return([]*models.ProcessedDiscordMessage{queuedMessage}, nil)
 		mockJobsService.On("GetJobByID", ctx, models.OrgID("org-456"), "job-111").
@@ -1618,7 +1618,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
-			Return([]*models.DiscordIntegration{}, nil)
+			Return([]models.DiscordIntegration{}, nil)
 
 		// Execute
 		err := useCase.ProcessQueuedJobs(ctx)
@@ -1658,7 +1658,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
-			Return([]*models.DiscordIntegration{integration}, nil)
+			Return([]models.DiscordIntegration{*integration}, nil)
 		mockDiscordMessagesService.On("GetProcessedMessagesByStatus", ctx, models.OrgID("org-456"), models.ProcessedDiscordMessageStatusQueued, "discord-int-123").
 			Return([]*models.ProcessedDiscordMessage{}, nil)
 
@@ -1724,7 +1724,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 
 		// Configure expectations
 		mockDiscordIntegrationsService.On("GetAllDiscordIntegrations", ctx).
-			Return([]*models.DiscordIntegration{integration}, nil)
+			Return([]models.DiscordIntegration{*integration}, nil)
 		mockDiscordMessagesService.On("GetProcessedMessagesByStatus", ctx, models.OrgID("org-456"), models.ProcessedDiscordMessageStatusQueued, "discord-int-123").
 			Return([]*models.ProcessedDiscordMessage{queuedMessage}, nil)
 		mockJobsService.On("GetJobByID", ctx, models.OrgID("org-456"), "job-111").

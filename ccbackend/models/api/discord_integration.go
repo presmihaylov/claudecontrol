@@ -6,8 +6,8 @@ import (
 	"ccbackend/models"
 )
 
-// DiscordIntegrationModel represents the discord integration data returned by the API
-type DiscordIntegrationModel struct {
+// DiscordIntegration represents the discord integration data returned by the API
+type DiscordIntegration struct {
 	ID               string       `json:"id"`
 	DiscordGuildID   string       `json:"discord_guild_id"`
 	DiscordGuildName string       `json:"discord_guild_name"`
