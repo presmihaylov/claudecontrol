@@ -16,6 +16,7 @@ type DashboardAPIHandler struct {
 	discordIntegrationsService services.DiscordIntegrationsService
 	githubService              services.GitHubIntegrationsService
 	anthropicService           services.AnthropicIntegrationsService
+	ccAgentContainerService    services.CCAgentContainerIntegrationsService
 	organizationsService       services.OrganizationsService
 	agentsService              services.AgentsService
 	txManager                  services.TransactionManager
@@ -27,6 +28,7 @@ func NewDashboardAPIHandler(
 	discordIntegrationsService services.DiscordIntegrationsService,
 	githubService services.GitHubIntegrationsService,
 	anthropicService services.AnthropicIntegrationsService,
+	ccAgentContainerService services.CCAgentContainerIntegrationsService,
 	organizationsService services.OrganizationsService,
 	agentsService services.AgentsService,
 	txManager services.TransactionManager,
@@ -37,6 +39,7 @@ func NewDashboardAPIHandler(
 		discordIntegrationsService: discordIntegrationsService,
 		githubService:              githubService,
 		anthropicService:           anthropicService,
+		ccAgentContainerService:    ccAgentContainerService,
 		organizationsService:       organizationsService,
 		agentsService:              agentsService,
 		txManager:                  txManager,

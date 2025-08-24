@@ -3,6 +3,8 @@ package github
 import (
 	"context"
 
+	"ccbackend/models"
+
 	"github.com/stretchr/testify/mock"
 )
 
@@ -21,4 +23,16 @@ func (m *MockGitHubClient) ExchangeCodeForAccessToken(ctx context.Context, code 
 func (m *MockGitHubClient) UninstallApp(ctx context.Context, installationID string) error {
 	args := m.Called(ctx, installationID)
 	return args.Error(0)
+}
+
+// ListInstalledRepositories mocks listing repositories for an installation
+func (m *MockGitHubClient) ListInstalledRepositories(
+	ctx context.Context,
+	installationID string,
+) ([]models.GitHubRepository, error) {
+	args := m.Called(ctx, installationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.GitHubRepository), args.Error(1)
 }

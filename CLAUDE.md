@@ -311,6 +311,10 @@ All core entities are scoped to organization_id for proper data isolation.
   `ctx context.Context` as the first argument to ensure proper request context propagation
 - **Organization ID Parameter Position**: When passing organization ID as an explicit parameter,
   it should always be the second parameter (right after context): `func(ctx context.Context, organizationID string, ...)`
+- **Repository Method Organization Scoping**: ALL repository methods that retrieve, update, or delete
+  single entities MUST take organizationID as a parameter (unless explicitly specified not to).
+  This ensures data isolation at the database level. Methods should filter by both the entity ID
+  and organization ID: `WHERE id = $1 AND organization_id = $2`
 
 ## Service Architecture Pattern
 

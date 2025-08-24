@@ -11,6 +11,7 @@ import (
 	"ccbackend/appctx"
 	"ccbackend/core"
 	"ccbackend/middleware"
+	"ccbackend/models"
 	"ccbackend/models/api"
 )
 
@@ -43,6 +44,11 @@ type GitHubIntegrationRequest struct {
 type CCAgentSecretKeyResponse struct {
 	SecretKey   string `json:"secret_key"`
 	GeneratedAt string `json:"generated_at"`
+}
+
+type CCAgentContainerIntegrationCreateRequest struct {
+	InstancesCount int    `json:"instances_count"`
+	RepoURL        string `json:"repo_url"`
 }
 
 func (h *DashboardHTTPHandler) HandleUserAuthenticate(w http.ResponseWriter, r *http.Request) {
@@ -593,6 +599,125 @@ func (h *DashboardHTTPHandler) HandleDeleteAnthropicIntegration(w http.ResponseW
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// CCAgent Container Integration Handlers
+
+func (h *DashboardHTTPHandler) HandleListCCAgentContainerIntegrations(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok || org == nil {
+		http.Error(w, "organization not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	integrations, err := h.handler.ccAgentContainerService.ListCCAgentContainerIntegrations(ctx, models.OrgID(org.ID))
+	if err != nil {
+		log.Printf("❌ Failed to list CCAgent container integrations: %v", err)
+		http.Error(w, "failed to list CCAgent container integrations", http.StatusInternalServerError)
+		return
+	}
+
+	h.writeJSONResponse(w, http.StatusOK, integrations)
+}
+
+func (h *DashboardHTTPHandler) HandleGetCCAgentContainerIntegrationByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok || org == nil {
+		http.Error(w, "organization not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(r)
+	integrationID := vars["id"]
+
+	integration, err := h.handler.ccAgentContainerService.GetCCAgentContainerIntegrationByID(
+		ctx,
+		models.OrgID(org.ID),
+		integrationID,
+	)
+	if err != nil {
+		log.Printf("❌ Failed to get CCAgent container integration: %v", err)
+		http.Error(w, "failed to get CCAgent container integration", http.StatusInternalServerError)
+		return
+	}
+
+	if !integration.IsPresent() {
+		http.Error(w, "CCAgent container integration not found", http.StatusNotFound)
+		return
+	}
+
+	h.writeJSONResponse(w, http.StatusOK, integration.MustGet())
+}
+
+func (h *DashboardHTTPHandler) HandleCreateCCAgentContainerIntegration(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok || org == nil {
+		http.Error(w, "organization not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	var req CCAgentContainerIntegrationCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("❌ Failed to decode request body: %v", err)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	integration, err := h.handler.ccAgentContainerService.CreateCCAgentContainerIntegration(
+		ctx,
+		models.OrgID(org.ID),
+		req.InstancesCount,
+		req.RepoURL,
+	)
+	if err != nil {
+		log.Printf("❌ Failed to create CCAgent container integration: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	h.writeJSONResponse(w, http.StatusCreated, integration)
+}
+
+func (h *DashboardHTTPHandler) HandleDeleteCCAgentContainerIntegration(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok || org == nil {
+		http.Error(w, "organization not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(r)
+	integrationID := vars["id"]
+
+	if err := h.handler.ccAgentContainerService.DeleteCCAgentContainerIntegration(ctx, models.OrgID(org.ID), integrationID); err != nil {
+		log.Printf("❌ Failed to delete CCAgent container integration: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("✅ CCAgent container integration deleted successfully: %s", integrationID)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *DashboardHTTPHandler) HandleListGitHubRepositories(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok || org == nil {
+		http.Error(w, "organization not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	repositories, err := h.handler.githubService.ListAvailableRepositories(ctx, models.OrgID(org.ID))
+	if err != nil {
+		log.Printf("❌ Failed to list GitHub repositories: %v", err)
+		http.Error(w, "failed to list repositories", http.StatusInternalServerError)
+		return
+	}
+
+	h.writeJSONResponse(w, http.StatusOK, repositories)
+}
+
 func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware *middleware.ClerkAuthMiddleware) {
 	log.Printf("🚀 Registering dashboard API endpoints")
 
@@ -643,9 +768,11 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	log.Printf("✅ DELETE /github/integrations/{id} endpoint registered")
 
 	// Anthropic integrations endpoints
-	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleListAnthropicIntegrations)).Methods("GET")
+	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleListAnthropicIntegrations)).
+		Methods("GET")
 	log.Printf("✅ GET /anthropic/integrations endpoint registered")
-	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleCreateAnthropicIntegration)).Methods("POST")
+	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleCreateAnthropicIntegration)).
+		Methods("POST")
 	log.Printf("✅ POST /anthropic/integrations endpoint registered")
 	router.HandleFunc("/anthropic/integrations/{id}", authMiddleware.WithAuth(h.HandleGetAnthropicIntegrationByID)).
 		Methods("GET")
@@ -653,6 +780,24 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	router.HandleFunc("/anthropic/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteAnthropicIntegration)).
 		Methods("DELETE")
 	log.Printf("✅ DELETE /anthropic/integrations/{id} endpoint registered")
+
+	// GitHub repository listing endpoint
+	router.HandleFunc("/github/repositories", authMiddleware.WithAuth(h.HandleListGitHubRepositories)).Methods("GET")
+	log.Printf("✅ GET /github/repositories endpoint registered")
+
+	// CCAgent Container integrations endpoints
+	router.HandleFunc("/ccagent-container/integrations", authMiddleware.WithAuth(h.HandleListCCAgentContainerIntegrations)).
+		Methods("GET")
+	log.Printf("✅ GET /ccagent-container/integrations endpoint registered")
+	router.HandleFunc("/ccagent-container/integrations", authMiddleware.WithAuth(h.HandleCreateCCAgentContainerIntegration)).
+		Methods("POST")
+	log.Printf("✅ POST /ccagent-container/integrations endpoint registered")
+	router.HandleFunc("/ccagent-container/integrations/{id}", authMiddleware.WithAuth(h.HandleGetCCAgentContainerIntegrationByID)).
+		Methods("GET")
+	log.Printf("✅ GET /ccagent-container/integrations/{id} endpoint registered")
+	router.HandleFunc("/ccagent-container/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteCCAgentContainerIntegration)).
+		Methods("DELETE")
+	log.Printf("✅ DELETE /ccagent-container/integrations/{id} endpoint registered")
 
 	// Organization endpoints
 	router.HandleFunc("/organizations", authMiddleware.WithAuth(h.HandleGetOrganization)).Methods("GET")
