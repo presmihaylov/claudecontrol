@@ -19,13 +19,3 @@ type CCAgentContainerIntegrationCreateRequest struct {
 	InstancesCount int    `json:"instances_count"`
 	RepoURL        string `json:"repo_url"`
 }
-
-// CCAgentContainerIntegrationResponse represents the API response for a CCAgent container integration
-type CCAgentContainerIntegrationResponse struct {
-	ID             string    `json:"id"`
-	InstancesCount int       `json:"instances_count"`
-	RepoURL        string    `json:"repo_url"`
-	OrganizationID string    `json:"organization_id"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-}

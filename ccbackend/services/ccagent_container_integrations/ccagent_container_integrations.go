@@ -43,8 +43,6 @@ func (s *CCAgentContainerIntegrationsService) CreateCCAgentContainerIntegration(
 		return nil, fmt.Errorf("repo_url cannot be empty")
 	}
 
-	// No longer checking for existing integration since we support multiple
-
 	// Create new integration
 	integration := &models.CCAgentContainerIntegration{
 		ID:             core.NewID("cci"),
