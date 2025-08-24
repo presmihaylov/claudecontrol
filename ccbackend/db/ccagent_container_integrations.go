@@ -46,23 +46,21 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) CreateCCAgentContainerI
 	return nil
 }
 
-// GetCCAgentContainerIntegrationByOrgID retrieves a CCAgent container integration by organization ID
-func (r *PostgresCCAgentContainerIntegrationsRepository) GetCCAgentContainerIntegrationByOrgID(ctx context.Context, orgID string) (mo.Option[*models.CCAgentContainerIntegration], error) {
-	var integration models.CCAgentContainerIntegration
+// ListCCAgentContainerIntegrations retrieves all CCAgent container integrations for an organization
+func (r *PostgresCCAgentContainerIntegrationsRepository) ListCCAgentContainerIntegrations(ctx context.Context, orgID string) ([]models.CCAgentContainerIntegration, error) {
+	integrations := []models.CCAgentContainerIntegration{}
 	query := fmt.Sprintf(`
 		SELECT id, instances_count, repo_url, organization_id, created_at, updated_at
 		FROM %s.ccagent_container_integrations
-		WHERE organization_id = $1`, r.schema)
+		WHERE organization_id = $1
+		ORDER BY created_at DESC`, r.schema)
 
-	err := r.db.GetContext(ctx, &integration, query, orgID)
+	err := r.db.SelectContext(ctx, &integrations, query, orgID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return mo.None[*models.CCAgentContainerIntegration](), nil
-		}
-		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf("failed to get CCAgent container integration: %w", err)
+		return nil, fmt.Errorf("failed to list CCAgent container integrations: %w", err)
 	}
 
-	return mo.Some(&integration), nil
+	return integrations, nil
 }
 
 // GetCCAgentContainerIntegrationByID retrieves a CCAgent container integration by ID
@@ -82,45 +80,6 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) GetCCAgentContainerInte
 	}
 
 	return mo.Some(&integration), nil
-}
-
-// UpdateCCAgentContainerIntegration updates an existing CCAgent container integration
-func (r *PostgresCCAgentContainerIntegrationsRepository) UpdateCCAgentContainerIntegration(ctx context.Context, id string, updates map[string]any) error {
-	if len(updates) == 0 {
-		return nil
-	}
-
-	query := fmt.Sprintf("UPDATE %s.ccagent_container_integrations SET ", r.schema)
-	args := []any{}
-	i := 1
-
-	for field, value := range updates {
-		if i > 1 {
-			query += ", "
-		}
-		query += fmt.Sprintf("%s = $%d", field, i)
-		args = append(args, value)
-		i++
-	}
-
-	query += fmt.Sprintf(" WHERE id = $%d", i)
-	args = append(args, id)
-
-	result, err := r.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to update CCAgent container integration: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("CCAgent container integration not found")
-	}
-
-	return nil
 }
 
 // DeleteCCAgentContainerIntegration deletes a CCAgent container integration

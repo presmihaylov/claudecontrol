@@ -161,9 +161,9 @@ export default function OnboardingPage() {
 			});
 
 			if (ccAgentResponse.ok) {
-				const integration = await ccAgentResponse.json();
-				if (integration) {
-					setCCAgentIntegration(integration);
+				const integrations: CCAgentContainerIntegration[] = await ccAgentResponse.json();
+				if (integrations.length > 0) {
+					setCCAgentIntegration(integrations[0]);
 					if (githubIntegration && anthropicIntegration) {
 						setCurrentStep(4);
 					}

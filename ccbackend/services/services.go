@@ -107,16 +107,15 @@ type CCAgentContainerIntegrationsService interface {
 		instancesCount int,
 		repoURL string,
 	) (*models.CCAgentContainerIntegration, error)
-	GetCCAgentContainerIntegrationByOrgID(
+	ListCCAgentContainerIntegrations(
 		ctx context.Context,
 		organizationID models.OrgID,
-	) (mo.Option[*models.CCAgentContainerIntegration], error)
-	UpdateCCAgentContainerIntegration(
+	) ([]models.CCAgentContainerIntegration, error)
+	GetCCAgentContainerIntegrationByID(
 		ctx context.Context,
 		organizationID models.OrgID,
 		id string,
-		updates map[string]any,
-	) (*models.CCAgentContainerIntegration, error)
+	) (mo.Option[*models.CCAgentContainerIntegration], error)
 	DeleteCCAgentContainerIntegration(
 		ctx context.Context,
 		organizationID models.OrgID,
