@@ -112,3 +112,35 @@ func DomainGitHubIntegrationsToAPIGitHubIntegrations(
 
 	return apiIntegrations
 }
+
+// DomainAnthropicIntegrationToAPIAnthropicIntegration converts a domain AnthropicIntegration model to an API AnthropicIntegration
+func DomainAnthropicIntegrationToAPIAnthropicIntegration(domainIntegration *models.AnthropicIntegration) *AnthropicIntegration {
+	if domainIntegration == nil {
+		return nil
+	}
+
+	return &AnthropicIntegration{
+		ID:            domainIntegration.ID,
+		HasAPIKey:     domainIntegration.AnthropicAPIKey != nil,
+		HasOAuthToken: domainIntegration.ClaudeCodeOAuthToken != nil,
+		OrgID:         string(domainIntegration.OrgID),
+		CreatedAt:     domainIntegration.CreatedAt,
+		UpdatedAt:     domainIntegration.UpdatedAt,
+	}
+}
+
+// DomainAnthropicIntegrationsToAPIAnthropicIntegrations converts a slice of domain AnthropicIntegration models to API AnthropicIntegration slice
+func DomainAnthropicIntegrationsToAPIAnthropicIntegrations(
+	domainIntegrations []models.AnthropicIntegration,
+) []*AnthropicIntegration {
+	if domainIntegrations == nil {
+		return nil
+	}
+
+	apiIntegrations := make([]*AnthropicIntegration, len(domainIntegrations))
+	for i, domainIntegration := range domainIntegrations {
+		apiIntegrations[i] = DomainAnthropicIntegrationToAPIAnthropicIntegration(&domainIntegration)
+	}
+
+	return apiIntegrations
+}

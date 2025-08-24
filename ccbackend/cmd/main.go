@@ -25,6 +25,7 @@ import (
 	"ccbackend/handlers"
 	"ccbackend/middleware"
 	agentsservice "ccbackend/services/agents"
+	anthropicintegrations "ccbackend/services/anthropic_integrations"
 	discordintegrations "ccbackend/services/discord_integrations"
 	discordmessages "ccbackend/services/discordmessages"
 	githubintegrations "ccbackend/services/github_integrations"
@@ -79,6 +80,7 @@ func run() error {
 	slackIntegrationsRepo := db.NewPostgresSlackIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	discordIntegrationsRepo := db.NewPostgresDiscordIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	githubIntegrationsRepo := db.NewPostgresGitHubIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+	anthropicIntegrationsRepo := db.NewPostgresAnthropicIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
@@ -118,6 +120,7 @@ func run() error {
 		return fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 	githubService := githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, githubClient)
+	anthropicService := anthropicintegrations.NewAnthropicIntegrationsService(anthropicIntegrationsRepo)
 
 	// Create API key validator using organizationsService directly
 	apiKeyValidator := func(apiKey string) (string, error) {
@@ -188,6 +191,7 @@ func run() error {
 		slackIntegrationsService,
 		discordIntegrationsService,
 		githubService,
+		anthropicService,
 		organizationsService,
 		agentsService,
 		txManager,
