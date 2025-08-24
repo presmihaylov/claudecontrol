@@ -88,29 +88,29 @@ func (s *GitHubIntegrationsService) ListGitHubIntegrations(
 
 func (s *GitHubIntegrationsService) GetGitHubIntegrationByID(
 	ctx context.Context,
+	organizationID models.OrgID,
 	id string,
 ) (mo.Option[*models.GitHubIntegration], error) {
-	log.Printf("📋 Starting to get GitHub integration by ID: %s", id)
-
-	if id == "" {
-		return mo.None[*models.GitHubIntegration](), fmt.Errorf("integration ID cannot be empty")
+	log.Printf("📋 Starting to get GitHub integration by ID: %s for org: %s", id, organizationID)
+	if organizationID == "" {
+		return mo.None[*models.GitHubIntegration](), fmt.Errorf("organization ID cannot be empty")
 	}
 	if !core.IsValidULID(id) {
 		return mo.None[*models.GitHubIntegration](), fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	integration, err := s.githubRepo.GetGitHubIntegrationByID(ctx, id)
+	maybeInt, err := s.githubRepo.GetGitHubIntegrationByID(ctx, organizationID, id)
 	if err != nil {
 		return mo.None[*models.GitHubIntegration](), fmt.Errorf("failed to get GitHub integration: %w", err)
 	}
 
-	if integration.IsPresent() {
+	if maybeInt.IsPresent() {
 		log.Printf("📋 Completed successfully - found GitHub integration: %s", id)
 	} else {
 		log.Printf("📋 Completed successfully - GitHub integration not found: %s", id)
 	}
 
-	return integration, nil
+	return maybeInt, nil
 }
 
 func (s *GitHubIntegrationsService) DeleteGitHubIntegration(
@@ -123,27 +123,18 @@ func (s *GitHubIntegrationsService) DeleteGitHubIntegration(
 	if organizationID == "" {
 		return fmt.Errorf("organization ID cannot be empty")
 	}
-	if integrationID == "" {
-		return fmt.Errorf("integration ID cannot be empty")
-	}
 	if !core.IsValidULID(integrationID) {
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
 	// Get the integration to retrieve the installation ID
-	integrationOpt, err := s.githubRepo.GetGitHubIntegrationByID(ctx, integrationID)
+	integrationOpt, err := s.githubRepo.GetGitHubIntegrationByID(ctx, organizationID, integrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get GitHub integration: %w", err)
 	}
-
 	integration, exists := integrationOpt.Get()
 	if !exists {
 		return fmt.Errorf("GitHub integration not found")
-	}
-
-	// Verify the integration belongs to this organization
-	if integration.OrgID != organizationID {
-		return fmt.Errorf("GitHub integration does not belong to this organization")
 	}
 
 	// Attempt to uninstall the GitHub App

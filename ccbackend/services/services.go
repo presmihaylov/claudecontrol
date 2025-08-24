@@ -68,7 +68,11 @@ type GitHubIntegrationsService interface {
 		ctx context.Context,
 		organizationID models.OrgID,
 	) ([]models.GitHubIntegration, error)
-	GetGitHubIntegrationByID(ctx context.Context, id string) (mo.Option[*models.GitHubIntegration], error)
+	GetGitHubIntegrationByID(
+		ctx context.Context,
+		organizationID models.OrgID,
+		id string,
+	) (mo.Option[*models.GitHubIntegration], error)
 	DeleteGitHubIntegration(ctx context.Context, organizationID models.OrgID, integrationID string) error
 }
 

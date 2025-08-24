@@ -89,20 +89,17 @@ func (r *PostgresGitHubIntegrationsRepository) GetGitHubIntegrationsByOrganizati
 
 func (r *PostgresGitHubIntegrationsRepository) GetGitHubIntegrationByID(
 	ctx context.Context,
+	organizationID models.OrgID,
 	id string,
 ) (mo.Option[*models.GitHubIntegration], error) {
-	if id == "" {
-		return mo.None[*models.GitHubIntegration](), fmt.Errorf("integration ID cannot be empty")
-	}
-
 	columnsStr := strings.Join(githubIntegrationsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.github_integrations 
-		WHERE id = $1`, columnsStr, r.schema)
+		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	var integration models.GitHubIntegration
-	err := r.db.GetContext(ctx, &integration, query, id)
+	err := r.db.GetContext(ctx, &integration, query, id, organizationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.GitHubIntegration](), nil

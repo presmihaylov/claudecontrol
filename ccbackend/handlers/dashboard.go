@@ -241,7 +241,13 @@ func (h *DashboardAPIHandler) GetGitHubIntegrationByID(
 	integrationID string,
 ) (*models.GitHubIntegration, error) {
 	log.Printf("📋 Getting GitHub integration by ID: %s", integrationID)
-	integrationOpt, err := h.githubService.GetGitHubIntegrationByID(ctx, integrationID)
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		log.Printf("❌ Organization not found in context")
+		return nil, fmt.Errorf("organization not found in context")
+	}
+
+	integrationOpt, err := h.githubService.GetGitHubIntegrationByID(ctx, models.OrgID(org.ID), integrationID)
 	if err != nil {
 		log.Printf("❌ Failed to get GitHub integration: %v", err)
 		return nil, err

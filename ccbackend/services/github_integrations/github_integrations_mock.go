@@ -38,9 +38,10 @@ func (m *MockGitHubIntegrationsService) ListGitHubIntegrations(
 
 func (m *MockGitHubIntegrationsService) GetGitHubIntegrationByID(
 	ctx context.Context,
+	organizationID models.OrgID,
 	id string,
 ) (mo.Option[*models.GitHubIntegration], error) {
-	args := m.Called(ctx, id)
+	args := m.Called(ctx, organizationID, id)
 	if args.Get(0) == nil {
 		return mo.None[*models.GitHubIntegration](), args.Error(1)
 	}
