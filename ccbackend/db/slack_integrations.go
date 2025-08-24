@@ -68,7 +68,7 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(
 func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
 	organizationID models.OrgID,
-) ([]*models.SlackIntegration, error) {
+) ([]models.SlackIntegration, error) {
 	if organizationID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
@@ -80,7 +80,7 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByOrganization
 		WHERE organization_id = $1 
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
-	var integrations []*models.SlackIntegration
+	integrations := []models.SlackIntegration{}
 	err := r.db.SelectContext(ctx, &integrations, query, organizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integrations by organization ID: %w", err)
@@ -91,14 +91,14 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByOrganization
 
 func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations(
 	ctx context.Context,
-) ([]*models.SlackIntegration, error) {
+) ([]models.SlackIntegration, error) {
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.slack_integrations 
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
-	var integrations []*models.SlackIntegration
+	integrations := []models.SlackIntegration{}
 	err := r.db.SelectContext(ctx, &integrations, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all slack integrations: %w", err)

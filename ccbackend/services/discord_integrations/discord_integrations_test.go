@@ -32,22 +32,22 @@ func (m *MockDiscordIntegrationsRepository) CreateDiscordIntegration(
 func (m *MockDiscordIntegrationsRepository) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
 	organizationID models.OrgID,
-) ([]*models.DiscordIntegration, error) {
+) ([]models.DiscordIntegration, error) {
 	args := m.Called(ctx, organizationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*models.DiscordIntegration), args.Error(1)
+	return args.Get(0).([]models.DiscordIntegration), args.Error(1)
 }
 
 func (m *MockDiscordIntegrationsRepository) GetAllDiscordIntegrations(
 	ctx context.Context,
-) ([]*models.DiscordIntegration, error) {
+) ([]models.DiscordIntegration, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*models.DiscordIntegration), args.Error(1)
+	return args.Get(0).([]models.DiscordIntegration), args.Error(1)
 }
 
 func (m *MockDiscordIntegrationsRepository) DeleteDiscordIntegrationByID(
@@ -218,7 +218,7 @@ func TestDiscordIntegrationsService_GetDiscordIntegrationsByOrganizationID_Succe
 	ctx := context.Background()
 	organizationID := core.NewID("org")
 
-	expectedIntegrations := []*models.DiscordIntegration{
+	expectedIntegrations := []models.DiscordIntegration{
 		{
 			ID:               core.NewID("di"),
 			DiscordGuildID:   "123456789012345678",
@@ -282,7 +282,7 @@ func TestDiscordIntegrationsService_GetAllDiscordIntegrations_Success(t *testing
 
 	ctx := context.Background()
 
-	expectedIntegrations := []*models.DiscordIntegration{
+	expectedIntegrations := []models.DiscordIntegration{
 		{
 			ID:               core.NewID("di"),
 			DiscordGuildID:   "123456789012345678",

@@ -18,8 +18,8 @@ type DiscordIntegrationsRepository interface {
 	GetDiscordIntegrationsByOrganizationID(
 		ctx context.Context,
 		organizationID models.OrgID,
-	) ([]*models.DiscordIntegration, error)
-	GetAllDiscordIntegrations(ctx context.Context) ([]*models.DiscordIntegration, error)
+	) ([]models.DiscordIntegration, error)
+	GetAllDiscordIntegrations(ctx context.Context) ([]models.DiscordIntegration, error)
 	DeleteDiscordIntegrationByID(ctx context.Context, integrationID string, organizationID models.OrgID) (bool, error)
 	GetDiscordIntegrationByGuildID(ctx context.Context, guildID string) (mo.Option[*models.DiscordIntegration], error)
 	GetDiscordIntegrationByID(ctx context.Context, id string) (mo.Option[*models.DiscordIntegration], error)
@@ -95,7 +95,7 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 func (s *DiscordIntegrationsService) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
 	organizationID models.OrgID,
-) ([]*models.DiscordIntegration, error) {
+) ([]models.DiscordIntegration, error) {
 	log.Printf("📋 Starting to get Discord integrations for organization: %s", organizationID)
 	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization ID must be a valid ULID")
@@ -116,7 +116,7 @@ func (s *DiscordIntegrationsService) GetDiscordIntegrationsByOrganizationID(
 
 func (s *DiscordIntegrationsService) GetAllDiscordIntegrations(
 	ctx context.Context,
-) ([]*models.DiscordIntegration, error) {
+) ([]models.DiscordIntegration, error) {
 	log.Printf("📋 Starting to get all Discord integrations")
 	integrations, err := s.discordIntegrationsRepo.GetAllDiscordIntegrations(ctx)
 	if err != nil {

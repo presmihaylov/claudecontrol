@@ -34,7 +34,7 @@ func DomainSlackIntegrationToAPISlackIntegration(domainIntegration *models.Slack
 
 // DomainSlackIntegrationsToAPISlackIntegrations converts a slice of domain SlackIntegration models to API SlackIntegrationModel slice
 func DomainSlackIntegrationsToAPISlackIntegrations(
-	domainIntegrations []*models.SlackIntegration,
+	domainIntegrations []models.SlackIntegration,
 ) []*SlackIntegrationModel {
 	if domainIntegrations == nil {
 		return nil
@@ -42,7 +42,7 @@ func DomainSlackIntegrationsToAPISlackIntegrations(
 
 	apiIntegrations := make([]*SlackIntegrationModel, len(domainIntegrations))
 	for i, domainIntegration := range domainIntegrations {
-		apiIntegrations[i] = DomainSlackIntegrationToAPISlackIntegration(domainIntegration)
+		apiIntegrations[i] = DomainSlackIntegrationToAPISlackIntegration(&domainIntegration)
 	}
 
 	return apiIntegrations
@@ -68,7 +68,7 @@ func DomainDiscordIntegrationToAPIDiscordIntegration(
 
 // DomainDiscordIntegrationsToAPIDiscordIntegrations converts a slice of domain DiscordIntegration models to API DiscordIntegrationModel slice
 func DomainDiscordIntegrationsToAPIDiscordIntegrations(
-	domainIntegrations []*models.DiscordIntegration,
+	domainIntegrations []models.DiscordIntegration,
 ) []*DiscordIntegrationModel {
 	if domainIntegrations == nil {
 		return nil
@@ -76,7 +76,7 @@ func DomainDiscordIntegrationsToAPIDiscordIntegrations(
 
 	apiIntegrations := make([]*DiscordIntegrationModel, len(domainIntegrations))
 	for i, domainIntegration := range domainIntegrations {
-		apiIntegrations[i] = DomainDiscordIntegrationToAPIDiscordIntegration(domainIntegration)
+		apiIntegrations[i] = DomainDiscordIntegrationToAPIDiscordIntegration(&domainIntegration)
 	}
 
 	return apiIntegrations

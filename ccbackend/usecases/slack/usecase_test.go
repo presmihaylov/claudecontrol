@@ -746,7 +746,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 
 		// Configure expectations
 		fixture.mocks.slackIntegrationsService.On("GetAllSlackIntegrations", fixture.ctx).
-			Return([]*models.SlackIntegration{integration}, nil)
+			Return([]models.SlackIntegration{*integration}, nil)
 		fixture.mocks.slackMessagesService.On("GetProcessedMessagesByStatus", fixture.ctx, testOrgID, models.ProcessedSlackMessageStatusQueued, testSlackIntegrationID).
 			Return([]*models.ProcessedSlackMessage{queuedMessage}, nil)
 		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).
@@ -844,7 +844,7 @@ func TestProcessQueuedJobs(t *testing.T) {
 
 		// Configure expectations
 		fixture.mocks.slackIntegrationsService.On("GetAllSlackIntegrations", fixture.ctx).
-			Return([]*models.SlackIntegration{integration}, nil)
+			Return([]models.SlackIntegration{*integration}, nil)
 		fixture.mocks.slackMessagesService.On("GetProcessedMessagesByStatus", fixture.ctx, testOrgID, models.ProcessedSlackMessageStatusQueued, testSlackIntegrationID).
 			Return([]*models.ProcessedSlackMessage{queuedMessage}, nil)
 		fixture.mocks.jobsService.On("GetJobByID", fixture.ctx, testOrgID, testJobID).

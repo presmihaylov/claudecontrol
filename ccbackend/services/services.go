@@ -33,8 +33,8 @@ type SlackIntegrationsService interface {
 	GetSlackIntegrationsByOrganizationID(
 		ctx context.Context,
 		organizationID models.OrgID,
-	) ([]*models.SlackIntegration, error)
-	GetAllSlackIntegrations(ctx context.Context) ([]*models.SlackIntegration, error)
+	) ([]models.SlackIntegration, error)
+	GetAllSlackIntegrations(ctx context.Context) ([]models.SlackIntegration, error)
 	DeleteSlackIntegration(ctx context.Context, organizationID models.OrgID, integrationID string) error
 	GetSlackIntegrationByTeamID(ctx context.Context, teamID string) (mo.Option[*models.SlackIntegration], error)
 	GetSlackIntegrationByID(ctx context.Context, id string) (mo.Option[*models.SlackIntegration], error)
@@ -50,11 +50,26 @@ type DiscordIntegrationsService interface {
 	GetDiscordIntegrationsByOrganizationID(
 		ctx context.Context,
 		organizationID models.OrgID,
-	) ([]*models.DiscordIntegration, error)
-	GetAllDiscordIntegrations(ctx context.Context) ([]*models.DiscordIntegration, error)
+	) ([]models.DiscordIntegration, error)
+	GetAllDiscordIntegrations(ctx context.Context) ([]models.DiscordIntegration, error)
 	DeleteDiscordIntegration(ctx context.Context, organizationID models.OrgID, integrationID string) error
 	GetDiscordIntegrationByGuildID(ctx context.Context, guildID string) (mo.Option[*models.DiscordIntegration], error)
 	GetDiscordIntegrationByID(ctx context.Context, id string) (mo.Option[*models.DiscordIntegration], error)
+}
+
+// GitHubIntegrationsService defines the interface for GitHub integration operations
+type GitHubIntegrationsService interface {
+	CreateGitHubIntegration(
+		ctx context.Context,
+		organizationID models.OrgID,
+		authCode, installationID string,
+	) (*models.GitHubIntegration, error)
+	ListGitHubIntegrations(
+		ctx context.Context,
+		organizationID models.OrgID,
+	) ([]models.GitHubIntegration, error)
+	GetGitHubIntegrationByID(ctx context.Context, id string) (mo.Option[*models.GitHubIntegration], error)
+	DeleteGitHubIntegration(ctx context.Context, organizationID models.OrgID, integrationID string) error
 }
 
 // AgentsService defines the interface for agent-related operations

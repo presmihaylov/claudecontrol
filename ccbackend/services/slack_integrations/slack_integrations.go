@@ -95,7 +95,7 @@ func (s *SlackIntegrationsService) CreateSlackIntegration(
 func (s *SlackIntegrationsService) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
 	organizationID models.OrgID,
-) ([]*models.SlackIntegration, error) {
+) ([]models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get Slack integrations for organization: %s", organizationID)
 	if !core.IsValidULID(string(organizationID)) {
 		return nil, fmt.Errorf("organization ID must be a valid ULID")
@@ -114,7 +114,7 @@ func (s *SlackIntegrationsService) GetSlackIntegrationsByOrganizationID(
 	return integrations, nil
 }
 
-func (s *SlackIntegrationsService) GetAllSlackIntegrations(ctx context.Context) ([]*models.SlackIntegration, error) {
+func (s *SlackIntegrationsService) GetAllSlackIntegrations(ctx context.Context) ([]models.SlackIntegration, error) {
 	log.Printf("📋 Starting to get all Slack integrations")
 	integrations, err := s.slackIntegrationsRepo.GetAllSlackIntegrations(ctx)
 	if err != nil {
