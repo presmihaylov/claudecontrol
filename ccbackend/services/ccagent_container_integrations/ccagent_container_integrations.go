@@ -18,7 +18,9 @@ type CCAgentContainerIntegrationsService struct {
 }
 
 // NewCCAgentContainerIntegrationsService creates a new service instance
-func NewCCAgentContainerIntegrationsService(repo *db.PostgresCCAgentContainerIntegrationsRepository) *CCAgentContainerIntegrationsService {
+func NewCCAgentContainerIntegrationsService(
+	repo *db.PostgresCCAgentContainerIntegrationsRepository,
+) *CCAgentContainerIntegrationsService {
 	return &CCAgentContainerIntegrationsService{
 		repo: repo,
 	}
@@ -71,7 +73,11 @@ func (s *CCAgentContainerIntegrationsService) ListCCAgentContainerIntegrations(
 		return nil, fmt.Errorf("failed to list CCAgent container integrations: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - found %d CCAgent container integrations for org: %s", len(integrations), organizationID)
+	log.Printf(
+		"📋 Completed successfully - found %d CCAgent container integrations for org: %s",
+		len(integrations),
+		organizationID,
+	)
 	return integrations, nil
 }
 
@@ -89,11 +95,16 @@ func (s *CCAgentContainerIntegrationsService) GetCCAgentContainerIntegrationByID
 
 	integration, err := s.repo.GetCCAgentContainerIntegrationByID(ctx, id)
 	if err != nil {
-		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf("failed to get CCAgent container integration: %w", err)
+		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf(
+			"failed to get CCAgent container integration: %w",
+			err,
+		)
 	}
 
 	if integration.IsPresent() && integration.MustGet().OrgID != organizationID {
-		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf("CCAgent container integration does not belong to this organization")
+		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf(
+			"CCAgent container integration does not belong to this organization",
+		)
 	}
 
 	if integration.IsPresent() {

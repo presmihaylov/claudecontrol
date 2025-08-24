@@ -123,7 +123,9 @@ func run() error {
 	}
 	githubService := githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, githubClient)
 	anthropicService := anthropicintegrations.NewAnthropicIntegrationsService(anthropicIntegrationsRepo)
-	ccAgentContainerService := ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(ccAgentContainerIntegrationsRepo)
+	ccAgentContainerService := ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
+		ccAgentContainerIntegrationsRepo,
+	)
 
 	// Create API key validator using organizationsService directly
 	apiKeyValidator := func(apiKey string) (string, error) {

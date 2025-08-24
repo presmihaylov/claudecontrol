@@ -175,7 +175,7 @@ func (s *GitHubIntegrationsService) ListAvailableRepositories(
 	integration := integrations[0]
 
 	// Get repositories accessible by the GitHub App installation
-	repositories, err := s.githubClient.ListInstallationRepositories(ctx, integration.GitHubInstallationID)
+	repositories, err := s.githubClient.ListInstalledRepositories(ctx, integration.GitHubInstallationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list GitHub repositories: %w", err)
 	}

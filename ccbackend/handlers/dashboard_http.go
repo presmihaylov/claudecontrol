@@ -625,7 +625,11 @@ func (h *DashboardHTTPHandler) HandleGetCCAgentContainerIntegrationByID(w http.R
 	vars := mux.Vars(r)
 	integrationID := vars["id"]
 
-	integration, err := h.handler.ccAgentContainerService.GetCCAgentContainerIntegrationByID(ctx, models.OrgID(org.ID), integrationID)
+	integration, err := h.handler.ccAgentContainerService.GetCCAgentContainerIntegrationByID(
+		ctx,
+		models.OrgID(org.ID),
+		integrationID,
+	)
 	if err != nil {
 		log.Printf("❌ Failed to get CCAgent container integration: %v", err)
 		http.Error(w, "failed to get CCAgent container integration", http.StatusInternalServerError)
@@ -759,9 +763,11 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	log.Printf("✅ DELETE /github/integrations/{id} endpoint registered")
 
 	// Anthropic integrations endpoints
-	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleListAnthropicIntegrations)).Methods("GET")
+	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleListAnthropicIntegrations)).
+		Methods("GET")
 	log.Printf("✅ GET /anthropic/integrations endpoint registered")
-	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleCreateAnthropicIntegration)).Methods("POST")
+	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleCreateAnthropicIntegration)).
+		Methods("POST")
 	log.Printf("✅ POST /anthropic/integrations endpoint registered")
 	router.HandleFunc("/anthropic/integrations/{id}", authMiddleware.WithAuth(h.HandleGetAnthropicIntegrationByID)).
 		Methods("GET")
@@ -775,9 +781,11 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	log.Printf("✅ GET /github/repositories endpoint registered")
 
 	// CCAgent Container integrations endpoints
-	router.HandleFunc("/ccagent-container/integrations", authMiddleware.WithAuth(h.HandleListCCAgentContainerIntegrations)).Methods("GET")
+	router.HandleFunc("/ccagent-container/integrations", authMiddleware.WithAuth(h.HandleListCCAgentContainerIntegrations)).
+		Methods("GET")
 	log.Printf("✅ GET /ccagent-container/integrations endpoint registered")
-	router.HandleFunc("/ccagent-container/integrations", authMiddleware.WithAuth(h.HandleCreateCCAgentContainerIntegration)).Methods("POST")
+	router.HandleFunc("/ccagent-container/integrations", authMiddleware.WithAuth(h.HandleCreateCCAgentContainerIntegration)).
+		Methods("POST")
 	log.Printf("✅ POST /ccagent-container/integrations endpoint registered")
 	router.HandleFunc("/ccagent-container/integrations/{id}", authMiddleware.WithAuth(h.HandleGetCCAgentContainerIntegrationByID)).
 		Methods("GET")

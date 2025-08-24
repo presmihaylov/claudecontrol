@@ -67,7 +67,7 @@ type SlackClient interface {
 type GitHubClient interface {
 	ExchangeCodeForAccessToken(ctx context.Context, code string) (string, error)
 	UninstallApp(ctx context.Context, installationID string) error
-	ListInstallationRepositories(ctx context.Context, installationID string) ([]models.GitHubRepository, error)
+	ListInstalledRepositories(ctx context.Context, installationID string) ([]models.GitHubRepository, error)
 }
 
 // SocketIOClient defines the interface for Socket.IO client operations

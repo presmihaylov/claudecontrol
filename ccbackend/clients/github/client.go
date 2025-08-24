@@ -122,8 +122,11 @@ func (c *GitHubClient) UninstallApp(ctx context.Context, installationID string) 
 	return fmt.Errorf("failed to uninstall app: status %d, body: %s", resp.StatusCode, string(body))
 }
 
-// ListInstallationRepositories lists repositories accessible by a GitHub App installation
-func (c *GitHubClient) ListInstallationRepositories(ctx context.Context, installationID string) ([]models.GitHubRepository, error) {
+// ListInstalledRepositories lists repositories accessible by a GitHub App installation
+func (c *GitHubClient) ListInstalledRepositories(
+	ctx context.Context,
+	installationID string,
+) ([]models.GitHubRepository, error) {
 	// Get JWT token for app authentication
 	jwtToken, err := c.jwtClient.getToken()
 	if err != nil {
@@ -149,7 +152,11 @@ func (c *GitHubClient) ListInstallationRepositories(ctx context.Context, install
 
 	if tokenResp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(tokenResp.Body)
-		return nil, fmt.Errorf("failed to get installation token: status %d, body: %s", tokenResp.StatusCode, string(body))
+		return nil, fmt.Errorf(
+			"failed to get installation token: status %d, body: %s",
+			tokenResp.StatusCode,
+			string(body),
+		)
 	}
 
 	var installationToken struct {
