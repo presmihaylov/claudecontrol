@@ -3,7 +3,7 @@ set -euo pipefail
 
 # --- Hardcoded config (edit these) ---
 APP_ID="1798229"
-INSTALLATION_ID="81443498"
+INSTALLATION_ID="82566909"
 PRIVATE_KEY_PATH="./cc.pem"
 
 # --- Sanity checks ---
