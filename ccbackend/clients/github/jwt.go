@@ -31,8 +31,8 @@ func newGitHubJWTClient(appID string, privateKey []byte) (*githubJWTClient, erro
 
 func (c *githubJWTClient) getToken() (string, error) {
 	c.mu.RLock()
-	// Check if cached token is still valid with 10 minute buffer
-	if c.token != "" && time.Now().Add(10*time.Minute).Before(c.expiresAt) {
+	// Check if cached token is still valid with some buffer
+	if c.token != "" && time.Now().Add(1*time.Minute).Before(c.expiresAt) {
 		defer c.mu.RUnlock()
 		return c.token, nil
 	}
@@ -42,15 +42,10 @@ func (c *githubJWTClient) getToken() (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Double-check after acquiring write lock
-	if c.token != "" && time.Now().Add(10*time.Minute).Before(c.expiresAt) {
-		return c.token, nil
-	}
-
 	// Generate new JWT
 	token, expiresAt, err := c.generateJWT()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to generate JWT: %w", err)
 	}
 
 	// Cache the token
