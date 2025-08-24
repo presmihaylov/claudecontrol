@@ -74,6 +74,10 @@ type GitHubIntegrationsService interface {
 		id string,
 	) (mo.Option[*models.GitHubIntegration], error)
 	DeleteGitHubIntegration(ctx context.Context, organizationID models.OrgID, integrationID string) error
+	ListAvailableRepositories(
+		ctx context.Context,
+		organizationID models.OrgID,
+	) ([]models.GitHubRepository, error)
 }
 
 // AnthropicIntegrationsService defines the interface for Anthropic integration operations
@@ -93,6 +97,30 @@ type AnthropicIntegrationsService interface {
 		id string,
 	) (mo.Option[*models.AnthropicIntegration], error)
 	DeleteAnthropicIntegration(ctx context.Context, organizationID models.OrgID, integrationID string) error
+}
+
+// CCAgentContainerIntegrationsService defines the interface for CCAgent container integration operations
+type CCAgentContainerIntegrationsService interface {
+	CreateCCAgentContainerIntegration(
+		ctx context.Context,
+		organizationID models.OrgID,
+		instancesCount int,
+		repoURL string,
+	) (*models.CCAgentContainerIntegration, error)
+	ListCCAgentContainerIntegrations(
+		ctx context.Context,
+		organizationID models.OrgID,
+	) ([]models.CCAgentContainerIntegration, error)
+	GetCCAgentContainerIntegrationByID(
+		ctx context.Context,
+		organizationID models.OrgID,
+		id string,
+	) (mo.Option[*models.CCAgentContainerIntegration], error)
+	DeleteCCAgentContainerIntegration(
+		ctx context.Context,
+		organizationID models.OrgID,
+		integrationID string,
+	) error
 }
 
 // AgentsService defines the interface for agent-related operations

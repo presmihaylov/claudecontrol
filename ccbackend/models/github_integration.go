@@ -12,3 +12,13 @@ type GitHubIntegration struct {
 	CreatedAt            time.Time `db:"created_at"             json:"created_at"`
 	UpdatedAt            time.Time `db:"updated_at"             json:"updated_at"`
 }
+
+// GitHubRepository represents a GitHub repository accessible by the integration
+type GitHubRepository struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	FullName    string `json:"full_name"`
+	HTMLURL     string `json:"html_url"`
+	Description string `json:"description,omitempty"`
+	Private     bool   `json:"private"`
+}

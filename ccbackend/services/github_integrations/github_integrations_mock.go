@@ -56,3 +56,14 @@ func (m *MockGitHubIntegrationsService) DeleteGitHubIntegration(
 	args := m.Called(ctx, organizationID, integrationID)
 	return args.Error(0)
 }
+
+func (m *MockGitHubIntegrationsService) ListAvailableRepositories(
+	ctx context.Context,
+	organizationID models.OrgID,
+) ([]models.GitHubRepository, error) {
+	args := m.Called(ctx, organizationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.GitHubRepository), args.Error(1)
+}

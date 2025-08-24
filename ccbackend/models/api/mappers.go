@@ -114,7 +114,9 @@ func DomainGitHubIntegrationsToAPIGitHubIntegrations(
 }
 
 // DomainAnthropicIntegrationToAPIAnthropicIntegration converts a domain AnthropicIntegration model to an API AnthropicIntegration
-func DomainAnthropicIntegrationToAPIAnthropicIntegration(domainIntegration *models.AnthropicIntegration) *AnthropicIntegration {
+func DomainAnthropicIntegrationToAPIAnthropicIntegration(
+	domainIntegration *models.AnthropicIntegration,
+) *AnthropicIntegration {
 	if domainIntegration == nil {
 		return nil
 	}
