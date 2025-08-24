@@ -353,8 +353,11 @@ func (h *DashboardHTTPHandler) HandleListGitHubIntegrations(w http.ResponseWrite
 		return
 	}
 
+	// Convert domain integrations to API models
+	apiIntegrations := api.DomainGitHubIntegrationsToAPIGitHubIntegrations(integrations)
+
 	log.Printf("✅ Successfully retrieved %d GitHub integrations", len(integrations))
-	h.writeJSONResponse(w, http.StatusOK, integrations)
+	h.writeJSONResponse(w, http.StatusOK, apiIntegrations)
 }
 
 func (h *DashboardHTTPHandler) HandleCreateGitHubIntegration(w http.ResponseWriter, r *http.Request) {
@@ -398,8 +401,11 @@ func (h *DashboardHTTPHandler) HandleCreateGitHubIntegration(w http.ResponseWrit
 		return
 	}
 
+	// Convert domain integration to API model
+	apiIntegration := api.DomainGitHubIntegrationToAPIGitHubIntegration(integration)
+
 	log.Printf("✅ GitHub integration created successfully: %s", integration.ID)
-	h.writeJSONResponse(w, http.StatusCreated, integration)
+	h.writeJSONResponse(w, http.StatusCreated, apiIntegration)
 }
 
 func (h *DashboardHTTPHandler) HandleGetGitHubIntegrationByID(w http.ResponseWriter, r *http.Request) {
@@ -424,8 +430,11 @@ func (h *DashboardHTTPHandler) HandleGetGitHubIntegrationByID(w http.ResponseWri
 		return
 	}
 
+	// Convert domain integration to API model
+	apiIntegration := api.DomainGitHubIntegrationToAPIGitHubIntegration(integration)
+
 	log.Printf("✅ GitHub integration retrieved successfully: %s", integrationIDStr)
-	h.writeJSONResponse(w, http.StatusOK, integration)
+	h.writeJSONResponse(w, http.StatusOK, apiIntegration)
 }
 
 func (h *DashboardHTTPHandler) HandleDeleteGitHubIntegration(w http.ResponseWriter, r *http.Request) {

@@ -448,7 +448,7 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateBody: func(t *testing.T, body []byte) {
-				var response []api.SlackIntegrationModel
+				var response []api.SlackIntegration
 				require.NoError(t, json.Unmarshal(body, &response))
 				assert.Len(t, response, 1)
 				assert.Equal(t, testSlackIntegration.ID, response[0].ID)
@@ -519,7 +519,7 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateBody: func(t *testing.T, body []byte) {
-				var response api.SlackIntegrationModel
+				var response api.SlackIntegration
 				require.NoError(t, json.Unmarshal(body, &response))
 				assert.Equal(t, testSlackIntegration.ID, response.ID)
 				assert.Equal(t, testSlackIntegration.SlackTeamName, response.SlackTeamName)
