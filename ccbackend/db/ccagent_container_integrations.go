@@ -75,15 +75,16 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) ListCCAgentContainerInt
 // GetCCAgentContainerIntegrationByID retrieves a CCAgent container integration by ID
 func (r *PostgresCCAgentContainerIntegrationsRepository) GetCCAgentContainerIntegrationByID(
 	ctx context.Context,
+	organizationID string,
 	id string,
 ) (mo.Option[*models.CCAgentContainerIntegration], error) {
 	var integration models.CCAgentContainerIntegration
 	query := fmt.Sprintf(`
 		SELECT id, instances_count, repo_url, organization_id, created_at, updated_at
 		FROM %s.ccagent_container_integrations
-		WHERE id = $1`, r.schema)
+		WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	err := r.db.GetContext(ctx, &integration, query, id)
+	err := r.db.GetContext(ctx, &integration, query, id, organizationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.CCAgentContainerIntegration](), nil

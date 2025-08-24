@@ -46,6 +46,11 @@ type CCAgentSecretKeyResponse struct {
 	GeneratedAt string `json:"generated_at"`
 }
 
+type CCAgentContainerIntegrationCreateRequest struct {
+	InstancesCount int    `json:"instances_count"`
+	RepoURL        string `json:"repo_url"`
+}
+
 func (h *DashboardHTTPHandler) HandleUserAuthenticate(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🔐 User authentication request received from %s", r.RemoteAddr)
 
@@ -652,7 +657,7 @@ func (h *DashboardHTTPHandler) HandleCreateCCAgentContainerIntegration(w http.Re
 		return
 	}
 
-	var req models.CCAgentContainerIntegrationCreateRequest
+	var req CCAgentContainerIntegrationCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("❌ Failed to decode request body: %v", err)
 		http.Error(w, "invalid request body", http.StatusBadRequest)

@@ -13,9 +13,3 @@ type CCAgentContainerIntegration struct {
 	CreatedAt      time.Time `db:"created_at"      json:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at"      json:"updated_at"`
 }
-
-// CCAgentContainerIntegrationCreateRequest represents the API request to create a CCAgent container integration
-type CCAgentContainerIntegrationCreateRequest struct {
-	InstancesCount int    `json:"instances_count"`
-	RepoURL        string `json:"repo_url"`
-}

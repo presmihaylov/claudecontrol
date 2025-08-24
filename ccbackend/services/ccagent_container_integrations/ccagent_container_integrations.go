@@ -91,17 +91,11 @@ func (s *CCAgentContainerIntegrationsService) GetCCAgentContainerIntegrationByID
 		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf("invalid integration ID")
 	}
 
-	integration, err := s.repo.GetCCAgentContainerIntegrationByID(ctx, id)
+	integration, err := s.repo.GetCCAgentContainerIntegrationByID(ctx, string(organizationID), id)
 	if err != nil {
 		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf(
 			"failed to get CCAgent container integration: %w",
 			err,
-		)
-	}
-
-	if integration.IsPresent() && integration.MustGet().OrgID != organizationID {
-		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf(
-			"CCAgent container integration does not belong to this organization",
 		)
 	}
 
@@ -128,17 +122,12 @@ func (s *CCAgentContainerIntegrationsService) DeleteCCAgentContainerIntegration(
 	}
 
 	// Check if integration exists and belongs to the organization
-	existingOpt, err := s.repo.GetCCAgentContainerIntegrationByID(ctx, integrationID)
+	existingOpt, err := s.repo.GetCCAgentContainerIntegrationByID(ctx, string(organizationID), integrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get existing integration: %w", err)
 	}
 	if !existingOpt.IsPresent() {
 		return fmt.Errorf("CCAgent container integration not found")
-	}
-
-	existing := existingOpt.MustGet()
-	if existing.OrgID != organizationID {
-		return fmt.Errorf("CCAgent container integration does not belong to this organization")
 	}
 
 	// Delete the integration
