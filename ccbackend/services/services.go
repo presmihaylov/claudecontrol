@@ -76,6 +76,25 @@ type GitHubIntegrationsService interface {
 	DeleteGitHubIntegration(ctx context.Context, organizationID models.OrgID, integrationID string) error
 }
 
+// AnthropicIntegrationsService defines the interface for Anthropic integration operations
+type AnthropicIntegrationsService interface {
+	CreateAnthropicIntegration(
+		ctx context.Context,
+		organizationID models.OrgID,
+		apiKey, oauthToken *string,
+	) (*models.AnthropicIntegration, error)
+	ListAnthropicIntegrations(
+		ctx context.Context,
+		organizationID models.OrgID,
+	) ([]models.AnthropicIntegration, error)
+	GetAnthropicIntegrationByID(
+		ctx context.Context,
+		organizationID models.OrgID,
+		id string,
+	) (mo.Option[*models.AnthropicIntegration], error)
+	DeleteAnthropicIntegration(ctx context.Context, organizationID models.OrgID, integrationID string) error
+}
+
 // AgentsService defines the interface for agent-related operations
 type AgentsService interface {
 	UpsertActiveAgent(
