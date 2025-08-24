@@ -101,11 +101,12 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) GetCCAgentContainerInte
 // DeleteCCAgentContainerIntegration deletes a CCAgent container integration
 func (r *PostgresCCAgentContainerIntegrationsRepository) DeleteCCAgentContainerIntegration(
 	ctx context.Context,
+	organizationID string,
 	id string,
 ) error {
-	query := fmt.Sprintf("DELETE FROM %s.ccagent_container_integrations WHERE id = $1", r.schema)
+	query := fmt.Sprintf("DELETE FROM %s.ccagent_container_integrations WHERE id = $1 AND organization_id = $2", r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, id)
+	result, err := r.db.ExecContext(ctx, query, id, organizationID)
 	if err != nil {
 		return fmt.Errorf("failed to delete CCAgent container integration: %w", err)
 	}
@@ -122,26 +123,3 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) DeleteCCAgentContainerI
 	return nil
 }
 
-// ListCCAgentContainerIntegrationsByOrgIDs retrieves CCAgent container integrations for multiple organizations
-func (r *PostgresCCAgentContainerIntegrationsRepository) ListCCAgentContainerIntegrationsByOrgIDs(
-	ctx context.Context,
-	orgIDs []string,
-) ([]*models.CCAgentContainerIntegration, error) {
-	if len(orgIDs) == 0 {
-		return []*models.CCAgentContainerIntegration{}, nil
-	}
-
-	query := fmt.Sprintf(`
-		SELECT id, instances_count, repo_url, organization_id, created_at, updated_at
-		FROM %s.ccagent_container_integrations
-		WHERE organization_id = ANY($1)
-		ORDER BY created_at DESC`, r.schema)
-
-	integrations := []*models.CCAgentContainerIntegration{}
-	err := r.db.SelectContext(ctx, &integrations, query, orgIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list CCAgent container integrations: %w", err)
-	}
-
-	return integrations, nil
-}

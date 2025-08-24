@@ -121,17 +121,8 @@ func (s *CCAgentContainerIntegrationsService) DeleteCCAgentContainerIntegration(
 		return fmt.Errorf("invalid integration ID")
 	}
 
-	// Check if integration exists and belongs to the organization
-	existingOpt, err := s.repo.GetCCAgentContainerIntegrationByID(ctx, string(organizationID), integrationID)
-	if err != nil {
-		return fmt.Errorf("failed to get existing integration: %w", err)
-	}
-	if !existingOpt.IsPresent() {
-		return fmt.Errorf("CCAgent container integration not found")
-	}
-
-	// Delete the integration
-	if err := s.repo.DeleteCCAgentContainerIntegration(ctx, integrationID); err != nil {
+	// Delete the integration (repository method now handles organization scoping)
+	if err := s.repo.DeleteCCAgentContainerIntegration(ctx, string(organizationID), integrationID); err != nil {
 		return fmt.Errorf("failed to delete CCAgent container integration: %w", err)
 	}
 
