@@ -14,6 +14,10 @@ type AppConfig struct {
 	DiscordClientID      string
 	DiscordClientSecret  string
 	DiscordBotToken      string
+	GitHubClientID       string
+	GitHubClientSecret   string
+	GitHubAppID          string
+	GitHubAppPrivateKey  string
 	Port                 string
 	DatabaseURL          string
 	DatabaseSchema       string
@@ -84,6 +88,26 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
+	githubClientID, err := getEnvRequired("GITHUB_CLIENT_ID")
+	if err != nil {
+		return nil, err
+	}
+
+	githubClientSecret, err := getEnvRequired("GITHUB_CLIENT_SECRET")
+	if err != nil {
+		return nil, err
+	}
+
+	githubAppID, err := getEnvRequired("GITHUB_APP_ID")
+	if err != nil {
+		return nil, err
+	}
+
+	githubAppPrivateKey, err := getEnvRequired("GITHUB_APP_PRIVATE_KEY")
+	if err != nil {
+		return nil, err
+	}
+
 	config := &AppConfig{
 		SlackSigningSecret:   slackSigningSecret,
 		SlackClientID:        slackClientID,
@@ -91,6 +115,10 @@ func LoadConfig() (*AppConfig, error) {
 		DiscordClientID:      discordClientID,
 		DiscordClientSecret:  discordClientSecret,
 		DiscordBotToken:      discordBotToken,
+		GitHubClientID:       githubClientID,
+		GitHubClientSecret:   githubClientSecret,
+		GitHubAppID:          githubAppID,
+		GitHubAppPrivateKey:  githubAppPrivateKey,
 		Port:                 port,
 		DatabaseURL:          databaseURL,
 		DatabaseSchema:       databaseSchema,

@@ -14,6 +14,7 @@ type DashboardAPIHandler struct {
 	usersService               services.UsersService
 	slackIntegrationsService   services.SlackIntegrationsService
 	discordIntegrationsService services.DiscordIntegrationsService
+	githubService              services.GitHubIntegrationsService
 	organizationsService       services.OrganizationsService
 	agentsService              services.AgentsService
 	txManager                  services.TransactionManager
@@ -23,6 +24,7 @@ func NewDashboardAPIHandler(
 	usersService services.UsersService,
 	slackIntegrationsService services.SlackIntegrationsService,
 	discordIntegrationsService services.DiscordIntegrationsService,
+	githubService services.GitHubIntegrationsService,
 	organizationsService services.OrganizationsService,
 	agentsService services.AgentsService,
 	txManager services.TransactionManager,
@@ -31,6 +33,7 @@ func NewDashboardAPIHandler(
 		usersService:               usersService,
 		slackIntegrationsService:   slackIntegrationsService,
 		discordIntegrationsService: discordIntegrationsService,
+		githubService:              githubService,
 		organizationsService:       organizationsService,
 		agentsService:              agentsService,
 		txManager:                  txManager,
@@ -41,7 +44,7 @@ func NewDashboardAPIHandler(
 func (h *DashboardAPIHandler) ListSlackIntegrations(
 	ctx context.Context,
 	user *models.User,
-) ([]*models.SlackIntegration, error) {
+) ([]models.SlackIntegration, error) {
 	log.Printf("📋 Listing Slack integrations for organization: %s", user.OrgID)
 	integrations, err := h.slackIntegrationsService.GetSlackIntegrationsByOrganizationID(ctx, user.OrgID)
 	if err != nil {
@@ -106,7 +109,7 @@ func (h *DashboardAPIHandler) GetOrganization(ctx context.Context) (*models.Orga
 func (h *DashboardAPIHandler) ListDiscordIntegrations(
 	ctx context.Context,
 	user *models.User,
-) ([]*models.DiscordIntegration, error) {
+) ([]models.DiscordIntegration, error) {
 	log.Printf("📋 Listing Discord integrations for organization: %s", user.OrgID)
 	integrations, err := h.discordIntegrationsService.GetDiscordIntegrationsByOrganizationID(ctx, user.OrgID)
 	if err != nil {
@@ -192,4 +195,86 @@ func (h *DashboardAPIHandler) GenerateCCAgentSecretKey(ctx context.Context) (str
 
 	log.Printf("✅ CCAgent secret key generated successfully for organization: %s", org.ID)
 	return secretKey, nil
+}
+
+// ListGitHubIntegrations returns all GitHub integrations for an organization
+func (h *DashboardAPIHandler) ListGitHubIntegrations(
+	ctx context.Context,
+	user *models.User,
+) ([]models.GitHubIntegration, error) {
+	log.Printf("📋 Listing GitHub integrations for organization: %s", user.OrgID)
+	integrations, err := h.githubService.ListGitHubIntegrations(ctx, user.OrgID)
+	if err != nil {
+		log.Printf("❌ Failed to get GitHub integrations: %v", err)
+		return nil, err
+	}
+
+	log.Printf("✅ Retrieved %d GitHub integrations for organization: %s", len(integrations), user.OrgID)
+	return integrations, nil
+}
+
+// CreateGitHubIntegration creates a new GitHub integration for an organization
+func (h *DashboardAPIHandler) CreateGitHubIntegration(
+	ctx context.Context,
+	authCode, installationID string,
+	user *models.User,
+) (*models.GitHubIntegration, error) {
+	log.Printf("➕ Creating GitHub integration for organization: %s", user.OrgID)
+	integration, err := h.githubService.CreateGitHubIntegration(
+		ctx,
+		user.OrgID,
+		authCode,
+		installationID,
+	)
+	if err != nil {
+		log.Printf("❌ Failed to create GitHub integration: %v", err)
+		return nil, err
+	}
+
+	log.Printf("✅ GitHub integration created successfully: %s", integration.ID)
+	return integration, nil
+}
+
+// GetGitHubIntegrationByID returns a GitHub integration by ID
+func (h *DashboardAPIHandler) GetGitHubIntegrationByID(
+	ctx context.Context,
+	integrationID string,
+) (*models.GitHubIntegration, error) {
+	log.Printf("📋 Getting GitHub integration by ID: %s", integrationID)
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		log.Printf("❌ Organization not found in context")
+		return nil, fmt.Errorf("organization not found in context")
+	}
+
+	integrationOpt, err := h.githubService.GetGitHubIntegrationByID(ctx, models.OrgID(org.ID), integrationID)
+	if err != nil {
+		log.Printf("❌ Failed to get GitHub integration: %v", err)
+		return nil, err
+	}
+
+	integration, ok := integrationOpt.Get()
+	if !ok {
+		log.Printf("❌ GitHub integration not found: %s", integrationID)
+		return nil, fmt.Errorf("github integration not found")
+	}
+
+	log.Printf("✅ Retrieved GitHub integration: %s", integrationID)
+	return integration, nil
+}
+
+// DeleteGitHubIntegration deletes a GitHub integration by ID
+func (h *DashboardAPIHandler) DeleteGitHubIntegration(ctx context.Context, integrationID string) error {
+	log.Printf("🗑️ Deleting GitHub integration: %s", integrationID)
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return fmt.Errorf("organization not found in context")
+	}
+	if err := h.githubService.DeleteGitHubIntegration(ctx, models.OrgID(org.ID), integrationID); err != nil {
+		log.Printf("❌ Failed to delete GitHub integration: %v", err)
+		return err
+	}
+
+	log.Printf("✅ GitHub integration deleted successfully: %s", integrationID)
+	return nil
 }

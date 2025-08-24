@@ -16,13 +16,13 @@ func DomainUserToAPIUser(domainUser *models.User) *UserModel {
 	}
 }
 
-// DomainSlackIntegrationToAPISlackIntegration converts a domain SlackIntegration model to an API SlackIntegrationModel
-func DomainSlackIntegrationToAPISlackIntegration(domainIntegration *models.SlackIntegration) *SlackIntegrationModel {
+// DomainSlackIntegrationToAPISlackIntegration converts a domain SlackIntegration model to an API SlackIntegration
+func DomainSlackIntegrationToAPISlackIntegration(domainIntegration *models.SlackIntegration) *SlackIntegration {
 	if domainIntegration == nil {
 		return nil
 	}
 
-	return &SlackIntegrationModel{
+	return &SlackIntegration{
 		ID:            domainIntegration.ID,
 		SlackTeamID:   domainIntegration.SlackTeamID,
 		SlackTeamName: domainIntegration.SlackTeamName,
@@ -32,31 +32,31 @@ func DomainSlackIntegrationToAPISlackIntegration(domainIntegration *models.Slack
 	}
 }
 
-// DomainSlackIntegrationsToAPISlackIntegrations converts a slice of domain SlackIntegration models to API SlackIntegrationModel slice
+// DomainSlackIntegrationsToAPISlackIntegrations converts a slice of domain SlackIntegration models to API SlackIntegration slice
 func DomainSlackIntegrationsToAPISlackIntegrations(
-	domainIntegrations []*models.SlackIntegration,
-) []*SlackIntegrationModel {
+	domainIntegrations []models.SlackIntegration,
+) []*SlackIntegration {
 	if domainIntegrations == nil {
 		return nil
 	}
 
-	apiIntegrations := make([]*SlackIntegrationModel, len(domainIntegrations))
+	apiIntegrations := make([]*SlackIntegration, len(domainIntegrations))
 	for i, domainIntegration := range domainIntegrations {
-		apiIntegrations[i] = DomainSlackIntegrationToAPISlackIntegration(domainIntegration)
+		apiIntegrations[i] = DomainSlackIntegrationToAPISlackIntegration(&domainIntegration)
 	}
 
 	return apiIntegrations
 }
 
-// DomainDiscordIntegrationToAPIDiscordIntegration converts a domain DiscordIntegration model to an API DiscordIntegrationModel
+// DomainDiscordIntegrationToAPIDiscordIntegration converts a domain DiscordIntegration model to an API DiscordIntegration
 func DomainDiscordIntegrationToAPIDiscordIntegration(
 	domainIntegration *models.DiscordIntegration,
-) *DiscordIntegrationModel {
+) *DiscordIntegration {
 	if domainIntegration == nil {
 		return nil
 	}
 
-	return &DiscordIntegrationModel{
+	return &DiscordIntegration{
 		ID:               domainIntegration.ID,
 		DiscordGuildID:   domainIntegration.DiscordGuildID,
 		DiscordGuildName: domainIntegration.DiscordGuildName,
@@ -66,17 +66,48 @@ func DomainDiscordIntegrationToAPIDiscordIntegration(
 	}
 }
 
-// DomainDiscordIntegrationsToAPIDiscordIntegrations converts a slice of domain DiscordIntegration models to API DiscordIntegrationModel slice
+// DomainDiscordIntegrationsToAPIDiscordIntegrations converts a slice of domain DiscordIntegration models to API DiscordIntegration slice
 func DomainDiscordIntegrationsToAPIDiscordIntegrations(
-	domainIntegrations []*models.DiscordIntegration,
-) []*DiscordIntegrationModel {
+	domainIntegrations []models.DiscordIntegration,
+) []*DiscordIntegration {
 	if domainIntegrations == nil {
 		return nil
 	}
 
-	apiIntegrations := make([]*DiscordIntegrationModel, len(domainIntegrations))
+	apiIntegrations := make([]*DiscordIntegration, len(domainIntegrations))
 	for i, domainIntegration := range domainIntegrations {
-		apiIntegrations[i] = DomainDiscordIntegrationToAPIDiscordIntegration(domainIntegration)
+		apiIntegrations[i] = DomainDiscordIntegrationToAPIDiscordIntegration(&domainIntegration)
+	}
+
+	return apiIntegrations
+}
+
+// DomainGitHubIntegrationToAPIGitHubIntegration converts a domain GitHubIntegration model to an API GitHubIntegration
+func DomainGitHubIntegrationToAPIGitHubIntegration(domainIntegration *models.GitHubIntegration) *GitHubIntegration {
+	if domainIntegration == nil {
+		return nil
+	}
+
+	return &GitHubIntegration{
+		ID:                   domainIntegration.ID,
+		GitHubInstallationID: domainIntegration.GitHubInstallationID,
+		OrgID:                string(domainIntegration.OrgID),
+		CreatedAt:            domainIntegration.CreatedAt,
+		UpdatedAt:            domainIntegration.UpdatedAt,
+	}
+}
+
+// DomainGitHubIntegrationsToAPIGitHubIntegrations converts a slice of domain GitHubIntegration models to API GitHubIntegration slice
+func DomainGitHubIntegrationsToAPIGitHubIntegrations(
+	domainIntegrations []models.GitHubIntegration,
+) []*GitHubIntegration {
+	if domainIntegrations == nil {
+		return nil
+	}
+
+	apiIntegrations := make([]*GitHubIntegration, len(domainIntegrations))
+	for i, domainIntegration := range domainIntegrations {
+		apiIntegrations[i] = DomainGitHubIntegrationToAPIGitHubIntegration(&domainIntegration)
 	}
 
 	return apiIntegrations

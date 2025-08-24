@@ -28,22 +28,22 @@ func (m *MockSlackIntegrationsService) CreateSlackIntegration(
 func (m *MockSlackIntegrationsService) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
 	organizationID models.OrgID,
-) ([]*models.SlackIntegration, error) {
+) ([]models.SlackIntegration, error) {
 	args := m.Called(ctx, organizationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*models.SlackIntegration), args.Error(1)
+	return args.Get(0).([]models.SlackIntegration), args.Error(1)
 }
 
 func (m *MockSlackIntegrationsService) GetAllSlackIntegrations(
 	ctx context.Context,
-) ([]*models.SlackIntegration, error) {
+) ([]models.SlackIntegration, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*models.SlackIntegration), args.Error(1)
+	return args.Get(0).([]models.SlackIntegration), args.Error(1)
 }
 
 func (m *MockSlackIntegrationsService) DeleteSlackIntegration(

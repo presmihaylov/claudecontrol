@@ -35,6 +35,11 @@ type DiscordIntegrationRequest struct {
 	RedirectURL     string `json:"redirect_url"`
 }
 
+type GitHubIntegrationRequest struct {
+	Code           string `json:"code"`
+	InstallationID string `json:"installation_id"`
+}
+
 type CCAgentSecretKeyResponse struct {
 	SecretKey   string `json:"secret_key"`
 	GeneratedAt string `json:"generated_at"`
@@ -330,6 +335,134 @@ func (h *DashboardHTTPHandler) HandleGenerateCCAgentSecretKey(w http.ResponseWri
 	h.writeJSONResponse(w, http.StatusOK, response)
 }
 
+func (h *DashboardHTTPHandler) HandleListGitHubIntegrations(w http.ResponseWriter, r *http.Request) {
+	log.Printf("📋 List GitHub integrations request received from %s", r.RemoteAddr)
+
+	// Get user entity from context (set by authentication middleware)
+	user, ok := appctx.GetUser(r.Context())
+	if !ok {
+		log.Printf("❌ User not found in context")
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	integrations, err := h.handler.ListGitHubIntegrations(r.Context(), user)
+	if err != nil {
+		log.Printf("❌ Failed to list GitHub integrations: %v", err)
+		http.Error(w, "failed to list GitHub integrations", http.StatusInternalServerError)
+		return
+	}
+
+	// Convert domain integrations to API models
+	apiIntegrations := api.DomainGitHubIntegrationsToAPIGitHubIntegrations(integrations)
+
+	log.Printf("✅ Successfully retrieved %d GitHub integrations", len(integrations))
+	h.writeJSONResponse(w, http.StatusOK, apiIntegrations)
+}
+
+func (h *DashboardHTTPHandler) HandleCreateGitHubIntegration(w http.ResponseWriter, r *http.Request) {
+	log.Printf("➕ Create GitHub integration request received from %s", r.RemoteAddr)
+
+	// Get user entity from context (set by authentication middleware)
+	user, ok := appctx.GetUser(r.Context())
+	if !ok {
+		log.Printf("❌ User not found in context")
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	var req GitHubIntegrationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("❌ Failed to decode request: %v", err)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Code == "" {
+		log.Printf("❌ Missing code in request")
+		http.Error(w, "code is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.InstallationID == "" {
+		log.Printf("❌ Missing installation_id in request")
+		http.Error(w, "installation_id is required", http.StatusBadRequest)
+		return
+	}
+
+	integration, err := h.handler.CreateGitHubIntegration(r.Context(), req.Code, req.InstallationID, user)
+	if err != nil {
+		log.Printf("❌ Failed to create GitHub integration: %v", err)
+		if strings.Contains(err.Error(), "verify") || strings.Contains(err.Error(), "OAuth") {
+			http.Error(w, "failed to verify GitHub installation", http.StatusUnauthorized)
+		} else {
+			http.Error(w, "failed to create GitHub integration", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Convert domain integration to API model
+	apiIntegration := api.DomainGitHubIntegrationToAPIGitHubIntegration(integration)
+
+	log.Printf("✅ GitHub integration created successfully: %s", integration.ID)
+	h.writeJSONResponse(w, http.StatusCreated, apiIntegration)
+}
+
+func (h *DashboardHTTPHandler) HandleGetGitHubIntegrationByID(w http.ResponseWriter, r *http.Request) {
+	log.Printf("📋 Get GitHub integration request received from %s", r.RemoteAddr)
+
+	vars := mux.Vars(r)
+	integrationIDStr, ok := vars["id"]
+	if !ok || !core.IsValidULID(integrationIDStr) {
+		log.Printf("❌ Missing or invalid integration ID in URL path")
+		http.Error(w, "integration ID must be a valid ULID", http.StatusBadRequest)
+		return
+	}
+
+	integration, err := h.handler.GetGitHubIntegrationByID(r.Context(), integrationIDStr)
+	if err != nil {
+		log.Printf("❌ Failed to get GitHub integration: %v", err)
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "integration not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "failed to get GitHub integration", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Convert domain integration to API model
+	apiIntegration := api.DomainGitHubIntegrationToAPIGitHubIntegration(integration)
+
+	log.Printf("✅ GitHub integration retrieved successfully: %s", integrationIDStr)
+	h.writeJSONResponse(w, http.StatusOK, apiIntegration)
+}
+
+func (h *DashboardHTTPHandler) HandleDeleteGitHubIntegration(w http.ResponseWriter, r *http.Request) {
+	log.Printf("🗑️ Delete GitHub integration request received from %s", r.RemoteAddr)
+
+	vars := mux.Vars(r)
+	integrationIDStr, ok := vars["id"]
+	if !ok || !core.IsValidULID(integrationIDStr) {
+		log.Printf("❌ Missing or invalid integration ID in URL path")
+		http.Error(w, "integration ID must be a valid ULID", http.StatusBadRequest)
+		return
+	}
+
+	err := h.handler.DeleteGitHubIntegration(r.Context(), integrationIDStr)
+	if err != nil {
+		log.Printf("❌ Failed to delete GitHub integration: %v", err)
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "integration not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "failed to delete GitHub integration", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	log.Printf("✅ GitHub integration deleted successfully: %s", integrationIDStr)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware *middleware.ClerkAuthMiddleware) {
 	log.Printf("🚀 Registering dashboard API endpoints")
 
@@ -363,6 +496,21 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	router.HandleFunc("/discord/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteDiscordIntegration)).
 		Methods("DELETE")
 	log.Printf("✅ DELETE /discord/integrations/{id} endpoint registered")
+
+	// GitHub integrations endpoints
+	router.HandleFunc("/github/integrations", authMiddleware.WithAuth(h.HandleListGitHubIntegrations)).Methods("GET")
+	log.Printf("✅ GET /github/integrations endpoint registered")
+
+	router.HandleFunc("/github/integrations", authMiddleware.WithAuth(h.HandleCreateGitHubIntegration)).Methods("POST")
+	log.Printf("✅ POST /github/integrations endpoint registered")
+
+	router.HandleFunc("/github/integrations/{id}", authMiddleware.WithAuth(h.HandleGetGitHubIntegrationByID)).
+		Methods("GET")
+	log.Printf("✅ GET /github/integrations/{id} endpoint registered")
+
+	router.HandleFunc("/github/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteGitHubIntegration)).
+		Methods("DELETE")
+	log.Printf("✅ DELETE /github/integrations/{id} endpoint registered")
 
 	// Organization endpoints
 	router.HandleFunc("/organizations", authMiddleware.WithAuth(h.HandleGetOrganization)).Methods("GET")

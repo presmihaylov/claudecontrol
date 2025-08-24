@@ -66,7 +66,7 @@ func (r *PostgresDiscordIntegrationsRepository) CreateDiscordIntegration(
 func (r *PostgresDiscordIntegrationsRepository) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
 	organizationID models.OrgID,
-) ([]*models.DiscordIntegration, error) {
+) ([]models.DiscordIntegration, error) {
 	if organizationID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
@@ -78,7 +78,7 @@ func (r *PostgresDiscordIntegrationsRepository) GetDiscordIntegrationsByOrganiza
 		WHERE organization_id = $1 
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
-	var integrations []*models.DiscordIntegration
+	integrations := []models.DiscordIntegration{}
 	err := r.db.SelectContext(ctx, &integrations, query, organizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get discord integrations by organization ID: %w", err)
@@ -89,14 +89,14 @@ func (r *PostgresDiscordIntegrationsRepository) GetDiscordIntegrationsByOrganiza
 
 func (r *PostgresDiscordIntegrationsRepository) GetAllDiscordIntegrations(
 	ctx context.Context,
-) ([]*models.DiscordIntegration, error) {
+) ([]models.DiscordIntegration, error) {
 	columnsStr := strings.Join(discordIntegrationsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s 
 		FROM %s.discord_integrations 
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
-	var integrations []*models.DiscordIntegration
+	integrations := []models.DiscordIntegration{}
 	err := r.db.SelectContext(ctx, &integrations, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all discord integrations: %w", err)

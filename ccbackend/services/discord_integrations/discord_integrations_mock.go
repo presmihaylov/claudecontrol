@@ -28,22 +28,22 @@ func (m *MockDiscordIntegrationsService) CreateDiscordIntegration(
 func (m *MockDiscordIntegrationsService) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
 	organizationID models.OrgID,
-) ([]*models.DiscordIntegration, error) {
+) ([]models.DiscordIntegration, error) {
 	args := m.Called(ctx, organizationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*models.DiscordIntegration), args.Error(1)
+	return args.Get(0).([]models.DiscordIntegration), args.Error(1)
 }
 
 func (m *MockDiscordIntegrationsService) GetAllDiscordIntegrations(
 	ctx context.Context,
-) ([]*models.DiscordIntegration, error) {
+) ([]models.DiscordIntegration, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*models.DiscordIntegration), args.Error(1)
+	return args.Get(0).([]models.DiscordIntegration), args.Error(1)
 }
 
 func (m *MockDiscordIntegrationsService) DeleteDiscordIntegration(
