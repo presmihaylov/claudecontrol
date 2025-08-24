@@ -18,8 +18,11 @@ RUN apk add --no-cache github-cli
 # Install Claude binary via npm
 RUN npm install -g @anthropic-ai/claude-code
 
+# Set ccagent version
+ARG CCAGENT_VERSION=v0.0.5
+
 # Install ccagent binary
-RUN curl -fsSL -o /usr/local/bin/ccagent https://github.com/presmihaylov/ccagent/releases/download/v0.0.4/ccagent-v0.0.4-linux-x86_64 && \
+RUN curl -fsSL -o /usr/local/bin/ccagent https://github.com/presmihaylov/ccagent/releases/download/${CCAGENT_VERSION}/ccagent-${CCAGENT_VERSION}-linux-x86_64 && \
     chmod +x /usr/local/bin/ccagent
 
 # Add Claude binary to PATH
