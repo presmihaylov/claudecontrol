@@ -1,18 +1,24 @@
 #!/bin/bash
 set -e
 
-# Start token rotation in background
-/usr/local/bin/rotate-gh-token.sh &
+# Wait for token to be available from token rotator container
+echo "Waiting for GitHub token from token rotator..."
+timeout=60
+while [[ ! -f /home/ccagent/.config/ccagent/.env && $timeout -gt 0 ]]; do
+  sleep 1
+  timeout=$((timeout - 1))
+done
 
-# Source token environment
-sleep 2  # Give token rotation time to complete initial run
+if [[ ! -f /home/ccagent/.config/ccagent/.env ]]; then
+  echo "Error: Token file not found after 60 seconds. Token rotator may not be running."
+  exit 1
+fi
 
 # Source from ccagent config directory
-if [[ -f /home/ccagent/.config/ccagent/.env ]]; then
-  set -a  # automatically export all variables
-  source /home/ccagent/.config/ccagent/.env
-  set +a  # disable automatic export
-fi
+echo "Token file found, sourcing environment..."
+set -a  # automatically export all variables
+source /home/ccagent/.config/ccagent/.env
+set +a  # disable automatic export
 
 # Configure git with claudecontrol identity
 echo "Configuring git user..."
@@ -23,21 +29,6 @@ git config --global user.email "claudecontrol@users.noreply.github.com"
 if [[ -n "${REPO_URL:-}" ]]; then
   echo "Cloning repository: $REPO_URL"
   
-  # Wait for GH_TOKEN to be available
-  timeout=30
-  while [[ -z "${GH_TOKEN:-}" && $timeout -gt 0 ]]; do
-    echo "Waiting for GH_TOKEN to be available..."
-    sleep 1
-    
-    # Try to source from ccagent config
-    if [[ -f /home/ccagent/.config/ccagent/.env ]]; then
-      set -a
-      source /home/ccagent/.config/ccagent/.env
-      set +a
-    fi
-    
-    timeout=$((timeout - 1))
-  done
   
   if [[ -z "${GH_TOKEN:-}" ]]; then
     echo "Warning: GH_TOKEN not available, trying clone without authentication"

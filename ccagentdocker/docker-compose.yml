@@ -1,0 +1,35 @@
+services:
+  ccagent-token-rotator-test:
+    image: preslavmihaylov/ccagent-token-rotator:latest
+    container_name: ccagent-token-rotator-test
+    volumes:
+      - ./cc.pem:/secrets/cc.pem:ro
+      - ./ccagent-test:/shared:Z
+    environment:
+      - GITHUB_APP_ID=${GITHUB_APP_ID}
+      - GITHUB_INSTALLATION_ID={$GITHUB_INSTALLATION_ID}
+    healthcheck:
+      test: ["CMD", "test", "-f", "/shared/.config/ccagent/.env"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  ccagent-test:
+    image: preslavmihaylov/ccagent-docker:latest
+    container_name: ccagent-test
+    depends_on:
+      ccagent-token-rotator-test:
+        condition: service_healthy
+    volumes:
+      - ./ccagent-test:/home/ccagent
+    environment:
+      - REPO_URL=${REPO_URL}
+      - CCAGENT_API_KEY=${CCAGENT_API_KEY}
+     # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
