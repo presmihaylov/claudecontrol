@@ -15,20 +15,20 @@ import (
 )
 
 // Test helper functions
-func createTestAgent(id, wsConnectionID string, organizationID models.OrgID) *models.ActiveAgent {
+func createTestAgent(id, wsConnectionID string, orgID models.OrgID) *models.ActiveAgent {
 	return &models.ActiveAgent{
 		ID:             id,
 		WSConnectionID: wsConnectionID,
-		OrgID:          organizationID,
+		OrgID:          orgID,
 		CCAgentID:      "ccaid_test123",
 	}
 }
 
-func createTestJob(id, slackThreadTS, slackChannelID string, organizationID models.OrgID) *models.Job {
+func createTestJob(id, slackThreadTS, slackChannelID string, orgID models.OrgID) *models.Job {
 	return &models.Job{
 		ID:      id,
 		JobType: models.JobTypeSlack,
-		OrgID:   organizationID,
+		OrgID:   orgID,
 		SlackPayload: &models.SlackJobPayload{
 			ThreadTS:  slackThreadTS,
 			ChannelID: slackChannelID,
@@ -53,25 +53,25 @@ func TestNewAgentsUseCase(t *testing.T) {
 // GetOrAssignAgentForJob Tests
 func TestGetOrAssignAgentForJob(t *testing.T) {
 	ctx := context.Background()
-	organizationID := models.OrgID("org_test123")
+	orgID := models.OrgID("org_test123")
 	threadTS := "1234567890.123456"
-	job := createTestJob("job_123", threadTS, "C123456", organizationID)
+	job := createTestJob("job_123", threadTS, "C123456", orgID)
 
 	t.Run("Job already assigned with active connection", func(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
+		agent := createTestAgent("agent_123", "ws_conn_123", orgID)
 
 		// Setup expectations
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, job.ID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, job.ID).
 			Return(mo.Some(agent), nil)
 		mockWS.On("GetClientIDs").Return([]string{"ws_conn_123", "ws_conn_456"})
 		mockAgents.On("CheckAgentHasActiveConnection", agent, []string{"ws_conn_123", "ws_conn_456"}).
 			Return(true)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		clientID, err := useCase.GetOrAssignAgentForJob(ctx, job, threadTS, organizationID)
+		clientID, err := useCase.GetOrAssignAgentForJob(ctx, job, threadTS, orgID)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "ws_conn_123", clientID)
@@ -83,17 +83,17 @@ func TestGetOrAssignAgentForJob(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
+		agent := createTestAgent("agent_123", "ws_conn_123", orgID)
 
 		// Setup expectations
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, job.ID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, job.ID).
 			Return(mo.Some(agent), nil)
 		mockWS.On("GetClientIDs").Return([]string{"ws_conn_456"}) // Different connection ID
 		mockAgents.On("CheckAgentHasActiveConnection", agent, []string{"ws_conn_456"}).
 			Return(false)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		clientID, err := useCase.GetOrAssignAgentForJob(ctx, job, threadTS, organizationID)
+		clientID, err := useCase.GetOrAssignAgentForJob(ctx, job, threadTS, orgID)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no active agents available")
@@ -106,25 +106,25 @@ func TestGetOrAssignAgentForJob(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
+		agent := createTestAgent("agent_123", "ws_conn_123", orgID)
 
 		// Setup expectations for no existing assignment
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, job.ID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, job.ID).
 			Return(mo.None[*models.ActiveAgent](), nil).Once()
 
 		// Setup expectations for assignment flow
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, job.ID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, job.ID).
 			Return(mo.None[*models.ActiveAgent](), nil).Once()
 		mockWS.On("GetClientIDs").Return([]string{"ws_conn_123"})
-		mockAgents.On("GetConnectedActiveAgents", ctx, organizationID, []string{"ws_conn_123"}).
+		mockAgents.On("GetConnectedActiveAgents", ctx, orgID, []string{"ws_conn_123"}).
 			Return([]*models.ActiveAgent{agent}, nil)
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent.ID).
 			Return([]string{}, nil)
-		mockAgents.On("AssignAgentToJob", ctx, organizationID, agent.ID, job.ID).
+		mockAgents.On("AssignAgentToJob", ctx, orgID, agent.ID, job.ID).
 			Return(nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		clientID, err := useCase.GetOrAssignAgentForJob(ctx, job, threadTS, organizationID)
+		clientID, err := useCase.GetOrAssignAgentForJob(ctx, job, threadTS, orgID)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "ws_conn_123", clientID)
@@ -136,29 +136,29 @@ func TestGetOrAssignAgentForJob(t *testing.T) {
 // AssignJobToAvailableAgent Tests
 func TestAssignJobToAvailableAgent(t *testing.T) {
 	ctx := context.Background()
-	organizationID := models.OrgID("org_test123")
+	orgID := models.OrgID("org_test123")
 	threadTS := "1234567890.123456"
-	job := createTestJob("job_123", threadTS, "C123456", organizationID)
+	job := createTestJob("job_123", threadTS, "C123456", orgID)
 
 	t.Run("Successful assignment", func(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
+		agent := createTestAgent("agent_123", "ws_conn_123", orgID)
 
 		// Setup expectations
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, job.ID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, job.ID).
 			Return(mo.None[*models.ActiveAgent](), nil)
 		mockWS.On("GetClientIDs").Return([]string{"ws_conn_123"})
-		mockAgents.On("GetConnectedActiveAgents", ctx, organizationID, []string{"ws_conn_123"}).
+		mockAgents.On("GetConnectedActiveAgents", ctx, orgID, []string{"ws_conn_123"}).
 			Return([]*models.ActiveAgent{agent}, nil)
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent.ID).
 			Return([]string{}, nil)
-		mockAgents.On("AssignAgentToJob", ctx, organizationID, agent.ID, job.ID).
+		mockAgents.On("AssignAgentToJob", ctx, orgID, agent.ID, job.ID).
 			Return(nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		clientID, err := useCase.AssignJobToAvailableAgent(ctx, job, threadTS, organizationID)
+		clientID, err := useCase.AssignJobToAvailableAgent(ctx, job, threadTS, orgID)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "ws_conn_123", clientID)
@@ -171,14 +171,14 @@ func TestAssignJobToAvailableAgent(t *testing.T) {
 		mockAgents := &agents.MockAgentsService{}
 
 		// Setup expectations
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, job.ID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, job.ID).
 			Return(mo.None[*models.ActiveAgent](), nil)
 		mockWS.On("GetClientIDs").Return([]string{})
-		mockAgents.On("GetConnectedActiveAgents", ctx, organizationID, []string{}).
+		mockAgents.On("GetConnectedActiveAgents", ctx, orgID, []string{}).
 			Return([]*models.ActiveAgent{}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		clientID, err := useCase.AssignJobToAvailableAgent(ctx, job, threadTS, organizationID)
+		clientID, err := useCase.AssignJobToAvailableAgent(ctx, job, threadTS, orgID)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no agents with active WebSocket connections")
@@ -191,24 +191,24 @@ func TestAssignJobToAvailableAgent(t *testing.T) {
 // TryAssignJobToAgent Tests
 func TestTryAssignJobToAgent(t *testing.T) {
 	ctx := context.Background()
-	organizationID := models.OrgID("org_test123")
+	orgID := models.OrgID("org_test123")
 	jobID := "job_123"
 
 	t.Run("Job already assigned with active connection", func(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
+		agent := createTestAgent("agent_123", "ws_conn_123", orgID)
 
 		// Setup expectations
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, jobID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, jobID).
 			Return(mo.Some(agent), nil)
 		mockWS.On("GetClientIDs").Return([]string{"ws_conn_123"})
 		mockAgents.On("CheckAgentHasActiveConnection", agent, []string{"ws_conn_123"}).
 			Return(true)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		clientID, wasAssigned, err := useCase.TryAssignJobToAgent(ctx, jobID, organizationID)
+		clientID, wasAssigned, err := useCase.TryAssignJobToAgent(ctx, jobID, orgID)
 
 		assert.NoError(t, err)
 		assert.True(t, wasAssigned)
@@ -221,17 +221,17 @@ func TestTryAssignJobToAgent(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent := createTestAgent("agent_123", "ws_conn_123", organizationID)
+		agent := createTestAgent("agent_123", "ws_conn_123", orgID)
 
 		// Setup expectations
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, jobID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, jobID).
 			Return(mo.Some(agent), nil)
 		mockWS.On("GetClientIDs").Return([]string{"ws_conn_456"})
 		mockAgents.On("CheckAgentHasActiveConnection", agent, []string{"ws_conn_456"}).
 			Return(false)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		clientID, wasAssigned, err := useCase.TryAssignJobToAgent(ctx, jobID, organizationID)
+		clientID, wasAssigned, err := useCase.TryAssignJobToAgent(ctx, jobID, orgID)
 
 		assert.NoError(t, err)
 		assert.False(t, wasAssigned)
@@ -244,25 +244,25 @@ func TestTryAssignJobToAgent(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent1 := createTestAgent("agent_1", "ws_conn_1", organizationID)
-		agent2 := createTestAgent("agent_2", "ws_conn_2", organizationID)
+		agent1 := createTestAgent("agent_1", "ws_conn_1", orgID)
+		agent2 := createTestAgent("agent_2", "ws_conn_2", orgID)
 
 		// Setup expectations
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, jobID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, jobID).
 			Return(mo.None[*models.ActiveAgent](), nil)
 		mockWS.On("GetClientIDs").Return([]string{"ws_conn_1", "ws_conn_2"})
-		mockAgents.On("GetConnectedActiveAgents", ctx, organizationID, []string{"ws_conn_1", "ws_conn_2"}).
+		mockAgents.On("GetConnectedActiveAgents", ctx, orgID, []string{"ws_conn_1", "ws_conn_2"}).
 			Return([]*models.ActiveAgent{agent1, agent2}, nil)
 		// Agent 1 has 2 jobs, Agent 2 has 1 job - should select agent 2
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent1.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent1.ID).
 			Return([]string{"job_a", "job_b"}, nil)
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent2.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent2.ID).
 			Return([]string{"job_c"}, nil)
-		mockAgents.On("AssignAgentToJob", ctx, organizationID, agent2.ID, jobID).
+		mockAgents.On("AssignAgentToJob", ctx, orgID, agent2.ID, jobID).
 			Return(nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		clientID, wasAssigned, err := useCase.TryAssignJobToAgent(ctx, jobID, organizationID)
+		clientID, wasAssigned, err := useCase.TryAssignJobToAgent(ctx, jobID, orgID)
 
 		assert.NoError(t, err)
 		assert.True(t, wasAssigned)
@@ -276,14 +276,14 @@ func TestTryAssignJobToAgent(t *testing.T) {
 		mockAgents := &agents.MockAgentsService{}
 
 		// Setup expectations
-		mockAgents.On("GetAgentByJobID", ctx, organizationID, jobID).
+		mockAgents.On("GetAgentByJobID", ctx, orgID, jobID).
 			Return(mo.None[*models.ActiveAgent](), nil)
 		mockWS.On("GetClientIDs").Return([]string{})
-		mockAgents.On("GetConnectedActiveAgents", ctx, organizationID, []string{}).
+		mockAgents.On("GetConnectedActiveAgents", ctx, orgID, []string{}).
 			Return([]*models.ActiveAgent{}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		clientID, wasAssigned, err := useCase.TryAssignJobToAgent(ctx, jobID, organizationID)
+		clientID, wasAssigned, err := useCase.TryAssignJobToAgent(ctx, jobID, orgID)
 
 		assert.NoError(t, err)
 		assert.False(t, wasAssigned)
@@ -296,7 +296,7 @@ func TestTryAssignJobToAgent(t *testing.T) {
 // ValidateJobBelongsToAgent Tests
 func TestValidateJobBelongsToAgent(t *testing.T) {
 	ctx := context.Background()
-	organizationID := models.OrgID("org_test123")
+	orgID := models.OrgID("org_test123")
 	agentID := "agent_123"
 	jobID := "job_123"
 
@@ -304,11 +304,11 @@ func TestValidateJobBelongsToAgent(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agentID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agentID).
 			Return([]string{"job_456", jobID, "job_789"}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		err := useCase.ValidateJobBelongsToAgent(ctx, agentID, jobID, organizationID)
+		err := useCase.ValidateJobBelongsToAgent(ctx, agentID, jobID, orgID)
 
 		assert.NoError(t, err)
 		mockAgents.AssertExpectations(t)
@@ -318,11 +318,11 @@ func TestValidateJobBelongsToAgent(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agentID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agentID).
 			Return([]string{"job_456", "job_789"}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		err := useCase.ValidateJobBelongsToAgent(ctx, agentID, jobID, organizationID)
+		err := useCase.ValidateJobBelongsToAgent(ctx, agentID, jobID, orgID)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("agent %s is not assigned to job %s", agentID, jobID))
@@ -333,11 +333,11 @@ func TestValidateJobBelongsToAgent(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agentID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agentID).
 			Return([]string{}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		err := useCase.ValidateJobBelongsToAgent(ctx, agentID, jobID, organizationID)
+		err := useCase.ValidateJobBelongsToAgent(ctx, agentID, jobID, orgID)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("agent %s is not assigned to job %s", agentID, jobID))
@@ -348,29 +348,29 @@ func TestValidateJobBelongsToAgent(t *testing.T) {
 // sortAgentsByLoad Tests
 func TestSortAgentsByLoad(t *testing.T) {
 	ctx := context.Background()
-	organizationID := models.OrgID("org_test123")
+	orgID := models.OrgID("org_test123")
 
 	t.Run("Correct load calculation and sort order", func(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent1 := createTestAgent("agent_1", "ws_1", organizationID)
-		agent2 := createTestAgent("agent_2", "ws_2", organizationID)
-		agent3 := createTestAgent("agent_3", "ws_3", organizationID)
+		agent1 := createTestAgent("agent_1", "ws_1", orgID)
+		agent2 := createTestAgent("agent_2", "ws_2", orgID)
+		agent3 := createTestAgent("agent_3", "ws_3", orgID)
 
 		// Agent 1: 3 jobs, Agent 2: 1 job, Agent 3: 2 jobs
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent1.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent1.ID).
 			Return([]string{"job_a", "job_b", "job_c"}, nil)
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent2.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent2.ID).
 			Return([]string{"job_d"}, nil)
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent3.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent3.ID).
 			Return([]string{"job_e", "job_f"}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
 		sorted, err := useCase.sortAgentsByLoad(
 			ctx,
 			[]*models.ActiveAgent{agent1, agent2, agent3},
-			organizationID,
+			orgID,
 		)
 
 		require.NoError(t, err)
@@ -392,7 +392,7 @@ func TestSortAgentsByLoad(t *testing.T) {
 		mockAgents := &agents.MockAgentsService{}
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		sorted, err := useCase.sortAgentsByLoad(ctx, []*models.ActiveAgent{}, organizationID)
+		sorted, err := useCase.sortAgentsByLoad(ctx, []*models.ActiveAgent{}, orgID)
 
 		assert.NoError(t, err)
 		assert.Empty(t, sorted)
@@ -402,12 +402,12 @@ func TestSortAgentsByLoad(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent := createTestAgent("agent_1", "ws_1", organizationID)
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent.ID).
+		agent := createTestAgent("agent_1", "ws_1", orgID)
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent.ID).
 			Return([]string{"job_a", "job_b"}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
-		sorted, err := useCase.sortAgentsByLoad(ctx, []*models.ActiveAgent{agent}, organizationID)
+		sorted, err := useCase.sortAgentsByLoad(ctx, []*models.ActiveAgent{agent}, orgID)
 
 		require.NoError(t, err)
 		require.Len(t, sorted, 1)
@@ -420,20 +420,20 @@ func TestSortAgentsByLoad(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent1 := createTestAgent("agent_1", "ws_1", organizationID)
-		agent2 := createTestAgent("agent_2", "ws_2", organizationID)
+		agent1 := createTestAgent("agent_1", "ws_1", orgID)
+		agent2 := createTestAgent("agent_2", "ws_2", orgID)
 
 		// Both agents have 2 jobs
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent1.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent1.ID).
 			Return([]string{"job_a", "job_b"}, nil)
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent2.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent2.ID).
 			Return([]string{"job_c", "job_d"}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
 		sorted, err := useCase.sortAgentsByLoad(
 			ctx,
 			[]*models.ActiveAgent{agent1, agent2},
-			organizationID,
+			orgID,
 		)
 
 		require.NoError(t, err)
@@ -447,20 +447,20 @@ func TestSortAgentsByLoad(t *testing.T) {
 		mockWS := &socketio.MockSocketIOClient{}
 		mockAgents := &agents.MockAgentsService{}
 
-		agent1 := createTestAgent("agent_1", "ws_1", organizationID)
-		agent2 := createTestAgent("agent_2", "ws_2", organizationID)
+		agent1 := createTestAgent("agent_1", "ws_1", orgID)
+		agent2 := createTestAgent("agent_2", "ws_2", orgID)
 
 		// Both agents have no jobs
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent1.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent1.ID).
 			Return([]string{}, nil)
-		mockAgents.On("GetActiveAgentJobAssignments", ctx, organizationID, agent2.ID).
+		mockAgents.On("GetActiveAgentJobAssignments", ctx, orgID, agent2.ID).
 			Return([]string{}, nil)
 
 		useCase := NewAgentsUseCase(mockWS, mockAgents)
 		sorted, err := useCase.sortAgentsByLoad(
 			ctx,
 			[]*models.ActiveAgent{agent1, agent2},
-			organizationID,
+			orgID,
 		)
 
 		require.NoError(t, err)

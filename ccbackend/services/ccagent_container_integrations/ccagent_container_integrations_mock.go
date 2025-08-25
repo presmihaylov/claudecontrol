@@ -15,11 +15,11 @@ type MockCCAgentContainerIntegrationsService struct {
 
 func (m *MockCCAgentContainerIntegrationsService) CreateCCAgentContainerIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	instancesCount int,
 	repoURL string,
 ) (*models.CCAgentContainerIntegration, error) {
-	args := m.Called(ctx, organizationID, instancesCount, repoURL)
+	args := m.Called(ctx, orgID, instancesCount, repoURL)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -28,9 +28,9 @@ func (m *MockCCAgentContainerIntegrationsService) CreateCCAgentContainerIntegrat
 
 func (m *MockCCAgentContainerIntegrationsService) ListCCAgentContainerIntegrations(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.CCAgentContainerIntegration, error) {
-	args := m.Called(ctx, organizationID)
+	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -39,10 +39,10 @@ func (m *MockCCAgentContainerIntegrationsService) ListCCAgentContainerIntegratio
 
 func (m *MockCCAgentContainerIntegrationsService) GetCCAgentContainerIntegrationByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.CCAgentContainerIntegration], error) {
-	args := m.Called(ctx, organizationID, id)
+	args := m.Called(ctx, orgID, id)
 	if args.Get(0) == nil {
 		return mo.None[*models.CCAgentContainerIntegration](), args.Error(1)
 	}
@@ -51,9 +51,9 @@ func (m *MockCCAgentContainerIntegrationsService) GetCCAgentContainerIntegration
 
 func (m *MockCCAgentContainerIntegrationsService) DeleteCCAgentContainerIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	integrationID string,
 ) error {
-	args := m.Called(ctx, organizationID, integrationID)
+	args := m.Called(ctx, orgID, integrationID)
 	return args.Error(0)
 }

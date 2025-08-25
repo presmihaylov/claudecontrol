@@ -17,18 +17,18 @@ func (m *MockSlackUseCase) ProcessSlackMessageEvent(
 	ctx context.Context,
 	event models.SlackMessageEvent,
 	slackIntegrationID string,
-	organizationID string,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, event, slackIntegrationID, organizationID)
+	args := m.Called(ctx, event, slackIntegrationID, orgID)
 	return args.Error(0)
 }
 
 func (m *MockSlackUseCase) ProcessReactionAdded(
 	ctx context.Context,
 	reactionName, userID, channelID, messageTS, slackIntegrationID string,
-	organizationID string,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, reactionName, userID, channelID, messageTS, slackIntegrationID, organizationID)
+	args := m.Called(ctx, reactionName, userID, channelID, messageTS, slackIntegrationID, orgID)
 	return args.Error(0)
 }
 
@@ -36,9 +36,9 @@ func (m *MockSlackUseCase) ProcessProcessingMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.ProcessingMessagePayload,
-	organizationID string,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, clientID, payload, organizationID)
+	args := m.Called(ctx, clientID, payload, orgID)
 	return args.Error(0)
 }
 
@@ -46,9 +46,9 @@ func (m *MockSlackUseCase) ProcessAssistantMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.AssistantMessagePayload,
-	organizationID string,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, clientID, payload, organizationID)
+	args := m.Called(ctx, clientID, payload, orgID)
 	return args.Error(0)
 }
 
@@ -56,9 +56,9 @@ func (m *MockSlackUseCase) ProcessSystemMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.SystemMessagePayload,
-	organizationID string,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, clientID, payload, organizationID)
+	args := m.Called(ctx, clientID, payload, orgID)
 	return args.Error(0)
 }
 
@@ -66,9 +66,9 @@ func (m *MockSlackUseCase) ProcessJobComplete(
 	ctx context.Context,
 	clientID string,
 	payload models.JobCompletePayload,
-	organizationID string,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, clientID, payload, organizationID)
+	args := m.Called(ctx, clientID, payload, orgID)
 	return args.Error(0)
 }
 

@@ -65,10 +65,10 @@ func (s *OrganizationsService) GetOrganizationByID(
 
 func (s *OrganizationsService) GenerateCCAgentSecretKey(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (string, error) {
-	log.Printf("📋 Starting to generate CCAgent secret key for organization: %s", organizationID)
-	if !core.IsValidULID(string(organizationID)) {
+	log.Printf("📋 Starting to generate CCAgent secret key for organization: %s", orgID)
+	if !core.IsValidULID(string(orgID)) {
 		return "", fmt.Errorf("organization ID must be a valid ULID")
 	}
 
@@ -77,7 +77,7 @@ func (s *OrganizationsService) GenerateCCAgentSecretKey(
 		return "", fmt.Errorf("failed to generate secret key: %w", err)
 	}
 
-	updated, err := s.organizationsRepo.GenerateCCAgentSecretKey(ctx, organizationID, secretKey)
+	updated, err := s.organizationsRepo.GenerateCCAgentSecretKey(ctx, orgID, secretKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to update organization with secret key: %w", err)
 	}
@@ -85,7 +85,7 @@ func (s *OrganizationsService) GenerateCCAgentSecretKey(
 		return "", fmt.Errorf("organization not found")
 	}
 
-	log.Printf("📋 Completed successfully - generated secret key for organization: %s", organizationID)
+	log.Printf("📋 Completed successfully - generated secret key for organization: %s", orgID)
 	return secretKey, nil
 }
 

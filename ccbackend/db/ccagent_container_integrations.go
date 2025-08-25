@@ -55,7 +55,7 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) CreateCCAgentContainerI
 // ListCCAgentContainerIntegrations retrieves all CCAgent container integrations for an organization
 func (r *PostgresCCAgentContainerIntegrationsRepository) ListCCAgentContainerIntegrations(
 	ctx context.Context,
-	orgID string,
+	orgID models.OrgID,
 ) ([]models.CCAgentContainerIntegration, error) {
 	integrations := []models.CCAgentContainerIntegration{}
 	query := fmt.Sprintf(`
@@ -75,7 +75,7 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) ListCCAgentContainerInt
 // GetCCAgentContainerIntegrationByID retrieves a CCAgent container integration by ID
 func (r *PostgresCCAgentContainerIntegrationsRepository) GetCCAgentContainerIntegrationByID(
 	ctx context.Context,
-	organizationID string,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.CCAgentContainerIntegration], error) {
 	var integration models.CCAgentContainerIntegration
@@ -84,7 +84,7 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) GetCCAgentContainerInte
 		FROM %s.ccagent_container_integrations
 		WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	err := r.db.GetContext(ctx, &integration, query, id, organizationID)
+	err := r.db.GetContext(ctx, &integration, query, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.CCAgentContainerIntegration](), nil
@@ -101,12 +101,12 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) GetCCAgentContainerInte
 // DeleteCCAgentContainerIntegration deletes a CCAgent container integration
 func (r *PostgresCCAgentContainerIntegrationsRepository) DeleteCCAgentContainerIntegration(
 	ctx context.Context,
-	organizationID string,
+	orgID models.OrgID,
 	id string,
 ) error {
 	query := fmt.Sprintf("DELETE FROM %s.ccagent_container_integrations WHERE id = $1 AND organization_id = $2", r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, id, organizationID)
+	result, err := r.db.ExecContext(ctx, query, id, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to delete CCAgent container integration: %w", err)
 	}

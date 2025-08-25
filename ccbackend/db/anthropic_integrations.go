@@ -65,9 +65,9 @@ func (r *PostgresAnthropicIntegrationsRepository) CreateAnthropicIntegration(
 
 func (r *PostgresAnthropicIntegrationsRepository) GetAnthropicIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.AnthropicIntegration, error) {
-	if organizationID == "" {
+	if orgID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
 
@@ -79,7 +79,7 @@ func (r *PostgresAnthropicIntegrationsRepository) GetAnthropicIntegrationsByOrga
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
 	integrations := []models.AnthropicIntegration{}
-	err := r.db.SelectContext(ctx, &integrations, query, organizationID)
+	err := r.db.SelectContext(ctx, &integrations, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get anthropic integrations: %w", err)
 	}
@@ -89,7 +89,7 @@ func (r *PostgresAnthropicIntegrationsRepository) GetAnthropicIntegrationsByOrga
 
 func (r *PostgresAnthropicIntegrationsRepository) GetAnthropicIntegrationByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.AnthropicIntegration], error) {
 	columnsStr := strings.Join(anthropicIntegrationsColumns, ", ")
@@ -99,7 +99,7 @@ func (r *PostgresAnthropicIntegrationsRepository) GetAnthropicIntegrationByID(
 		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	var integration models.AnthropicIntegration
-	err := r.db.GetContext(ctx, &integration, query, id, organizationID)
+	err := r.db.GetContext(ctx, &integration, query, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.AnthropicIntegration](), nil
@@ -112,10 +112,10 @@ func (r *PostgresAnthropicIntegrationsRepository) GetAnthropicIntegrationByID(
 
 func (r *PostgresAnthropicIntegrationsRepository) DeleteAnthropicIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) error {
-	if organizationID == "" {
+	if orgID == "" {
 		return fmt.Errorf("organization ID cannot be empty")
 	}
 	if id == "" {
@@ -126,7 +126,7 @@ func (r *PostgresAnthropicIntegrationsRepository) DeleteAnthropicIntegration(
 		DELETE FROM %s.anthropic_integrations 
 		WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, id, organizationID)
+	result, err := r.db.ExecContext(ctx, query, id, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to delete anthropic integration: %w", err)
 	}

@@ -141,7 +141,7 @@ func CreateTestContextWithUser(user *models.User) context.Context {
 }
 
 // CreateTestSlackIntegration creates a test slack integration model for testing
-func CreateTestSlackIntegration(organizationID models.OrgID) *models.SlackIntegration {
+func CreateTestSlackIntegration(orgID models.OrgID) *models.SlackIntegration {
 	integrationID := core.NewID("si")
 	teamIDSuffix := core.NewID("team")
 	tokenSuffix := core.NewID("tok")
@@ -151,12 +151,12 @@ func CreateTestSlackIntegration(organizationID models.OrgID) *models.SlackIntegr
 		SlackTeamID:    "test-team-" + teamIDSuffix,
 		SlackAuthToken: "xoxb-test-token-" + tokenSuffix,
 		SlackTeamName:  "Test Team",
-		OrgID:          organizationID,
+		OrgID:          orgID,
 	}
 }
 
 // CreateTestDiscordIntegration creates a test discord integration model for testing
-func CreateTestDiscordIntegration(organizationID models.OrgID) *models.DiscordIntegration {
+func CreateTestDiscordIntegration(orgID models.OrgID) *models.DiscordIntegration {
 	integrationID := core.NewID("di")
 	guildIDSuffix := core.NewID("guild")
 
@@ -164,7 +164,7 @@ func CreateTestDiscordIntegration(organizationID models.OrgID) *models.DiscordIn
 		ID:               integrationID,
 		DiscordGuildID:   "test-guild-" + guildIDSuffix,
 		DiscordGuildName: "Test Discord Guild",
-		OrgID:            organizationID,
+		OrgID:            orgID,
 	}
 }
 
@@ -300,7 +300,7 @@ func GenerateSlackToken() string {
 // CreateTestProcessedSlackMessage creates a test processed Slack message
 func CreateTestProcessedSlackMessage(
 	jobID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	slackIntegrationID string,
 	status models.ProcessedSlackMessageStatus,
 ) *models.ProcessedSlackMessage {
@@ -312,14 +312,14 @@ func CreateTestProcessedSlackMessage(
 		TextContent:        "Test message content",
 		Status:             status,
 		SlackIntegrationID: slackIntegrationID,
-		OrgID:              organizationID,
+		OrgID:              orgID,
 	}
 }
 
 // CreateTestProcessedDiscordMessage creates a test processed Discord message
 func CreateTestProcessedDiscordMessage(
 	jobID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	discordIntegrationID string,
 	status models.ProcessedDiscordMessageStatus,
 ) *models.ProcessedDiscordMessage {
@@ -331,6 +331,6 @@ func CreateTestProcessedDiscordMessage(
 		TextContent:          "Test message content",
 		Status:               status,
 		DiscordIntegrationID: discordIntegrationID,
-		OrgID:                organizationID,
+		OrgID:                orgID,
 	}
 }

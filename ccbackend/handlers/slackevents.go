@@ -192,7 +192,7 @@ func (h *SlackEventsHandler) handleAppMention(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	channel := event["channel"].(string)
 	user := event["user"].(string)
@@ -214,14 +214,14 @@ func (h *SlackEventsHandler) handleAppMention(
 		ThreadTS: threadTS,
 	}
 
-	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID, organizationID)
+	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID, orgID)
 }
 
 func (h *SlackEventsHandler) handleReactionAdded(
 	ctx context.Context,
 	event map[string]any,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	reactionName := event["reaction"].(string)
 	user := event["user"].(string)
@@ -239,5 +239,5 @@ func (h *SlackEventsHandler) handleReactionAdded(
 
 	log.Printf("📨 Reaction %s added by %s on message %s in %s", reactionName, user, ts, channel)
 
-	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID, organizationID)
+	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID, orgID)
 }

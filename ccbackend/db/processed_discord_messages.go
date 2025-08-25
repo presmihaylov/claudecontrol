@@ -78,7 +78,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) CreateProcessedDiscordMessa
 func (r *PostgresProcessedDiscordMessagesRepository) GetProcessedDiscordMessageByID(
 	ctx context.Context,
 	id string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
@@ -88,7 +88,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetProcessedDiscordMessageB
 		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	message := &models.ProcessedDiscordMessage{}
-	err := db.GetContext(ctx, message, query, id, organizationID)
+	err := db.GetContext(ctx, message, query, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ProcessedDiscordMessage](), nil
@@ -107,7 +107,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) UpdateProcessedDiscordMessa
 	id string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (*models.ProcessedDiscordMessage, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
@@ -118,7 +118,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) UpdateProcessedDiscordMessa
 		RETURNING %s`, r.schema, columnsStr)
 
 	message := &models.ProcessedDiscordMessage{}
-	err := db.QueryRowxContext(ctx, query, status, id, discordIntegrationID, organizationID).
+	err := db.QueryRowxContext(ctx, query, status, id, discordIntegrationID, orgID).
 		StructScan(message)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -135,7 +135,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetProcessedMessagesByJobID
 	jobID string,
 	status models.ProcessedDiscordMessageStatus,
 	discordIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]*models.ProcessedDiscordMessage, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
@@ -146,7 +146,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetProcessedMessagesByJobID
 		ORDER BY created_at ASC`, columnsStr, r.schema)
 
 	var messages []*models.ProcessedDiscordMessage
-	err := db.SelectContext(ctx, &messages, query, jobID, status, discordIntegrationID, organizationID)
+	err := db.SelectContext(ctx, &messages, query, jobID, status, discordIntegrationID, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed discord messages by job ID and status: %w", err)
 	}
@@ -158,7 +158,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetLatestProcessedMessageFo
 	ctx context.Context,
 	jobID string,
 	discordIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.ProcessedDiscordMessage], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
@@ -170,7 +170,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetLatestProcessedMessageFo
 		LIMIT 1`, columnsStr, r.schema)
 
 	message := &models.ProcessedDiscordMessage{}
-	err := db.GetContext(ctx, message, query, jobID, discordIntegrationID, organizationID)
+	err := db.GetContext(ctx, message, query, jobID, discordIntegrationID, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ProcessedDiscordMessage](), nil
@@ -188,7 +188,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetActiveMessageCountForJob
 	ctx context.Context,
 	jobIDs []string,
 	discordIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (int, error) {
 	if len(jobIDs) == 0 {
 		return 0, nil
@@ -196,7 +196,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetActiveMessageCountForJob
 
 	db := dbtx.GetTransactional(ctx, r.db)
 	placeholders := make([]string, len(jobIDs))
-	args := []any{discordIntegrationID, organizationID}
+	args := []any{discordIntegrationID, orgID}
 
 	for i, jobID := range jobIDs {
 		placeholders[i] = fmt.Sprintf("$%d", i+3)
@@ -223,7 +223,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) TESTS_UpdateProcessedDiscor
 	id string,
 	updatedAt time.Time,
 	discordIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
@@ -231,7 +231,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) TESTS_UpdateProcessedDiscor
 		SET updated_at = $1 
 		WHERE id = $2 AND discord_integration_id = $3 AND organization_id = $4`, r.schema)
 
-	_, err := db.ExecContext(ctx, query, updatedAt, id, discordIntegrationID, organizationID)
+	_, err := db.ExecContext(ctx, query, updatedAt, id, discordIntegrationID, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to update processed discord message updated_at: %w", err)
 	}
@@ -243,14 +243,14 @@ func (r *PostgresProcessedDiscordMessagesRepository) DeleteProcessedDiscordMessa
 	ctx context.Context,
 	jobID string,
 	discordIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
 		DELETE FROM %s.processed_discord_messages 
 		WHERE job_id = $1 AND discord_integration_id = $2 AND organization_id = $3`, r.schema)
 
-	_, err := db.ExecContext(ctx, query, jobID, discordIntegrationID, organizationID)
+	_, err := db.ExecContext(ctx, query, jobID, discordIntegrationID, orgID)
 	if err != nil {
 		// Check if this is a foreign key constraint error
 		if pqErr, ok := err.(*pq.Error); ok {
@@ -268,7 +268,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetProcessedMessagesByStatu
 	ctx context.Context,
 	status models.ProcessedDiscordMessageStatus,
 	integrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]*models.ProcessedDiscordMessage, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedDiscordMessagesColumns, ", ")
@@ -279,7 +279,7 @@ func (r *PostgresProcessedDiscordMessagesRepository) GetProcessedMessagesByStatu
 		ORDER BY created_at ASC`, columnsStr, r.schema)
 
 	var messages []*models.ProcessedDiscordMessage
-	err := db.SelectContext(ctx, &messages, query, status, integrationID, organizationID)
+	err := db.SelectContext(ctx, &messages, query, status, integrationID, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed messages by status: %w", err)
 	}

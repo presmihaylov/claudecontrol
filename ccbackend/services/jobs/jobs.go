@@ -37,7 +37,7 @@ func NewJobsService(
 
 func (s *JobsService) CreateSlackJob(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	slackThreadTS, slackChannelID, slackUserID, slackIntegrationID string,
 ) (*models.Job, error) {
 	log.Printf(
@@ -45,7 +45,7 @@ func (s *JobsService) CreateSlackJob(
 		slackThreadTS,
 		slackChannelID,
 		slackUserID,
-		organizationID,
+		orgID,
 	)
 
 	if slackThreadTS == "" {
@@ -60,14 +60,14 @@ func (s *JobsService) CreateSlackJob(
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
 	job := &models.Job{
 		ID:      core.NewID("j"),
 		JobType: models.JobTypeSlack,
-		OrgID:   organizationID,
+		OrgID:   orgID,
 		SlackPayload: &models.SlackJobPayload{
 			ThreadTS:      slackThreadTS,
 			ChannelID:     slackChannelID,
@@ -86,18 +86,18 @@ func (s *JobsService) CreateSlackJob(
 
 func (s *JobsService) GetJobByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by ID: %s", id)
 	if !core.IsValidULID(id) {
 		return mo.None[*models.Job](), fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return mo.None[*models.Job](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	maybeJob, err := s.jobsRepo.GetJobByID(ctx, id, organizationID)
+	maybeJob, err := s.jobsRepo.GetJobByID(ctx, id, orgID)
 	if err != nil {
 		return mo.None[*models.Job](), fmt.Errorf("failed to get job: %w", err)
 	}
@@ -113,7 +113,7 @@ func (s *JobsService) GetJobByID(
 
 func (s *JobsService) GetJobBySlackThread(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	threadTS, channelID, slackIntegrationID string,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by slack thread: %s, channel: %s", threadTS, channelID)
@@ -126,11 +126,11 @@ func (s *JobsService) GetJobBySlackThread(
 	if !core.IsValidULID(slackIntegrationID) {
 		return mo.None[*models.Job](), fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return mo.None[*models.Job](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	maybeJob, err := s.jobsRepo.GetJobBySlackThread(ctx, threadTS, channelID, slackIntegrationID, organizationID)
+	maybeJob, err := s.jobsRepo.GetJobBySlackThread(ctx, threadTS, channelID, slackIntegrationID, orgID)
 	if err != nil {
 		return mo.None[*models.Job](), fmt.Errorf("failed to get job by slack thread: %w", err)
 	}
@@ -146,7 +146,7 @@ func (s *JobsService) GetJobBySlackThread(
 
 func (s *JobsService) GetOrCreateJobForSlackThread(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	threadTS, channelID, slackUserID, slackIntegrationID string,
 ) (*models.JobCreationResult, error) {
 	log.Printf(
@@ -154,7 +154,7 @@ func (s *JobsService) GetOrCreateJobForSlackThread(
 		threadTS,
 		channelID,
 		slackUserID,
-		organizationID,
+		orgID,
 	)
 
 	if threadTS == "" {
@@ -169,7 +169,7 @@ func (s *JobsService) GetOrCreateJobForSlackThread(
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -179,7 +179,7 @@ func (s *JobsService) GetOrCreateJobForSlackThread(
 		threadTS,
 		channelID,
 		slackIntegrationID,
-		organizationID,
+		orgID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job by slack thread: %w", err)
@@ -195,7 +195,7 @@ func (s *JobsService) GetOrCreateJobForSlackThread(
 	}
 
 	// If not found, create a new job
-	newJob, createErr := s.CreateSlackJob(ctx, organizationID, threadTS, channelID, slackUserID, slackIntegrationID)
+	newJob, createErr := s.CreateSlackJob(ctx, orgID, threadTS, channelID, slackUserID, slackIntegrationID)
 	if createErr != nil {
 		return nil, fmt.Errorf("failed to create new job: %w", createErr)
 	}
@@ -208,17 +208,17 @@ func (s *JobsService) GetOrCreateJobForSlackThread(
 
 func (s *JobsService) UpdateJobTimestamp(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	jobID string,
 ) error {
 	log.Printf("📋 Starting to update job timestamp for ID: %s", jobID)
 	if !core.IsValidULID(jobID) {
 		return fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
-	if err := s.jobsRepo.UpdateJobTimestamp(ctx, jobID, organizationID); err != nil {
+	if err := s.jobsRepo.UpdateJobTimestamp(ctx, jobID, orgID); err != nil {
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
 
@@ -228,19 +228,19 @@ func (s *JobsService) UpdateJobTimestamp(
 
 func (s *JobsService) GetIdleJobs(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	idleMinutes int,
 ) ([]*models.Job, error) {
-	log.Printf("📋 Starting to get idle jobs older than %d minutes for organization: %s", idleMinutes, organizationID)
+	log.Printf("📋 Starting to get idle jobs older than %d minutes for organization: %s", idleMinutes, orgID)
 	if idleMinutes <= 0 {
 		return nil, fmt.Errorf("idle minutes must be greater than 0")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
 	// Get all jobs from database
-	allJobs, err := s.jobsRepo.GetJobs(ctx, organizationID)
+	allJobs, err := s.jobsRepo.GetJobs(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jobs: %w", err)
 	}
@@ -261,7 +261,7 @@ func (s *JobsService) GetIdleJobs(
 		hasActiveMessages := false
 		switch job.JobType {
 		case models.JobTypeSlack:
-			active, err := s.hasActiveSlackMessages(ctx, organizationID, job)
+			active, err := s.hasActiveSlackMessages(ctx, orgID, job)
 			if err != nil {
 				log.Printf(
 					"⚠️ Failed to check active Slack messages for job %s: %v - being conservative and marking as active",
@@ -273,7 +273,7 @@ func (s *JobsService) GetIdleJobs(
 
 			hasActiveMessages = active
 		case models.JobTypeDiscord:
-			active, err := s.hasActiveDiscordMessages(ctx, organizationID, job)
+			active, err := s.hasActiveDiscordMessages(ctx, orgID, job)
 			if err != nil {
 				log.Printf(
 					"⚠️ Failed to check active Discord messages for job %s: %v - being conservative and marking as active",
@@ -305,7 +305,7 @@ func (s *JobsService) GetIdleJobs(
 // hasActiveSlackMessages checks if a Slack job has any QUEUED or IN_PROGRESS messages
 func (s *JobsService) hasActiveSlackMessages(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	job *models.Job,
 ) (bool, error) {
 	if job.SlackPayload == nil {
@@ -314,7 +314,7 @@ func (s *JobsService) hasActiveSlackMessages(
 
 	// Check for QUEUED messages
 	queuedMsgs, err := s.slackMessagesService.GetProcessedMessagesByJobIDAndStatus(
-		ctx, organizationID, job.ID, models.ProcessedSlackMessageStatusQueued, job.SlackPayload.IntegrationID,
+		ctx, orgID, job.ID, models.ProcessedSlackMessageStatusQueued, job.SlackPayload.IntegrationID,
 	)
 	if err != nil {
 		return true, fmt.Errorf("failed to check queued messages for job %s: %w", job.ID, err)
@@ -325,7 +325,7 @@ func (s *JobsService) hasActiveSlackMessages(
 
 	// Check for IN_PROGRESS messages
 	inProgressMsgs, err := s.slackMessagesService.GetProcessedMessagesByJobIDAndStatus(
-		ctx, organizationID, job.ID, models.ProcessedSlackMessageStatusInProgress, job.SlackPayload.IntegrationID,
+		ctx, orgID, job.ID, models.ProcessedSlackMessageStatusInProgress, job.SlackPayload.IntegrationID,
 	)
 	if err != nil {
 		return true, fmt.Errorf("failed to check in-progress messages for job %s: %w", job.ID, err)
@@ -337,7 +337,7 @@ func (s *JobsService) hasActiveSlackMessages(
 // hasActiveDiscordMessages checks if a Discord job has any QUEUED or IN_PROGRESS messages
 func (s *JobsService) hasActiveDiscordMessages(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	job *models.Job,
 ) (bool, error) {
 	if job.DiscordPayload == nil {
@@ -346,7 +346,7 @@ func (s *JobsService) hasActiveDiscordMessages(
 
 	// Check for QUEUED messages
 	queuedMsgs, err := s.discordMessagesService.GetProcessedMessagesByJobIDAndStatus(
-		ctx, organizationID, job.ID, models.ProcessedDiscordMessageStatusQueued, job.DiscordPayload.IntegrationID,
+		ctx, orgID, job.ID, models.ProcessedDiscordMessageStatusQueued, job.DiscordPayload.IntegrationID,
 	)
 	if err != nil {
 		return true, fmt.Errorf("failed to check queued Discord messages for job %s: %w", job.ID, err)
@@ -357,7 +357,7 @@ func (s *JobsService) hasActiveDiscordMessages(
 
 	// Check for IN_PROGRESS messages
 	inProgressMsgs, err := s.discordMessagesService.GetProcessedMessagesByJobIDAndStatus(
-		ctx, organizationID, job.ID, models.ProcessedDiscordMessageStatusInProgress, job.DiscordPayload.IntegrationID,
+		ctx, orgID, job.ID, models.ProcessedDiscordMessageStatusInProgress, job.DiscordPayload.IntegrationID,
 	)
 	if err != nil {
 		return true, fmt.Errorf("failed to check in-progress Discord messages for job %s: %w", job.ID, err)
@@ -368,19 +368,19 @@ func (s *JobsService) hasActiveDiscordMessages(
 
 func (s *JobsService) DeleteJob(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) error {
 	log.Printf("📋 Starting to delete job with ID: %s", id)
 	if !core.IsValidULID(id) {
 		return fmt.Errorf("job ID must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
 	// First, get the job to determine its type
-	maybeJob, err := s.jobsRepo.GetJobByID(ctx, id, organizationID)
+	maybeJob, err := s.jobsRepo.GetJobByID(ctx, id, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to get job for deletion: %w", err)
 	}
@@ -399,14 +399,14 @@ func (s *JobsService) DeleteJob(
 			if job.SlackPayload == nil {
 				return fmt.Errorf("slack job missing slack payload")
 			}
-			if err := s.slackMessagesService.DeleteProcessedSlackMessagesByJobID(ctx, organizationID, id, job.SlackPayload.IntegrationID); err != nil {
+			if err := s.slackMessagesService.DeleteProcessedSlackMessagesByJobID(ctx, orgID, id, job.SlackPayload.IntegrationID); err != nil {
 				return fmt.Errorf("failed to delete processed slack messages for job: %w", err)
 			}
 		case models.JobTypeDiscord:
 			if job.DiscordPayload == nil {
 				return fmt.Errorf("discord job missing discord payload")
 			}
-			if err := s.discordMessagesService.DeleteProcessedDiscordMessagesByJobID(ctx, organizationID, id, job.DiscordPayload.IntegrationID); err != nil {
+			if err := s.discordMessagesService.DeleteProcessedDiscordMessagesByJobID(ctx, orgID, id, job.DiscordPayload.IntegrationID); err != nil {
 				return fmt.Errorf("failed to delete processed discord messages for job: %w", err)
 			}
 		default:
@@ -414,7 +414,7 @@ func (s *JobsService) DeleteJob(
 		}
 
 		// Delete the job itself
-		if _, err := s.jobsRepo.DeleteJob(ctx, id, organizationID); err != nil {
+		if _, err := s.jobsRepo.DeleteJob(ctx, id, orgID); err != nil {
 			return fmt.Errorf("failed to delete job: %w", err)
 		}
 
@@ -430,7 +430,7 @@ func (s *JobsService) DeleteJob(
 // TESTS_UpdateJobUpdatedAt updates the updated_at timestamp of a job for testing purposes
 func (s *JobsService) TESTS_UpdateJobUpdatedAt(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
@@ -442,11 +442,11 @@ func (s *JobsService) TESTS_UpdateJobUpdatedAt(
 	if !core.IsValidULID(slackIntegrationID) {
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	updated, err := s.jobsRepo.TESTS_UpdateJobUpdatedAt(ctx, id, updatedAt, slackIntegrationID, organizationID)
+	updated, err := s.jobsRepo.TESTS_UpdateJobUpdatedAt(ctx, id, updatedAt, slackIntegrationID, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to update job updated_at: %w", err)
 	}
@@ -462,7 +462,7 @@ func (s *JobsService) TESTS_UpdateJobUpdatedAt(
 
 func (s *JobsService) CreateDiscordJob(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
 ) (*models.Job, error) {
 	log.Printf(
@@ -471,7 +471,7 @@ func (s *JobsService) CreateDiscordJob(
 		discordChannelID,
 		discordThreadID,
 		discordUserID,
-		organizationID,
+		orgID,
 	)
 
 	if discordMessageID == "" {
@@ -489,14 +489,14 @@ func (s *JobsService) CreateDiscordJob(
 	if !core.IsValidULID(discordIntegrationID) {
 		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
 	job := &models.Job{
 		ID:      core.NewID("j"),
 		JobType: models.JobTypeDiscord,
-		OrgID:   organizationID,
+		OrgID:   orgID,
 		DiscordPayload: &models.DiscordJobPayload{
 			MessageID:     discordMessageID,
 			ChannelID:     discordChannelID,
@@ -516,7 +516,7 @@ func (s *JobsService) CreateDiscordJob(
 
 func (s *JobsService) GetJobByDiscordThread(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	threadID, discordIntegrationID string,
 ) (mo.Option[*models.Job], error) {
 	log.Printf("📋 Starting to get job by discord thread: %s", threadID)
@@ -526,11 +526,11 @@ func (s *JobsService) GetJobByDiscordThread(
 	if !core.IsValidULID(discordIntegrationID) {
 		return mo.None[*models.Job](), fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return mo.None[*models.Job](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	maybeJob, err := s.jobsRepo.GetJobByDiscordThread(ctx, threadID, discordIntegrationID, organizationID)
+	maybeJob, err := s.jobsRepo.GetJobByDiscordThread(ctx, threadID, discordIntegrationID, orgID)
 	if err != nil {
 		return mo.None[*models.Job](), fmt.Errorf("failed to get job by discord thread: %w", err)
 	}
@@ -546,7 +546,7 @@ func (s *JobsService) GetJobByDiscordThread(
 
 func (s *JobsService) GetOrCreateJobForDiscordThread(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	discordMessageID, discordChannelID, discordThreadID, discordUserID, discordIntegrationID string,
 ) (*models.JobCreationResult, error) {
 	log.Printf(
@@ -555,7 +555,7 @@ func (s *JobsService) GetOrCreateJobForDiscordThread(
 		discordChannelID,
 		discordMessageID,
 		discordUserID,
-		organizationID,
+		orgID,
 	)
 
 	if discordMessageID == "" {
@@ -570,7 +570,7 @@ func (s *JobsService) GetOrCreateJobForDiscordThread(
 	if !core.IsValidULID(discordIntegrationID) {
 		return nil, fmt.Errorf("discord_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -579,7 +579,7 @@ func (s *JobsService) GetOrCreateJobForDiscordThread(
 		ctx,
 		discordThreadID,
 		discordIntegrationID,
-		organizationID,
+		orgID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job by discord thread: %w", err)
@@ -597,7 +597,7 @@ func (s *JobsService) GetOrCreateJobForDiscordThread(
 	// If not found, create a new job
 	newJob, createErr := s.CreateDiscordJob(
 		ctx,
-		organizationID,
+		orgID,
 		discordMessageID,
 		discordChannelID,
 		discordThreadID,

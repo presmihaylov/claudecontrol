@@ -25,7 +25,7 @@ func NewSlackMessagesService(repo *db.PostgresProcessedSlackMessagesRepository) 
 
 func (s *SlackMessagesService) CreateProcessedSlackMessage(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	jobID string,
 	slackChannelID, slackTS, textContent, slackIntegrationID string,
 	status models.ProcessedSlackMessageStatus,
@@ -35,7 +35,7 @@ func (s *SlackMessagesService) CreateProcessedSlackMessage(
 		jobID,
 		slackChannelID,
 		slackTS,
-		organizationID,
+		orgID,
 	)
 
 	if !core.IsValidULID(jobID) {
@@ -53,7 +53,7 @@ func (s *SlackMessagesService) CreateProcessedSlackMessage(
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -65,7 +65,7 @@ func (s *SlackMessagesService) CreateProcessedSlackMessage(
 		TextContent:        textContent,
 		Status:             status,
 		SlackIntegrationID: slackIntegrationID,
-		OrgID:              organizationID,
+		OrgID:              orgID,
 	}
 
 	if err := s.processedSlackMessagesRepo.CreateProcessedSlackMessage(ctx, message); err != nil {
@@ -78,7 +78,7 @@ func (s *SlackMessagesService) CreateProcessedSlackMessage(
 
 func (s *SlackMessagesService) UpdateProcessedSlackMessage(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
@@ -90,7 +90,7 @@ func (s *SlackMessagesService) UpdateProcessedSlackMessage(
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -99,7 +99,7 @@ func (s *SlackMessagesService) UpdateProcessedSlackMessage(
 		id,
 		status,
 		slackIntegrationID,
-		organizationID,
+		orgID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update processed slack message status: %w", err)
@@ -115,7 +115,7 @@ func (s *SlackMessagesService) UpdateProcessedSlackMessage(
 
 func (s *SlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	jobID string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
@@ -127,7 +127,7 @@ func (s *SlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -136,7 +136,7 @@ func (s *SlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 		jobID,
 		status,
 		slackIntegrationID,
-		organizationID,
+		orgID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed messages: %w", err)
@@ -148,21 +148,21 @@ func (s *SlackMessagesService) GetProcessedMessagesByJobIDAndStatus(
 
 func (s *SlackMessagesService) GetProcessedSlackMessageByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	log.Printf("📋 Starting to get processed slack message by ID: %s", id)
 	if !core.IsValidULID(id) {
 		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf("processed slack message ID must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
 	maybeMsg, err := s.processedSlackMessagesRepo.GetProcessedSlackMessageByID(
 		ctx,
 		id,
-		organizationID,
+		orgID,
 	)
 	if err != nil {
 		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf("failed to get processed slack message: %w", err)
@@ -179,7 +179,7 @@ func (s *SlackMessagesService) GetProcessedSlackMessageByID(
 
 func (s *SlackMessagesService) GetLatestProcessedMessageForJob(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	jobID string,
 	slackIntegrationID string,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
@@ -190,7 +190,7 @@ func (s *SlackMessagesService) GetLatestProcessedMessageForJob(
 	if !core.IsValidULID(slackIntegrationID) {
 		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -198,7 +198,7 @@ func (s *SlackMessagesService) GetLatestProcessedMessageForJob(
 		ctx,
 		jobID,
 		slackIntegrationID,
-		organizationID,
+		orgID,
 	)
 	if err != nil {
 		return mo.None[*models.ProcessedSlackMessage](), fmt.Errorf("failed to get latest processed message: %w", err)
@@ -215,19 +215,19 @@ func (s *SlackMessagesService) GetLatestProcessedMessageForJob(
 
 func (s *SlackMessagesService) GetActiveMessageCountForJobs(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	jobIDs []string,
 	slackIntegrationID string,
 ) (int, error) {
 	log.Printf("📋 Starting to get active message count for %d jobs", len(jobIDs))
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return 0, fmt.Errorf("organization_id must be a valid ULID")
 	}
 	count, err := s.processedSlackMessagesRepo.GetActiveMessageCountForJobs(
 		ctx,
 		jobIDs,
 		slackIntegrationID,
-		organizationID,
+		orgID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get active message count: %w", err)
@@ -239,7 +239,7 @@ func (s *SlackMessagesService) GetActiveMessageCountForJobs(
 
 func (s *SlackMessagesService) TESTS_UpdateProcessedSlackMessageUpdatedAt(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
@@ -251,7 +251,7 @@ func (s *SlackMessagesService) TESTS_UpdateProcessedSlackMessageUpdatedAt(
 	if !core.IsValidULID(slackIntegrationID) {
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -260,7 +260,7 @@ func (s *SlackMessagesService) TESTS_UpdateProcessedSlackMessageUpdatedAt(
 		id,
 		updatedAt,
 		slackIntegrationID,
-		organizationID,
+		orgID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update processed slack message updated_at: %w", err)
@@ -275,7 +275,7 @@ func (s *SlackMessagesService) TESTS_UpdateProcessedSlackMessageUpdatedAt(
 
 func (s *SlackMessagesService) DeleteProcessedSlackMessagesByJobID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	jobID string,
 	slackIntegrationID string,
 ) error {
@@ -286,11 +286,11 @@ func (s *SlackMessagesService) DeleteProcessedSlackMessagesByJobID(
 	if !core.IsValidULID(slackIntegrationID) {
 		return fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return fmt.Errorf("organization_id must be a valid ULID")
 	}
 
-	if err := s.processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(ctx, jobID, slackIntegrationID, organizationID); err != nil {
+	if err := s.processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(ctx, jobID, slackIntegrationID, orgID); err != nil {
 		return fmt.Errorf("failed to delete processed slack messages: %w", err)
 	}
 
@@ -300,7 +300,7 @@ func (s *SlackMessagesService) DeleteProcessedSlackMessagesByJobID(
 
 func (s *SlackMessagesService) GetProcessedMessagesByStatus(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
 ) ([]*models.ProcessedSlackMessage, error) {
@@ -311,7 +311,7 @@ func (s *SlackMessagesService) GetProcessedMessagesByStatus(
 	if !core.IsValidULID(slackIntegrationID) {
 		return nil, fmt.Errorf("slack_integration_id must be a valid ULID")
 	}
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization_id must be a valid ULID")
 	}
 
@@ -319,7 +319,7 @@ func (s *SlackMessagesService) GetProcessedMessagesByStatus(
 		ctx,
 		status,
 		slackIntegrationID,
-		organizationID,
+		orgID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed messages by status: %w", err)

@@ -38,7 +38,7 @@ func TestSlackMessagesService(t *testing.T) {
 	require.NoError(t, err, "Failed to create test slack integration")
 
 	// Test organization and integration data
-	organizationID := testIntegration.OrgID
+	orgID := testIntegration.OrgID
 	slackIntegrationID := testIntegration.ID
 
 	// Create a test job
@@ -51,7 +51,7 @@ func TestSlackMessagesService(t *testing.T) {
 			UserID:        "U12345",
 			IntegrationID: slackIntegrationID,
 		},
-		OrgID: organizationID,
+		OrgID: orgID,
 	}
 	err = jobsRepo.CreateJob(context.Background(), job)
 	require.NoError(t, err, "Failed to create test job")
@@ -63,7 +63,7 @@ func TestSlackMessagesService(t *testing.T) {
 			context.Background(),
 			jobID,
 			slackIntegrationID,
-			organizationID,
+			orgID,
 		)
 		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(
 			context.Background(),
@@ -81,7 +81,7 @@ func TestSlackMessagesService(t *testing.T) {
 
 			message, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				slackChannelID,
 				slackTS,
@@ -94,7 +94,7 @@ func TestSlackMessagesService(t *testing.T) {
 					context.Background(),
 					jobID,
 					slackIntegrationID,
-					organizationID,
+					orgID,
 				)
 			}()
 
@@ -106,13 +106,13 @@ func TestSlackMessagesService(t *testing.T) {
 			assert.Equal(t, textContent, message.TextContent)
 			assert.Equal(t, status, message.Status)
 			assert.Equal(t, slackIntegrationID, message.SlackIntegrationID)
-			assert.Equal(t, organizationID, message.OrgID)
+			assert.Equal(t, orgID, message.OrgID)
 		})
 
 		t.Run("EmptySlackChannelID", func(t *testing.T) {
 			_, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"",
 				"1234567890.123456",
@@ -127,7 +127,7 @@ func TestSlackMessagesService(t *testing.T) {
 		t.Run("EmptySlackTS", func(t *testing.T) {
 			_, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"",
@@ -142,7 +142,7 @@ func TestSlackMessagesService(t *testing.T) {
 		t.Run("EmptyTextContent", func(t *testing.T) {
 			_, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123456",
@@ -160,7 +160,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Create a processed slack message first
 			message, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123456",
@@ -174,7 +174,7 @@ func TestSlackMessagesService(t *testing.T) {
 					context.Background(),
 					jobID,
 					slackIntegrationID,
-					organizationID,
+					orgID,
 				)
 			}()
 
@@ -182,7 +182,7 @@ func TestSlackMessagesService(t *testing.T) {
 			newStatus := models.ProcessedSlackMessageStatusInProgress
 			updatedMessage, err := slackMessagesService.UpdateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				message.ID,
 				newStatus,
 				slackIntegrationID,
@@ -195,7 +195,7 @@ func TestSlackMessagesService(t *testing.T) {
 			id := core.NewID("psm")
 			_, err := slackMessagesService.UpdateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				id,
 				models.ProcessedSlackMessageStatusInProgress,
 				slackIntegrationID,
@@ -210,7 +210,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Create a processed slack message first
 			message, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123456",
@@ -224,14 +224,14 @@ func TestSlackMessagesService(t *testing.T) {
 					context.Background(),
 					jobID,
 					slackIntegrationID,
-					organizationID,
+					orgID,
 				)
 			}()
 
 			// Get the message by ID
 			maybeMessage, err := slackMessagesService.GetProcessedSlackMessageByID(
 				context.Background(),
-				organizationID,
+				orgID,
 				message.ID,
 			)
 			require.NoError(t, err)
@@ -244,7 +244,7 @@ func TestSlackMessagesService(t *testing.T) {
 			id := core.NewID("psm")
 			maybeMessage, err := slackMessagesService.GetProcessedSlackMessageByID(
 				context.Background(),
-				organizationID,
+				orgID,
 				id,
 			)
 			require.NoError(t, err)
@@ -257,7 +257,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Create multiple messages with different statuses
 			message1, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123456",
@@ -269,7 +269,7 @@ func TestSlackMessagesService(t *testing.T) {
 
 			message2, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123457",
@@ -284,14 +284,14 @@ func TestSlackMessagesService(t *testing.T) {
 					context.Background(),
 					jobID,
 					slackIntegrationID,
-					organizationID,
+					orgID,
 				)
 			}()
 
 			// Get queued messages
 			queuedMessages, err := slackMessagesService.GetProcessedMessagesByJobIDAndStatus(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				models.ProcessedSlackMessageStatusQueued,
 				slackIntegrationID,
@@ -303,7 +303,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Get in-progress messages
 			inProgressMessages, err := slackMessagesService.GetProcessedMessagesByJobIDAndStatus(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				models.ProcessedSlackMessageStatusInProgress,
 				slackIntegrationID,
@@ -319,7 +319,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Create multiple messages
 			_, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123456",
@@ -333,7 +333,7 @@ func TestSlackMessagesService(t *testing.T) {
 
 			latestMessage, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123457",
@@ -348,14 +348,14 @@ func TestSlackMessagesService(t *testing.T) {
 					context.Background(),
 					jobID,
 					slackIntegrationID,
-					organizationID,
+					orgID,
 				)
 			}()
 
 			// Get the latest message
 			maybeLatest, err := slackMessagesService.GetLatestProcessedMessageForJob(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				slackIntegrationID,
 			)
@@ -370,7 +370,7 @@ func TestSlackMessagesService(t *testing.T) {
 			noMessagesJobID := core.NewID("j")
 			maybeLatest, err := slackMessagesService.GetLatestProcessedMessageForJob(
 				context.Background(),
-				organizationID,
+				orgID,
 				noMessagesJobID,
 				slackIntegrationID,
 			)
@@ -384,7 +384,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Create multiple messages for the job
 			message1, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123456",
@@ -396,7 +396,7 @@ func TestSlackMessagesService(t *testing.T) {
 
 			message2, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123457",
@@ -409,7 +409,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Verify messages exist
 			maybeMessage1, err := slackMessagesService.GetProcessedSlackMessageByID(
 				context.Background(),
-				organizationID,
+				orgID,
 				message1.ID,
 			)
 			require.NoError(t, err)
@@ -417,7 +417,7 @@ func TestSlackMessagesService(t *testing.T) {
 
 			maybeMessage2, err := slackMessagesService.GetProcessedSlackMessageByID(
 				context.Background(),
-				organizationID,
+				orgID,
 				message2.ID,
 			)
 			require.NoError(t, err)
@@ -426,7 +426,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Delete all messages for the job
 			err = slackMessagesService.DeleteProcessedSlackMessagesByJobID(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				slackIntegrationID,
 			)
@@ -435,7 +435,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Verify messages are deleted
 			maybeMessage1After, err := slackMessagesService.GetProcessedSlackMessageByID(
 				context.Background(),
-				organizationID,
+				orgID,
 				message1.ID,
 			)
 			require.NoError(t, err)
@@ -443,7 +443,7 @@ func TestSlackMessagesService(t *testing.T) {
 
 			maybeMessage2After, err := slackMessagesService.GetProcessedSlackMessageByID(
 				context.Background(),
-				organizationID,
+				orgID,
 				message2.ID,
 			)
 			require.NoError(t, err)
@@ -463,7 +463,7 @@ func TestSlackMessagesService(t *testing.T) {
 					UserID:        "U23456",
 					IntegrationID: slackIntegrationID,
 				},
-				OrgID: organizationID,
+				OrgID: orgID,
 			}
 			err := jobsRepo.CreateJob(context.Background(), job1)
 			require.NoError(t, err, "Failed to create test job1")
@@ -478,7 +478,7 @@ func TestSlackMessagesService(t *testing.T) {
 					UserID:        "U34567",
 					IntegrationID: slackIntegrationID,
 				},
-				OrgID: organizationID,
+				OrgID: orgID,
 			}
 			err = jobsRepo.CreateJob(context.Background(), job2)
 			require.NoError(t, err, "Failed to create test job2")
@@ -488,7 +488,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Job 1: 2 active messages (queued + in progress)
 			_, err = slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				job1ID,
 				"C1234567",
 				"1234567890.123456",
@@ -500,7 +500,7 @@ func TestSlackMessagesService(t *testing.T) {
 
 			_, err = slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				job1ID,
 				"C1234567",
 				"1234567890.123457",
@@ -513,7 +513,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Job 2: 1 active message (queued) and 1 completed (not active)
 			_, err = slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				job2ID,
 				"C1234567",
 				"1234567890.123458",
@@ -525,7 +525,7 @@ func TestSlackMessagesService(t *testing.T) {
 
 			_, err = slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				job2ID,
 				"C1234567",
 				"1234567890.123459",
@@ -540,20 +540,20 @@ func TestSlackMessagesService(t *testing.T) {
 					context.Background(),
 					job1ID,
 					slackIntegrationID,
-					organizationID,
+					orgID,
 				)
 				_ = processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(
 					context.Background(),
 					job2ID,
 					slackIntegrationID,
-					organizationID,
+					orgID,
 				)
 			}()
 
 			// Count active messages for both jobs
 			count, err := slackMessagesService.GetActiveMessageCountForJobs(
 				context.Background(),
-				organizationID,
+				orgID,
 				[]string{job1ID, job2ID},
 				slackIntegrationID,
 			)
@@ -567,7 +567,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Create a processed slack message first
 			message, err := slackMessagesService.CreateProcessedSlackMessage(
 				context.Background(),
-				organizationID,
+				orgID,
 				jobID,
 				"C1234567",
 				"1234567890.123456",
@@ -581,7 +581,7 @@ func TestSlackMessagesService(t *testing.T) {
 					context.Background(),
 					jobID,
 					slackIntegrationID,
-					organizationID,
+					orgID,
 				)
 			}()
 
@@ -589,7 +589,7 @@ func TestSlackMessagesService(t *testing.T) {
 			newTimestamp := time.Now().Add(-1 * time.Hour)
 			err = slackMessagesService.TESTS_UpdateProcessedSlackMessageUpdatedAt(
 				context.Background(),
-				organizationID,
+				orgID,
 				message.ID,
 				newTimestamp,
 				slackIntegrationID,
@@ -602,7 +602,7 @@ func TestSlackMessagesService(t *testing.T) {
 			newTimestamp := time.Now().Add(-1 * time.Hour)
 			err := slackMessagesService.TESTS_UpdateProcessedSlackMessageUpdatedAt(
 				context.Background(),
-				organizationID,
+				orgID,
 				id,
 				newTimestamp,
 				slackIntegrationID,
@@ -616,16 +616,16 @@ func TestSlackMessagesService(t *testing.T) {
 		t.Run("Success_MessagesFound", func(t *testing.T) {
 			// Create messages with different statuses
 			queuedMessage := testutils.CreateTestProcessedSlackMessage(
-				job.ID, organizationID, slackIntegrationID, models.ProcessedSlackMessageStatusQueued,
+				job.ID, orgID, slackIntegrationID, models.ProcessedSlackMessageStatusQueued,
 			)
 			inProgressMessage := testutils.CreateTestProcessedSlackMessage(
-				job.ID, organizationID, slackIntegrationID, models.ProcessedSlackMessageStatusInProgress,
+				job.ID, orgID, slackIntegrationID, models.ProcessedSlackMessageStatusInProgress,
 			)
 
 			// Create the messages in database
 			defer func() {
 				_ = processedSlackMessagesRepo.DeleteProcessedSlackMessagesByJobID(
-					context.Background(), job.ID, slackIntegrationID, organizationID,
+					context.Background(), job.ID, slackIntegrationID, orgID,
 				)
 			}()
 
@@ -637,7 +637,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Test getting queued messages
 			messages, err := slackMessagesService.GetProcessedMessagesByStatus(
 				context.Background(),
-				organizationID,
+				orgID,
 				models.ProcessedSlackMessageStatusQueued,
 				slackIntegrationID,
 			)
@@ -650,7 +650,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Test getting in-progress messages
 			messages, err = slackMessagesService.GetProcessedMessagesByStatus(
 				context.Background(),
-				organizationID,
+				orgID,
 				models.ProcessedSlackMessageStatusInProgress,
 				slackIntegrationID,
 			)
@@ -665,7 +665,7 @@ func TestSlackMessagesService(t *testing.T) {
 			// Test getting messages of a status that doesn't exist
 			messages, err := slackMessagesService.GetProcessedMessagesByStatus(
 				context.Background(),
-				organizationID,
+				orgID,
 				models.ProcessedSlackMessageStatusCompleted,
 				slackIntegrationID,
 			)

@@ -16,9 +16,9 @@ type MockDiscordIntegrationsService struct {
 
 func (m *MockDiscordIntegrationsService) CreateDiscordIntegration(
 	ctx context.Context,
-	organizationID models.OrgID, discordAuthCode, guildID, redirectURL string,
+	orgID models.OrgID, discordAuthCode, guildID, redirectURL string,
 ) (*models.DiscordIntegration, error) {
-	args := m.Called(ctx, organizationID, discordAuthCode, guildID, redirectURL)
+	args := m.Called(ctx, orgID, discordAuthCode, guildID, redirectURL)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -27,9 +27,9 @@ func (m *MockDiscordIntegrationsService) CreateDiscordIntegration(
 
 func (m *MockDiscordIntegrationsService) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.DiscordIntegration, error) {
-	args := m.Called(ctx, organizationID)
+	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -48,9 +48,9 @@ func (m *MockDiscordIntegrationsService) GetAllDiscordIntegrations(
 
 func (m *MockDiscordIntegrationsService) DeleteDiscordIntegration(
 	ctx context.Context,
-	organizationID models.OrgID, integrationID string,
+	orgID models.OrgID, integrationID string,
 ) error {
-	args := m.Called(ctx, organizationID, integrationID)
+	args := m.Called(ctx, orgID, integrationID)
 	return args.Error(0)
 }
 
