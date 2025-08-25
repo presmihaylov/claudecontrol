@@ -28,13 +28,14 @@ func NewID(prefix string) string {
 // IsValidULID checks if the given string is a valid ULID format with prefix.
 // The format should be: prefix_ULID where ULID is 26 characters, base32 encoded.
 // Returns true if valid, false otherwise.
-func IsValidULID(id string) bool {
+// Accepts any type that can be converted to string (string, models.OrgID, etc).
+func IsValidULID[T ~string](id T) bool {
 	if id == "" {
 		return false
 	}
 
 	// Find the underscore separator
-	parts := strings.Split(id, "_")
+	parts := strings.Split(string(id), "_")
 	if len(parts) != 2 {
 		return false
 	}

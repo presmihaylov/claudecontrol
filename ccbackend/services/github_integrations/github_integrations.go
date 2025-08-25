@@ -35,8 +35,8 @@ func (s *GitHubIntegrationsService) CreateGitHubIntegration(
 ) (*models.GitHubIntegration, error) {
 	log.Printf("📋 Starting to create GitHub integration for org: %s, installation: %s", orgID, installationID)
 
-	if orgID == "" {
-		return nil, fmt.Errorf("organization ID cannot be empty")
+	if !core.IsValidULID(orgID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 	if authCode == "" {
 		return nil, fmt.Errorf("auth code cannot be empty")
@@ -73,8 +73,8 @@ func (s *GitHubIntegrationsService) ListGitHubIntegrations(
 	orgID models.OrgID,
 ) ([]models.GitHubIntegration, error) {
 	log.Printf("📋 Starting to list GitHub integrations for org: %s", orgID)
-	if orgID == "" {
-		return nil, fmt.Errorf("organization ID cannot be empty")
+	if !core.IsValidULID(orgID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 
 	integrations, err := s.githubRepo.GetGitHubIntegrationsByOrganizationID(ctx, orgID)
@@ -92,8 +92,8 @@ func (s *GitHubIntegrationsService) GetGitHubIntegrationByID(
 	id string,
 ) (mo.Option[*models.GitHubIntegration], error) {
 	log.Printf("📋 Starting to get GitHub integration by ID: %s for org: %s", id, orgID)
-	if orgID == "" {
-		return mo.None[*models.GitHubIntegration](), fmt.Errorf("organization ID cannot be empty")
+	if !core.IsValidULID(orgID) {
+		return mo.None[*models.GitHubIntegration](), fmt.Errorf("organization ID must be a valid ULID")
 	}
 	if !core.IsValidULID(id) {
 		return mo.None[*models.GitHubIntegration](), fmt.Errorf("integration ID must be a valid ULID")
@@ -120,8 +120,8 @@ func (s *GitHubIntegrationsService) DeleteGitHubIntegration(
 ) error {
 	log.Printf("📋 Starting to delete GitHub integration: %s for org: %s", integrationID, orgID)
 
-	if orgID == "" {
-		return fmt.Errorf("organization ID cannot be empty")
+	if !core.IsValidULID(orgID) {
+		return fmt.Errorf("organization ID must be a valid ULID")
 	}
 	if !core.IsValidULID(integrationID) {
 		return fmt.Errorf("integration ID must be a valid ULID")
@@ -158,8 +158,8 @@ func (s *GitHubIntegrationsService) ListAvailableRepositories(
 ) ([]models.GitHubRepository, error) {
 	log.Printf("📋 Starting to list available GitHub repositories for org: %s", orgID)
 
-	if orgID == "" {
-		return nil, fmt.Errorf("organization ID cannot be empty")
+	if !core.IsValidULID(orgID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 
 	// Get the GitHub integration for the organization

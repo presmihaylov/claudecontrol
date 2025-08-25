@@ -20,7 +20,7 @@ type DiscordIntegrationsRepository interface {
 		orgID models.OrgID,
 	) ([]models.DiscordIntegration, error)
 	GetAllDiscordIntegrations(ctx context.Context) ([]models.DiscordIntegration, error)
-	DeleteDiscordIntegrationByID(ctx context.Context, integrationID string, orgID models.OrgID) (bool, error)
+	DeleteDiscordIntegrationByID(ctx context.Context, orgID models.OrgID, integrationID string) (bool, error)
 	GetDiscordIntegrationByGuildID(ctx context.Context, guildID string) (mo.Option[*models.DiscordIntegration], error)
 	GetDiscordIntegrationByID(ctx context.Context, id string) (mo.Option[*models.DiscordIntegration], error)
 }
@@ -139,7 +139,7 @@ func (s *DiscordIntegrationsService) DeleteDiscordIntegration(
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	deleted, err := s.discordIntegrationsRepo.DeleteDiscordIntegrationByID(ctx, integrationID, orgID)
+	deleted, err := s.discordIntegrationsRepo.DeleteDiscordIntegrationByID(ctx, orgID, integrationID)
 	if err != nil {
 		return fmt.Errorf("failed to delete discord integration: %w", err)
 	}

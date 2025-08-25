@@ -12,6 +12,7 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
+	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -67,8 +68,8 @@ func (r *PostgresGitHubIntegrationsRepository) GetGitHubIntegrationsByOrganizati
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.GitHubIntegration, error) {
-	if orgID == "" {
-		return nil, fmt.Errorf("organization ID cannot be empty")
+	if !core.IsValidULID(orgID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 
 	columnsStr := strings.Join(githubIntegrationsColumns, ", ")
@@ -115,8 +116,8 @@ func (r *PostgresGitHubIntegrationsRepository) DeleteGitHubIntegration(
 	orgID models.OrgID,
 	id string,
 ) error {
-	if orgID == "" {
-		return fmt.Errorf("organization ID cannot be empty")
+	if !core.IsValidULID(orgID) {
+		return fmt.Errorf("organization ID must be a valid ULID")
 	}
 	if id == "" {
 		return fmt.Errorf("integration ID cannot be empty")
