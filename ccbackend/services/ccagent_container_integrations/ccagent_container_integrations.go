@@ -66,7 +66,7 @@ func (s *CCAgentContainerIntegrationsService) ListCCAgentContainerIntegrations(
 ) ([]models.CCAgentContainerIntegration, error) {
 	log.Printf("📋 Starting to list CCAgent container integrations for org: %s", orgID)
 
-	integrations, err := s.repo.ListCCAgentContainerIntegrations(ctx, string(orgID))
+	integrations, err := s.repo.ListCCAgentContainerIntegrations(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list CCAgent container integrations: %w", err)
 	}
@@ -91,7 +91,7 @@ func (s *CCAgentContainerIntegrationsService) GetCCAgentContainerIntegrationByID
 		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf("invalid integration ID")
 	}
 
-	integration, err := s.repo.GetCCAgentContainerIntegrationByID(ctx, string(orgID), id)
+	integration, err := s.repo.GetCCAgentContainerIntegrationByID(ctx, orgID, id)
 	if err != nil {
 		return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf(
 			"failed to get CCAgent container integration: %w",
@@ -122,7 +122,7 @@ func (s *CCAgentContainerIntegrationsService) DeleteCCAgentContainerIntegration(
 	}
 
 	// Delete the integration (repository method now handles organization scoping)
-	if err := s.repo.DeleteCCAgentContainerIntegration(ctx, string(orgID), integrationID); err != nil {
+	if err := s.repo.DeleteCCAgentContainerIntegration(ctx, orgID, integrationID); err != nil {
 		return fmt.Errorf("failed to delete CCAgent container integration: %w", err)
 	}
 

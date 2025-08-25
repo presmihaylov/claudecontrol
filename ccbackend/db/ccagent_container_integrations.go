@@ -104,7 +104,10 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) DeleteCCAgentContainerI
 	orgID models.OrgID,
 	id string,
 ) error {
-	query := fmt.Sprintf("DELETE FROM %s.ccagent_container_integrations WHERE id = $1 AND organization_id = $2", r.schema)
+	query := fmt.Sprintf(
+		"DELETE FROM %s.ccagent_container_integrations WHERE id = $1 AND organization_id = $2",
+		r.schema,
+	)
 
 	result, err := r.db.ExecContext(ctx, query, id, orgID)
 	if err != nil {
@@ -122,4 +125,3 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) DeleteCCAgentContainerI
 
 	return nil
 }
-
