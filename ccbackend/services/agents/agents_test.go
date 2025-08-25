@@ -53,8 +53,8 @@ func setupTestService(t *testing.T) (*AgentsService, services.JobsService, *mode
 		// Clean up test data
 		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(
 			context.Background(),
+			testUser.OrgID,
 			testIntegration.ID,
-			models.OrgID(testUser.ID),
 		)
 		dbConn.Close()
 	}

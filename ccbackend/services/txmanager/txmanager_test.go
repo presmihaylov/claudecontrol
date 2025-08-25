@@ -42,7 +42,7 @@ func setupTransactionTest(
 
 	cleanup := func() {
 		// Clean up test data
-		slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testIntegration.ID, testUser.OrgID)
+		slackIntegrationsRepo.DeleteSlackIntegrationByID(context.Background(), testUser.OrgID, testIntegration.ID)
 		dbConn.Close()
 	}
 

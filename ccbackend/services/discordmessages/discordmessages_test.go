@@ -73,8 +73,8 @@ func setupTestDiscordMessagesService(
 		// Clean up test data
 		_, _ = discordIntegrationsRepo.DeleteDiscordIntegrationByID(
 			context.Background(),
-			testIntegration.ID,
 			testUser.OrgID,
+			testIntegration.ID,
 		)
 		_, _ = jobsRepo.DeleteJob(context.Background(), testJob.ID, testIntegration.OrgID)
 		dbConn.Close()
