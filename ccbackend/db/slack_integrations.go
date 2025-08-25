@@ -12,6 +12,7 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
+	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -69,8 +70,8 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByOrganization
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.SlackIntegration, error) {
-	if orgID == "" {
-		return nil, fmt.Errorf("organization ID cannot be empty")
+	if !core.IsValidULID(orgID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 
 	columnsStr := strings.Join(slackIntegrationsColumns, ", ")
@@ -109,8 +110,8 @@ func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations(
 
 func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(
 	ctx context.Context,
-	integrationID string,
 	orgID models.OrgID,
+	integrationID string,
 ) (bool, error) {
 	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND organization_id = $2`, r.schema)
 

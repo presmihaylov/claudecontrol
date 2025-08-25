@@ -67,8 +67,8 @@ func TestSlackMessagesService(t *testing.T) {
 		)
 		_, _ = slackIntegrationsRepo.DeleteSlackIntegrationByID(
 			context.Background(),
-			testIntegration.ID,
 			testUser.OrgID,
+			testIntegration.ID,
 		)
 	}()
 

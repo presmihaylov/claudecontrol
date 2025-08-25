@@ -137,7 +137,7 @@ func (s *SlackIntegrationsService) DeleteSlackIntegration(
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	deleted, err := s.slackIntegrationsRepo.DeleteSlackIntegrationByID(ctx, integrationID, orgID)
+	deleted, err := s.slackIntegrationsRepo.DeleteSlackIntegrationByID(ctx, orgID, integrationID)
 	if err != nil {
 		return fmt.Errorf("failed to delete slack integration: %w", err)
 	}

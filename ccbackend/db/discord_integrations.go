@@ -12,6 +12,7 @@ import (
 	// necessary import to wire up the postgres driver
 	_ "github.com/lib/pq"
 
+	"ccbackend/core"
 	"ccbackend/models"
 )
 
@@ -67,8 +68,8 @@ func (r *PostgresDiscordIntegrationsRepository) GetDiscordIntegrationsByOrganiza
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.DiscordIntegration, error) {
-	if orgID == "" {
-		return nil, fmt.Errorf("organization ID cannot be empty")
+	if !core.IsValidULID(orgID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 
 	columnsStr := strings.Join(discordIntegrationsColumns, ", ")
@@ -107,8 +108,8 @@ func (r *PostgresDiscordIntegrationsRepository) GetAllDiscordIntegrations(
 
 func (r *PostgresDiscordIntegrationsRepository) DeleteDiscordIntegrationByID(
 	ctx context.Context,
-	integrationID string,
 	orgID models.OrgID,
+	integrationID string,
 ) (bool, error) {
 	query := fmt.Sprintf(`DELETE FROM %s.discord_integrations WHERE id = $1 AND organization_id = $2`, r.schema)
 

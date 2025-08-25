@@ -52,9 +52,10 @@ func (m *MockDiscordIntegrationsRepository) GetAllDiscordIntegrations(
 
 func (m *MockDiscordIntegrationsRepository) DeleteDiscordIntegrationByID(
 	ctx context.Context,
-	integrationID string, orgID models.OrgID,
+	orgID models.OrgID,
+	integrationID string,
 ) (bool, error) {
-	args := m.Called(ctx, integrationID, orgID)
+	args := m.Called(ctx, orgID, integrationID)
 	return args.Bool(0), args.Error(1)
 }
 
@@ -315,7 +316,7 @@ func TestDiscordIntegrationsService_DeleteDiscordIntegration_Success(t *testing.
 	orgID := core.NewID("org")
 	integrationID := core.NewID("di")
 
-	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, models.OrgID(orgID)).Return(true, nil)
+	mockRepo.On("DeleteDiscordIntegrationByID", ctx, models.OrgID(orgID), integrationID).Return(true, nil)
 
 	// Act
 	err := service.DeleteDiscordIntegration(ctx, models.OrgID(orgID), integrationID)
@@ -338,7 +339,7 @@ func TestDiscordIntegrationsService_DeleteDiscordIntegration_NotFound(t *testing
 	orgID := core.NewID("org")
 	integrationID := core.NewID("di")
 
-	mockRepo.On("DeleteDiscordIntegrationByID", ctx, integrationID, models.OrgID(orgID)).Return(false, nil)
+	mockRepo.On("DeleteDiscordIntegrationByID", ctx, models.OrgID(orgID), integrationID).Return(false, nil)
 
 	// Act
 	err := service.DeleteDiscordIntegration(ctx, models.OrgID(orgID), integrationID)
