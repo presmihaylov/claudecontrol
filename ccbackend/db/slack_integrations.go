@@ -67,9 +67,9 @@ func (r *PostgresSlackIntegrationsRepository) CreateSlackIntegration(
 
 func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.SlackIntegration, error) {
-	if organizationID == "" {
+	if orgID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
 
@@ -81,7 +81,7 @@ func (r *PostgresSlackIntegrationsRepository) GetSlackIntegrationsByOrganization
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
 	integrations := []models.SlackIntegration{}
-	err := r.db.SelectContext(ctx, &integrations, query, organizationID)
+	err := r.db.SelectContext(ctx, &integrations, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slack integrations by organization ID: %w", err)
 	}
@@ -110,11 +110,11 @@ func (r *PostgresSlackIntegrationsRepository) GetAllSlackIntegrations(
 func (r *PostgresSlackIntegrationsRepository) DeleteSlackIntegrationByID(
 	ctx context.Context,
 	integrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (bool, error) {
 	query := fmt.Sprintf(`DELETE FROM %s.slack_integrations WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, integrationID, organizationID)
+	result, err := r.db.ExecContext(ctx, query, integrationID, orgID)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete slack integration: %w", err)
 	}

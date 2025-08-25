@@ -16,11 +16,11 @@ type MockAgentsService struct {
 
 func (m *MockAgentsService) UpsertActiveAgent(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	wsConnectionID string,
 	agentID string,
 ) (*models.ActiveAgent, error) {
-	args := m.Called(ctx, organizationID, wsConnectionID, agentID)
+	args := m.Called(ctx, orgID, wsConnectionID, agentID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -29,32 +29,32 @@ func (m *MockAgentsService) UpsertActiveAgent(
 
 func (m *MockAgentsService) DeleteActiveAgentByWsConnectionID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	wsConnectionID string,
 ) error {
-	args := m.Called(ctx, organizationID, wsConnectionID)
+	args := m.Called(ctx, orgID, wsConnectionID)
 	return args.Error(0)
 }
 
-func (m *MockAgentsService) DeleteActiveAgent(ctx context.Context, organizationID models.OrgID, id string) error {
-	args := m.Called(ctx, organizationID, id)
+func (m *MockAgentsService) DeleteActiveAgent(ctx context.Context, orgID models.OrgID, id string) error {
+	args := m.Called(ctx, orgID, id)
 	return args.Error(0)
 }
 
 func (m *MockAgentsService) GetAgentByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.ActiveAgent], error) {
-	args := m.Called(ctx, organizationID, id)
+	args := m.Called(ctx, orgID, id)
 	return args.Get(0).(mo.Option[*models.ActiveAgent]), args.Error(1)
 }
 
 func (m *MockAgentsService) GetAvailableAgents(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]*models.ActiveAgent, error) {
-	args := m.Called(ctx, organizationID)
+	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -63,10 +63,10 @@ func (m *MockAgentsService) GetAvailableAgents(
 
 func (m *MockAgentsService) GetConnectedActiveAgents(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	connectedClientIDs []string,
 ) ([]*models.ActiveAgent, error) {
-	args := m.Called(ctx, organizationID, connectedClientIDs)
+	args := m.Called(ctx, orgID, connectedClientIDs)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -75,10 +75,10 @@ func (m *MockAgentsService) GetConnectedActiveAgents(
 
 func (m *MockAgentsService) GetConnectedAvailableAgents(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	connectedClientIDs []string,
 ) ([]*models.ActiveAgent, error) {
-	args := m.Called(ctx, organizationID, connectedClientIDs)
+	args := m.Called(ctx, orgID, connectedClientIDs)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -92,46 +92,46 @@ func (m *MockAgentsService) CheckAgentHasActiveConnection(agent *models.ActiveAg
 
 func (m *MockAgentsService) AssignAgentToJob(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	agentID, jobID string,
 ) error {
-	args := m.Called(ctx, organizationID, agentID, jobID)
+	args := m.Called(ctx, orgID, agentID, jobID)
 	return args.Error(0)
 }
 
 func (m *MockAgentsService) UnassignAgentFromJob(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	agentID, jobID string,
 ) error {
-	args := m.Called(ctx, organizationID, agentID, jobID)
+	args := m.Called(ctx, orgID, agentID, jobID)
 	return args.Error(0)
 }
 
 func (m *MockAgentsService) GetAgentByJobID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	jobID string,
 ) (mo.Option[*models.ActiveAgent], error) {
-	args := m.Called(ctx, organizationID, jobID)
+	args := m.Called(ctx, orgID, jobID)
 	return args.Get(0).(mo.Option[*models.ActiveAgent]), args.Error(1)
 }
 
 func (m *MockAgentsService) GetAgentByWSConnectionID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	wsConnectionID string,
 ) (mo.Option[*models.ActiveAgent], error) {
-	args := m.Called(ctx, organizationID, wsConnectionID)
+	args := m.Called(ctx, orgID, wsConnectionID)
 	return args.Get(0).(mo.Option[*models.ActiveAgent]), args.Error(1)
 }
 
 func (m *MockAgentsService) GetActiveAgentJobAssignments(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	agentID string,
 ) ([]string, error) {
-	args := m.Called(ctx, organizationID, agentID)
+	args := m.Called(ctx, orgID, agentID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -140,19 +140,19 @@ func (m *MockAgentsService) GetActiveAgentJobAssignments(
 
 func (m *MockAgentsService) UpdateAgentLastActiveAt(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	wsConnectionID string,
 ) error {
-	args := m.Called(ctx, organizationID, wsConnectionID)
+	args := m.Called(ctx, orgID, wsConnectionID)
 	return args.Error(0)
 }
 
 func (m *MockAgentsService) GetInactiveAgents(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	inactiveThresholdMinutes int,
 ) ([]*models.ActiveAgent, error) {
-	args := m.Called(ctx, organizationID, inactiveThresholdMinutes)
+	args := m.Called(ctx, orgID, inactiveThresholdMinutes)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -161,8 +161,8 @@ func (m *MockAgentsService) GetInactiveAgents(
 
 func (m *MockAgentsService) DisconnectAllActiveAgentsByOrganization(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, organizationID)
+	args := m.Called(ctx, orgID)
 	return args.Error(0)
 }

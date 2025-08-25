@@ -54,16 +54,16 @@ func (s *CoreUseCase) ProcessSlackMessageEvent(
 	ctx context.Context,
 	event models.SlackMessageEvent,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
-	return s.slackUseCase.ProcessSlackMessageEvent(ctx, event, slackIntegrationID, organizationID)
+	return s.slackUseCase.ProcessSlackMessageEvent(ctx, event, slackIntegrationID, orgID)
 }
 
 // ProcessReactionAdded proxies to SlackUseCase
 func (s *CoreUseCase) ProcessReactionAdded(
 	ctx context.Context,
 	reactionName, userID, channelID, messageTS, slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	return s.slackUseCase.ProcessReactionAdded(
 		ctx,
@@ -72,7 +72,7 @@ func (s *CoreUseCase) ProcessReactionAdded(
 		channelID,
 		messageTS,
 		slackIntegrationID,
-		organizationID,
+		orgID,
 	)
 }
 
@@ -81,13 +81,13 @@ func (s *CoreUseCase) ProcessProcessingMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.ProcessingMessagePayload,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to route processing message from client %s", clientID)
 	jobID := payload.JobID
 
 	// Get job to determine the platform
-	maybeJob, err := s.jobsService.GetJobByID(ctx, organizationID, jobID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, orgID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -100,10 +100,10 @@ func (s *CoreUseCase) ProcessProcessingMessage(
 	switch job.JobType {
 	case models.JobTypeSlack:
 		log.Printf("🔀 Routing processing message to Slack usecase for job %s", jobID)
-		return s.slackUseCase.ProcessProcessingMessage(ctx, clientID, payload, organizationID)
+		return s.slackUseCase.ProcessProcessingMessage(ctx, clientID, payload, orgID)
 	case models.JobTypeDiscord:
 		log.Printf("🔀 Routing processing message to Discord usecase for job %s", jobID)
-		return s.discordUseCase.ProcessProcessingMessage(ctx, clientID, payload, organizationID)
+		return s.discordUseCase.ProcessProcessingMessage(ctx, clientID, payload, orgID)
 	default:
 		return fmt.Errorf("unsupported job type: %s", job.JobType)
 	}
@@ -114,7 +114,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.AssistantMessagePayload,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to route assistant message from client %s", clientID)
 
@@ -125,7 +125,7 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	}
 
 	// Get job to determine the platform
-	maybeJob, err := s.jobsService.GetJobByID(ctx, organizationID, jobID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, orgID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -140,10 +140,10 @@ func (s *CoreUseCase) ProcessAssistantMessage(
 	switch job.JobType {
 	case models.JobTypeSlack:
 		log.Printf("🔀 Routing assistant message to Slack usecase for job %s", jobID)
-		return s.slackUseCase.ProcessAssistantMessage(ctx, clientID, payload, organizationID)
+		return s.slackUseCase.ProcessAssistantMessage(ctx, clientID, payload, orgID)
 	case models.JobTypeDiscord:
 		log.Printf("🔀 Routing assistant message to Discord usecase for job %s", jobID)
-		return s.discordUseCase.ProcessAssistantMessage(ctx, clientID, payload, organizationID)
+		return s.discordUseCase.ProcessAssistantMessage(ctx, clientID, payload, orgID)
 	default:
 		return fmt.Errorf("unsupported job type: %s", job.JobType)
 	}
@@ -154,7 +154,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.SystemMessagePayload,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to route system message from client %s", clientID)
 
@@ -165,7 +165,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	}
 
 	// Get job to determine the platform
-	maybeJob, err := s.jobsService.GetJobByID(ctx, organizationID, jobID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, orgID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -180,10 +180,10 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	switch job.JobType {
 	case models.JobTypeSlack:
 		log.Printf("🔀 Routing system message to Slack usecase for job %s", jobID)
-		return s.slackUseCase.ProcessSystemMessage(ctx, clientID, payload, organizationID)
+		return s.slackUseCase.ProcessSystemMessage(ctx, clientID, payload, orgID)
 	case models.JobTypeDiscord:
 		log.Printf("🔀 Routing system message to Discord usecase for job %s", jobID)
-		return s.discordUseCase.ProcessSystemMessage(ctx, clientID, payload, organizationID)
+		return s.discordUseCase.ProcessSystemMessage(ctx, clientID, payload, orgID)
 	default:
 		return fmt.Errorf("unsupported job type: %s", job.JobType)
 	}
@@ -194,12 +194,12 @@ func (s *CoreUseCase) ProcessJobComplete(
 	ctx context.Context,
 	clientID string,
 	payload models.JobCompletePayload,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to route job complete from client %s", clientID)
 
 	jobID := payload.JobID
-	maybeJob, err := s.jobsService.GetJobByID(ctx, organizationID, jobID)
+	maybeJob, err := s.jobsService.GetJobByID(ctx, orgID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -214,10 +214,10 @@ func (s *CoreUseCase) ProcessJobComplete(
 	switch job.JobType {
 	case models.JobTypeSlack:
 		log.Printf("🔀 Routing job complete to Slack usecase for job %s", jobID)
-		return s.slackUseCase.ProcessJobComplete(ctx, clientID, payload, organizationID)
+		return s.slackUseCase.ProcessJobComplete(ctx, clientID, payload, orgID)
 	case models.JobTypeDiscord:
 		log.Printf("🔀 Routing job complete to Discord usecase for job %s", jobID)
-		return s.discordUseCase.ProcessJobComplete(ctx, clientID, payload, organizationID)
+		return s.discordUseCase.ProcessJobComplete(ctx, clientID, payload, orgID)
 	default:
 		return fmt.Errorf("unsupported job type: %s", job.JobType)
 	}
@@ -373,23 +373,23 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 	totalInactiveAgents := 0
 	inactiveThresholdMinutes := DefaultInactiveAgentTimeoutMinutes
 	for _, organization := range organizations {
-		organizationID := organization.ID
+		orgID := organization.ID
 
 		// Get inactive agents for this organization (agents are organization-scoped)
 		inactiveAgents, err := s.agentsService.GetInactiveAgents(
 			ctx,
-			models.OrgID(organizationID),
+			models.OrgID(orgID),
 			inactiveThresholdMinutes,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to get inactive agents for organization %s: %w", organizationID, err)
+			return fmt.Errorf("failed to get inactive agents for organization %s: %w", orgID, err)
 		}
 
 		if len(inactiveAgents) == 0 {
 			continue
 		}
 
-		log.Printf("🔍 Found %d inactive agents for organization %s", len(inactiveAgents), organizationID)
+		log.Printf("🔍 Found %d inactive agents for organization %s", len(inactiveAgents), orgID)
 
 		// Delete each inactive agent
 		for _, agent := range inactiveAgents {
@@ -400,7 +400,7 @@ func (s *CoreUseCase) CleanupInactiveAgents(ctx context.Context) error {
 			)
 
 			// Delete the inactive agent - CASCADE DELETE will automatically clean up job assignments
-			if err := s.agentsService.DeleteActiveAgent(ctx, models.OrgID(organizationID), agent.ID); err != nil {
+			if err := s.agentsService.DeleteActiveAgent(ctx, models.OrgID(orgID), agent.ID); err != nil {
 				return fmt.Errorf("failed to delete inactive agent %s: %w", agent.ID, err)
 			}
 
@@ -433,16 +433,16 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
 	for _, organization := range organizations {
-		organizationID := organization.ID
+		orgID := organization.ID
 
 		// Get connected agents for this organization using centralized service method
 		connectedAgents, err := s.agentsService.GetConnectedActiveAgents(
 			ctx,
-			models.OrgID(organizationID),
+			models.OrgID(orgID),
 			connectedClientIDs,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to get connected agents for organization %s: %w", organizationID, err)
+			return fmt.Errorf("failed to get connected agents for organization %s: %w", orgID, err)
 		}
 
 		if len(connectedAgents) == 0 {
@@ -452,7 +452,7 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 		log.Printf(
 			"📡 Broadcasting CheckIdleJobs to %d connected agents for organization %s",
 			len(connectedAgents),
-			organizationID,
+			orgID,
 		)
 		checkIdleJobsMessage := models.BaseMessage{
 			ID:      core.NewID("msg"),

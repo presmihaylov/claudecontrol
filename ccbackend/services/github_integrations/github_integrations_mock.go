@@ -15,10 +15,10 @@ type MockGitHubIntegrationsService struct {
 
 func (m *MockGitHubIntegrationsService) CreateGitHubIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	authCode, installationID string,
 ) (*models.GitHubIntegration, error) {
-	args := m.Called(ctx, organizationID, authCode, installationID)
+	args := m.Called(ctx, orgID, authCode, installationID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -27,9 +27,9 @@ func (m *MockGitHubIntegrationsService) CreateGitHubIntegration(
 
 func (m *MockGitHubIntegrationsService) ListGitHubIntegrations(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.GitHubIntegration, error) {
-	args := m.Called(ctx, organizationID)
+	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -38,10 +38,10 @@ func (m *MockGitHubIntegrationsService) ListGitHubIntegrations(
 
 func (m *MockGitHubIntegrationsService) GetGitHubIntegrationByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.GitHubIntegration], error) {
-	args := m.Called(ctx, organizationID, id)
+	args := m.Called(ctx, orgID, id)
 	if args.Get(0) == nil {
 		return mo.None[*models.GitHubIntegration](), args.Error(1)
 	}
@@ -50,18 +50,18 @@ func (m *MockGitHubIntegrationsService) GetGitHubIntegrationByID(
 
 func (m *MockGitHubIntegrationsService) DeleteGitHubIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	integrationID string,
 ) error {
-	args := m.Called(ctx, organizationID, integrationID)
+	args := m.Called(ctx, orgID, integrationID)
 	return args.Error(0)
 }
 
 func (m *MockGitHubIntegrationsService) ListAvailableRepositories(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.GitHubRepository, error) {
-	args := m.Called(ctx, organizationID)
+	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

@@ -30,12 +30,12 @@ func NewGitHubIntegrationsService(
 
 func (s *GitHubIntegrationsService) CreateGitHubIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	authCode, installationID string,
 ) (*models.GitHubIntegration, error) {
-	log.Printf("📋 Starting to create GitHub integration for org: %s, installation: %s", organizationID, installationID)
+	log.Printf("📋 Starting to create GitHub integration for org: %s, installation: %s", orgID, installationID)
 
-	if organizationID == "" {
+	if orgID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
 	if authCode == "" {
@@ -57,7 +57,7 @@ func (s *GitHubIntegrationsService) CreateGitHubIntegration(
 		ID:                   core.NewID("ghi"),
 		GitHubInstallationID: installationID,
 		GitHubAccessToken:    accessToken,
-		OrgID:                organizationID,
+		OrgID:                orgID,
 	}
 
 	if err := s.githubRepo.CreateGitHubIntegration(ctx, integration); err != nil {
@@ -70,14 +70,14 @@ func (s *GitHubIntegrationsService) CreateGitHubIntegration(
 
 func (s *GitHubIntegrationsService) ListGitHubIntegrations(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.GitHubIntegration, error) {
-	log.Printf("📋 Starting to list GitHub integrations for org: %s", organizationID)
-	if organizationID == "" {
+	log.Printf("📋 Starting to list GitHub integrations for org: %s", orgID)
+	if orgID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
 
-	integrations, err := s.githubRepo.GetGitHubIntegrationsByOrganizationID(ctx, organizationID)
+	integrations, err := s.githubRepo.GetGitHubIntegrationsByOrganizationID(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list GitHub integrations: %w", err)
 	}
@@ -88,18 +88,18 @@ func (s *GitHubIntegrationsService) ListGitHubIntegrations(
 
 func (s *GitHubIntegrationsService) GetGitHubIntegrationByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.GitHubIntegration], error) {
-	log.Printf("📋 Starting to get GitHub integration by ID: %s for org: %s", id, organizationID)
-	if organizationID == "" {
+	log.Printf("📋 Starting to get GitHub integration by ID: %s for org: %s", id, orgID)
+	if orgID == "" {
 		return mo.None[*models.GitHubIntegration](), fmt.Errorf("organization ID cannot be empty")
 	}
 	if !core.IsValidULID(id) {
 		return mo.None[*models.GitHubIntegration](), fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	maybeInt, err := s.githubRepo.GetGitHubIntegrationByID(ctx, organizationID, id)
+	maybeInt, err := s.githubRepo.GetGitHubIntegrationByID(ctx, orgID, id)
 	if err != nil {
 		return mo.None[*models.GitHubIntegration](), fmt.Errorf("failed to get GitHub integration: %w", err)
 	}
@@ -115,12 +115,12 @@ func (s *GitHubIntegrationsService) GetGitHubIntegrationByID(
 
 func (s *GitHubIntegrationsService) DeleteGitHubIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	integrationID string,
 ) error {
-	log.Printf("📋 Starting to delete GitHub integration: %s for org: %s", integrationID, organizationID)
+	log.Printf("📋 Starting to delete GitHub integration: %s for org: %s", integrationID, orgID)
 
-	if organizationID == "" {
+	if orgID == "" {
 		return fmt.Errorf("organization ID cannot be empty")
 	}
 	if !core.IsValidULID(integrationID) {
@@ -128,7 +128,7 @@ func (s *GitHubIntegrationsService) DeleteGitHubIntegration(
 	}
 
 	// Get the integration to retrieve the installation ID
-	integrationOpt, err := s.githubRepo.GetGitHubIntegrationByID(ctx, organizationID, integrationID)
+	integrationOpt, err := s.githubRepo.GetGitHubIntegrationByID(ctx, orgID, integrationID)
 	if err != nil {
 		return fmt.Errorf("failed to get GitHub integration: %w", err)
 	}
@@ -144,7 +144,7 @@ func (s *GitHubIntegrationsService) DeleteGitHubIntegration(
 		// Continue with deletion - the app might already be uninstalled
 	}
 
-	if err := s.githubRepo.DeleteGitHubIntegration(ctx, organizationID, integrationID); err != nil {
+	if err := s.githubRepo.DeleteGitHubIntegration(ctx, orgID, integrationID); err != nil {
 		return fmt.Errorf("failed to delete GitHub integration: %w", err)
 	}
 
@@ -154,16 +154,16 @@ func (s *GitHubIntegrationsService) DeleteGitHubIntegration(
 
 func (s *GitHubIntegrationsService) ListAvailableRepositories(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.GitHubRepository, error) {
-	log.Printf("📋 Starting to list available GitHub repositories for org: %s", organizationID)
+	log.Printf("📋 Starting to list available GitHub repositories for org: %s", orgID)
 
-	if organizationID == "" {
+	if orgID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
 
 	// Get the GitHub integration for the organization
-	integrations, err := s.githubRepo.GetGitHubIntegrationsByOrganizationID(ctx, organizationID)
+	integrations, err := s.githubRepo.GetGitHubIntegrationsByOrganizationID(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get GitHub integrations: %w", err)
 	}

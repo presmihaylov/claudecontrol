@@ -79,11 +79,11 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent 
 func (r *PostgresAgentsRepository) DeleteActiveAgent(
 	ctx context.Context,
 	id string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (bool, error) {
 	query := fmt.Sprintf("DELETE FROM %s.active_agents WHERE id = $1 AND organization_id = $2", r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, id, organizationID)
+	result, err := r.db.ExecContext(ctx, query, id, orgID)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete active agent: %w", err)
 	}
@@ -99,7 +99,7 @@ func (r *PostgresAgentsRepository) DeleteActiveAgent(
 func (r *PostgresAgentsRepository) GetAgentByID(
 	ctx context.Context,
 	id string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
@@ -108,7 +108,7 @@ func (r *PostgresAgentsRepository) GetAgentByID(
 		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	agent := &models.ActiveAgent{}
-	err := r.db.GetContext(ctx, agent, query, id, organizationID)
+	err := r.db.GetContext(ctx, agent, query, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ActiveAgent](), nil
@@ -122,7 +122,7 @@ func (r *PostgresAgentsRepository) GetAgentByID(
 func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(
 	ctx context.Context,
 	wsConnectionID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
@@ -131,7 +131,7 @@ func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(
 		WHERE ws_connection_id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	agent := &models.ActiveAgent{}
-	err := r.db.GetContext(ctx, agent, query, wsConnectionID, organizationID)
+	err := r.db.GetContext(ctx, agent, query, wsConnectionID, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ActiveAgent](), nil
@@ -144,7 +144,7 @@ func (r *PostgresAgentsRepository) GetAgentByWSConnectionID(
 
 func (r *PostgresAgentsRepository) GetAvailableAgents(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]*models.ActiveAgent, error) {
 	// Build column list with a. prefix for table alias
 	var aliasedColumns []string
@@ -161,7 +161,7 @@ func (r *PostgresAgentsRepository) GetAvailableAgents(
 		ORDER BY a.created_at ASC`, columnsStr, r.schema, r.schema)
 
 	var agents []*models.ActiveAgent
-	err := r.db.SelectContext(ctx, &agents, query, organizationID)
+	err := r.db.SelectContext(ctx, &agents, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available agents: %w", err)
 	}
@@ -171,7 +171,7 @@ func (r *PostgresAgentsRepository) GetAvailableAgents(
 
 func (r *PostgresAgentsRepository) GetAllActiveAgents(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]*models.ActiveAgent, error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
 	query := fmt.Sprintf(`
@@ -181,7 +181,7 @@ func (r *PostgresAgentsRepository) GetAllActiveAgents(
 		ORDER BY created_at ASC`, columnsStr, r.schema)
 
 	var agents []*models.ActiveAgent
-	err := r.db.SelectContext(ctx, &agents, query, organizationID)
+	err := r.db.SelectContext(ctx, &agents, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all active agents: %w", err)
 	}
@@ -192,7 +192,7 @@ func (r *PostgresAgentsRepository) GetAllActiveAgents(
 func (r *PostgresAgentsRepository) GetAgentByJobID(
 	ctx context.Context,
 	jobID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.ActiveAgent], error) {
 	// Build column list with a. prefix for table alias
 	var aliasedColumns []string
@@ -209,7 +209,7 @@ func (r *PostgresAgentsRepository) GetAgentByJobID(
 		LIMIT 1`, columnsStr, r.schema, r.schema)
 
 	agent := &models.ActiveAgent{}
-	err := r.db.GetContext(ctx, agent, query, jobID, organizationID)
+	err := r.db.GetContext(ctx, agent, query, jobID, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ActiveAgent](), nil
@@ -249,13 +249,13 @@ func (r *PostgresAgentsRepository) AssignAgentToJob(ctx context.Context, assignm
 func (r *PostgresAgentsRepository) UnassignAgentFromJob(
 	ctx context.Context,
 	agentID, jobID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (bool, error) {
 	query := fmt.Sprintf(`
 		DELETE FROM %s.agent_job_assignments 
 		WHERE agent_id = $1 AND job_id = $2 AND organization_id = $3`, r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, agentID, jobID, organizationID)
+	result, err := r.db.ExecContext(ctx, query, agentID, jobID, orgID)
 	if err != nil {
 		return false, fmt.Errorf("failed to unassign agent from job: %w", err)
 	}
@@ -271,7 +271,7 @@ func (r *PostgresAgentsRepository) UnassignAgentFromJob(
 func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(
 	ctx context.Context,
 	agentID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]string, error) {
 	query := fmt.Sprintf(`
 		SELECT job_id 
@@ -280,7 +280,7 @@ func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(
 		ORDER BY assigned_at ASC`, r.schema)
 
 	var jobIDs []string
-	err := r.db.SelectContext(ctx, &jobIDs, query, agentID, organizationID)
+	err := r.db.SelectContext(ctx, &jobIDs, query, agentID, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active agent job assignments: %w", err)
 	}
@@ -291,14 +291,14 @@ func (r *PostgresAgentsRepository) GetActiveAgentJobAssignments(
 func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(
 	ctx context.Context,
 	wsConnectionID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (bool, error) {
 	query := fmt.Sprintf(`
 		UPDATE %s.active_agents 
 		SET last_active_at = NOW() 
 		WHERE ws_connection_id = $1 AND organization_id = $2`, r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, wsConnectionID, organizationID)
+	result, err := r.db.ExecContext(ctx, query, wsConnectionID, orgID)
 	if err != nil {
 		return false, fmt.Errorf("failed to update agent last_active_at: %w", err)
 	}
@@ -313,7 +313,7 @@ func (r *PostgresAgentsRepository) UpdateAgentLastActiveAt(
 
 func (r *PostgresAgentsRepository) GetInactiveAgents(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	inactiveThresholdMinutes int,
 ) ([]*models.ActiveAgent, error) {
 	columnsStr := strings.Join(activeAgentsColumns, ", ")
@@ -324,7 +324,7 @@ func (r *PostgresAgentsRepository) GetInactiveAgents(
 		ORDER BY last_active_at ASC`, columnsStr, r.schema, inactiveThresholdMinutes)
 
 	var agents []*models.ActiveAgent
-	err := r.db.SelectContext(ctx, &agents, query, organizationID)
+	err := r.db.SelectContext(ctx, &agents, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get inactive agents: %w", err)
 	}

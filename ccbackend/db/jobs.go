@@ -205,7 +205,7 @@ func (r *PostgresJobsRepository) CreateJob(ctx context.Context, job *models.Job)
 func (r *PostgresJobsRepository) GetJobByID(
 	ctx context.Context,
 	id string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(jobsColumns, ", ")
@@ -215,7 +215,7 @@ func (r *PostgresJobsRepository) GetJobByID(
 		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	var dbJob DBJob
-	err := db.GetContext(ctx, &dbJob, query, id, organizationID)
+	err := db.GetContext(ctx, &dbJob, query, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.Job](), nil
@@ -233,7 +233,7 @@ func (r *PostgresJobsRepository) GetJobByID(
 func (r *PostgresJobsRepository) GetJobBySlackThread(
 	ctx context.Context,
 	threadTS, channelID, slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(jobsColumns, ", ")
@@ -243,7 +243,7 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(
 		WHERE slack_thread_ts = $1 AND slack_channel_id = $2 AND slack_integration_id = $3 AND organization_id = $4`, columnsStr, r.schema)
 
 	var dbJob DBJob
-	err := db.GetContext(ctx, &dbJob, query, threadTS, channelID, slackIntegrationID, organizationID)
+	err := db.GetContext(ctx, &dbJob, query, threadTS, channelID, slackIntegrationID, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.Job](), nil
@@ -261,7 +261,7 @@ func (r *PostgresJobsRepository) GetJobBySlackThread(
 func (r *PostgresJobsRepository) GetJobByDiscordThread(
 	ctx context.Context,
 	threadID, discordIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.Job], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(jobsColumns, ", ")
@@ -271,7 +271,7 @@ func (r *PostgresJobsRepository) GetJobByDiscordThread(
 		WHERE discord_thread_id = $1 AND discord_integration_id = $2 AND organization_id = $3`, columnsStr, r.schema)
 
 	var dbJob DBJob
-	err := db.GetContext(ctx, &dbJob, query, threadID, discordIntegrationID, organizationID)
+	err := db.GetContext(ctx, &dbJob, query, threadID, discordIntegrationID, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.Job](), nil
@@ -289,7 +289,7 @@ func (r *PostgresJobsRepository) GetJobByDiscordThread(
 func (r *PostgresJobsRepository) UpdateJobTimestamp(
 	ctx context.Context,
 	jobID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
@@ -297,7 +297,7 @@ func (r *PostgresJobsRepository) UpdateJobTimestamp(
 		SET updated_at = NOW() 
 		WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	_, err := db.ExecContext(ctx, query, jobID, organizationID)
+	_, err := db.ExecContext(ctx, query, jobID, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to update job timestamp: %w", err)
 	}
@@ -307,7 +307,7 @@ func (r *PostgresJobsRepository) UpdateJobTimestamp(
 
 func (r *PostgresJobsRepository) GetJobs(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]*models.Job, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(jobsColumns, ", ")
@@ -319,7 +319,7 @@ func (r *PostgresJobsRepository) GetJobs(
 		ORDER BY created_at ASC`, columnsStr, r.schema)
 
 	var dbJobs []DBJob
-	err := db.SelectContext(ctx, &dbJobs, query, organizationID)
+	err := db.SelectContext(ctx, &dbJobs, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jobs: %w", err)
 	}
@@ -340,7 +340,7 @@ func (r *PostgresJobsRepository) GetJobs(
 func (r *PostgresJobsRepository) DeleteJob(
 	ctx context.Context,
 	id string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (bool, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 
@@ -348,7 +348,7 @@ func (r *PostgresJobsRepository) DeleteJob(
 		DELETE FROM %s.jobs 
 		WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	result, err := db.ExecContext(ctx, query, id, organizationID)
+	result, err := db.ExecContext(ctx, query, id, orgID)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete job: %w", err)
 	}
@@ -367,7 +367,7 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (bool, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
@@ -375,7 +375,7 @@ func (r *PostgresJobsRepository) TESTS_UpdateJobUpdatedAt(
 		SET updated_at = $2 
 		WHERE id = $1 AND slack_integration_id = $3 AND organization_id = $4`, r.schema)
 
-	result, err := db.ExecContext(ctx, query, id, updatedAt, slackIntegrationID, organizationID)
+	result, err := db.ExecContext(ctx, query, id, updatedAt, slackIntegrationID, orgID)
 	if err != nil {
 		return false, fmt.Errorf("failed to update job updated_at: %w", err)
 	}

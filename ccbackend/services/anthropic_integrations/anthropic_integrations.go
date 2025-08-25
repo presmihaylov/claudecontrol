@@ -26,12 +26,12 @@ func NewAnthropicIntegrationsService(
 
 func (s *AnthropicIntegrationsService) CreateAnthropicIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	apiKey, oauthToken *string,
 ) (*models.AnthropicIntegration, error) {
-	log.Printf("📋 Starting to create Anthropic integration for org: %s", organizationID)
+	log.Printf("📋 Starting to create Anthropic integration for org: %s", orgID)
 
-	if organizationID == "" {
+	if orgID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
 
@@ -54,7 +54,7 @@ func (s *AnthropicIntegrationsService) CreateAnthropicIntegration(
 		ID:                   core.NewID("ai"),
 		AnthropicAPIKey:      apiKey,
 		ClaudeCodeOAuthToken: oauthToken,
-		OrgID:                organizationID,
+		OrgID:                orgID,
 	}
 
 	if err := s.anthropicRepo.CreateAnthropicIntegration(ctx, integration); err != nil {
@@ -67,14 +67,14 @@ func (s *AnthropicIntegrationsService) CreateAnthropicIntegration(
 
 func (s *AnthropicIntegrationsService) ListAnthropicIntegrations(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.AnthropicIntegration, error) {
-	log.Printf("📋 Starting to list Anthropic integrations for org: %s", organizationID)
-	if organizationID == "" {
+	log.Printf("📋 Starting to list Anthropic integrations for org: %s", orgID)
+	if orgID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
 
-	integrations, err := s.anthropicRepo.GetAnthropicIntegrationsByOrganizationID(ctx, organizationID)
+	integrations, err := s.anthropicRepo.GetAnthropicIntegrationsByOrganizationID(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list Anthropic integrations: %w", err)
 	}
@@ -85,18 +85,18 @@ func (s *AnthropicIntegrationsService) ListAnthropicIntegrations(
 
 func (s *AnthropicIntegrationsService) GetAnthropicIntegrationByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.AnthropicIntegration], error) {
-	log.Printf("📋 Starting to get Anthropic integration by ID: %s for org: %s", id, organizationID)
-	if organizationID == "" {
+	log.Printf("📋 Starting to get Anthropic integration by ID: %s for org: %s", id, orgID)
+	if orgID == "" {
 		return mo.None[*models.AnthropicIntegration](), fmt.Errorf("organization ID cannot be empty")
 	}
 	if !core.IsValidULID(id) {
 		return mo.None[*models.AnthropicIntegration](), fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	maybeInt, err := s.anthropicRepo.GetAnthropicIntegrationByID(ctx, organizationID, id)
+	maybeInt, err := s.anthropicRepo.GetAnthropicIntegrationByID(ctx, orgID, id)
 	if err != nil {
 		return mo.None[*models.AnthropicIntegration](), fmt.Errorf("failed to get Anthropic integration: %w", err)
 	}
@@ -112,19 +112,19 @@ func (s *AnthropicIntegrationsService) GetAnthropicIntegrationByID(
 
 func (s *AnthropicIntegrationsService) DeleteAnthropicIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	integrationID string,
 ) error {
-	log.Printf("📋 Starting to delete Anthropic integration: %s for org: %s", integrationID, organizationID)
+	log.Printf("📋 Starting to delete Anthropic integration: %s for org: %s", integrationID, orgID)
 
-	if organizationID == "" {
+	if orgID == "" {
 		return fmt.Errorf("organization ID cannot be empty")
 	}
 	if !core.IsValidULID(integrationID) {
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	if err := s.anthropicRepo.DeleteAnthropicIntegration(ctx, organizationID, integrationID); err != nil {
+	if err := s.anthropicRepo.DeleteAnthropicIntegration(ctx, orgID, integrationID); err != nil {
 		return fmt.Errorf("failed to delete Anthropic integration: %w", err)
 	}
 

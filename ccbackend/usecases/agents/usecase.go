@@ -34,10 +34,10 @@ func (s *AgentsUseCase) GetOrAssignAgentForJob(
 	ctx context.Context,
 	job *models.Job,
 	threadTS string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (string, error) {
 	// Check if this job is already assigned to an agent
-	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, organizationID, job.ID)
+	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, orgID, job.ID)
 	if err != nil {
 		// Some error occurred
 		log.Printf("❌ Failed to check for existing agent assignment: %v", err)
@@ -46,7 +46,7 @@ func (s *AgentsUseCase) GetOrAssignAgentForJob(
 
 	if !maybeExistingAgent.IsPresent() {
 		// Job not assigned to any agent yet - need to assign to an available agent
-		return s.AssignJobToAvailableAgent(ctx, job, threadTS, organizationID)
+		return s.AssignJobToAvailableAgent(ctx, job, threadTS, orgID)
 	}
 
 	existingAgent := maybeExistingAgent.MustGet()
@@ -73,11 +73,11 @@ func (s *AgentsUseCase) AssignJobToAvailableAgent(
 	ctx context.Context,
 	job *models.Job,
 	threadTS string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (string, error) {
 	log.Printf("📝 Job %s not yet assigned, looking for any active agent", job.ID)
 
-	clientID, assigned, err := s.TryAssignJobToAgent(ctx, job.ID, organizationID)
+	clientID, assigned, err := s.TryAssignJobToAgent(ctx, job.ID, orgID)
 	if err != nil {
 		return "", err
 	}
@@ -99,10 +99,10 @@ func (s *AgentsUseCase) AssignJobToAvailableAgent(
 func (s *AgentsUseCase) TryAssignJobToAgent(
 	ctx context.Context,
 	jobID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (string, bool, error) {
 	// First check if this job is already assigned to an agent
-	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, organizationID, jobID)
+	maybeExistingAgent, err := s.agentsService.GetAgentByJobID(ctx, orgID, jobID)
 	if err != nil {
 		return "", false, fmt.Errorf("failed to check for existing agent assignment: %w", err)
 	}
@@ -126,7 +126,7 @@ func (s *AgentsUseCase) TryAssignJobToAgent(
 	log.Printf("🔍 Found %d connected WebSocket clients", len(connectedClientIDs))
 
 	// Get only agents with active connections using centralized service method
-	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, organizationID, connectedClientIDs)
+	connectedAgents, err := s.agentsService.GetConnectedActiveAgents(ctx, orgID, connectedClientIDs)
 	if err != nil {
 		log.Printf("❌ Failed to get connected active agents: %v", err)
 		return "", false, fmt.Errorf("failed to get connected active agents: %w", err)
@@ -138,7 +138,7 @@ func (s *AgentsUseCase) TryAssignJobToAgent(
 	}
 
 	// Sort agents by load (number of assigned jobs) to select the least loaded agent
-	sortedAgents, err := s.sortAgentsByLoad(ctx, connectedAgents, organizationID)
+	sortedAgents, err := s.sortAgentsByLoad(ctx, connectedAgents, orgID)
 	if err != nil {
 		log.Printf("❌ Failed to sort agents by load: %v", err)
 		return "", false, fmt.Errorf("failed to sort agents by load: %w", err)
@@ -148,7 +148,7 @@ func (s *AgentsUseCase) TryAssignJobToAgent(
 	log.Printf("🎯 Selected agent %s with %d active jobs (least loaded)", selectedAgent.ID, sortedAgents[0].load)
 
 	// Assign the job to the selected agent (agents can now handle multiple jobs simultaneously)
-	if err := s.agentsService.AssignAgentToJob(ctx, organizationID, selectedAgent.ID, jobID); err != nil {
+	if err := s.agentsService.AssignAgentToJob(ctx, orgID, selectedAgent.ID, jobID); err != nil {
 		log.Printf("❌ Failed to assign job %s to agent %s: %v", jobID, selectedAgent.ID, err)
 		return "", false, fmt.Errorf("failed to assign job to agent: %w", err)
 	}
@@ -161,9 +161,9 @@ func (s *AgentsUseCase) TryAssignJobToAgent(
 func (s *AgentsUseCase) ValidateJobBelongsToAgent(
 	ctx context.Context,
 	agentID, jobID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
-	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, organizationID, agentID)
+	agentJobs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, orgID, agentID)
 	if err != nil {
 		return fmt.Errorf("failed to get jobs for agent: %w", err)
 	}
@@ -185,13 +185,13 @@ type agentWithLoad struct {
 func (s *AgentsUseCase) sortAgentsByLoad(
 	ctx context.Context,
 	agents []*models.ActiveAgent,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]agentWithLoad, error) {
 	agentsWithLoad := make([]agentWithLoad, 0, len(agents))
 
 	for _, agent := range agents {
 		// Get job IDs assigned to this agent
-		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, organizationID, agent.ID)
+		jobIDs, err := s.agentsService.GetActiveAgentJobAssignments(ctx, orgID, agent.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job assignments for agent %s: %w", agent.ID, err)
 		}
