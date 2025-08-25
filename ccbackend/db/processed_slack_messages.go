@@ -75,7 +75,7 @@ func (r *PostgresProcessedSlackMessagesRepository) CreateProcessedSlackMessage(
 func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 	ctx context.Context,
 	id string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
@@ -85,7 +85,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessageByID(
 		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	message := &models.ProcessedSlackMessage{}
-	err := db.GetContext(ctx, message, query, id, organizationID)
+	err := db.GetContext(ctx, message, query, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ProcessedSlackMessage](), nil
@@ -101,7 +101,7 @@ func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageSt
 	id string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	returningStr := strings.Join(processedSlackMessagesColumns, ", ")
@@ -112,7 +112,7 @@ func (r *PostgresProcessedSlackMessagesRepository) UpdateProcessedSlackMessageSt
 		RETURNING %s`, r.schema, returningStr)
 
 	message := &models.ProcessedSlackMessage{}
-	err := db.QueryRowxContext(ctx, query, id, status, slackIntegrationID, organizationID).StructScan(message)
+	err := db.QueryRowxContext(ctx, query, id, status, slackIntegrationID, orgID).StructScan(message)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ProcessedSlackMessage](), nil
@@ -130,7 +130,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessagesByJo
 	ctx context.Context,
 	jobID string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]*models.ProcessedSlackMessage, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
@@ -140,7 +140,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedSlackMessagesByJo
 		WHERE job_id = $1 AND slack_integration_id = $2 AND organization_id = $3`, columnsStr, r.schema)
 
 	var messages []*models.ProcessedSlackMessage
-	err := db.SelectContext(ctx, &messages, query, jobID, slackIntegrationID, organizationID)
+	err := db.SelectContext(ctx, &messages, query, jobID, slackIntegrationID, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed slack messages by job id: %w", err)
 	}
@@ -152,14 +152,14 @@ func (r *PostgresProcessedSlackMessagesRepository) DeleteProcessedSlackMessagesB
 	ctx context.Context,
 	jobID string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) error {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
 		DELETE FROM %s.processed_slack_messages 
 		WHERE job_id = $1 AND slack_integration_id = $2 AND organization_id = $3`, r.schema)
 
-	_, err := db.ExecContext(ctx, query, jobID, slackIntegrationID, organizationID)
+	_, err := db.ExecContext(ctx, query, jobID, slackIntegrationID, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to delete processed slack messages by job id: %w", err)
 	}
@@ -172,7 +172,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByJobIDAn
 	jobID string,
 	status models.ProcessedSlackMessageStatus,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]*models.ProcessedSlackMessage, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
@@ -183,7 +183,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByJobIDAn
 		ORDER BY slack_ts ASC`, columnsStr, r.schema)
 
 	var messages []*models.ProcessedSlackMessage
-	err := db.SelectContext(ctx, &messages, query, jobID, status, slackIntegrationID, organizationID)
+	err := db.SelectContext(ctx, &messages, query, jobID, status, slackIntegrationID, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed messages by job id and status: %w", err)
 	}
@@ -197,7 +197,7 @@ func (r *PostgresProcessedSlackMessagesRepository) TESTS_UpdateProcessedSlackMes
 	id string,
 	updatedAt time.Time,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (bool, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	query := fmt.Sprintf(`
@@ -205,7 +205,7 @@ func (r *PostgresProcessedSlackMessagesRepository) TESTS_UpdateProcessedSlackMes
 		SET updated_at = $2 
 		WHERE id = $1 AND slack_integration_id = $3 AND organization_id = $4`, r.schema)
 
-	result, err := db.ExecContext(ctx, query, id, updatedAt, slackIntegrationID, organizationID)
+	result, err := db.ExecContext(ctx, query, id, updatedAt, slackIntegrationID, orgID)
 	if err != nil {
 		return false, fmt.Errorf("failed to update processed slack message updated_at: %w", err)
 	}
@@ -222,7 +222,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetActiveMessageCountForJobs(
 	ctx context.Context,
 	jobIDs []string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (int, error) {
 	if len(jobIDs) == 0 {
 		return 0, nil
@@ -243,7 +243,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetActiveMessageCountForJobs(
 		models.ProcessedSlackMessageStatusInProgress,
 		models.ProcessedSlackMessageStatusQueued,
 		slackIntegrationID,
-		organizationID)
+		orgID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get active message count for jobs: %w", err)
 	}
@@ -255,7 +255,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetLatestProcessedMessageForJ
 	ctx context.Context,
 	jobID string,
 	slackIntegrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (mo.Option[*models.ProcessedSlackMessage], error) {
 	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
 	db := dbtx.GetTransactional(ctx, r.db)
@@ -267,7 +267,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetLatestProcessedMessageForJ
 		LIMIT 1`, columnsStr, r.schema)
 
 	message := &models.ProcessedSlackMessage{}
-	err := db.GetContext(ctx, message, query, jobID, slackIntegrationID, organizationID)
+	err := db.GetContext(ctx, message, query, jobID, slackIntegrationID, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.ProcessedSlackMessage](), nil
@@ -285,7 +285,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByStatus(
 	ctx context.Context,
 	status models.ProcessedSlackMessageStatus,
 	integrationID string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]*models.ProcessedSlackMessage, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 	columnsStr := strings.Join(processedSlackMessagesColumns, ", ")
@@ -296,7 +296,7 @@ func (r *PostgresProcessedSlackMessagesRepository) GetProcessedMessagesByStatus(
 		ORDER BY created_at ASC`, columnsStr, r.schema)
 
 	var messages []*models.ProcessedSlackMessage
-	err := db.SelectContext(ctx, &messages, query, status, integrationID, organizationID)
+	err := db.SelectContext(ctx, &messages, query, status, integrationID, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processed messages by status: %w", err)
 	}

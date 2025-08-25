@@ -91,7 +91,7 @@ func (r *PostgresOrganizationsRepository) GetOrganizationByID(
 
 func (r *PostgresOrganizationsRepository) GenerateCCAgentSecretKey(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	secretKey string,
 ) (bool, error) {
 	if secretKey == "" {
@@ -105,7 +105,7 @@ func (r *PostgresOrganizationsRepository) GenerateCCAgentSecretKey(
 		SET ccagent_secret_key = $1, ccagent_secret_key_generated_at = NOW(), updated_at = NOW()
 		WHERE id = $2`, r.schema)
 
-	result, err := db.ExecContext(ctx, query, secretKey, organizationID)
+	result, err := db.ExecContext(ctx, query, secretKey, orgID)
 	if err != nil {
 		return false, fmt.Errorf("failed to update organization with secret key: %w", err)
 	}

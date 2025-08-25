@@ -65,9 +65,9 @@ func (r *PostgresGitHubIntegrationsRepository) CreateGitHubIntegration(
 
 func (r *PostgresGitHubIntegrationsRepository) GetGitHubIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.GitHubIntegration, error) {
-	if organizationID == "" {
+	if orgID == "" {
 		return nil, fmt.Errorf("organization ID cannot be empty")
 	}
 
@@ -79,7 +79,7 @@ func (r *PostgresGitHubIntegrationsRepository) GetGitHubIntegrationsByOrganizati
 		ORDER BY created_at DESC`, columnsStr, r.schema)
 
 	integrations := []models.GitHubIntegration{}
-	err := r.db.SelectContext(ctx, &integrations, query, organizationID)
+	err := r.db.SelectContext(ctx, &integrations, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get github integrations: %w", err)
 	}
@@ -89,7 +89,7 @@ func (r *PostgresGitHubIntegrationsRepository) GetGitHubIntegrationsByOrganizati
 
 func (r *PostgresGitHubIntegrationsRepository) GetGitHubIntegrationByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.GitHubIntegration], error) {
 	columnsStr := strings.Join(githubIntegrationsColumns, ", ")
@@ -99,7 +99,7 @@ func (r *PostgresGitHubIntegrationsRepository) GetGitHubIntegrationByID(
 		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
 	var integration models.GitHubIntegration
-	err := r.db.GetContext(ctx, &integration, query, id, organizationID)
+	err := r.db.GetContext(ctx, &integration, query, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return mo.None[*models.GitHubIntegration](), nil
@@ -112,10 +112,10 @@ func (r *PostgresGitHubIntegrationsRepository) GetGitHubIntegrationByID(
 
 func (r *PostgresGitHubIntegrationsRepository) DeleteGitHubIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) error {
-	if organizationID == "" {
+	if orgID == "" {
 		return fmt.Errorf("organization ID cannot be empty")
 	}
 	if id == "" {
@@ -126,7 +126,7 @@ func (r *PostgresGitHubIntegrationsRepository) DeleteGitHubIntegration(
 		DELETE FROM %s.github_integrations 
 		WHERE id = $1 AND organization_id = $2`, r.schema)
 
-	result, err := r.db.ExecContext(ctx, query, id, organizationID)
+	result, err := r.db.ExecContext(ctx, query, id, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to delete github integration: %w", err)
 	}

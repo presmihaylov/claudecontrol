@@ -17,10 +17,10 @@ type DiscordIntegrationsRepository interface {
 	CreateDiscordIntegration(ctx context.Context, integration *models.DiscordIntegration) error
 	GetDiscordIntegrationsByOrganizationID(
 		ctx context.Context,
-		organizationID models.OrgID,
+		orgID models.OrgID,
 	) ([]models.DiscordIntegration, error)
 	GetAllDiscordIntegrations(ctx context.Context) ([]models.DiscordIntegration, error)
-	DeleteDiscordIntegrationByID(ctx context.Context, integrationID string, organizationID models.OrgID) (bool, error)
+	DeleteDiscordIntegrationByID(ctx context.Context, integrationID string, orgID models.OrgID) (bool, error)
 	GetDiscordIntegrationByGuildID(ctx context.Context, guildID string) (mo.Option[*models.DiscordIntegration], error)
 	GetDiscordIntegrationByID(ctx context.Context, id string) (mo.Option[*models.DiscordIntegration], error)
 }
@@ -47,10 +47,10 @@ func NewDiscordIntegrationsService(
 
 func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 	ctx context.Context,
-	organizationID models.OrgID, discordAuthCode, guildID, redirectURL string,
+	orgID models.OrgID, discordAuthCode, guildID, redirectURL string,
 ) (*models.DiscordIntegration, error) {
-	log.Printf("📋 Starting to create Discord integration for organization: %s", organizationID)
-	if !core.IsValidULID(string(organizationID)) {
+	log.Printf("📋 Starting to create Discord integration for organization: %s", orgID)
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 	if discordAuthCode == "" {
@@ -78,7 +78,7 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 		ID:               core.NewID("di"),
 		DiscordGuildID:   guildID,
 		DiscordGuildName: guildInfo.Name,
-		OrgID:            organizationID,
+		OrgID:            orgID,
 	}
 	if err := s.discordIntegrationsRepo.CreateDiscordIntegration(ctx, integration); err != nil {
 		return nil, fmt.Errorf("failed to create discord integration in database: %w", err)
@@ -94,14 +94,14 @@ func (s *DiscordIntegrationsService) CreateDiscordIntegration(
 
 func (s *DiscordIntegrationsService) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.DiscordIntegration, error) {
-	log.Printf("📋 Starting to get Discord integrations for organization: %s", organizationID)
-	if !core.IsValidULID(string(organizationID)) {
+	log.Printf("📋 Starting to get Discord integrations for organization: %s", orgID)
+	if !core.IsValidULID(string(orgID)) {
 		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 
-	integrations, err := s.discordIntegrationsRepo.GetDiscordIntegrationsByOrganizationID(ctx, organizationID)
+	integrations, err := s.discordIntegrationsRepo.GetDiscordIntegrationsByOrganizationID(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get discord integrations for organization: %w", err)
 	}
@@ -109,7 +109,7 @@ func (s *DiscordIntegrationsService) GetDiscordIntegrationsByOrganizationID(
 	log.Printf(
 		"📋 Completed successfully - found %d Discord integrations for organization: %s",
 		len(integrations),
-		organizationID,
+		orgID,
 	)
 	return integrations, nil
 }
@@ -129,17 +129,17 @@ func (s *DiscordIntegrationsService) GetAllDiscordIntegrations(
 
 func (s *DiscordIntegrationsService) DeleteDiscordIntegration(
 	ctx context.Context,
-	organizationID models.OrgID, integrationID string,
+	orgID models.OrgID, integrationID string,
 ) error {
 	log.Printf("📋 Starting to delete Discord integration: %s", integrationID)
-	if !core.IsValidULID(string(organizationID)) {
+	if !core.IsValidULID(string(orgID)) {
 		return fmt.Errorf("organization ID must be a valid ULID")
 	}
 	if !core.IsValidULID(integrationID) {
 		return fmt.Errorf("integration ID must be a valid ULID")
 	}
 
-	deleted, err := s.discordIntegrationsRepo.DeleteDiscordIntegrationByID(ctx, integrationID, organizationID)
+	deleted, err := s.discordIntegrationsRepo.DeleteDiscordIntegrationByID(ctx, integrationID, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to delete discord integration: %w", err)
 	}

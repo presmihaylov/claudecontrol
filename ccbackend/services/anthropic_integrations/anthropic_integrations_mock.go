@@ -16,10 +16,10 @@ type MockAnthropicIntegrationsService struct {
 
 func (m *MockAnthropicIntegrationsService) CreateAnthropicIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	apiKey, oauthToken *string,
 ) (*models.AnthropicIntegration, error) {
-	args := m.Called(ctx, organizationID, apiKey, oauthToken)
+	args := m.Called(ctx, orgID, apiKey, oauthToken)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -28,9 +28,9 @@ func (m *MockAnthropicIntegrationsService) CreateAnthropicIntegration(
 
 func (m *MockAnthropicIntegrationsService) ListAnthropicIntegrations(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) ([]models.AnthropicIntegration, error) {
-	args := m.Called(ctx, organizationID)
+	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -39,10 +39,10 @@ func (m *MockAnthropicIntegrationsService) ListAnthropicIntegrations(
 
 func (m *MockAnthropicIntegrationsService) GetAnthropicIntegrationByID(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.AnthropicIntegration], error) {
-	args := m.Called(ctx, organizationID, id)
+	args := m.Called(ctx, orgID, id)
 	if args.Get(0) == nil {
 		return mo.None[*models.AnthropicIntegration](), args.Error(1)
 	}
@@ -51,9 +51,9 @@ func (m *MockAnthropicIntegrationsService) GetAnthropicIntegrationByID(
 
 func (m *MockAnthropicIntegrationsService) DeleteAnthropicIntegration(
 	ctx context.Context,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 	integrationID string,
 ) error {
-	args := m.Called(ctx, organizationID, integrationID)
+	args := m.Called(ctx, orgID, integrationID)
 	return args.Error(0)
 }

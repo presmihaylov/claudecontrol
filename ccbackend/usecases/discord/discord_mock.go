@@ -17,9 +17,9 @@ func (m *MockDiscordUseCase) ProcessAssistantMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.AssistantMessagePayload,
-	organizationID string,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, clientID, payload, organizationID)
+	args := m.Called(ctx, clientID, payload, orgID)
 	return args.Error(0)
 }
 
@@ -27,9 +27,9 @@ func (m *MockDiscordUseCase) ProcessProcessingMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.ProcessingMessagePayload,
-	organizationID string,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, clientID, payload, organizationID)
+	args := m.Called(ctx, clientID, payload, orgID)
 	return args.Error(0)
 }
 
@@ -37,9 +37,9 @@ func (m *MockDiscordUseCase) ProcessSystemMessage(
 	ctx context.Context,
 	clientID string,
 	payload models.SystemMessagePayload,
-	organizationID string,
+	orgID models.OrgID,
 ) error {
-	args := m.Called(ctx, clientID, payload, organizationID)
+	args := m.Called(ctx, clientID, payload, orgID)
 	return args.Error(0)
 }
 

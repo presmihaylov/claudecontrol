@@ -68,7 +68,7 @@ func (r *PostgresUsersRepository) GetUserByAuthProvider(
 func (r *PostgresUsersRepository) CreateUser(
 	ctx context.Context,
 	authProvider, authProviderID, email string,
-	organizationID models.OrgID,
+	orgID models.OrgID,
 ) (*models.User, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 
@@ -93,7 +93,7 @@ func (r *PostgresUsersRepository) CreateUser(
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
 	user := &models.User{}
-	err := db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID, email, organizationID).StructScan(user)
+	err := db.QueryRowxContext(ctx, query, userID, authProvider, authProviderID, email, orgID).StructScan(user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}

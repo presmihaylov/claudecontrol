@@ -122,7 +122,7 @@ func TestSlackIntegrationsService_CreateSlackIntegration(t *testing.T) {
 
 		integration, err := testService.CreateSlackIntegration(
 			context.Background(),
-			"invalid-org-id", // Invalid organizationID
+			"invalid-org-id", // Invalid orgID
 			"test-auth-code",
 			"http://localhost:3000/callback",
 		)
