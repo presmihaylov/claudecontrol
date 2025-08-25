@@ -32,10 +32,9 @@ ENV PATH="/home/ccagent/.local/bin:${PATH}"
 RUN addgroup -g 1000 ccagent && \
     adduser -D -s /bin/bash -u 1000 -G ccagent ccagent
 
-# Copy scripts
-COPY rotate-gh-token.sh /usr/local/bin/rotate-gh-token.sh
+# Copy startup script
 COPY startup.sh /usr/local/bin/startup.sh
-RUN chmod +x /usr/local/bin/rotate-gh-token.sh /usr/local/bin/startup.sh
+RUN chmod +x /usr/local/bin/startup.sh
 
 # Create workspace directory and set ownership
 RUN mkdir -p /workspace && chown -R ccagent:ccagent /workspace

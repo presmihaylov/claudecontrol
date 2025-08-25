@@ -1,0 +1,29 @@
+FROM alpine:latest
+
+# Install minimal dependencies for token rotation
+RUN apk update && apk add --no-cache \
+    bash \
+    curl \
+    jq \
+    openssl \
+    coreutils
+
+# Create non-root user with same UID as ccagent for compatibility
+RUN addgroup -g 1000 rotator && \
+    adduser -D -s /bin/bash -u 1000 -G rotator rotator
+
+# Copy rotation script
+COPY rotate-gh-token-container.sh /usr/local/bin/rotate-gh-token.sh
+RUN chmod +x /usr/local/bin/rotate-gh-token.sh
+
+# Create shared directory for output
+RUN mkdir -p /shared && chown -R rotator:rotator /shared
+
+# Switch to non-root user
+USER rotator
+
+# Set working directory
+WORKDIR /shared
+
+# Run token rotation script
+CMD ["/usr/local/bin/rotate-gh-token.sh"]
