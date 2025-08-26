@@ -1,6 +1,10 @@
 package api
 
-import "ccbackend/models"
+import (
+	"time"
+
+	"ccbackend/models"
+)
 
 // DomainUserToAPIUser converts a domain User model to an API UserModel
 func DomainUserToAPIUser(domainUser *models.User) *UserModel {
@@ -121,14 +125,23 @@ func DomainAnthropicIntegrationToAPIAnthropicIntegration(
 		return nil
 	}
 
-	return &AnthropicIntegration{
+	api := &AnthropicIntegration{
 		ID:            domainIntegration.ID,
 		HasAPIKey:     domainIntegration.AnthropicAPIKey != nil,
 		HasOAuthToken: domainIntegration.ClaudeCodeOAuthToken != nil,
-		OrgID:         string(domainIntegration.OrgID),
-		CreatedAt:     domainIntegration.CreatedAt,
-		UpdatedAt:     domainIntegration.UpdatedAt,
+		HasOAuthTokens: domainIntegration.ClaudeCodeAccessToken != nil &&
+			domainIntegration.ClaudeCodeRefreshToken != nil,
+		OrgID:     string(domainIntegration.OrgID),
+		CreatedAt: domainIntegration.CreatedAt,
+		UpdatedAt: domainIntegration.UpdatedAt,
 	}
+
+	// Check if OAuth tokens are expired
+	if api.HasOAuthTokens && domainIntegration.AccessTokenExpiresAt != nil {
+		api.OAuthTokenExpired = time.Now().After(*domainIntegration.AccessTokenExpiresAt)
+	}
+
+	return api
 }
 
 // DomainAnthropicIntegrationsToAPIAnthropicIntegrations converts a slice of domain AnthropicIntegration models to API AnthropicIntegration slice

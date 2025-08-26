@@ -16,6 +16,7 @@ import (
 	"github.com/rs/cors"
 
 	"ccbackend/clients"
+	anthropic "ccbackend/clients/anthropic"
 	discordclient "ccbackend/clients/discord"
 	githubclient "ccbackend/clients/github"
 	slackclient "ccbackend/clients/slack"
@@ -122,7 +123,11 @@ func run() error {
 		return fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 	githubService := githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, githubClient)
-	anthropicService := anthropicintegrations.NewAnthropicIntegrationsService(anthropicIntegrationsRepo)
+	anthropicClient := anthropic.NewAnthropicClient()
+	anthropicService := anthropicintegrations.NewAnthropicIntegrationsService(
+		anthropicIntegrationsRepo,
+		anthropicClient,
+	)
 	ccAgentContainerService := ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
 		ccAgentContainerIntegrationsRepo,
 	)

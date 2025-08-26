@@ -7,27 +7,31 @@ import (
 
 	"github.com/samber/mo"
 
+	"ccbackend/clients"
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
 )
 
 type AnthropicIntegrationsService struct {
-	anthropicRepo *db.PostgresAnthropicIntegrationsRepository
+	anthropicRepo   *db.PostgresAnthropicIntegrationsRepository
+	anthropicClient clients.AnthropicClient
 }
 
 func NewAnthropicIntegrationsService(
 	repo *db.PostgresAnthropicIntegrationsRepository,
+	anthropicClient clients.AnthropicClient,
 ) *AnthropicIntegrationsService {
 	return &AnthropicIntegrationsService{
-		anthropicRepo: repo,
+		anthropicRepo:   repo,
+		anthropicClient: anthropicClient,
 	}
 }
 
 func (s *AnthropicIntegrationsService) CreateAnthropicIntegration(
 	ctx context.Context,
 	orgID models.OrgID,
-	apiKey, oauthToken *string,
+	apiKey, oauthToken, codeVerifier *string,
 ) (*models.AnthropicIntegration, error) {
 	log.Printf("📋 Starting to create Anthropic integration for org: %s", orgID)
 
@@ -35,7 +39,7 @@ func (s *AnthropicIntegrationsService) CreateAnthropicIntegration(
 		return nil, fmt.Errorf("organization ID must be a valid ULID")
 	}
 
-	// Validate exactly one token type is provided
+	// Validate exactly one authentication method is provided
 	if apiKey == nil && oauthToken == nil {
 		return nil, fmt.Errorf("either API key or OAuth token must be provided")
 	}
@@ -51,10 +55,32 @@ func (s *AnthropicIntegrationsService) CreateAnthropicIntegration(
 
 	// Create the integration
 	integration := &models.AnthropicIntegration{
-		ID:                   core.NewID("ai"),
-		AnthropicAPIKey:      apiKey,
-		ClaudeCodeOAuthToken: oauthToken,
-		OrgID:                orgID,
+		ID:              core.NewID("ai"),
+		AnthropicAPIKey: apiKey,
+		OrgID:           orgID,
+	}
+
+	// If OAuth token provided, exchange it for access and refresh tokens
+	if oauthToken != nil {
+		if codeVerifier == nil || *codeVerifier == "" {
+			return nil, fmt.Errorf("code verifier is required for OAuth token exchange")
+		}
+
+		// Store the original OAuth token to satisfy database constraint
+		integration.ClaudeCodeOAuthToken = oauthToken
+
+		log.Printf("📋 Exchanging OAuth code for tokens")
+		tokens, err := s.anthropicClient.ExchangeCodeForTokens(ctx, *oauthToken, *codeVerifier)
+		if err != nil {
+			return nil, fmt.Errorf("failed to exchange OAuth code for tokens: %w", err)
+		}
+
+		// Store the OAuth tokens
+		integration.ClaudeCodeAccessToken = &tokens.AccessToken
+		integration.ClaudeCodeRefreshToken = &tokens.RefreshToken
+		integration.AccessTokenExpiresAt = &tokens.ExpiresAt
+
+		log.Printf("📋 Successfully exchanged OAuth code for tokens")
 	}
 
 	if err := s.anthropicRepo.CreateAnthropicIntegration(ctx, integration); err != nil {
@@ -130,4 +156,55 @@ func (s *AnthropicIntegrationsService) DeleteAnthropicIntegration(
 
 	log.Printf("📋 Completed successfully - deleted Anthropic integration: %s", integrationID)
 	return nil
+}
+
+func (s *AnthropicIntegrationsService) RefreshTokens(
+	ctx context.Context,
+	orgID models.OrgID,
+	integrationID string,
+) (*models.AnthropicIntegration, error) {
+	log.Printf("📋 Starting to refresh tokens for Anthropic integration: %s in org: %s", integrationID, orgID)
+
+	if !core.IsValidULID(orgID) {
+		return nil, fmt.Errorf("organization ID must be a valid ULID")
+	}
+	if !core.IsValidULID(integrationID) {
+		return nil, fmt.Errorf("integration ID must be a valid ULID")
+	}
+
+	// Get the current integration
+	maybeIntegration, err := s.anthropicRepo.GetAnthropicIntegrationByID(ctx, orgID, integrationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Anthropic integration: %w", err)
+	}
+	if !maybeIntegration.IsPresent() {
+		return nil, fmt.Errorf("Anthropic integration not found")
+	}
+
+	integration := maybeIntegration.MustGet()
+
+	// Check if we have a refresh token
+	if integration.ClaudeCodeRefreshToken == nil || *integration.ClaudeCodeRefreshToken == "" {
+		return nil, fmt.Errorf("no refresh token available for this integration")
+	}
+
+	// Refresh the tokens
+	log.Printf("📋 Refreshing OAuth tokens using refresh token")
+	newTokens, err := s.anthropicClient.RefreshAccessToken(ctx, *integration.ClaudeCodeRefreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh tokens: %w", err)
+	}
+
+	// Update the integration with new tokens
+	integration.ClaudeCodeAccessToken = &newTokens.AccessToken
+	integration.ClaudeCodeRefreshToken = &newTokens.RefreshToken
+	integration.AccessTokenExpiresAt = &newTokens.ExpiresAt
+
+	// Save the updated integration (we need an update method in the repository)
+	if err := s.anthropicRepo.UpdateAnthropicIntegration(ctx, integration); err != nil {
+		return nil, fmt.Errorf("failed to update Anthropic integration with new tokens: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - refreshed tokens for Anthropic integration: %s", integrationID)
+	return integration, nil
 }

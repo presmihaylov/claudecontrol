@@ -265,7 +265,7 @@ export default function OnboardingPage() {
 				return;
 			}
 
-			const body: { api_key?: string; oauth_token?: string } = {};
+			const body: { api_key?: string; oauth_token?: string; code_verifier?: string } = {};
 			if (integrationMethod === "api-key") {
 				if (!apiKey.trim()) {
 					setError("Please enter an API key");
@@ -277,7 +277,14 @@ export default function OnboardingPage() {
 					setError("Please paste the OAuth code");
 					return;
 				}
+				// Get the code verifier from sessionStorage
+				const codeVerifier = sessionStorage.getItem("claude_code_verifier");
+				if (!codeVerifier) {
+					setError("Code verifier not found. Please restart the OAuth flow.");
+					return;
+				}
 				body.oauth_token = oauthCode.trim();
+				body.code_verifier = codeVerifier;
 			}
 
 			const response = await fetch(`${env.CCBACKEND_BASE_URL}/anthropic/integrations`, {

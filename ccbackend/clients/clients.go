@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -68,6 +69,19 @@ type GitHubClient interface {
 	ExchangeCodeForAccessToken(ctx context.Context, code string) (string, error)
 	UninstallApp(ctx context.Context, installationID string) error
 	ListInstalledRepositories(ctx context.Context, installationID string) ([]models.GitHubRepository, error)
+}
+
+// AnthropicTokens represents OAuth tokens from Anthropic
+type AnthropicTokens struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+}
+
+// AnthropicClient defines the interface for Anthropic OAuth operations
+type AnthropicClient interface {
+	ExchangeCodeForTokens(ctx context.Context, authCode, codeVerifier string) (*AnthropicTokens, error)
+	RefreshAccessToken(ctx context.Context, refreshToken string) (*AnthropicTokens, error)
 }
 
 // SocketIOClient defines the interface for Socket.IO client operations

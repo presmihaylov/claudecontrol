@@ -85,7 +85,7 @@ type AnthropicIntegrationsService interface {
 	CreateAnthropicIntegration(
 		ctx context.Context,
 		orgID models.OrgID,
-		apiKey, oauthToken *string,
+		apiKey, oauthToken, codeVerifier *string,
 	) (*models.AnthropicIntegration, error)
 	ListAnthropicIntegrations(
 		ctx context.Context,
@@ -97,6 +97,11 @@ type AnthropicIntegrationsService interface {
 		id string,
 	) (mo.Option[*models.AnthropicIntegration], error)
 	DeleteAnthropicIntegration(ctx context.Context, orgID models.OrgID, integrationID string) error
+	RefreshTokens(
+		ctx context.Context,
+		orgID models.OrgID,
+		integrationID string,
+	) (*models.AnthropicIntegration, error)
 }
 
 // CCAgentContainerIntegrationsService defines the interface for CCAgent container integration operations

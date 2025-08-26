@@ -471,8 +471,9 @@ func (h *DashboardHTTPHandler) HandleDeleteGitHubIntegration(w http.ResponseWrit
 
 // AnthropicIntegrationRequest represents the request body for creating an Anthropic integration
 type AnthropicIntegrationRequest struct {
-	APIKey     *string `json:"api_key,omitempty"`
-	OAuthToken *string `json:"oauth_token,omitempty"`
+	APIKey       *string `json:"api_key,omitempty"`
+	OAuthToken   *string `json:"oauth_token,omitempty"`
+	CodeVerifier *string `json:"code_verifier,omitempty"`
 }
 
 func (h *DashboardHTTPHandler) HandleListAnthropicIntegrations(w http.ResponseWriter, r *http.Request) {
@@ -530,7 +531,13 @@ func (h *DashboardHTTPHandler) HandleCreateAnthropicIntegration(w http.ResponseW
 		return
 	}
 
-	integration, err := h.handler.CreateAnthropicIntegration(r.Context(), req.APIKey, req.OAuthToken, user)
+	integration, err := h.handler.CreateAnthropicIntegration(
+		r.Context(),
+		req.APIKey,
+		req.OAuthToken,
+		req.CodeVerifier,
+		user,
+	)
 	if err != nil {
 		log.Printf("❌ Failed to create Anthropic integration: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
