@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -26,6 +27,9 @@ var anthropicIntegrationsColumns = []string{
 	"id",
 	"anthropic_api_key",
 	"claude_code_oauth_token",
+	"claude_code_access_token",
+	"claude_code_refresh_token",
+	"access_token_expires_at",
 	"organization_id",
 	"created_at",
 	"updated_at",
@@ -43,6 +47,9 @@ func (r *PostgresAnthropicIntegrationsRepository) CreateAnthropicIntegration(
 		"id",
 		"anthropic_api_key",
 		"claude_code_oauth_token",
+		"claude_code_access_token",
+		"claude_code_refresh_token",
+		"access_token_expires_at",
 		"organization_id",
 		"created_at",
 		"updated_at",
@@ -52,15 +59,23 @@ func (r *PostgresAnthropicIntegrationsRepository) CreateAnthropicIntegration(
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.anthropic_integrations (%s) 
-		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, integration.ID, integration.AnthropicAPIKey, integration.ClaudeCodeOAuthToken, integration.OrgID).
-		StructScan(integration)
+	err := r.db.QueryRowxContext(ctx, query,
+		integration.ID,
+		integration.AnthropicAPIKey,
+		integration.ClaudeCodeOAuthToken,
+		integration.ClaudeCodeAccessToken,
+		integration.ClaudeCodeRefreshToken,
+		integration.AccessTokenExpiresAt,
+		integration.OrgID).StructScan(integration)
 	if err != nil {
+		log.Printf("📋 DB: Failed to create Anthropic integration: %v", err)
 		return fmt.Errorf("failed to create anthropic integration: %w", err)
 	}
 
+	log.Printf("📋 DB: Successfully created Anthropic integration with ID: %s", integration.ID)
 	return nil
 }
 
@@ -116,13 +131,6 @@ func (r *PostgresAnthropicIntegrationsRepository) DeleteAnthropicIntegration(
 	orgID models.OrgID,
 	id string,
 ) error {
-	if !core.IsValidULID(orgID) {
-		return fmt.Errorf("organization ID must be a valid ULID")
-	}
-	if id == "" {
-		return fmt.Errorf("integration ID cannot be empty")
-	}
-
 	query := fmt.Sprintf(`
 		DELETE FROM %s.anthropic_integrations 
 		WHERE id = $1 AND organization_id = $2`, r.schema)
@@ -141,5 +149,42 @@ func (r *PostgresAnthropicIntegrationsRepository) DeleteAnthropicIntegration(
 		return fmt.Errorf("anthropic integration not found")
 	}
 
+	return nil
+}
+
+func (r *PostgresAnthropicIntegrationsRepository) UpdateAnthropicIntegration(
+	ctx context.Context,
+	integration *models.AnthropicIntegration,
+) error {
+	log.Printf("📋 DB: Updating Anthropic integration: %s", integration.ID)
+
+	query := fmt.Sprintf(`
+		UPDATE %s.anthropic_integrations 
+		SET anthropic_api_key = $1,
+		    claude_code_oauth_token = $2,
+		    claude_code_access_token = $3,
+		    claude_code_refresh_token = $4,
+		    access_token_expires_at = $5,
+		    updated_at = NOW()
+		WHERE id = $6 AND organization_id = $7
+		RETURNING %s`, r.schema, strings.Join(anthropicIntegrationsColumns, ", "))
+
+	err := r.db.QueryRowxContext(ctx, query,
+		integration.AnthropicAPIKey,
+		integration.ClaudeCodeOAuthToken,
+		integration.ClaudeCodeAccessToken,
+		integration.ClaudeCodeRefreshToken,
+		integration.AccessTokenExpiresAt,
+		integration.ID,
+		integration.OrgID).StructScan(integration)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("anthropic integration not found")
+		}
+		log.Printf("📋 DB: Failed to update Anthropic integration: %v", err)
+		return fmt.Errorf("failed to update anthropic integration: %w", err)
+	}
+
+	log.Printf("📋 DB: Successfully updated Anthropic integration: %s", integration.ID)
 	return nil
 }
