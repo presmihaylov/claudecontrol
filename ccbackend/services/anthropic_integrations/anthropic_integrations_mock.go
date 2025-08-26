@@ -17,9 +17,9 @@ type MockAnthropicIntegrationsService struct {
 func (m *MockAnthropicIntegrationsService) CreateAnthropicIntegration(
 	ctx context.Context,
 	orgID models.OrgID,
-	apiKey, oauthToken *string,
+	apiKey, oauthToken, codeVerifier *string,
 ) (*models.AnthropicIntegration, error) {
-	args := m.Called(ctx, orgID, apiKey, oauthToken)
+	args := m.Called(ctx, orgID, apiKey, oauthToken, codeVerifier)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -56,4 +56,16 @@ func (m *MockAnthropicIntegrationsService) DeleteAnthropicIntegration(
 ) error {
 	args := m.Called(ctx, orgID, integrationID)
 	return args.Error(0)
+}
+
+func (m *MockAnthropicIntegrationsService) RefreshTokens(
+	ctx context.Context,
+	orgID models.OrgID,
+	integrationID string,
+) (*models.AnthropicIntegration, error) {
+	args := m.Called(ctx, orgID, integrationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.AnthropicIntegration), args.Error(1)
 }

@@ -303,7 +303,7 @@ func (h *DashboardAPIHandler) ListAnthropicIntegrations(
 // CreateAnthropicIntegration creates a new Anthropic integration for an organization
 func (h *DashboardAPIHandler) CreateAnthropicIntegration(
 	ctx context.Context,
-	apiKey, oauthToken *string,
+	apiKey, oauthToken, codeVerifier *string,
 	user *models.User,
 ) (*models.AnthropicIntegration, error) {
 	log.Printf("➕ Creating Anthropic integration for organization: %s", user.OrgID)
@@ -312,6 +312,7 @@ func (h *DashboardAPIHandler) CreateAnthropicIntegration(
 		user.OrgID,
 		apiKey,
 		oauthToken,
+		codeVerifier,
 	)
 	if err != nil {
 		log.Printf("❌ Failed to create Anthropic integration: %v", err)
