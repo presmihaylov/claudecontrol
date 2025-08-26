@@ -82,30 +82,3 @@ CREATE INDEX idx_processed_discord_messages_updated_at_test ON claudecontrol_tes
 CREATE INDEX idx_processed_discord_messages_job_status_test ON claudecontrol_test.processed_discord_messages(job_id, status);
 CREATE INDEX idx_processed_discord_messages_integration_org_test ON claudecontrol_test.processed_discord_messages(discord_integration_id, organization_id);
 
--- Step 5: Create trigger to automatically update updated_at timestamp in production schema
-CREATE OR REPLACE FUNCTION claudecontrol.update_processed_discord_messages_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_update_processed_discord_messages_updated_at
-    BEFORE UPDATE ON claudecontrol.processed_discord_messages
-    FOR EACH ROW
-    EXECUTE FUNCTION claudecontrol.update_processed_discord_messages_updated_at();
-
--- Step 6: Create trigger to automatically update updated_at timestamp in test schema
-CREATE OR REPLACE FUNCTION claudecontrol_test.update_processed_discord_messages_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_update_processed_discord_messages_updated_at_test
-    BEFORE UPDATE ON claudecontrol_test.processed_discord_messages
-    FOR EACH ROW
-    EXECUTE FUNCTION claudecontrol_test.update_processed_discord_messages_updated_at();
