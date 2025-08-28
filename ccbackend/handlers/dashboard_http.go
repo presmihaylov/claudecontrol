@@ -717,7 +717,7 @@ func (h *DashboardHTTPHandler) HandleRedeployCCAgentContainer(w http.ResponseWri
 
 	vars := mux.Vars(r)
 	integrationID := vars["id"]
-	
+
 	log.Printf("🚀 Redeploy CCAgent container request received for integration: %s, org: %s", integrationID, org.ID)
 
 	if err := h.handler.ccAgentContainerService.RedeployCCAgentContainer(ctx, models.OrgID(org.ID), integrationID); err != nil {

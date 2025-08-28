@@ -184,7 +184,10 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 	organization := organizationOpt.MustGet()
 
 	// CCAgentSystemSecretKey should always be present - this is a system invariant
-	utils.AssertInvariant(organization.CCAgentSystemSecretKey != "", "CCAgent system secret key must be present for organization")
+	utils.AssertInvariant(
+		organization.CCAgentSystemSecretKey != "",
+		"CCAgent system secret key must be present for organization",
+	)
 
 	// Get GitHub integration for installation ID
 	githubIntegrations, err := s.githubIntegrationsService.ListGitHubIntegrations(ctx, orgID)
