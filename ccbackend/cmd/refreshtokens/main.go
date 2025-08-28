@@ -110,14 +110,14 @@ func refreshIntegrationTokens(
 	log.Printf("🔄 Processing integration %s (org: %s)", integration.ID, orgID)
 
 	// Check if this integration has OAuth tokens
-	if integration.ClaudeCodeRefreshToken == nil || *integration.ClaudeCodeRefreshToken == "" {
+	if integration.ClaudeCodeOAuthRefreshToken == nil || *integration.ClaudeCodeOAuthRefreshToken == "" {
 		log.Printf("⏭️  Skipping integration %s - no refresh token (likely API key auth)", integration.ID)
 		return nil
 	}
 
 	// Log current token status
-	if integration.AccessTokenExpiresAt != nil {
-		timeUntilExpiry := time.Until(*integration.AccessTokenExpiresAt)
+	if integration.ClaudeCodeOAuthTokenExpiresAt != nil {
+		timeUntilExpiry := time.Until(*integration.ClaudeCodeOAuthTokenExpiresAt)
 		log.Printf(
 			"🔄 Refreshing integration %s - current tokens expire in %v",
 			integration.ID,

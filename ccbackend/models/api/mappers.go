@@ -126,19 +126,18 @@ func DomainAnthropicIntegrationToAPIAnthropicIntegration(
 	}
 
 	api := &AnthropicIntegration{
-		ID:            domainIntegration.ID,
-		HasAPIKey:     domainIntegration.AnthropicAPIKey != nil,
-		HasOAuthToken: domainIntegration.ClaudeCodeOAuthToken != nil,
-		HasOAuthTokens: domainIntegration.ClaudeCodeAccessToken != nil &&
-			domainIntegration.ClaudeCodeRefreshToken != nil,
+		ID:        domainIntegration.ID,
+		HasAPIKey: domainIntegration.AnthropicAPIKey != nil,
+		HasOAuthToken: domainIntegration.ClaudeCodeOAuthToken != nil &&
+			domainIntegration.ClaudeCodeOAuthRefreshToken != nil,
 		OrgID:     string(domainIntegration.OrgID),
 		CreatedAt: domainIntegration.CreatedAt,
 		UpdatedAt: domainIntegration.UpdatedAt,
 	}
 
 	// Check if OAuth tokens are expired
-	if api.HasOAuthTokens && domainIntegration.AccessTokenExpiresAt != nil {
-		api.OAuthTokenExpired = time.Now().After(*domainIntegration.AccessTokenExpiresAt)
+	if api.HasOAuthToken && domainIntegration.ClaudeCodeOAuthTokenExpiresAt != nil {
+		api.OAuthTokenExpired = time.Now().After(*domainIntegration.ClaudeCodeOAuthTokenExpiresAt)
 	}
 
 	return api

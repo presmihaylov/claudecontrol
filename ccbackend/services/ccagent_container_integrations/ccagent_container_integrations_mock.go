@@ -57,3 +57,12 @@ func (m *MockCCAgentContainerIntegrationsService) DeleteCCAgentContainerIntegrat
 	args := m.Called(ctx, orgID, integrationID)
 	return args.Error(0)
 }
+
+func (m *MockCCAgentContainerIntegrationsService) RedeployCCAgentContainer(
+	ctx context.Context,
+	orgID models.OrgID,
+	integrationID string,
+) error {
+	args := m.Called(ctx, orgID, integrationID)
+	return args.Error(0)
+}
