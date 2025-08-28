@@ -115,7 +115,7 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
-	sshPrivateKeyBase64, err := getEnvRequired("SSH_PRIVATE_KEY_BASE64")
+	sshPrivateKeyBase64, err := getEnvRequired("SSH_PRIVATE_KEY_B64")
 	if err != nil {
 		return nil, err
 	}
