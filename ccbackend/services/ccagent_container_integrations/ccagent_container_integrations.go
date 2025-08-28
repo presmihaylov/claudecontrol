@@ -211,7 +211,7 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 
 	// Validate we have at least one authentication method
 	if anthropicIntegration.AnthropicAPIKey == nil && anthropicIntegration.ClaudeCodeOAuthToken == nil {
-		return fmt.Errorf("Anthropic integration does not have API key or OAuth token configured")
+		return fmt.Errorf("anthropic integration does not have API key or OAuth token configured")
 	}
 
 	// Build the redeployccagent.sh command

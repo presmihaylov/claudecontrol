@@ -66,9 +66,6 @@ func (s *AnthropicIntegrationsService) CreateAnthropicIntegration(
 			return nil, fmt.Errorf("code verifier is required for OAuth token exchange")
 		}
 
-		// Store the original OAuth token to satisfy database constraint
-		integration.ClaudeCodeOAuthToken = oauthToken
-
 		log.Printf("📋 Exchanging OAuth code for tokens")
 		tokens, err := s.anthropicClient.ExchangeCodeForTokens(ctx, *oauthToken, *codeVerifier)
 		if err != nil {
@@ -76,9 +73,9 @@ func (s *AnthropicIntegrationsService) CreateAnthropicIntegration(
 		}
 
 		// Store the OAuth tokens
-		integration.ClaudeCodeAccessToken = &tokens.AccessToken
-		integration.ClaudeCodeRefreshToken = &tokens.RefreshToken
-		integration.AccessTokenExpiresAt = &tokens.ExpiresAt
+		integration.ClaudeCodeOAuthToken = &tokens.AccessToken
+		integration.ClaudeCodeOAuthRefreshToken = &tokens.RefreshToken
+		integration.ClaudeCodeOAuthTokenExpiresAt = &tokens.ExpiresAt
 
 		log.Printf("📋 Successfully exchanged OAuth code for tokens")
 	}
@@ -178,27 +175,27 @@ func (s *AnthropicIntegrationsService) RefreshTokens(
 		return nil, fmt.Errorf("failed to get Anthropic integration: %w", err)
 	}
 	if !maybeIntegration.IsPresent() {
-		return nil, fmt.Errorf("Anthropic integration not found")
+		return nil, fmt.Errorf("anthropic integration not found")
 	}
 
 	integration := maybeIntegration.MustGet()
 
 	// Check if we have a refresh token
-	if integration.ClaudeCodeRefreshToken == nil || *integration.ClaudeCodeRefreshToken == "" {
+	if integration.ClaudeCodeOAuthRefreshToken == nil || *integration.ClaudeCodeOAuthRefreshToken == "" {
 		return nil, fmt.Errorf("no refresh token available for this integration")
 	}
 
 	// Refresh the tokens
 	log.Printf("📋 Refreshing OAuth tokens using refresh token")
-	newTokens, err := s.anthropicClient.RefreshAccessToken(ctx, *integration.ClaudeCodeRefreshToken)
+	newTokens, err := s.anthropicClient.RefreshAccessToken(ctx, *integration.ClaudeCodeOAuthRefreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to refresh tokens: %w", err)
 	}
 
 	// Update the integration with new tokens
-	integration.ClaudeCodeAccessToken = &newTokens.AccessToken
-	integration.ClaudeCodeRefreshToken = &newTokens.RefreshToken
-	integration.AccessTokenExpiresAt = &newTokens.ExpiresAt
+	integration.ClaudeCodeOAuthToken = &newTokens.AccessToken
+	integration.ClaudeCodeOAuthRefreshToken = &newTokens.RefreshToken
+	integration.ClaudeCodeOAuthTokenExpiresAt = &newTokens.ExpiresAt
 
 	// Save the updated integration (we need an update method in the repository)
 	if err := s.anthropicRepo.UpdateAnthropicIntegration(ctx, integration); err != nil {
