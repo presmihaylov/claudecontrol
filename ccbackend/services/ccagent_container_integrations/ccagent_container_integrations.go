@@ -11,6 +11,7 @@ import (
 	"ccbackend/db"
 	"ccbackend/models"
 	"ccbackend/services"
+	"ccbackend/utils"
 
 	"github.com/samber/mo"
 )
@@ -182,9 +183,8 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 	}
 	organization := organizationOpt.MustGet()
 
-	if organization.CCAgentSecretKey == nil {
-		return fmt.Errorf("organization does not have a CCAgent secret key configured")
-	}
+	// CCAgentSystemSecretKey should always be present - this is a system invariant
+	utils.AssertInvariant(organization.CCAgentSystemSecretKey != "", "CCAgent system secret key must be present for organization")
 
 	// Get GitHub integration for installation ID
 	githubIntegrations, err := s.githubIntegrationsService.ListGitHubIntegrations(ctx, orgID)
@@ -215,7 +215,7 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 	instanceName := fmt.Sprintf("ccagent-%s-1", orgID) // Use instance 1 for now
 	command := fmt.Sprintf("/root/redeployccagent.sh -n '%s' -k '%s' -r '%s' -i '%s'",
 		instanceName,
-		*organization.CCAgentSecretKey,
+		organization.CCAgentSystemSecretKey,
 		integration.RepoURL,
 		githubIntegration.GitHubInstallationID,
 	)

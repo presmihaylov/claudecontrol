@@ -110,6 +110,16 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
+	defaultSSHHost, err := getEnvRequired("DEFAULT_SSH_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	sshPrivateKeyBase64, err := getEnvRequired("SSH_PRIVATE_KEY_BASE64")
+	if err != nil {
+		return nil, err
+	}
+
 	config := &AppConfig{
 		SlackSigningSecret:     slackSigningSecret,
 		SlackClientID:          slackClientID,
@@ -129,8 +139,8 @@ func LoadConfig() (*AppConfig, error) {
 		SlackAlertWebhookURL:   os.Getenv("SLACK_ALERT_WEBHOOK_URL"),
 		Environment:            getEnvWithDefault("ENVIRONMENT", "dev"),
 		ServerLogsURL:          getEnvWithDefault("SERVER_LOGS_URL", ""),
-		DefaultSSHHost:         getEnvWithDefault("DEFAULT_SSH_HOST", "143.110.239.108"),
-		SSHPrivateKeyBase64:    getEnvWithDefault("SSH_PRIVATE_KEY_BASE64", ""),
+		DefaultSSHHost:         defaultSSHHost,
+		SSHPrivateKeyBase64:    sshPrivateKeyBase64,
 	}
 
 	return config, nil
