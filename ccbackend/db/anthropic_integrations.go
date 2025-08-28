@@ -27,9 +27,8 @@ var anthropicIntegrationsColumns = []string{
 	"id",
 	"anthropic_api_key",
 	"claude_code_oauth_token",
-	"claude_code_access_token",
-	"claude_code_refresh_token",
-	"access_token_expires_at",
+	"claude_code_oauth_refresh_token",
+	"claude_code_oauth_token_expires_at",
 	"organization_id",
 	"created_at",
 	"updated_at",
@@ -47,9 +46,8 @@ func (r *PostgresAnthropicIntegrationsRepository) CreateAnthropicIntegration(
 		"id",
 		"anthropic_api_key",
 		"claude_code_oauth_token",
-		"claude_code_access_token",
-		"claude_code_refresh_token",
-		"access_token_expires_at",
+		"claude_code_oauth_refresh_token",
+		"claude_code_oauth_token_expires_at",
 		"organization_id",
 		"created_at",
 		"updated_at",
@@ -59,16 +57,15 @@ func (r *PostgresAnthropicIntegrationsRepository) CreateAnthropicIntegration(
 
 	query := fmt.Sprintf(`
 		INSERT INTO %s.anthropic_integrations (%s) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
 	err := r.db.QueryRowxContext(ctx, query,
 		integration.ID,
 		integration.AnthropicAPIKey,
 		integration.ClaudeCodeOAuthToken,
-		integration.ClaudeCodeAccessToken,
-		integration.ClaudeCodeRefreshToken,
-		integration.AccessTokenExpiresAt,
+		integration.ClaudeCodeOAuthRefreshToken,
+		integration.ClaudeCodeOAuthTokenExpiresAt,
 		integration.OrgID).StructScan(integration)
 	if err != nil {
 		log.Printf("📋 DB: Failed to create Anthropic integration: %v", err)
@@ -162,19 +159,17 @@ func (r *PostgresAnthropicIntegrationsRepository) UpdateAnthropicIntegration(
 		UPDATE %s.anthropic_integrations 
 		SET anthropic_api_key = $1,
 		    claude_code_oauth_token = $2,
-		    claude_code_access_token = $3,
-		    claude_code_refresh_token = $4,
-		    access_token_expires_at = $5,
+		    claude_code_oauth_refresh_token = $3,
+		    claude_code_oauth_token_expires_at = $4,
 		    updated_at = NOW()
-		WHERE id = $6 AND organization_id = $7
+		WHERE id = $5 AND organization_id = $6
 		RETURNING %s`, r.schema, strings.Join(anthropicIntegrationsColumns, ", "))
 
 	err := r.db.QueryRowxContext(ctx, query,
 		integration.AnthropicAPIKey,
 		integration.ClaudeCodeOAuthToken,
-		integration.ClaudeCodeAccessToken,
-		integration.ClaudeCodeRefreshToken,
-		integration.AccessTokenExpiresAt,
+		integration.ClaudeCodeOAuthRefreshToken,
+		integration.ClaudeCodeOAuthTokenExpiresAt,
 		integration.ID,
 		integration.OrgID).StructScan(integration)
 	if err != nil {
