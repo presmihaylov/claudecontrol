@@ -20,6 +20,7 @@ import (
 	discordclient "ccbackend/clients/discord"
 	githubclient "ccbackend/clients/github"
 	slackclient "ccbackend/clients/slack"
+	"ccbackend/clients/ssh"
 	socketioclient "ccbackend/clients/socketio"
 	"ccbackend/config"
 	"ccbackend/db"
@@ -128,8 +129,16 @@ func run() error {
 		anthropicIntegrationsRepo,
 		anthropicClient,
 	)
+	// Create SSH client
+	sshClient := ssh.NewSSHClient(cfg.SSHPrivateKeyBase64)
+	
 	ccAgentContainerService := ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
 		ccAgentContainerIntegrationsRepo,
+		cfg,
+		githubService,
+		anthropicService,
+		organizationsService,
+		sshClient,
 	)
 
 	// Create API key validator using organizationsService directly

@@ -707,6 +707,31 @@ func (h *DashboardHTTPHandler) HandleDeleteCCAgentContainerIntegration(w http.Re
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *DashboardHTTPHandler) HandleRedeployCCAgentContainer(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok || org == nil {
+		http.Error(w, "organization not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(r)
+	integrationID := vars["id"]
+	
+	log.Printf("🚀 Redeploy CCAgent container request received for integration: %s, org: %s", integrationID, org.ID)
+
+	if err := h.handler.ccAgentContainerService.RedeployCCAgentContainer(ctx, models.OrgID(org.ID), integrationID); err != nil {
+		log.Printf("❌ Failed to redeploy CCAgent container: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("✅ CCAgent container redeployed successfully: %s", integrationID)
+	h.writeJSONResponse(w, http.StatusOK, map[string]string{
+		"message": "CCAgent container redeployed successfully",
+	})
+}
+
 func (h *DashboardHTTPHandler) HandleListGitHubRepositories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	org, ok := appctx.GetOrganization(ctx)
@@ -805,6 +830,9 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	router.HandleFunc("/ccagent-container/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteCCAgentContainerIntegration)).
 		Methods("DELETE")
 	log.Printf("✅ DELETE /ccagent-container/integrations/{id} endpoint registered")
+	router.HandleFunc("/ccagents/{id}/redeploy", authMiddleware.WithAuth(h.HandleRedeployCCAgentContainer)).
+		Methods("POST")
+	log.Printf("✅ POST /ccagents/{id}/redeploy endpoint registered")
 
 	// Organization endpoints
 	router.HandleFunc("/organizations", authMiddleware.WithAuth(h.HandleGetOrganization)).Methods("GET")
