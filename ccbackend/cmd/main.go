@@ -20,8 +20,8 @@ import (
 	discordclient "ccbackend/clients/discord"
 	githubclient "ccbackend/clients/github"
 	slackclient "ccbackend/clients/slack"
-	"ccbackend/clients/ssh"
 	socketioclient "ccbackend/clients/socketio"
+	"ccbackend/clients/ssh"
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/handlers"
@@ -131,7 +131,7 @@ func run() error {
 	)
 	// Create SSH client
 	sshClient := ssh.NewSSHClient(cfg.SSHPrivateKeyBase64)
-	
+
 	ccAgentContainerService := ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
 		ccAgentContainerIntegrationsRepo,
 		cfg,

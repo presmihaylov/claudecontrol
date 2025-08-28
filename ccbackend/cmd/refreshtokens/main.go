@@ -118,7 +118,11 @@ func refreshIntegrationTokens(
 	// Log current token status
 	if integration.AccessTokenExpiresAt != nil {
 		timeUntilExpiry := time.Until(*integration.AccessTokenExpiresAt)
-		log.Printf("🔄 Refreshing integration %s - current tokens expire in %v", integration.ID, timeUntilExpiry.Round(time.Minute))
+		log.Printf(
+			"🔄 Refreshing integration %s - current tokens expire in %v",
+			integration.ID,
+			timeUntilExpiry.Round(time.Minute),
+		)
 	} else {
 		log.Printf("🔄 Refreshing integration %s - no expiration time recorded", integration.ID)
 	}
