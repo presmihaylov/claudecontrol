@@ -218,7 +218,7 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 	}
 
 	// Build the redeployccagent.sh command
-	instanceName := fmt.Sprintf("ccagent-%s", orgID)
+	instanceName := fmt.Sprintf("ccagent-%s", integrationID)
 	command := fmt.Sprintf("/root/redeployccagent.sh -n '%s' -k '%s' -r '%s' -i '%s'",
 		instanceName,
 		organization.CCAgentSystemSecretKey,
