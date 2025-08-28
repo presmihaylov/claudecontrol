@@ -212,7 +212,7 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 	}
 
 	// Build the redeployccagent.sh command
-	instanceName := fmt.Sprintf("ccagent-%s-1", orgID) // Use instance 1 for now
+	instanceName := fmt.Sprintf("ccagent-%s", orgID)
 	command := fmt.Sprintf("/root/redeployccagent.sh -n '%s' -k '%s' -r '%s' -i '%s'",
 		instanceName,
 		organization.CCAgentSystemSecretKey,
@@ -229,10 +229,6 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 
 	// Execute the command via SSH
 	sshHost := integration.SSHHost
-	if sshHost == "" {
-		sshHost = s.config.DefaultSSHHost
-	}
-
 	log.Printf("📋 Executing redeployccagent.sh on host: %s", sshHost)
 	if err := s.sshClient.ExecuteCommand(sshHost, command); err != nil {
 		return fmt.Errorf("failed to execute redeployccagent.sh: %w", err)
