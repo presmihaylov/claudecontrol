@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"net/url"
 	"regexp"
+	"strings"
 )
 
 func AssertInvariant(condition bool, message string) {
@@ -36,4 +38,33 @@ func ConvertMarkdownToSlack(message string) string {
 	result = boldRegex.ReplaceAllString(result, "*$1*")
 
 	return result
+}
+
+// SanitiseURL removes scheme, query params, and fragments.
+// It returns only host + path.
+func SanitiseURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		// If parsing fails, just return the input
+		return raw
+	}
+
+	// Ensure we drop query and fragment
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+
+	// Sometimes Parse may not fill Host if scheme is missing
+	host := parsed.Host
+	if host == "" {
+		// Try to extract host manually
+		host = parsed.Path
+		parsed.Path = ""
+		// Trim any leading scheme-like prefix
+		if i := strings.Index(host, "/"); i != -1 {
+			parsed.Path = host[i:]
+			host = host[:i]
+		}
+	}
+
+	return host + parsed.Path
 }
