@@ -126,6 +126,11 @@ type CCAgentContainerIntegrationsService interface {
 		orgID models.OrgID,
 		integrationID string,
 	) error
+	RedeployCCAgentContainer(
+		ctx context.Context,
+		orgID models.OrgID,
+		integrationID string,
+	) error
 }
 
 // AgentsService defines the interface for agent-related operations

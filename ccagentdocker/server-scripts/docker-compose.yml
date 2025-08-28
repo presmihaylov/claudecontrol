@@ -6,8 +6,8 @@ services:
       - ./cc.pem:/secrets/cc.pem:ro
       - ./ccagent-test:/shared:Z
     environment:
-      - GITHUB_APP_ID=1798229
-      - GITHUB_INSTALLATION_ID=82568898
+      - GITHUB_APP_ID=123456
+      - GITHUB_INSTALLATION_ID=123456
     healthcheck:
       test: ["CMD", "test", "-f", "/shared/.config/ccagent/.env"]
       interval: 5s
@@ -26,8 +26,8 @@ services:
       - ./ccagent-test:/home/ccagent
     environment:
       - REPO_URL=github.com/presmihaylov/claudecontrol
-      - CCAGENT_API_KEY=sys_ajNc++GrTmQ+U2JyLx8Jg9XmCX9TxcG45xTSPBoVzwA=
-      - CLAUDE_CODE_OAUTH_TOKEN=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
+      - CCAGENT_API_KEY=sys_xyz
+      - CLAUDE_CODE_OAUTH_TOKEN=sk-ant-xyz
     working_dir: /workspace
     stdin_open: true
     tty: true

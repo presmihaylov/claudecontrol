@@ -34,14 +34,15 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) CreateCCAgentContainerI
 	integration *models.CCAgentContainerIntegration,
 ) error {
 	query := fmt.Sprintf(`
-		INSERT INTO %s.ccagent_container_integrations (id, instances_count, repo_url, organization_id)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO %s.ccagent_container_integrations (id, instances_count, repo_url, ssh_host, organization_id)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING created_at, updated_at`, r.schema)
 
 	err := r.db.QueryRowxContext(ctx, query,
 		integration.ID,
 		integration.InstancesCount,
 		integration.RepoURL,
+		integration.SSHHost,
 		integration.OrgID,
 	).Scan(&integration.CreatedAt, &integration.UpdatedAt)
 
@@ -59,7 +60,7 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) ListCCAgentContainerInt
 ) ([]models.CCAgentContainerIntegration, error) {
 	integrations := []models.CCAgentContainerIntegration{}
 	query := fmt.Sprintf(`
-		SELECT id, instances_count, repo_url, organization_id, created_at, updated_at
+		SELECT id, instances_count, repo_url, ssh_host, organization_id, created_at, updated_at
 		FROM %s.ccagent_container_integrations
 		WHERE organization_id = $1
 		ORDER BY created_at DESC`, r.schema)
@@ -80,7 +81,7 @@ func (r *PostgresCCAgentContainerIntegrationsRepository) GetCCAgentContainerInte
 ) (mo.Option[*models.CCAgentContainerIntegration], error) {
 	var integration models.CCAgentContainerIntegration
 	query := fmt.Sprintf(`
-		SELECT id, instances_count, repo_url, organization_id, created_at, updated_at
+		SELECT id, instances_count, repo_url, ssh_host, organization_id, created_at, updated_at
 		FROM %s.ccagent_container_integrations
 		WHERE id = $1 AND organization_id = $2`, r.schema)
 

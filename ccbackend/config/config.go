@@ -8,24 +8,26 @@ import (
 )
 
 type AppConfig struct {
-	SlackSigningSecret   string
-	SlackClientID        string
-	SlackClientSecret    string
-	DiscordClientID      string
-	DiscordClientSecret  string
-	DiscordBotToken      string
-	GitHubClientID       string
-	GitHubClientSecret   string
-	GitHubAppID          string
-	GitHubAppPrivateKey  string
-	Port                 string
-	DatabaseURL          string
-	DatabaseSchema       string
-	ClerkSecretKey       string
-	CORSAllowedOrigins   string
-	SlackAlertWebhookURL string
-	Environment          string
-	ServerLogsURL        string
+	SlackSigningSecret     string
+	SlackClientID          string
+	SlackClientSecret      string
+	DiscordClientID        string
+	DiscordClientSecret    string
+	DiscordBotToken        string
+	GitHubClientID         string
+	GitHubClientSecret     string
+	GitHubAppID            string
+	GitHubAppPrivateKey    string
+	Port                   string
+	DatabaseURL            string
+	DatabaseSchema         string
+	ClerkSecretKey         string
+	CORSAllowedOrigins     string
+	SlackAlertWebhookURL   string
+	Environment            string
+	ServerLogsURL          string
+	DefaultSSHHost         string
+	SSHPrivateKeyBase64    string
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -109,24 +111,26 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	config := &AppConfig{
-		SlackSigningSecret:   slackSigningSecret,
-		SlackClientID:        slackClientID,
-		SlackClientSecret:    slackClientSecret,
-		DiscordClientID:      discordClientID,
-		DiscordClientSecret:  discordClientSecret,
-		DiscordBotToken:      discordBotToken,
-		GitHubClientID:       githubClientID,
-		GitHubClientSecret:   githubClientSecret,
-		GitHubAppID:          githubAppID,
-		GitHubAppPrivateKey:  githubAppPrivateKey,
-		Port:                 port,
-		DatabaseURL:          databaseURL,
-		DatabaseSchema:       databaseSchema,
-		ClerkSecretKey:       clerkSecretKey,
-		CORSAllowedOrigins:   corsAllowedOrigins,
-		SlackAlertWebhookURL: os.Getenv("SLACK_ALERT_WEBHOOK_URL"),
-		Environment:          getEnvWithDefault("ENVIRONMENT", "dev"),
-		ServerLogsURL:        getEnvWithDefault("SERVER_LOGS_URL", ""),
+		SlackSigningSecret:     slackSigningSecret,
+		SlackClientID:          slackClientID,
+		SlackClientSecret:      slackClientSecret,
+		DiscordClientID:        discordClientID,
+		DiscordClientSecret:    discordClientSecret,
+		DiscordBotToken:        discordBotToken,
+		GitHubClientID:         githubClientID,
+		GitHubClientSecret:     githubClientSecret,
+		GitHubAppID:            githubAppID,
+		GitHubAppPrivateKey:    githubAppPrivateKey,
+		Port:                   port,
+		DatabaseURL:            databaseURL,
+		DatabaseSchema:         databaseSchema,
+		ClerkSecretKey:         clerkSecretKey,
+		CORSAllowedOrigins:     corsAllowedOrigins,
+		SlackAlertWebhookURL:   os.Getenv("SLACK_ALERT_WEBHOOK_URL"),
+		Environment:            getEnvWithDefault("ENVIRONMENT", "dev"),
+		ServerLogsURL:          getEnvWithDefault("SERVER_LOGS_URL", ""),
+		DefaultSSHHost:         getEnvWithDefault("DEFAULT_SSH_HOST", "143.110.239.108"),
+		SSHPrivateKeyBase64:    getEnvWithDefault("SSH_PRIVATE_KEY_BASE64", ""),
 	}
 
 	return config, nil
