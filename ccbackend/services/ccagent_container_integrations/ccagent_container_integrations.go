@@ -62,11 +62,14 @@ func (s *CCAgentContainerIntegrationsService) CreateCCAgentContainerIntegration(
 		return nil, fmt.Errorf("repo_url cannot be empty")
 	}
 
+	// Sanitize repo URL to remove HTTPS prefixes
+	sanitizedRepoURL := utils.SanitiseURL(repoURL)
+
 	// Create new integration
 	integration := &models.CCAgentContainerIntegration{
 		ID:             core.NewID("cci"),
 		InstancesCount: instancesCount,
-		RepoURL:        repoURL,
+		RepoURL:        sanitizedRepoURL,
 		SSHHost:        s.config.DefaultSSHHost,
 		OrgID:          orgID,
 	}

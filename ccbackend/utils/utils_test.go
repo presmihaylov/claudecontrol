@@ -199,3 +199,109 @@ func TestAssertInvariant(t *testing.T) {
 		})
 	})
 }
+
+func TestSanitiseURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "HTTPS GitHub URL",
+			input:    "https://github.com/presmihaylov/foobar",
+			expected: "github.com/presmihaylov/foobar",
+		},
+		{
+			name:     "HTTP GitHub URL",
+			input:    "http://github.com/presmihaylov/foobar",
+			expected: "github.com/presmihaylov/foobar",
+		},
+		{
+			name:     "Already sanitized URL",
+			input:    "github.com/presmihaylov/foobar",
+			expected: "github.com/presmihaylov/foobar",
+		},
+		{
+			name:     "HTTPS URL with path",
+			input:    "https://example.com/path/to/resource",
+			expected: "example.com/path/to/resource",
+		},
+		{
+			name:     "HTTP URL with query params and fragment",
+			input:    "http://example.com/path/to/resource?query=1&foo=bar#fragment",
+			expected: "example.com/path/to/resource",
+		},
+		{
+			name:     "FTP URL",
+			input:    "ftp://my.site.net/data",
+			expected: "my.site.net/data",
+		},
+		{
+			name:     "URL with port",
+			input:    "https://localhost:8080/api/endpoint",
+			expected: "localhost:8080/api/endpoint",
+		},
+		{
+			name:     "GitHub SSH URL (should return as-is due to parse error)",
+			input:    "git@github.com:presmihaylov/foobar.git",
+			expected: "git@github.com:presmihaylov/foobar.git",
+		},
+		{
+			name:     "Complex URL with subdomain",
+			input:    "https://api.github.com/repos/presmihaylov/foobar",
+			expected: "api.github.com/repos/presmihaylov/foobar",
+		},
+		{
+			name:     "URL with only query params",
+			input:    "https://example.com?query=1&foo=bar",
+			expected: "example.com",
+		},
+		{
+			name:     "URL with only fragment",
+			input:    "https://example.com#section",
+			expected: "example.com",
+		},
+		{
+			name:     "Empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "Invalid URL format",
+			input:    "not-a-valid-url",
+			expected: "not-a-valid-url",
+		},
+		{
+			name:     "URL with user info",
+			input:    "https://user:pass@example.com/path",
+			expected: "example.com/path",
+		},
+		{
+			name:     "GitLab URL",
+			input:    "https://gitlab.com/group/project",
+			expected: "gitlab.com/group/project",
+		},
+		{
+			name:     "Bitbucket URL",
+			input:    "https://bitbucket.org/user/repo",
+			expected: "bitbucket.org/user/repo",
+		},
+		{
+			name:     "URL without scheme with path",
+			input:    "github.com/user/repo/tree/main",
+			expected: "github.com/user/repo/tree/main",
+		},
+		{
+			name:     "URL without scheme (no-scheme/path pattern)",
+			input:    "no-scheme/path",
+			expected: "no-scheme/path",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := SanitiseURL(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
