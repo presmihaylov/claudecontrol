@@ -5,24 +5,43 @@ import (
 	"fmt"
 	"log"
 
+	"ccbackend/clients/ssh"
+	"ccbackend/config"
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
+	"ccbackend/services"
+	"ccbackend/utils"
 
 	"github.com/samber/mo"
 )
 
 // CCAgentContainerIntegrationsService handles CCAgent container integration operations
 type CCAgentContainerIntegrationsService struct {
-	repo *db.PostgresCCAgentContainerIntegrationsRepository
+	repo                         *db.PostgresCCAgentContainerIntegrationsRepository
+	config                       *config.AppConfig
+	githubIntegrationsService    services.GitHubIntegrationsService
+	anthropicIntegrationsService services.AnthropicIntegrationsService
+	organizationsService         services.OrganizationsService
+	sshClient                    ssh.SSHClientInterface
 }
 
 // NewCCAgentContainerIntegrationsService creates a new service instance
 func NewCCAgentContainerIntegrationsService(
 	repo *db.PostgresCCAgentContainerIntegrationsRepository,
+	config *config.AppConfig,
+	githubIntegrationsService services.GitHubIntegrationsService,
+	anthropicIntegrationsService services.AnthropicIntegrationsService,
+	organizationsService services.OrganizationsService,
+	sshClient ssh.SSHClientInterface,
 ) *CCAgentContainerIntegrationsService {
 	return &CCAgentContainerIntegrationsService{
-		repo: repo,
+		repo:                         repo,
+		config:                       config,
+		githubIntegrationsService:    githubIntegrationsService,
+		anthropicIntegrationsService: anthropicIntegrationsService,
+		organizationsService:         organizationsService,
+		sshClient:                    sshClient,
 	}
 }
 
@@ -48,6 +67,7 @@ func (s *CCAgentContainerIntegrationsService) CreateCCAgentContainerIntegration(
 		ID:             core.NewID("cci"),
 		InstancesCount: instancesCount,
 		RepoURL:        repoURL,
+		SSHHost:        s.config.DefaultSSHHost,
 		OrgID:          orgID,
 	}
 
@@ -127,5 +147,93 @@ func (s *CCAgentContainerIntegrationsService) DeleteCCAgentContainerIntegration(
 	}
 
 	log.Printf("📋 Completed successfully - deleted CCAgent container integration: %s", integrationID)
+	return nil
+}
+
+// RedeployCCAgentContainer redeploys a CCAgent container using SSH
+func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
+	ctx context.Context,
+	orgID models.OrgID,
+	integrationID string,
+) error {
+	log.Printf("📋 Starting to redeploy CCAgent container integration: %s for org: %s", integrationID, orgID)
+
+	// Validate ID
+	if !core.IsValidULID(integrationID) {
+		return fmt.Errorf("invalid integration ID")
+	}
+
+	// Get CCAgent container integration
+	integrationOpt, err := s.GetCCAgentContainerIntegrationByID(ctx, orgID, integrationID)
+	if err != nil {
+		return fmt.Errorf("failed to get CCAgent container integration: %w", err)
+	}
+	if !integrationOpt.IsPresent() {
+		return fmt.Errorf("CCAgent container integration not found")
+	}
+	integration := integrationOpt.MustGet()
+
+	// Get organization to access CCAgent secret key
+	organizationOpt, err := s.organizationsService.GetOrganizationByID(ctx, string(orgID))
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+	if !organizationOpt.IsPresent() {
+		return fmt.Errorf("organization not found")
+	}
+	organization := organizationOpt.MustGet()
+
+	// CCAgentSystemSecretKey should always be present - this is a system invariant
+	utils.AssertInvariant(organization.CCAgentSystemSecretKey != "", "CCAgent system secret key must be present for organization")
+
+	// Get GitHub integration for installation ID
+	githubIntegrations, err := s.githubIntegrationsService.ListGitHubIntegrations(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to list GitHub integrations: %w", err)
+	}
+	if len(githubIntegrations) == 0 {
+		return fmt.Errorf("no GitHub integration found for organization")
+	}
+	githubIntegration := githubIntegrations[0] // Use first integration
+
+	// Get Anthropic integration for authentication
+	anthropicIntegrations, err := s.anthropicIntegrationsService.ListAnthropicIntegrations(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to list Anthropic integrations: %w", err)
+	}
+	if len(anthropicIntegrations) == 0 {
+		return fmt.Errorf("no Anthropic integration found for organization")
+	}
+	anthropicIntegration := anthropicIntegrations[0] // Use first integration
+
+	// Validate we have at least one authentication method
+	if anthropicIntegration.AnthropicAPIKey == nil && anthropicIntegration.ClaudeCodeOAuthToken == nil {
+		return fmt.Errorf("Anthropic integration does not have API key or OAuth token configured")
+	}
+
+	// Build the redeployccagent.sh command
+	instanceName := fmt.Sprintf("ccagent-%s", orgID)
+	command := fmt.Sprintf("/root/redeployccagent.sh -n '%s' -k '%s' -r '%s' -i '%s'",
+		instanceName,
+		organization.CCAgentSystemSecretKey,
+		integration.RepoURL,
+		githubIntegration.GitHubInstallationID,
+	)
+
+	// Add authentication method
+	if anthropicIntegration.AnthropicAPIKey != nil {
+		command += fmt.Sprintf(" -a '%s'", *anthropicIntegration.AnthropicAPIKey)
+	} else if anthropicIntegration.ClaudeCodeOAuthToken != nil {
+		command += fmt.Sprintf(" -o '%s'", *anthropicIntegration.ClaudeCodeOAuthToken)
+	}
+
+	// Execute the command via SSH
+	sshHost := integration.SSHHost
+	log.Printf("📋 Executing redeployccagent.sh on host: %s", sshHost)
+	if err := s.sshClient.ExecuteCommand(sshHost, command); err != nil {
+		return fmt.Errorf("failed to execute redeployccagent.sh: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - redeployed CCAgent container integration: %s", integrationID)
 	return nil
 }

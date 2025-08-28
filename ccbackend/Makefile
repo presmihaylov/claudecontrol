@@ -1,4 +1,4 @@
-.PHONY: run build clean test test-verbose lint lint-fix
+.PHONY: run build clean test test-verbose lint lint-fix genapikey
 
 run:
 	go run cmd/main.go
@@ -23,3 +23,6 @@ lint:
 lint-fix:
 	golines --max-len=120 --write-output .
 	golangci-lint run --fix
+
+genapikey:
+	go run cmd/genapikey/main.go
