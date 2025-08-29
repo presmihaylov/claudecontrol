@@ -158,8 +158,13 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 	ctx context.Context,
 	orgID models.OrgID,
 	integrationID string,
+	updateConfigOnly bool,
 ) error {
-	log.Printf("📋 Starting to redeploy CCAgent container integration: %s for org: %s", integrationID, orgID)
+	actionType := "redeploy"
+	if updateConfigOnly {
+		actionType = "update config for"
+	}
+	log.Printf("📋 Starting to %s CCAgent container integration: %s for org: %s", actionType, integrationID, orgID)
 
 	// Validate ID
 	if !core.IsValidULID(integrationID) {
@@ -233,6 +238,11 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 		command += fmt.Sprintf(" -o '%s'", *anthropicIntegration.ClaudeCodeOAuthToken)
 	}
 
+	// Add config-only flag if requested
+	if updateConfigOnly {
+		command += " --config-only"
+	}
+
 	// Execute the command via SSH
 	sshHost := integration.SSHHost
 	log.Printf("📋 Executing redeployccagent.sh on host: %s", sshHost)
@@ -240,6 +250,10 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 		return fmt.Errorf("failed to execute redeployccagent.sh: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - redeployed CCAgent container integration: %s", integrationID)
+	completionAction := "redeployed"
+	if updateConfigOnly {
+		completionAction = "updated config for"
+	}
+	log.Printf("📋 Completed successfully - %s CCAgent container integration: %s", completionAction, integrationID)
 	return nil
 }

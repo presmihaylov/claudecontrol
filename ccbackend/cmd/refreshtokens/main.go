@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
@@ -10,10 +11,15 @@ import (
 	"github.com/joho/godotenv"
 
 	"ccbackend/clients/anthropic"
+	"ccbackend/clients/github"
+	"ccbackend/clients/ssh"
 	"ccbackend/config"
 	"ccbackend/db"
 	"ccbackend/models"
 	"ccbackend/services/anthropic_integrations"
+	ccagentcontainerintegrations "ccbackend/services/ccagent_container_integrations"
+	"ccbackend/services/github_integrations"
+	"ccbackend/services/organizations"
 )
 
 func main() {
@@ -37,16 +43,45 @@ func main() {
 	}
 	defer dbConn.Close()
 
-	// Initialize services
+	// Initialize repositories
 	anthropicRepo := db.NewPostgresAnthropicIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+	githubRepo := db.NewPostgresGitHubIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
+	ccagentContainerRepo := db.NewPostgresCCAgentContainerIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+
+	// Initialize clients
 	anthropicClient := anthropic.NewAnthropicClient()
+
+	// Decode base64 GitHub app private key
+	privateKey, err := base64.StdEncoding.DecodeString(cfg.GitHubAppPrivateKey)
+	if err != nil {
+		log.Fatalf("❌ Failed to decode GitHub app private key: %v", err)
+	}
+
+	githubClient, err := github.NewGitHubClient(cfg.GitHubClientID, cfg.GitHubClientSecret, cfg.GitHubAppID, privateKey)
+	if err != nil {
+		log.Fatalf("❌ Failed to create GitHub client: %v", err)
+	}
+
+	sshClient := ssh.NewSSHClient(cfg.SSHPrivateKeyBase64)
+
+	// Initialize services
+	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
 	anthropicService := anthropic_integrations.NewAnthropicIntegrationsService(anthropicRepo, anthropicClient)
+	githubService := github_integrations.NewGitHubIntegrationsService(githubRepo, githubClient)
+	ccagentContainerService := ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
+		ccagentContainerRepo,
+		cfg,
+		githubService,
+		anthropicService,
+		organizationsService,
+		sshClient,
+	)
 
 	ctx := context.Background()
 
 	// Get all organizations (we need to fetch integrations per org)
-	orgsRepo := db.NewPostgresOrganizationsRepository(dbConn, cfg.DatabaseSchema)
-	organizations, err := orgsRepo.GetAllOrganizations(ctx)
+	organizations, err := organizationsService.GetAllOrganizations(ctx)
 	if err != nil {
 		log.Fatalf("❌ Failed to get organizations: %v", err)
 	}
@@ -56,6 +91,8 @@ func main() {
 	totalIntegrations := 0
 	refreshedCount := 0
 	errorCount := 0
+	deploymentErrorCount := 0
+	organizationsWithUpdates := make(map[string]bool)
 
 	// Process each organization
 	for _, org := range organizations {
@@ -78,27 +115,133 @@ func main() {
 		totalIntegrations += len(integrations)
 
 		// Refresh tokens for each integration
+		orgHasUpdates := false
 		for _, integration := range integrations {
 			if err := refreshIntegrationTokens(ctx, anthropicService, org.ID, &integration); err != nil {
 				log.Printf("❌ Failed to refresh tokens for integration %s: %v", integration.ID, err)
 				errorCount++
 			} else {
 				refreshedCount++
+				orgHasUpdates = true
+			}
+		}
+
+		// Track organizations that had successful token refreshes for container updates
+		if orgHasUpdates {
+			organizationsWithUpdates[org.ID] = true
+		}
+
+		// After refreshing tokens for this organization, update its container configurations
+		if orgHasUpdates {
+			if err := redeployContainersForOrg(ctx, ccagentContainerService, sshClient, org.ID); err != nil {
+				log.Printf("❌ Failed to update container configurations for org %s: %v", org.ID, err)
+				deploymentErrorCount++
+			}
+		}
+	}
+
+	// After all organizations are processed, finalize deployment for those with updates
+	if len(organizationsWithUpdates) > 0 {
+		log.Printf("🚀 Finalizing deployment for %d organizations with token updates...", len(organizationsWithUpdates))
+		for orgID := range organizationsWithUpdates {
+			if err := finalizeDeployment(ccagentContainerService, sshClient, orgID); err != nil {
+				log.Printf("❌ Failed to finalize deployment for org %s: %v", orgID, err)
+				deploymentErrorCount++
 			}
 		}
 	}
 
 	// Print summary
-	log.Printf("✅ Token refresh process completed!")
+	log.Printf("✅ Token refresh and deployment process completed!")
 	log.Printf("📊 Summary:")
 	log.Printf("   - Organizations processed: %d", len(organizations))
 	log.Printf("   - Total integrations found: %d", totalIntegrations)
 	log.Printf("   - Tokens refreshed successfully: %d", refreshedCount)
-	log.Printf("   - Errors encountered: %d", errorCount)
+	log.Printf("   - Token refresh errors: %d", errorCount)
+	log.Printf("   - Organizations with updates: %d", len(organizationsWithUpdates))
+	log.Printf("   - Deployment errors: %d", deploymentErrorCount)
 
-	if errorCount > 0 {
+	if errorCount > 0 || deploymentErrorCount > 0 {
 		os.Exit(1)
 	}
+}
+
+// buildRedeployAllCommand builds the SSH command for redeployall.sh
+func buildRedeployAllCommand() string {
+	return "/root/redeployall.sh"
+}
+
+// redeployContainersForOrg updates container configurations for all CCAgent container integrations in an organization
+func redeployContainersForOrg(
+	ctx context.Context,
+	ccagentContainerService *ccagentcontainerintegrations.CCAgentContainerIntegrationsService,
+	sshClient ssh.SSHClientInterface,
+	orgID string,
+) error {
+	log.Printf("🔄 Updating container configurations for organization: %s", orgID)
+
+	// Get all CCAgent container integrations for this organization
+	integrations, err := ccagentContainerService.ListCCAgentContainerIntegrations(ctx, models.OrgID(orgID))
+	if err != nil {
+		return fmt.Errorf("failed to list CCAgent container integrations: %w", err)
+	}
+
+	if len(integrations) == 0 {
+		log.Printf("⏭️  No CCAgent container integrations found for organization: %s", orgID)
+		return nil
+	}
+
+	log.Printf("🔍 Found %d CCAgent container integrations to update in org %s", len(integrations), orgID)
+
+	// Update configuration for each integration using the existing deployment logic
+	for _, integration := range integrations {
+		log.Printf("🔄 Updating config for CCAgent container integration: %s", integration.ID)
+
+		// Update the configuration only (don't redeploy containers yet)
+		if err := ccagentContainerService.RedeployCCAgentContainer(ctx, models.OrgID(orgID), integration.ID, true); err != nil {
+			log.Printf("❌ Failed to update config for integration %s: %v", integration.ID, err)
+			return fmt.Errorf("failed to update config for integration %s: %w", integration.ID, err)
+		}
+
+		log.Printf("✅ Successfully updated config for integration %s", integration.ID)
+	}
+
+	log.Printf("✅ Successfully updated container configurations for organization: %s", orgID)
+	return nil
+}
+
+// finalizeDeployment runs redeployall.sh to apply all configuration changes for an organization
+func finalizeDeployment(
+	ccagentContainerService *ccagentcontainerintegrations.CCAgentContainerIntegrationsService,
+	sshClient ssh.SSHClientInterface,
+	orgID string,
+) error {
+	log.Printf("🚀 Finalizing deployment for organization: %s", orgID)
+
+	// Get any CCAgent container integration to get the SSH host (they should all use the same SSH host per org)
+	ctx := context.Background()
+	integrations, err := ccagentContainerService.ListCCAgentContainerIntegrations(ctx, models.OrgID(orgID))
+	if err != nil {
+		return fmt.Errorf("failed to list CCAgent container integrations: %w", err)
+	}
+
+	if len(integrations) == 0 {
+		log.Printf("⏭️  No CCAgent container integrations found for organization: %s, skipping deployment", orgID)
+		return nil
+	}
+
+	// Use the SSH host from the first integration (they should all be the same per organization)
+	sshHost := integrations[0].SSHHost
+	command := buildRedeployAllCommand()
+
+	log.Printf("🔄 Executing redeployall.sh on host: %s", sshHost)
+
+	if err := sshClient.ExecuteCommand(sshHost, command); err != nil {
+		return fmt.Errorf("failed to execute redeployall.sh: %w", err)
+	}
+
+	log.Printf("✅ Successfully finalized deployment for organization: %s", orgID)
+	return nil
 }
 
 func refreshIntegrationTokens(
