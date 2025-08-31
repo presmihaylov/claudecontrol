@@ -4,11 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { CheckCircle, ExternalLink, GitBranch, Key, Loader2, MessageCircle, Server, Trash2, User } from "lucide-react";
+import {
+	CheckCircle,
+	ExternalLink,
+	GitBranch,
+	Key,
+	Loader2,
+	MessageCircle,
+	Server,
+	Trash2,
+	User,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -154,11 +170,14 @@ export default function OnboardingPage() {
 			}
 
 			// Check CCAgent Container integration
-			const ccAgentResponse = await fetch(`${env.CCBACKEND_BASE_URL}/ccagent-container/integrations`, {
-				headers: {
-					Authorization: `Bearer ${token}`,
+			const ccAgentResponse = await fetch(
+				`${env.CCBACKEND_BASE_URL}/ccagent-container/integrations`,
+				{
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
 				},
-			});
+			);
 
 			if (ccAgentResponse.ok) {
 				const integrations: CCAgentContainerIntegration[] = await ccAgentResponse.json();
@@ -490,7 +509,7 @@ export default function OnboardingPage() {
 			<Card className="w-full max-w-4xl">
 				<CardHeader>
 					<CardTitle>Welcome to Claude Control</CardTitle>
-					<CardDescription>Let's get you set up with your integrations</CardDescription>
+					<CardDescription>Let's get you set up!</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
 					{error && (
@@ -559,10 +578,8 @@ export default function OnboardingPage() {
 							<CardContent className="space-y-4">
 								<p className="text-sm text-muted-foreground">This will allow Claude Control to:</p>
 								<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-									<li>Access repository metadata</li>
 									<li>Read repository contents</li>
 									<li>Create branches and pull requests</li>
-									<li>Manage issues and comments</li>
 								</ul>
 								<Button onClick={handleInstallGitHub} className="w-full">
 									<GitBranch className="mr-2 h-4 w-4" />
@@ -798,9 +815,17 @@ export default function OnboardingPage() {
 							<CardContent className="space-y-4">
 								<div className="space-y-2">
 									<Label htmlFor="repository">Repository</Label>
-									<Select value={selectedRepo} onValueChange={setSelectedRepo} disabled={loadingRepos}>
+									<Select
+										value={selectedRepo}
+										onValueChange={setSelectedRepo}
+										disabled={loadingRepos}
+									>
 										<SelectTrigger id="repository">
-											<SelectValue placeholder={loadingRepos ? "Loading repositories..." : "Select a repository"} />
+											<SelectValue
+												placeholder={
+													loadingRepos ? "Loading repositories..." : "Select a repository"
+												}
+											/>
 										</SelectTrigger>
 										<SelectContent>
 											{repositories.map((repo) => (
@@ -837,7 +862,10 @@ export default function OnboardingPage() {
 											<span className="text-xs text-muted-foreground">Default</span>
 										</div>
 										{[2, 3, 4, 5].map((count) => (
-											<div key={count} className="flex items-center justify-between p-3 border rounded-lg opacity-50">
+											<div
+												key={count}
+												className="flex items-center justify-between p-3 border rounded-lg opacity-50"
+											>
 												<div className="flex items-center gap-3">
 													<input
 														type="radio"
