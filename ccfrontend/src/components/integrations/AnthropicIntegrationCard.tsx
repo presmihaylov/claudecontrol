@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { CheckCircle, ExternalLink, Key, Loader2, Trash2, User } from "lucide-react";
+import { CheckCircle, ExternalLink, Key, Loader2, Trash2 } from "lucide-react";
+import { ClaudeIcon } from "@/icons/ClaudeIcon";
 import { useEffect, useState } from "react";
 
 interface AnthropicIntegration {
@@ -227,8 +228,8 @@ export function AnthropicIntegrationCard({ onIntegrationChange }: AnthropicInteg
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
-						<User className="h-5 w-5" />
-						Anthropic Account
+						<ClaudeIcon className="h-5 w-5" />
+						Claude Integration
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -245,8 +246,8 @@ export function AnthropicIntegrationCard({ onIntegrationChange }: AnthropicInteg
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
-						<User className="h-5 w-5" />
-						Anthropic Account
+						<ClaudeIcon className="h-5 w-5" />
+						Claude Integration
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -264,8 +265,8 @@ export function AnthropicIntegrationCard({ onIntegrationChange }: AnthropicInteg
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
-						<User className="h-5 w-5" />
-						Anthropic Account
+						<ClaudeIcon className="h-5 w-5" />
+						Claude Integration
 					</CardTitle>
 					<CardDescription>Connect your Anthropic account to use Claude Code</CardDescription>
 				</CardHeader>
@@ -358,7 +359,7 @@ export function AnthropicIntegrationCard({ onIntegrationChange }: AnthropicInteg
 										</>
 									) : (
 										<>
-											<User className="mr-2 h-4 w-4" />
+											<ClaudeIcon className="mr-2 h-4 w-4" />
 											Save OAuth Token
 										</>
 									)}
@@ -375,8 +376,8 @@ export function AnthropicIntegrationCard({ onIntegrationChange }: AnthropicInteg
 		<Card>
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
-					<User className="h-5 w-5" />
-					Anthropic Account
+					<ClaudeIcon className="h-5 w-5" />
+					Claude Integration
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="space-y-4">

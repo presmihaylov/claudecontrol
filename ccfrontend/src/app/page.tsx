@@ -438,10 +438,10 @@ export default function Home() {
 									{integrations.map((integration) => (
 										<div
 											key={integration.id}
-											className="flex items-center justify-between p-3 border rounded-lg"
+											className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
 										>
 											<div className="flex items-center gap-3">
-												<SlackIcon className="h-5 w-5" color="black" />
+												<SlackIcon className="h-5 w-5" />
 												<div>
 													<h4 className="font-medium text-sm">{integration.slack_team_name}</h4>
 													<p className="text-xs text-muted-foreground">
@@ -463,10 +463,10 @@ export default function Home() {
 									{discordIntegrations.map((integration) => (
 										<div
 											key={integration.id}
-											className="flex items-center justify-between p-3 border rounded-lg"
+											className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
 										>
 											<div className="flex items-center gap-3">
-												<DiscordIcon className="h-5 w-5" color="black" />
+												<DiscordIcon className="h-5 w-5" />
 												<div>
 													<h4 className="font-medium text-sm">{integration.discord_guild_name}</h4>
 													<p className="text-xs text-muted-foreground">
@@ -512,7 +512,7 @@ export default function Home() {
 					{/* GitHub Integration Section */}
 					<GitHubIntegrationCard onIntegrationChange={setGithubIntegration} />
 
-					{/* Anthropic Account Section */}
+					{/* Claude Integration Section */}
 					<AnthropicIntegrationCard onIntegrationChange={setAnthropicIntegration} />
 
 					{/* Background Agents Section */}

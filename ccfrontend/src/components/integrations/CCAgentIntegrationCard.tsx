@@ -505,10 +505,6 @@ export function CCAgentIntegrationCard({
 									<dd className="inline">{integration.repo_url}</dd>
 								</div>
 								<div>
-									<dt className="inline font-medium text-muted-foreground">Instances:</dt>{" "}
-									<dd className="inline">{integration.instances_count}</dd>
-								</div>
-								<div>
 									<dt className="inline font-medium text-muted-foreground">Configured:</dt>{" "}
 									<dd className="inline">
 										{new Date(integration.created_at).toLocaleDateString()}

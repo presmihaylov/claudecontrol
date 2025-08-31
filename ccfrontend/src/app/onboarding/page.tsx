@@ -12,7 +12,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DiscordIcon, SlackIcon } from "@/icons";
+import { ClaudeControlIcon, DiscordIcon, SlackIcon } from "@/icons";
+import { ClaudeIcon } from "@/icons/ClaudeIcon";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -847,7 +848,13 @@ export default function OnboardingPage() {
 										step: 1,
 										title: "Install Claude Control",
 										description: "Set it up in Slack or Discord",
-										icon: <MessageCircle className="h-4 w-4" />,
+										icon: (
+											<ClaudeControlIcon
+												className="h-4 w-4"
+												primaryColor="white"
+												secondaryColor="black"
+											/>
+										),
 										isCompleted: !!(slackIntegration || discordIntegration),
 										isCurrent: currentStep === 1,
 									},
@@ -861,9 +868,9 @@ export default function OnboardingPage() {
 									},
 									{
 										step: 3,
-										title: "Link Anthropic Account",
+										title: "Link Claude Integration",
 										description: "So we can run Claude Code",
-										icon: <User className="h-4 w-4" />,
+										icon: <ClaudeIcon className="h-4 w-4" />,
 										isCompleted: !!anthropicIntegration,
 										isCurrent: currentStep === 3,
 									},
@@ -946,13 +953,10 @@ export default function OnboardingPage() {
 						{currentStep === 1 && !slackIntegration && !discordIntegration && (
 							<Card className="w-full">
 								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<MessageCircle className="h-5 w-5" />
-										Connect Slack/Discord
+									<CardTitle>
+										Install the Claude Control App
 									</CardTitle>
-									<CardDescription>
-										Choose either Slack or Discord to interact with Claude Control
-									</CardDescription>
+									<CardDescription>Install it in your Slack or Discord</CardDescription>
 								</CardHeader>
 								<CardContent className="space-y-4">
 									<div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -1109,11 +1113,10 @@ export default function OnboardingPage() {
 						{currentStep === 3 && !anthropicIntegration && (
 							<Card className="w-full">
 								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<User className="h-5 w-5" />
-										Connect Anthropic
+									<CardTitle>
+										Connect your Claude account
 									</CardTitle>
-									<CardDescription>Choose how to connect your Anthropic account</CardDescription>
+									<CardDescription>Choose how to connect your Claude account</CardDescription>
 								</CardHeader>
 								<CardContent>
 									<Tabs
@@ -1207,10 +1210,7 @@ export default function OnboardingPage() {
 															Saving...
 														</>
 													) : (
-														<>
-															<User className="mr-2 h-4 w-4" />
-															Save OAuth Token
-														</>
+														"Save OAuth Token"
 													)}
 												</Button>
 											</div>
@@ -1458,7 +1458,7 @@ export default function OnboardingPage() {
 										<div className="rounded-lg border bg-muted/50 p-4">
 											<div className="flex items-center gap-2 mb-2">
 												<User className="h-4 w-4" />
-												<span className="font-medium text-sm">Anthropic Account</span>
+												<span className="font-medium text-sm">Claude Integration</span>
 											</div>
 											<p className="text-xs text-muted-foreground">
 												{anthropicIntegration?.has_api_key
