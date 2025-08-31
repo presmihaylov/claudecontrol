@@ -724,345 +724,346 @@ export default function OnboardingPage() {
 		ccAgentIntegration;
 
 	return (
-		<div className="flex min-h-screen items-center justify-center p-4">
-			<Card className="w-full max-w-7xl">
-				<CardHeader>
-					<CardTitle>Welcome to Claude Control</CardTitle>
-					<CardDescription>Let's get you set up!</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-6">
-					{error && (
-						<div className="rounded-lg bg-destructive/10 p-4 text-destructive">{error}</div>
-					)}
+		<div className="min-h-screen p-4 lg:p-8">
+			<div className="mx-auto max-w-6xl">
+				<div className="mb-8 text-center">
+					<h1 className="text-3xl font-bold tracking-tight">Welcome to Claude Control</h1>
+					<p className="text-lg text-muted-foreground mt-2">Let's get you set up!</p>
+				</div>
 
-					{/* Stepper Progress */}
-					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-1 min-w-0">
-							<div
-								className={`flex h-8 w-8 items-center justify-center rounded-full ${
-									currentStep >= 1 ? "bg-primary text-primary-foreground" : "bg-muted"
-								}`}
-							>
-								{githubIntegration ? <CheckCircle className="h-5 w-5" /> : "1"}
-							</div>
-							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Connect Your Repo</span>
-						</div>
-						<div className="h-px flex-1 bg-muted mx-1" />
-						<div className="flex items-center gap-1 min-w-0">
-							<div
-								className={`flex h-8 w-8 items-center justify-center rounded-full ${
-									currentStep >= 2 ? "bg-primary text-primary-foreground" : "bg-muted"
-								}`}
-							>
-								{slackIntegration || discordIntegration ? <CheckCircle className="h-5 w-5" /> : "2"}
-							</div>
-							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Install Slack/Discord App</span>
-						</div>
-						<div className="h-px flex-1 bg-muted mx-1" />
-						<div className="flex items-center gap-1 min-w-0">
-							<div
-								className={`flex h-8 w-8 items-center justify-center rounded-full ${
-									currentStep >= 3 ? "bg-primary text-primary-foreground" : "bg-muted"
-								}`}
-							>
-								{anthropicIntegration ? <CheckCircle className="h-5 w-5" /> : "3"}
-							</div>
-							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Link Claude Code</span>
-						</div>
-						<div className="h-px flex-1 bg-muted mx-1" />
-						<div className="flex items-center gap-1 min-w-0">
-							<div
-								className={`flex h-8 w-8 items-center justify-center rounded-full ${
-									currentStep >= 4 ? "bg-primary text-primary-foreground" : "bg-muted"
-								}`}
-							>
-								{ccAgentIntegration ? <CheckCircle className="h-5 w-5" /> : "4"}
-							</div>
-							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Deploy Background Agent</span>
-						</div>
-						<div className="h-px flex-1 bg-muted mx-1" />
-						<div className="flex items-center gap-1 min-w-0">
-							<div
-								className={`flex h-8 w-8 items-center justify-center rounded-full ${
-									isComplete ? "bg-primary text-primary-foreground" : "bg-muted"
-								}`}
-							>
-								{isComplete ? <CheckCircle className="h-5 w-5" /> : "5"}
-							</div>
-							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Done 👌</span>
+				{error && (
+					<div className="rounded-lg bg-destructive/10 p-4 text-destructive mb-8 mx-auto max-w-2xl">
+						{error}
+					</div>
+				)}
+
+				<div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+					{/* Vertical Stepper */}
+					<div className="lg:col-span-3">
+						<div className="sticky top-8">
+							<nav aria-label="Setup progress" className="space-y-2">
+								{[
+									{
+										step: 1,
+										title: "Connect Your Repo",
+										description: "GitHub integration",
+										icon: <GitBranch className="h-4 w-4" />,
+										isCompleted: !!githubIntegration,
+										isCurrent: currentStep === 1,
+									},
+									{
+										step: 2,
+										title: "Install Slack/Discord App",
+										description: "Chat platform",
+										icon: <MessageCircle className="h-4 w-4" />,
+										isCompleted: !!(slackIntegration || discordIntegration),
+										isCurrent: currentStep === 2,
+									},
+									{
+										step: 3,
+										title: "Link Claude Code",
+										description: "Anthropic integration",
+										icon: <User className="h-4 w-4" />,
+										isCompleted: !!anthropicIntegration,
+										isCurrent: currentStep === 3,
+									},
+									{
+										step: 4,
+										title: "Deploy Background Agent",
+										description: "Container setup",
+										icon: <Server className="h-4 w-4" />,
+										isCompleted: !!ccAgentIntegration,
+										isCurrent: currentStep === 4,
+									},
+									{
+										step: 5,
+										title: "Done 👌",
+										description: "Setup complete",
+										icon: <CheckCircle className="h-4 w-4" />,
+										isCompleted: isComplete,
+										isCurrent: currentStep === 5,
+									},
+								].map((item, index, array) => (
+									<div key={item.step} className="relative">
+										<div
+											className={`flex items-center gap-3 rounded-lg p-3 transition-colors ${
+												item.isCurrent
+													? "bg-primary/10 border border-primary/20"
+													: item.isCompleted
+														? "bg-green-50 dark:bg-green-900/20"
+														: "bg-muted/50"
+											}`}
+										>
+											<div
+												className={`flex h-8 w-8 items-center justify-center rounded-full shrink-0 ${
+													item.isCompleted
+														? "bg-green-600 text-white"
+														: item.isCurrent
+															? "bg-primary text-primary-foreground"
+															: "bg-muted-foreground/20"
+												}`}
+											>
+												{item.isCompleted ? (
+													<CheckCircle className="h-4 w-4" />
+												) : item.isCurrent ? (
+													item.icon
+												) : (
+													<span className="text-sm font-medium">{item.step}</span>
+												)}
+											</div>
+											<div className="min-w-0 flex-1">
+												<div
+													className={`text-sm font-medium ${
+														item.isCurrent
+															? "text-primary"
+															: item.isCompleted
+																? "text-green-700 dark:text-green-400"
+																: "text-muted-foreground"
+													}`}
+												>
+													{item.title}
+												</div>
+												<div className="text-xs text-muted-foreground">{item.description}</div>
+											</div>
+										</div>
+										{/* Connector line */}
+										{index < array.length - 1 && (
+											<div
+												className={`absolute left-[26px] top-14 h-6 w-px ${
+													item.isCompleted ? "bg-green-600" : "bg-muted"
+												}`}
+											/>
+										)}
+									</div>
+								))}
+							</nav>
 						</div>
 					</div>
 
-					{/* Step 1: GitHub Integration */}
-					{currentStep === 1 && !githubIntegration && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<GitBranch className="h-5 w-5" />
-									Connect GitHub
-								</CardTitle>
-								<CardDescription>
-									Install the Claude Control GitHub App to access your repositories
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<p className="text-sm text-muted-foreground">This will allow Claude Control to:</p>
-								<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-									<li>Read repository contents</li>
-									<li>Create branches and pull requests</li>
-								</ul>
-								<Button onClick={handleInstallGitHub} className="w-full">
-									<GitBranch className="mr-2 h-4 w-4" />
-									Install GitHub App
-								</Button>
-							</CardContent>
-						</Card>
-					)}
+					{/* Main Content */}
+					<div className="lg:col-span-9">
+						{/* Step 1: GitHub Integration */}
+						{currentStep === 1 && !githubIntegration && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<GitBranch className="h-5 w-5" />
+										Connect GitHub
+									</CardTitle>
+									<CardDescription>
+										Install the Claude Control GitHub App to access your repositories
+									</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<p className="text-sm text-muted-foreground">
+										This will allow Claude Control to:
+									</p>
+									<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+										<li>Read repository contents</li>
+										<li>Create branches and pull requests</li>
+									</ul>
+									<Button onClick={handleInstallGitHub} className="w-full">
+										<GitBranch className="mr-2 h-4 w-4" />
+										Install GitHub App
+									</Button>
+								</CardContent>
+							</Card>
+						)}
 
-					{/* GitHub Connected State */}
-					{githubIntegration && currentStep === 1 && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
-									<CheckCircle className="h-5 w-5" />
-									GitHub Connected
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="rounded-lg border bg-muted/50 p-4">
-									<div className="flex items-start justify-between">
-										<div className="flex-1">
-											<dl className="space-y-1 text-sm">
-												<div>
-													<dt className="inline font-medium text-muted-foreground">
-														Installation ID:
-													</dt>{" "}
-													<dd className="inline font-mono">
-														{githubIntegration.github_installation_id}
-													</dd>
-												</div>
-												<div>
-													<dt className="inline font-medium text-muted-foreground">Created:</dt>{" "}
-													<dd className="inline">
-														{new Date(githubIntegration.created_at).toLocaleDateString()}
-													</dd>
-												</div>
-											</dl>
-										</div>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={handleDisconnectGitHub}
-											disabled={loading}
-											className="text-muted-foreground hover:text-destructive"
-										>
-											<Trash2 className="h-4 w-4 mr-2" />
-											{loading ? "Disconnecting..." : "Disconnect"}
-										</Button>
-									</div>
-								</div>
-								<Button onClick={() => setCurrentStep(2)} className="w-full">
-									Continue to Chat Setup
-								</Button>
-							</CardContent>
-						</Card>
-					)}
-
-					{/* Step 2: Slack/Discord Integration */}
-					{currentStep === 2 && !slackIntegration && !discordIntegration && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<MessageCircle className="h-5 w-5" />
-									Connect Slack/Discord
-								</CardTitle>
-								<CardDescription>
-									Choose either Slack or Discord to interact with Claude Control
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="grid gap-4 md:grid-cols-2">
-									<Card
-										className="cursor-pointer hover:bg-muted/50 transition-colors"
-										onClick={handleConnectSlack}
-									>
-										<CardContent className="flex items-center gap-4 p-6">
-											<SlackIcon className="h-8 w-8" />
+						{/* GitHub Connected State */}
+						{githubIntegration && currentStep === 1 && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
+										<CheckCircle className="h-5 w-5" />
+										GitHub Connected
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<div className="rounded-lg border bg-muted/50 p-4">
+										<div className="flex items-start justify-between">
 											<div className="flex-1">
-												<h3 className="font-medium">Slack</h3>
-												<p className="text-sm text-muted-foreground">
-													Connect to your Slack workspace
-												</p>
+												<dl className="space-y-1 text-sm">
+													<div>
+														<dt className="inline font-medium text-muted-foreground">
+															Installation ID:
+														</dt>{" "}
+														<dd className="inline font-mono">
+															{githubIntegration.github_installation_id}
+														</dd>
+													</div>
+													<div>
+														<dt className="inline font-medium text-muted-foreground">Created:</dt>{" "}
+														<dd className="inline">
+															{new Date(githubIntegration.created_at).toLocaleDateString()}
+														</dd>
+													</div>
+												</dl>
 											</div>
-											<ExternalLink className="h-4 w-4 text-muted-foreground" />
-										</CardContent>
-									</Card>
-
-									<Card
-										className="cursor-pointer hover:bg-muted/50 transition-colors"
-										onClick={handleConnectDiscord}
-									>
-										<CardContent className="flex items-center gap-4 p-6">
-											<DiscordIcon className="h-8 w-8" />
-											<div className="flex-1">
-												<h3 className="font-medium">Discord</h3>
-												<p className="text-sm text-muted-foreground">
-													Connect to your Discord server
-												</p>
-											</div>
-											<ExternalLink className="h-4 w-4 text-muted-foreground" />
-										</CardContent>
-									</Card>
-								</div>
-							</CardContent>
-						</Card>
-					)}
-
-					{/* Slack/Discord Connected State */}
-					{(slackIntegration || discordIntegration) && currentStep === 2 && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
-									<CheckCircle className="h-5 w-5" />
-									Chat Platform Connected
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="rounded-lg border bg-muted/50 p-4">
-									<div className="flex items-start justify-between">
-										<div className="flex-1">
-											<dl className="space-y-1 text-sm">
-												<div>
-													<dt className="inline font-medium text-muted-foreground">Platform:</dt>{" "}
-													<dd className="inline">
-														{slackIntegration
-															? `Slack (${slackIntegration.slack_team_name})`
-															: `Discord (${discordIntegration?.discord_guild_name})`}
-													</dd>
-												</div>
-												<div>
-													<dt className="inline font-medium text-muted-foreground">Connected:</dt>{" "}
-													<dd className="inline">
-														{new Date(
-															(slackIntegration || discordIntegration)?.created_at || "",
-														).toLocaleDateString()}
-													</dd>
-												</div>
-											</dl>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={handleDisconnectGitHub}
+												disabled={loading}
+												className="text-muted-foreground hover:text-destructive"
+											>
+												<Trash2 className="h-4 w-4 mr-2" />
+												{loading ? "Disconnecting..." : "Disconnect"}
+											</Button>
 										</div>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={slackIntegration ? handleDisconnectSlack : handleDisconnectDiscord}
-											disabled={loading}
-											className="text-muted-foreground hover:text-destructive"
-										>
-											<Trash2 className="h-4 w-4 mr-2" />
-											{loading ? "Disconnecting..." : "Disconnect"}
-										</Button>
 									</div>
-								</div>
-								<Button onClick={() => setCurrentStep(3)} className="w-full">
-									Continue to Anthropic Setup
-								</Button>
-							</CardContent>
-						</Card>
-					)}
+									<Button onClick={() => setCurrentStep(2)} className="w-full">
+										Continue to Chat Setup
+									</Button>
+								</CardContent>
+							</Card>
+						)}
 
-					{/* Step 3: Anthropic Integration */}
-					{currentStep === 3 && !anthropicIntegration && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<User className="h-5 w-5" />
-									Connect Anthropic
-								</CardTitle>
-								<CardDescription>Choose how to connect your Anthropic account</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<Tabs
-									value={integrationMethod}
-									onValueChange={(v) => setIntegrationMethod(v as "api-key" | "oauth")}
-								>
-									<TabsList className="grid w-full grid-cols-2">
-										<TabsTrigger value="api-key">API Key</TabsTrigger>
-										<TabsTrigger value="oauth">Claude Pro/Max Plan</TabsTrigger>
-									</TabsList>
-									<TabsContent value="api-key" className="space-y-4">
-										<div className="space-y-2">
-											<Label htmlFor="api-key">Anthropic API Key</Label>
-											<Input
-												id="api-key"
-												type="password"
-												placeholder="sk-ant-..."
-												value={apiKey}
-												onChange={(e) => setApiKey(e.target.value)}
-											/>
-											<p className="text-xs text-muted-foreground">
-												You can find your API key in the{" "}
-												<a
-													href="https://console.anthropic.com/settings/keys"
-													target="_blank"
-													rel="noopener noreferrer"
-													className="underline"
-												>
-													Anthropic Console
-												</a>
-											</p>
-										</div>
-										<Button
-											onClick={handleSaveAnthropic}
-											disabled={!apiKey.trim() || savingAnthropic}
-											className="w-full"
+						{/* Step 2: Slack/Discord Integration */}
+						{currentStep === 2 && !slackIntegration && !discordIntegration && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<MessageCircle className="h-5 w-5" />
+										Connect Slack/Discord
+									</CardTitle>
+									<CardDescription>
+										Choose either Slack or Discord to interact with Claude Control
+									</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<div className="grid gap-4 sm:grid-cols-2">
+										<Card
+											className="cursor-pointer hover:bg-muted/50 transition-colors"
+											onClick={handleConnectSlack}
 										>
-											{savingAnthropic ? (
-												<>
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													Saving...
-												</>
-											) : (
-												<>
-													<Key className="mr-2 h-4 w-4" />
-													Save API Key
-												</>
-											)}
-										</Button>
-									</TabsContent>
-									<TabsContent value="oauth" className="space-y-4">
-										<div className="space-y-4">
-											<div className="rounded-lg border bg-muted/50 p-4">
-												<p className="text-sm">
-													<strong>Step 1:</strong> Click the button below to authorize Claude
-													Control
-												</p>
-												<Button
-													onClick={handleOpenClaudeOAuth}
-													className="mt-2 w-full"
-													variant="outline"
-												>
-													<ExternalLink className="mr-2 h-4 w-4" />
-													Open Claude OAuth
-												</Button>
+											<CardContent className="flex items-center gap-4 p-6">
+												<SlackIcon className="h-8 w-8" />
+												<div className="flex-1">
+													<h3 className="font-medium">Slack</h3>
+													<p className="text-sm text-muted-foreground">
+														Connect to your Slack workspace
+													</p>
+												</div>
+												<ExternalLink className="h-4 w-4 text-muted-foreground" />
+											</CardContent>
+										</Card>
+
+										<Card
+											className="cursor-pointer hover:bg-muted/50 transition-colors"
+											onClick={handleConnectDiscord}
+										>
+											<CardContent className="flex items-center gap-4 p-6">
+												<DiscordIcon className="h-8 w-8" />
+												<div className="flex-1">
+													<h3 className="font-medium">Discord</h3>
+													<p className="text-sm text-muted-foreground">
+														Connect to your Discord server
+													</p>
+												</div>
+												<ExternalLink className="h-4 w-4 text-muted-foreground" />
+											</CardContent>
+										</Card>
+									</div>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* Slack/Discord Connected State */}
+						{(slackIntegration || discordIntegration) && currentStep === 2 && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
+										<CheckCircle className="h-5 w-5" />
+										Chat Platform Connected
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<div className="rounded-lg border bg-muted/50 p-4">
+										<div className="flex items-start justify-between">
+											<div className="flex-1">
+												<dl className="space-y-1 text-sm">
+													<div>
+														<dt className="inline font-medium text-muted-foreground">Platform:</dt>{" "}
+														<dd className="inline">
+															{slackIntegration
+																? `Slack (${slackIntegration.slack_team_name})`
+																: `Discord (${discordIntegration?.discord_guild_name})`}
+														</dd>
+													</div>
+													<div>
+														<dt className="inline font-medium text-muted-foreground">Connected:</dt>{" "}
+														<dd className="inline">
+															{new Date(
+																(slackIntegration || discordIntegration)?.created_at || "",
+															).toLocaleDateString()}
+														</dd>
+													</div>
+												</dl>
 											</div>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={slackIntegration ? handleDisconnectSlack : handleDisconnectDiscord}
+												disabled={loading}
+												className="text-muted-foreground hover:text-destructive"
+											>
+												<Trash2 className="h-4 w-4 mr-2" />
+												{loading ? "Disconnecting..." : "Disconnect"}
+											</Button>
+										</div>
+									</div>
+									<Button onClick={() => setCurrentStep(3)} className="w-full">
+										Continue to Anthropic Setup
+									</Button>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* Step 3: Anthropic Integration */}
+						{currentStep === 3 && !anthropicIntegration && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<User className="h-5 w-5" />
+										Connect Anthropic
+									</CardTitle>
+									<CardDescription>Choose how to connect your Anthropic account</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<Tabs
+										value={integrationMethod}
+										onValueChange={(v) => setIntegrationMethod(v as "api-key" | "oauth")}
+									>
+										<TabsList className="grid w-full grid-cols-2">
+											<TabsTrigger value="api-key">API Key</TabsTrigger>
+											<TabsTrigger value="oauth">Claude Pro/Max Plan</TabsTrigger>
+										</TabsList>
+										<TabsContent value="api-key" className="space-y-4">
 											<div className="space-y-2">
-												<Label htmlFor="oauth-code">
-													<strong>Step 2:</strong> Paste the code from the redirect URL
-												</Label>
+												<Label htmlFor="api-key">Anthropic API Key</Label>
 												<Input
-													id="oauth-code"
-													type="text"
-													placeholder="Paste the code parameter from the URL"
-													value={oauthCode}
-													onChange={(e) => setOauthCode(e.target.value)}
+													id="api-key"
+													type="password"
+													placeholder="sk-ant-..."
+													value={apiKey}
+													onChange={(e) => setApiKey(e.target.value)}
 												/>
 												<p className="text-xs text-muted-foreground">
-													After authorizing, you'll be redirected to a URL with a <code>code</code>{" "}
-													parameter. Copy and paste that code here.
+													You can find your API key in the{" "}
+													<a
+														href="https://console.anthropic.com/settings/keys"
+														target="_blank"
+														rel="noopener noreferrer"
+														className="underline"
+													>
+														Anthropic Console
+													</a>
 												</p>
 											</div>
 											<Button
 												onClick={handleSaveAnthropic}
-												disabled={!oauthCode.trim() || savingAnthropic}
+												disabled={!apiKey.trim() || savingAnthropic}
 												className="w-full"
 											>
 												{savingAnthropic ? (
@@ -1072,275 +1073,333 @@ export default function OnboardingPage() {
 													</>
 												) : (
 													<>
-														<User className="mr-2 h-4 w-4" />
-														Save OAuth Token
+														<Key className="mr-2 h-4 w-4" />
+														Save API Key
 													</>
 												)}
 											</Button>
-										</div>
-									</TabsContent>
-								</Tabs>
-							</CardContent>
-						</Card>
-					)}
+										</TabsContent>
+										<TabsContent value="oauth" className="space-y-4">
+											<div className="space-y-4">
+												<div className="rounded-lg border bg-muted/50 p-4">
+													<p className="text-sm">
+														<strong>Step 1:</strong> Click the button below to authorize Claude
+														Control
+													</p>
+													<Button
+														onClick={handleOpenClaudeOAuth}
+														className="mt-2 w-full"
+														variant="outline"
+													>
+														<ExternalLink className="mr-2 h-4 w-4" />
+														Open Claude OAuth
+													</Button>
+												</div>
+												<div className="space-y-2">
+													<Label htmlFor="oauth-code">
+														<strong>Step 2:</strong> Paste the code from the redirect URL
+													</Label>
+													<Input
+														id="oauth-code"
+														type="text"
+														placeholder="Paste the code parameter from the URL"
+														value={oauthCode}
+														onChange={(e) => setOauthCode(e.target.value)}
+													/>
+													<p className="text-xs text-muted-foreground">
+														After authorizing, you'll be redirected to a URL with a{" "}
+														<code>code</code> parameter. Copy and paste that code here.
+													</p>
+												</div>
+												<Button
+													onClick={handleSaveAnthropic}
+													disabled={!oauthCode.trim() || savingAnthropic}
+													className="w-full"
+												>
+													{savingAnthropic ? (
+														<>
+															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+															Saving...
+														</>
+													) : (
+														<>
+															<User className="mr-2 h-4 w-4" />
+															Save OAuth Token
+														</>
+													)}
+												</Button>
+											</div>
+										</TabsContent>
+									</Tabs>
+								</CardContent>
+							</Card>
+						)}
 
-					{/* Anthropic Connected State */}
-					{anthropicIntegration && currentStep === 3 && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
-									<CheckCircle className="h-5 w-5" />
-									Anthropic Connected
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="rounded-lg border bg-muted/50 p-4">
-									<div className="flex items-start justify-between">
-										<div className="flex-1">
-											<dl className="space-y-1 text-sm">
-												<div>
-													<dt className="inline font-medium text-muted-foreground">Type:</dt>{" "}
-													<dd className="inline">
-														{anthropicIntegration.has_api_key ? "API Key" : "OAuth Token"}
-													</dd>
-												</div>
-												<div>
-													<dt className="inline font-medium text-muted-foreground">Created:</dt>{" "}
-													<dd className="inline">
-														{new Date(anthropicIntegration.created_at).toLocaleDateString()}
-													</dd>
-												</div>
-											</dl>
+						{/* Anthropic Connected State */}
+						{anthropicIntegration && currentStep === 3 && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
+										<CheckCircle className="h-5 w-5" />
+										Anthropic Connected
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<div className="rounded-lg border bg-muted/50 p-4">
+										<div className="flex items-start justify-between">
+											<div className="flex-1">
+												<dl className="space-y-1 text-sm">
+													<div>
+														<dt className="inline font-medium text-muted-foreground">Type:</dt>{" "}
+														<dd className="inline">
+															{anthropicIntegration.has_api_key ? "API Key" : "OAuth Token"}
+														</dd>
+													</div>
+													<div>
+														<dt className="inline font-medium text-muted-foreground">Created:</dt>{" "}
+														<dd className="inline">
+															{new Date(anthropicIntegration.created_at).toLocaleDateString()}
+														</dd>
+													</div>
+												</dl>
+											</div>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={handleDisconnectAnthropic}
+												disabled={loading}
+												className="text-muted-foreground hover:text-destructive"
+											>
+												<Trash2 className="h-4 w-4 mr-2" />
+												{loading ? "Disconnecting..." : "Disconnect"}
+											</Button>
 										</div>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={handleDisconnectAnthropic}
-											disabled={loading}
-											className="text-muted-foreground hover:text-destructive"
-										>
-											<Trash2 className="h-4 w-4 mr-2" />
-											{loading ? "Disconnecting..." : "Disconnect"}
-										</Button>
 									</div>
-								</div>
-								<Button onClick={() => setCurrentStep(4)} className="w-full">
-									Continue to CCAgent Setup
-								</Button>
-							</CardContent>
-						</Card>
-					)}
+									<Button onClick={() => setCurrentStep(4)} className="w-full">
+										Continue to CCAgent Setup
+									</Button>
+								</CardContent>
+							</Card>
+						)}
 
-					{/* Step 4: CCAgent Container Integration */}
-					{currentStep === 4 && !ccAgentIntegration && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<Server className="h-5 w-5" />
-									Configure your Claude Code Container
-								</CardTitle>
-								<CardDescription>
-									Deploy a background agent so that claude code can work on your repository.
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="space-y-2">
-									<Label htmlFor="repository">Repository</Label>
-									<Select
-										value={selectedRepo}
-										onValueChange={setSelectedRepo}
-										disabled={loadingRepos}
-									>
-										<SelectTrigger id="repository">
-											<SelectValue
-												placeholder={
-													loadingRepos ? "Loading repositories..." : "Select a repository"
-												}
-											/>
-										</SelectTrigger>
-										<SelectContent>
-											{repositories.map((repo) => (
-												<SelectItem key={repo.id} value={repo.html_url}>
-													{repo.full_name}
-													{repo.private && " 🔒"}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									<p className="text-xs text-muted-foreground">
-										Select the repository where CCAgent will work
-									</p>
-								</div>
-
-								<div className="space-y-2">
-									<Label>Instances</Label>
+						{/* Step 4: CCAgent Container Integration */}
+						{currentStep === 4 && !ccAgentIntegration && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<Server className="h-5 w-5" />
+										Configure your Claude Code Container
+									</CardTitle>
+									<CardDescription>
+										Deploy a background agent so that claude code can work on your repository.
+									</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-4">
 									<div className="space-y-2">
-										<div className="flex items-center justify-between p-3 border rounded-lg">
-											<div className="flex items-center gap-3">
-												<input
-													type="radio"
-													id="instance-1"
-													name="instances"
-													value="1"
-													checked={instancesCount === 1}
-													readOnly
-													className="h-4 w-4"
-												/>
-												<label htmlFor="instance-1" className="text-sm font-medium cursor-pointer">
-													1 Instance
-												</label>
-											</div>
-											<span className="text-xs text-muted-foreground">Default</span>
-										</div>
-										<div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
-											<div className="flex items-center gap-3">
-												<span className="text-sm font-medium text-muted-foreground">
-													More instances
-												</span>
-											</div>
-											<div className="flex items-center gap-2 text-xs text-muted-foreground">
-												<MessageCircle className="h-3 w-3" />
-												<span>Contact me if you need this</span>
-											</div>
-										</div>
-									</div>
-								</div>
-
-								<Button
-									onClick={handleSaveCCAgent}
-									disabled={!selectedRepo || savingCCAgent}
-									className="w-full"
-								>
-									{savingCCAgent ? (
-										<>
-											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-											Saving...
-										</>
-									) : (
-										<>
-											<Server className="mr-2 h-4 w-4" />
-											Save Configuration
-										</>
-									)}
-								</Button>
-							</CardContent>
-						</Card>
-					)}
-
-					{/* CCAgent Connected State */}
-					{ccAgentIntegration && currentStep === 4 && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
-									<CheckCircle className="h-5 w-5" />
-									CCAgent Configured
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="rounded-lg border bg-muted/50 p-4">
-									<div className="flex items-start justify-between">
-										<div className="flex-1">
-											<dl className="space-y-1 text-sm">
-												<div>
-													<dt className="inline font-medium text-muted-foreground">Repository:</dt>{" "}
-													<dd className="inline">{ccAgentIntegration.repo_url}</dd>
-												</div>
-												<div>
-													<dt className="inline font-medium text-muted-foreground">Instances:</dt>{" "}
-													<dd className="inline">{ccAgentIntegration.instances_count}</dd>
-												</div>
-												<div>
-													<dt className="inline font-medium text-muted-foreground">Created:</dt>{" "}
-													<dd className="inline">
-														{new Date(ccAgentIntegration.created_at).toLocaleDateString()}
-													</dd>
-												</div>
-											</dl>
-										</div>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={handleDisconnectCCAgent}
-											disabled={loading}
-											className="text-muted-foreground hover:text-destructive"
+										<Label htmlFor="repository">Repository</Label>
+										<Select
+											value={selectedRepo}
+											onValueChange={setSelectedRepo}
+											disabled={loadingRepos}
 										>
-											<Trash2 className="h-4 w-4 mr-2" />
-											{loading ? "Disconnecting..." : "Disconnect"}
-										</Button>
+											<SelectTrigger id="repository">
+												<SelectValue
+													placeholder={
+														loadingRepos ? "Loading repositories..." : "Select a repository"
+													}
+												/>
+											</SelectTrigger>
+											<SelectContent>
+												{repositories.map((repo) => (
+													<SelectItem key={repo.id} value={repo.html_url}>
+														{repo.full_name}
+														{repo.private && " 🔒"}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<p className="text-xs text-muted-foreground">
+											Select the repository where CCAgent will work
+										</p>
 									</div>
-								</div>
-								<Button onClick={() => setCurrentStep(5)} className="w-full">
-									View Summary
-								</Button>
-							</CardContent>
-						</Card>
-					)}
 
-					{/* Step 5: Complete */}
-					{currentStep === 5 && isComplete && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
-									<CheckCircle className="h-5 w-5" />
-									Onboarding Complete!
-								</CardTitle>
-								<CardDescription>You're all set up and ready to use Claude Control</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-									<div className="rounded-lg border bg-muted/50 p-4">
-										<div className="flex items-center gap-2 mb-2">
-											<GitBranch className="h-4 w-4" />
-											<span className="font-medium text-sm">Repository</span>
+									<div className="space-y-2">
+										<Label>Instances</Label>
+										<div className="space-y-2">
+											<div className="flex items-center justify-between p-3 border rounded-lg">
+												<div className="flex items-center gap-3">
+													<input
+														type="radio"
+														id="instance-1"
+														name="instances"
+														value="1"
+														checked={instancesCount === 1}
+														readOnly
+														className="h-4 w-4"
+													/>
+													<label
+														htmlFor="instance-1"
+														className="text-sm font-medium cursor-pointer"
+													>
+														1 Instance
+													</label>
+												</div>
+												<span className="text-xs text-muted-foreground">Default</span>
+											</div>
+											<div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+												<div className="flex items-center gap-3">
+													<span className="text-sm font-medium text-muted-foreground">
+														More instances
+													</span>
+												</div>
+												<div className="flex items-center gap-2 text-xs text-muted-foreground">
+													<MessageCircle className="h-3 w-3" />
+													<span>Contact me if you need this</span>
+												</div>
+											</div>
 										</div>
-										<p className="text-xs text-muted-foreground">
-											Installation ID: {githubIntegration?.github_installation_id}
-										</p>
 									</div>
+
+									<Button
+										onClick={handleSaveCCAgent}
+										disabled={!selectedRepo || savingCCAgent}
+										className="w-full"
+									>
+										{savingCCAgent ? (
+											<>
+												<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+												Saving...
+											</>
+										) : (
+											<>
+												<Server className="mr-2 h-4 w-4" />
+												Save Configuration
+											</>
+										)}
+									</Button>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* CCAgent Connected State */}
+						{ccAgentIntegration && currentStep === 4 && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
+										<CheckCircle className="h-5 w-5" />
+										CCAgent Configured
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-4">
 									<div className="rounded-lg border bg-muted/50 p-4">
-										<div className="flex items-center gap-2 mb-2">
-											{slackIntegration ? (
-												<SlackIcon className="h-4 w-4" />
-											) : (
-												<DiscordIcon className="h-4 w-4" />
-											)}
-											<span className="font-medium text-sm">Chat Platform</span>
+										<div className="flex items-start justify-between">
+											<div className="flex-1">
+												<dl className="space-y-1 text-sm">
+													<div>
+														<dt className="inline font-medium text-muted-foreground">
+															Repository:
+														</dt>{" "}
+														<dd className="inline">{ccAgentIntegration.repo_url}</dd>
+													</div>
+													<div>
+														<dt className="inline font-medium text-muted-foreground">Instances:</dt>{" "}
+														<dd className="inline">{ccAgentIntegration.instances_count}</dd>
+													</div>
+													<div>
+														<dt className="inline font-medium text-muted-foreground">Created:</dt>{" "}
+														<dd className="inline">
+															{new Date(ccAgentIntegration.created_at).toLocaleDateString()}
+														</dd>
+													</div>
+												</dl>
+											</div>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={handleDisconnectCCAgent}
+												disabled={loading}
+												className="text-muted-foreground hover:text-destructive"
+											>
+												<Trash2 className="h-4 w-4 mr-2" />
+												{loading ? "Disconnecting..." : "Disconnect"}
+											</Button>
 										</div>
-										<p className="text-xs text-muted-foreground">
-											{slackIntegration
-												? `Slack: ${slackIntegration.slack_team_name}`
-												: `Discord: ${discordIntegration?.discord_guild_name}`}
-										</p>
 									</div>
-									<div className="rounded-lg border bg-muted/50 p-4">
-										<div className="flex items-center gap-2 mb-2">
-											<User className="h-4 w-4" />
-											<span className="font-medium text-sm">Claude</span>
+									<Button onClick={() => setCurrentStep(5)} className="w-full">
+										View Summary
+									</Button>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* Step 5: Complete */}
+						{currentStep === 5 && isComplete && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
+										<CheckCircle className="h-5 w-5" />
+										Onboarding Complete!
+									</CardTitle>
+									<CardDescription>
+										You're all set up and ready to use Claude Control
+									</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+										<div className="rounded-lg border bg-muted/50 p-4">
+											<div className="flex items-center gap-2 mb-2">
+												<GitBranch className="h-4 w-4" />
+												<span className="font-medium text-sm">Repository</span>
+											</div>
+											<p className="text-xs text-muted-foreground">
+												Installation ID: {githubIntegration?.github_installation_id}
+											</p>
 										</div>
-										<p className="text-xs text-muted-foreground">
-											{anthropicIntegration?.has_api_key
-												? "API Key configured"
-												: "OAuth token configured"}
-										</p>
-									</div>
-									<div className="rounded-lg border bg-muted/50 p-4">
-										<div className="flex items-center gap-2 mb-2">
-											<Server className="h-4 w-4" />
-											<span className="font-medium text-sm">Background Agent</span>
+										<div className="rounded-lg border bg-muted/50 p-4">
+											<div className="flex items-center gap-2 mb-2">
+												{slackIntegration ? (
+													<SlackIcon className="h-4 w-4" />
+												) : (
+													<DiscordIcon className="h-4 w-4" />
+												)}
+												<span className="font-medium text-sm">Chat Platform</span>
+											</div>
+											<p className="text-xs text-muted-foreground">
+												{slackIntegration
+													? `Slack: ${slackIntegration.slack_team_name}`
+													: `Discord: ${discordIntegration?.discord_guild_name}`}
+											</p>
 										</div>
-										<p className="text-xs text-muted-foreground">
-											{ccAgentIntegration?.instances_count} instance(s) configured
-										</p>
+										<div className="rounded-lg border bg-muted/50 p-4">
+											<div className="flex items-center gap-2 mb-2">
+												<User className="h-4 w-4" />
+												<span className="font-medium text-sm">Claude</span>
+											</div>
+											<p className="text-xs text-muted-foreground">
+												{anthropicIntegration?.has_api_key
+													? "API Key configured"
+													: "OAuth token configured"}
+											</p>
+										</div>
+										<div className="rounded-lg border bg-muted/50 p-4">
+											<div className="flex items-center gap-2 mb-2">
+												<Server className="h-4 w-4" />
+												<span className="font-medium text-sm">Background Agent</span>
+											</div>
+											<p className="text-xs text-muted-foreground">
+												{ccAgentIntegration?.instances_count} instance(s) configured
+											</p>
+										</div>
 									</div>
-								</div>
-								<Button onClick={handleContinueToDashboard} size="lg" className="w-full">
-									Continue to Dashboard
-								</Button>
-							</CardContent>
-						</Card>
-					)}
-				</CardContent>
-			</Card>
+									<Button onClick={handleContinueToDashboard} size="lg" className="w-full">
+										Continue to Dashboard
+									</Button>
+								</CardContent>
+							</Card>
+						)}
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }
