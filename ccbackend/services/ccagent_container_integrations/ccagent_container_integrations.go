@@ -222,9 +222,8 @@ func (s *CCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 		return fmt.Errorf("anthropic integration does not have API key or OAuth token configured")
 	}
 
-	// Build the redeployccagent.sh command
 	instanceName := fmt.Sprintf("ccagent-%s", integrationID)
-	command := fmt.Sprintf("/root/redeployccagent.sh -n '%s' -k '%s' -r '%s' -i '%s'",
+	command := fmt.Sprintf("/root/scripts/redeployccagent.sh -n '%s' -k '%s' -r '%s' -i '%s'",
 		instanceName,
 		organization.CCAgentSystemSecretKey,
 		integration.RepoURL,

@@ -250,11 +250,10 @@ func (r *RefreshTokensRunner) redeployAllImpactedCCAgents(ctx context.Context, o
 		allSSHHosts = append(allSSHHosts, sshHosts...)
 	}
 
-	// Get unique SSH hosts and run redeployall.sh on each
 	uniqueSSHHosts := lo.Uniq(allSSHHosts)
 	for _, sshHost := range uniqueSSHHosts {
 		log.Printf("🔄 Executing redeployall.sh on SSH host: %s", sshHost)
-		command := "/root/redeployall.sh"
+		command := "/root/scripts/redeployall.sh"
 		if err := r.sshClient.ExecuteCommand(sshHost, command); err != nil {
 			return fmt.Errorf("failed to execute redeployall.sh on host %s: %w", sshHost, err)
 		}
