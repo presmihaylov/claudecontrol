@@ -720,7 +720,7 @@ func (h *DashboardHTTPHandler) HandleRedeployCCAgentContainer(w http.ResponseWri
 
 	log.Printf("🚀 Redeploy CCAgent container request received for integration: %s, org: %s", integrationID, org.ID)
 
-	if err := h.handler.ccAgentContainerService.RedeployCCAgentContainer(ctx, models.OrgID(org.ID), integrationID); err != nil {
+	if err := h.handler.ccAgentContainerService.RedeployCCAgentContainer(ctx, models.OrgID(org.ID), integrationID, false); err != nil {
 		log.Printf("❌ Failed to redeploy CCAgent container: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

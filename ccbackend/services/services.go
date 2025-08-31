@@ -130,6 +130,7 @@ type CCAgentContainerIntegrationsService interface {
 		ctx context.Context,
 		orgID models.OrgID,
 		integrationID string,
+		updateConfigOnly bool,
 	) error
 }
 

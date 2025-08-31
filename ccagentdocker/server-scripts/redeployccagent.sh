@@ -19,14 +19,17 @@ usage() {
     echo ""
     echo "Optional:"
     echo "  -f, --file FILE                    Docker compose file (default: docker-compose.yml)"
+    echo "  -c, --config-only                  Only update docker compose config, don't redeploy services"
     echo ""
     echo "Example:"
     echo "  $0 -n test -k sys_xxx -r github.com/user/repo -i 12345 -o sk-ant-xxx"
+    echo "  $0 -n test -k sys_xxx -r github.com/user/repo -i 12345 -o sk-ant-xxx --config-only"
     exit 1
 }
 
 # Default values
 COMPOSE_FILE="docker-compose.yml"
+CONFIG_ONLY=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -58,6 +61,10 @@ while [[ $# -gt 0 ]]; do
         -f|--file)
             COMPOSE_FILE="$2"
             shift 2
+            ;;
+        -c|--config-only)
+            CONFIG_ONLY=true
+            shift
             ;;
         -h|--help)
             usage
@@ -240,18 +247,26 @@ append_services
 
 echo ""
 echo "Successfully updated services for instance '$INSTANCE_NAME' in $COMPOSE_FILE"
-echo ""
-echo "Starting services with docker compose..."
-docker compose -f "$COMPOSE_FILE" up -d --pull always --remove-orphans
 
-if [ $? -eq 0 ]; then
+if [ "$CONFIG_ONLY" = true ]; then
     echo ""
-    echo "Services started successfully!"
-    echo "Token rotator container: '${TOKEN_ROTATOR_SERVICE}' is now running"
-    echo "CCAgent container: '${CCAGENT_SERVICE}' is now running"
+    echo "Config-only mode: Docker compose configuration updated, services not redeployed"
+    echo "To deploy the services, run:"
+    echo "  docker compose -f \"$COMPOSE_FILE\" up -d --pull always --remove-orphans"
 else
     echo ""
-    echo "Error: Failed to start services"
-    exit 1
+    echo "Starting services with docker compose..."
+    docker compose -f "$COMPOSE_FILE" up -d --pull always --remove-orphans
+
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "Services started successfully!"
+        echo "Token rotator container: '${TOKEN_ROTATOR_SERVICE}' is now running"
+        echo "CCAgent container: '${CCAGENT_SERVICE}' is now running"
+    else
+        echo ""
+        echo "Error: Failed to start services"
+        exit 1
+    fi
 fi
 
