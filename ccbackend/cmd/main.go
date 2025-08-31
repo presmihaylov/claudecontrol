@@ -34,6 +34,7 @@ import (
 	githubintegrations "ccbackend/services/github_integrations"
 	jobs "ccbackend/services/jobs"
 	organizations "ccbackend/services/organizations"
+	settingsservice "ccbackend/services/settings"
 	slackintegrations "ccbackend/services/slack_integrations"
 	slackmessages "ccbackend/services/slackmessages"
 	"ccbackend/services/txmanager"
@@ -85,6 +86,7 @@ func run() error {
 	githubIntegrationsRepo := db.NewPostgresGitHubIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	anthropicIntegrationsRepo := db.NewPostgresAnthropicIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	ccAgentContainerIntegrationsRepo := db.NewPostgresCCAgentContainerIntegrationsRepository(dbConn, cfg.DatabaseSchema)
+	settingsRepo := db.NewPostgresSettingsRepository(dbConn, cfg.DatabaseSchema)
 
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
@@ -129,6 +131,7 @@ func run() error {
 		anthropicIntegrationsRepo,
 		anthropicClient,
 	)
+	settingsService := settingsservice.NewSettingsService(settingsRepo)
 	// Create SSH client
 	sshClient := ssh.NewSSHClient(cfg.SSHPrivateKeyBase64)
 
@@ -214,6 +217,7 @@ func run() error {
 		ccAgentContainerService,
 		organizationsService,
 		agentsService,
+		settingsService,
 		txManager,
 	)
 	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
