@@ -660,7 +660,7 @@ export default function Home() {
 													size="sm"
 													onClick={() => handleDeleteIntegration(integration)}
 													disabled={deleting === integration.id}
-													className="flex items-center gap-2 w-full sm:w-auto"
+													className="flex items-center gap-2 w-full sm:w-auto bg-yellow-500 hover:bg-yellow-600 text-white"
 												>
 													<Trash2 className="h-4 w-4" />
 													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
