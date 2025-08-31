@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/samber/mo"
-
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
@@ -106,10 +104,10 @@ func (s *SettingsService) GetBooleanSetting(
 	ctx context.Context,
 	organizationID string,
 	key string,
-) (mo.Option[bool], error) {
+) (bool, error) {
 	log.Printf("📋 Starting to get boolean setting: %s", key)
 	if err := s.validateKey(key, models.SettingTypeBool); err != nil {
-		return mo.None[bool](), fmt.Errorf("invalid setting: %w", err)
+		return false, fmt.Errorf("invalid setting: %w", err)
 	}
 
 	setting, err := s.settingsRepo.GetSetting(
@@ -123,25 +121,25 @@ func (s *SettingsService) GetBooleanSetting(
 		if core.IsNotFoundError(err) {
 			defaultValue := s.getDefaultValue(key, models.SettingTypeBool)
 			log.Printf("📋 Completed successfully - boolean setting not found, returning default: %s", key)
-			return mo.Some(defaultValue.(bool)), nil
+			return defaultValue.(bool), nil
 		}
 
-		return mo.None[bool](), fmt.Errorf("failed to get boolean setting: %w", err)
+		return false, fmt.Errorf("failed to get boolean setting: %w", err)
 	}
 
 	utils.AssertInvariant(setting.ValueBoolean != nil, "boolean setting must have a value")
 	log.Printf("📋 Completed successfully - retrieved boolean setting: %s", key)
-	return mo.Some(*setting.ValueBoolean), nil
+	return *setting.ValueBoolean, nil
 }
 
 func (s *SettingsService) GetStringSetting(
 	ctx context.Context,
 	organizationID string,
 	key string,
-) (mo.Option[string], error) {
+) (string, error) {
 	log.Printf("📋 Starting to get string setting: %s", key)
 	if err := s.validateKey(key, models.SettingTypeString); err != nil {
-		return mo.None[string](), err
+		return "", err
 	}
 
 	setting, err := s.settingsRepo.GetSetting(
@@ -155,25 +153,25 @@ func (s *SettingsService) GetStringSetting(
 		if core.IsNotFoundError(err) {
 			defaultValue := s.getDefaultValue(key, models.SettingTypeString)
 			log.Printf("📋 Completed successfully - string setting not found, returning default: %s", key)
-			return mo.Some(defaultValue.(string)), nil
+			return defaultValue.(string), nil
 		}
 
-		return mo.None[string](), fmt.Errorf("failed to get string setting: %w", err)
+		return "", fmt.Errorf("failed to get string setting: %w", err)
 	}
 
 	utils.AssertInvariant(setting.ValueString != nil, "string setting must have a value")
 	log.Printf("📋 Completed successfully - retrieved string setting: %s", key)
-	return mo.Some(*setting.ValueString), nil
+	return *setting.ValueString, nil
 }
 
 func (s *SettingsService) GetStringArraySetting(
 	ctx context.Context,
 	organizationID string,
 	key string,
-) (mo.Option[[]string], error) {
+) ([]string, error) {
 	log.Printf("📋 Starting to get string array setting: %s", key)
 	if err := s.validateKey(key, models.SettingTypeStringArr); err != nil {
-		return mo.None[[]string](), err
+		return nil, err
 	}
 
 	setting, err := s.settingsRepo.GetSetting(
@@ -187,14 +185,14 @@ func (s *SettingsService) GetStringArraySetting(
 		if core.IsNotFoundError(err) {
 			defaultValue := s.getDefaultValue(key, models.SettingTypeStringArr)
 			log.Printf("📋 Completed successfully - string array setting not found, returning default: %s", key)
-			return mo.Some(defaultValue.([]string)), nil
+			return defaultValue.([]string), nil
 		}
-		return mo.None[[]string](), fmt.Errorf("failed to get string array setting: %w", err)
+		return nil, fmt.Errorf("failed to get string array setting: %w", err)
 	}
 
 	utils.AssertInvariant(setting.ValueStringArr != nil, "string array setting must have a value")
 	log.Printf("📋 Completed successfully - retrieved string array setting: %s", key)
-	return mo.Some([]string(setting.ValueStringArr)), nil
+	return []string(setting.ValueStringArr), nil
 }
 
 func (s *SettingsService) GetSettingByType(
@@ -207,39 +205,24 @@ func (s *SettingsService) GetSettingByType(
 
 	switch settingType {
 	case models.SettingTypeBool:
-		valueOpt, err := s.GetBooleanSetting(ctx, organizationID, key)
+		value, err := s.GetBooleanSetting(ctx, organizationID, key)
 		if err != nil {
 			return nil, err
 		}
-		value, ok := valueOpt.Get()
-		utils.AssertInvariant(
-			ok,
-			fmt.Sprintf("boolean setting %s must always have a value (either stored or default)", key),
-		)
 		log.Printf("📋 Completed successfully - retrieved boolean setting: %s", key)
 		return value, nil
 	case models.SettingTypeString:
-		valueOpt, err := s.GetStringSetting(ctx, organizationID, key)
+		value, err := s.GetStringSetting(ctx, organizationID, key)
 		if err != nil {
 			return nil, err
 		}
-		value, ok := valueOpt.Get()
-		utils.AssertInvariant(
-			ok,
-			fmt.Sprintf("string setting %s must always have a value (either stored or default)", key),
-		)
 		log.Printf("📋 Completed successfully - retrieved string setting: %s", key)
 		return value, nil
 	case models.SettingTypeStringArr:
-		valueOpt, err := s.GetStringArraySetting(ctx, organizationID, key)
+		value, err := s.GetStringArraySetting(ctx, organizationID, key)
 		if err != nil {
 			return nil, err
 		}
-		value, ok := valueOpt.Get()
-		utils.AssertInvariant(
-			ok,
-			fmt.Sprintf("string array setting %s must always have a value (either stored or default)", key),
-		)
 		log.Printf("📋 Completed successfully - retrieved string array setting: %s", key)
 		return value, nil
 	default:

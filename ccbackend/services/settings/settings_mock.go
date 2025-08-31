@@ -3,7 +3,6 @@ package settings
 import (
 	"context"
 
-	"github.com/samber/mo"
 	"github.com/stretchr/testify/mock"
 
 	"ccbackend/models"
@@ -47,36 +46,30 @@ func (m *MockSettingsService) GetBooleanSetting(
 	ctx context.Context,
 	organizationID string,
 	key string,
-) (mo.Option[bool], error) {
+) (bool, error) {
 	args := m.Called(ctx, organizationID, key)
-	if args.Get(0) == nil {
-		return mo.None[bool](), args.Error(1)
-	}
-	return args.Get(0).(mo.Option[bool]), args.Error(1)
+	return args.Bool(0), args.Error(1)
 }
 
 func (m *MockSettingsService) GetStringSetting(
 	ctx context.Context,
 	organizationID string,
 	key string,
-) (mo.Option[string], error) {
+) (string, error) {
 	args := m.Called(ctx, organizationID, key)
-	if args.Get(0) == nil {
-		return mo.None[string](), args.Error(1)
-	}
-	return args.Get(0).(mo.Option[string]), args.Error(1)
+	return args.String(0), args.Error(1)
 }
 
 func (m *MockSettingsService) GetStringArraySetting(
 	ctx context.Context,
 	organizationID string,
 	key string,
-) (mo.Option[[]string], error) {
+) ([]string, error) {
 	args := m.Called(ctx, organizationID, key)
 	if args.Get(0) == nil {
-		return mo.None[[]string](), args.Error(1)
+		return nil, args.Error(1)
 	}
-	return args.Get(0).(mo.Option[[]string]), args.Error(1)
+	return args.Get(0).([]string), args.Error(1)
 }
 
 func (m *MockSettingsService) GetSettingByType(

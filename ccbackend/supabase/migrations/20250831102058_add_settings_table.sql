@@ -37,19 +37,6 @@ CREATE TABLE claudecontrol.settings (
 CREATE INDEX idx_settings_organization_key ON claudecontrol.settings (organization_id, key);
 CREATE INDEX idx_settings_org_scope ON claudecontrol.settings (organization_id, scope_type, scope_id);
 
--- Create trigger to automatically update updated_at timestamp
-CREATE OR REPLACE FUNCTION claudecontrol.update_settings_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER trigger_settings_updated_at
-    BEFORE UPDATE ON claudecontrol.settings
-    FOR EACH ROW
-    EXECUTE FUNCTION claudecontrol.update_settings_updated_at();
 
 COMMIT;
 
@@ -89,18 +76,5 @@ CREATE TABLE claudecontrol_test.settings (
 CREATE INDEX idx_settings_organization_key ON claudecontrol_test.settings (organization_id, key);
 CREATE INDEX idx_settings_org_scope ON claudecontrol_test.settings (organization_id, scope_type, scope_id);
 
--- Create trigger to automatically update updated_at timestamp
-CREATE OR REPLACE FUNCTION claudecontrol_test.update_settings_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER trigger_settings_updated_at
-    BEFORE UPDATE ON claudecontrol_test.settings
-    FOR EACH ROW
-    EXECUTE FUNCTION claudecontrol_test.update_settings_updated_at();
 
 COMMIT;
