@@ -1,5 +1,8 @@
 "use client";
 
+import { AnthropicIntegrationCard } from "@/components/integrations/AnthropicIntegrationCard";
+import { CCAgentIntegrationCard } from "@/components/integrations/CCAgentIntegrationCard";
+import { GitHubIntegrationCard } from "@/components/integrations/GitHubIntegrationCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -10,11 +13,11 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { DiscordIcon, SlackIcon } from "@/icons";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { Copy, Download, Key, RefreshCw, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface SlackIntegration {
@@ -35,23 +38,37 @@ interface DiscordIntegration {
 	updated_at: string;
 }
 
-interface Organization {
+interface GitHubIntegration {
 	id: string;
-	ccagent_secret_key_generated_at: string | null;
+	github_installation_id: string;
+	organization_id: string;
 	created_at: string;
 	updated_at: string;
 }
 
-interface CCAgentSecretKeyResponse {
-	secret_key: string;
-	generated_at: string;
+interface AnthropicIntegration {
+	id: string;
+	has_api_key: boolean;
+	has_oauth_token: boolean;
+	organization_id: string;
+	created_at: string;
+	updated_at: string;
+}
+
+interface CCAgentContainerIntegration {
+	id: string;
+	instances_count: number;
+	repo_url: string;
+	organization_id: string;
+	created_at: string;
+	updated_at: string;
 }
 
 export default function Home() {
 	const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
+	const router = useRouter();
 	const [integrations, setIntegrations] = useState<SlackIntegration[]>([]);
 	const [discordIntegrations, setDiscordIntegrations] = useState<DiscordIntegration[]>([]);
-	const [organization, setOrganization] = useState<Organization | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [backendAuthenticated, setBackendAuthenticated] = useState(false);
 	const [authError, setAuthError] = useState<string | null>(null);
@@ -61,11 +78,47 @@ export default function Home() {
 	const [discordDeleteDialogOpen, setDiscordDeleteDialogOpen] = useState(false);
 	const [discordIntegrationToDelete, setDiscordIntegrationToDelete] =
 		useState<DiscordIntegration | null>(null);
-	const [generatingKey, setGeneratingKey] = useState(false);
-	const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
-	const [secretKeyDialogOpen, setSecretKeyDialogOpen] = useState(false);
-	const [generatedSecretKey, setGeneratedSecretKey] = useState<string>("");
-	const [copySuccess, setCopySuccess] = useState(false);
+
+	// Integration states for child components
+	const [githubIntegration, setGithubIntegration] = useState<GitHubIntegration | null>(null);
+	const [anthropicIntegration, setAnthropicIntegration] = useState<AnthropicIntegration | null>(
+		null,
+	);
+	const [ccAgentIntegration, setCCAgentIntegration] = useState<CCAgentContainerIntegration | null>(
+		null,
+	);
+
+	// Check onboarding status and redirect if needed
+	useEffect(() => {
+		const checkOnboardingStatus = async () => {
+			if (!isLoaded || !isSignedIn) return;
+
+			try {
+				const token = await getToken();
+				if (!token) return;
+
+				const response = await fetch(`${env.CCBACKEND_BASE_URL}/settings/org-onboarding_finished`, {
+					method: "GET",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+				});
+
+				if (response.ok) {
+					const data = await response.json();
+					if (!data.value) {
+						router.push("/onboarding");
+						return;
+					}
+				}
+			} catch (error) {
+				console.error("Error checking onboarding status:", error);
+			}
+		};
+
+		checkOnboardingStatus();
+	}, [isLoaded, isSignedIn, getToken, router]);
 
 	// Authenticate user with backend and fetch integrations when they first sign in
 	useEffect(() => {
@@ -97,10 +150,9 @@ export default function Home() {
 				setBackendAuthenticated(true);
 				setAuthError(null);
 
-				// Then fetch their integrations and organization
-				await fetchIntegrations();
+				// Then fetch their integrations
+				await fetchSlackIntegrations();
 				await fetchDiscordIntegrations();
-				await fetchOrganization();
 			} catch (error) {
 				console.error("Error authenticating user:", error);
 				setAuthError(`Authentication error: ${error}`);
@@ -113,7 +165,7 @@ export default function Home() {
 		authenticateUserAndFetchIntegrations();
 	}, [isLoaded, isSignedIn, getToken]);
 
-	const fetchIntegrations = async () => {
+	const fetchSlackIntegrations = async () => {
 		try {
 			const token = await getToken();
 			if (!token) return;
@@ -160,31 +212,6 @@ export default function Home() {
 			setDiscordIntegrations(integrationsData || []);
 		} catch (error) {
 			console.error("Error fetching Discord integrations:", error);
-		}
-	};
-
-	const fetchOrganization = async () => {
-		try {
-			const token = await getToken();
-			if (!token) return;
-
-			const response = await fetch(`${env.CCBACKEND_BASE_URL}/organizations`, {
-				method: "GET",
-				headers: {
-					Authorization: `Bearer ${token}`,
-					"Content-Type": "application/json",
-				},
-			});
-
-			if (!response.ok) {
-				console.error("Failed to fetch organization:", response.statusText);
-				return;
-			}
-
-			const organizationData = await response.json();
-			setOrganization(organizationData);
-		} catch (error) {
-			console.error("Error fetching organization:", error);
 		}
 	};
 
@@ -294,63 +321,6 @@ export default function Home() {
 		}
 	};
 
-	const handleGenerateSecretKey = async () => {
-		setGeneratingKey(true);
-		setRegenerateDialogOpen(false);
-
-		try {
-			const token = await getToken();
-			if (!token) return;
-
-			const response = await fetch(`${env.CCBACKEND_BASE_URL}/organizations/ccagent_secret_key`, {
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${token}`,
-					"Content-Type": "application/json",
-				},
-			});
-
-			if (!response.ok) {
-				console.error("Failed to generate secret key:", response.statusText);
-				alert("Failed to generate secret key. Please try again.");
-				return;
-			}
-
-			const data: CCAgentSecretKeyResponse = await response.json();
-			setGeneratedSecretKey(data.secret_key);
-			setSecretKeyDialogOpen(true);
-
-			// Update the organization to reflect the new timestamp
-			if (organization && data.generated_at) {
-				setOrganization({
-					...organization,
-					ccagent_secret_key_generated_at: data.generated_at,
-				});
-			}
-		} catch (error) {
-			console.error("Error generating secret key:", error);
-			alert("Failed to generate secret key. Please try again.");
-		} finally {
-			setGeneratingKey(false);
-		}
-	};
-
-	const handleCopyToClipboard = async () => {
-		try {
-			await navigator.clipboard.writeText(generatedSecretKey);
-			setCopySuccess(true);
-			setTimeout(() => setCopySuccess(false), 2000);
-		} catch (error) {
-			console.error("Failed to copy to clipboard:", error);
-		}
-	};
-
-	const handleCloseSecretKeyDialog = () => {
-		setSecretKeyDialogOpen(false);
-		setGeneratedSecretKey("");
-		setCopySuccess(false);
-	};
-
 	if (!isLoaded || loading) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
@@ -432,297 +402,126 @@ export default function Home() {
 				</div>
 			</header>
 			<div className="container mx-auto px-4 py-8 max-w-4xl">
-				{integrations.length === 0 && discordIntegrations.length === 0 ? (
-					// Show ccagent Secret Key section first, then "Add to Slack"
-					<div className="space-y-6">
-						{/* ccagent Secret Key Section - always show */}
-						{organization && (
-							<Card>
-								<CardHeader>
-									<CardTitle>Control Panel</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									{/* Setup Tutorial Link */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
-										<div className="space-y-1">
-											<h4 className="font-medium">Getting Started</h4>
-											<p className="text-sm text-muted-foreground">
-												How to set up and use Claude Control
-											</p>
-										</div>
+				<div className="space-y-6">
+					{/* App Installations Section */}
+					<Card>
+						<CardHeader>
+							<CardTitle>App Installations</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							{integrations.length === 0 && discordIntegrations.length === 0 ? (
+								<div className="text-center space-y-4">
+									<p className="text-sm text-muted-foreground">
+										Connect Slack or Discord to get started
+									</p>
+									<div className="flex flex-col sm:flex-row gap-4 justify-center">
 										<Button
-											variant="outline"
-											onClick={() =>
-												window.open(
-													"https://drive.google.com/file/d/11G1btpviFYzehqx0-ji3o1QhKmTR991U/view?usp=sharing",
-													"_blank",
-												)
-											}
+											size="lg"
 											className="flex items-center gap-2 w-full sm:w-auto"
+											onClick={handleAddToSlack}
 										>
-											📺 Watch Tutorial
+											<SlackIcon className="h-5 w-5" color="white" />
+											Connect Slack
+										</Button>
+										<Button
+											size="lg"
+											className="flex items-center gap-2 w-full sm:w-auto"
+											onClick={handleAddToDiscord}
+										>
+											<DiscordIcon className="h-5 w-5" color="white" />
+											Connect Discord
 										</Button>
 									</div>
-
-									{/* Download ccagent Button */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
-										<div className="space-y-1">
-											<h4 className="font-medium">Download CCAgent</h4>
-											<p className="text-sm text-muted-foreground">
-												Download the ccagent CLI tool to start using Claude Control with your Slack
-												workspaces.
-											</p>
-										</div>
-										<Button
-											variant="outline"
-											onClick={() =>
-												window.open(
-													"https://github.com/presmihaylov/ccagent#installation",
-													"_blank",
-												)
-											}
-											className="flex items-center gap-2 w-full sm:w-auto"
+								</div>
+							) : (
+								<div className="space-y-3">
+									{integrations.map((integration) => (
+										<div
+											key={integration.id}
+											className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
 										>
-											<Download className="h-4 w-4" />
-											Download
-										</Button>
-									</div>
-
-									{/* CCAgent API Key Section */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
-										<div className="space-y-1">
-											<h4 className="font-medium">CCAgent API Key</h4>
-											<p className="text-sm text-muted-foreground">
-												The secret key used to authenticate ccagent against your organization
-											</p>
-										</div>
-										<div className="flex gap-2 w-full sm:w-auto">
-											{organization.ccagent_secret_key_generated_at ? (
-												<Button
-													variant="outline"
-													onClick={() => setRegenerateDialogOpen(true)}
-													disabled={generatingKey}
-													className="flex items-center gap-2 w-full sm:w-auto"
-												>
-													<RefreshCw className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
-													{generatingKey ? "Regenerating..." : "Regenerate"}
-												</Button>
-											) : (
-												<Button
-													onClick={handleGenerateSecretKey}
-													disabled={generatingKey}
-													className="flex items-center gap-2 w-full sm:w-auto"
-												>
-													<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
-													{generatingKey ? "Generating..." : "Generate"}
-												</Button>
-											)}
-										</div>
-									</div>
-								</CardContent>
-							</Card>
-						)}
-
-						<div className="flex flex-col items-center justify-center">
-							<p className="text-base sm:text-lg text-muted-foreground mb-6 text-center px-4">
-								Connect your workspace to get started with Claude Control
-							</p>
-							<div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-								<Button
-									size="lg"
-									className="flex items-center gap-2 cursor-pointer w-full sm:w-auto"
-									onClick={handleAddToSlack}
-								>
-									<SlackIcon className="h-5 w-5" color="white" />
-									Add to Slack
-								</Button>
-								<Button
-									size="lg"
-									className="flex items-center gap-2 cursor-pointer w-full sm:w-auto"
-									onClick={handleAddToDiscord}
-								>
-									<DiscordIcon className="h-5 w-5" color="white" />
-									Add to Discord
-								</Button>
-							</div>
-						</div>
-					</div>
-				) : (
-					// Show secret key section and list of integrations
-					<div className="space-y-6">
-						{/* ccagent Secret Key Section */}
-						{organization && (
-							<Card>
-								<CardHeader>
-									<CardTitle>Control Panel</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									{/* Setup Tutorial Link */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
-										<div className="space-y-1">
-											<h4 className="font-medium">Getting Started</h4>
-											<p className="text-sm text-muted-foreground">
-												How to set up and use Claude Control
-											</p>
-										</div>
-										<Button
-											variant="outline"
-											onClick={() =>
-												window.open(
-													"https://drive.google.com/file/d/11G1btpviFYzehqx0-ji3o1QhKmTR991U/view?usp=sharing",
-													"_blank",
-												)
-											}
-											className="flex items-center gap-2 w-full sm:w-auto"
-										>
-											📺 Watch Tutorial
-										</Button>
-									</div>
-
-									{/* Download ccagent Button */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
-										<div className="space-y-1">
-											<h4 className="font-medium">Download CCAgent</h4>
-											<p className="text-sm text-muted-foreground">
-												Download the ccagent CLI tool to start using Claude Control with your Slack
-												workspaces.
-											</p>
-										</div>
-										<Button
-											variant="outline"
-											onClick={() =>
-												window.open(
-													"https://github.com/presmihaylov/ccagent#installation",
-													"_blank",
-												)
-											}
-											className="flex items-center gap-2 w-full sm:w-auto"
-										>
-											<Download className="h-4 w-4" />
-											Download
-										</Button>
-									</div>
-
-									{/* CCAgent API Key Section */}
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-muted/50 gap-4">
-										<div className="space-y-1">
-											<h4 className="font-medium">CCAgent API Key</h4>
-											<p className="text-sm text-muted-foreground">
-												The secret key used to authenticate ccagent against your organization
-											</p>
-										</div>
-										<div className="flex gap-2 w-full sm:w-auto">
-											{organization.ccagent_secret_key_generated_at ? (
-												<Button
-													variant="outline"
-													onClick={() => setRegenerateDialogOpen(true)}
-													disabled={generatingKey}
-													className="flex items-center gap-2 w-full sm:w-auto"
-												>
-													<RefreshCw className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
-													{generatingKey ? "Regenerating..." : "Regenerate"}
-												</Button>
-											) : (
-												<Button
-													onClick={handleGenerateSecretKey}
-													disabled={generatingKey}
-													className="flex items-center gap-2 w-full sm:w-auto"
-												>
-													<Key className={`h-4 w-4 ${generatingKey ? "animate-spin" : ""}`} />
-													{generatingKey ? "Generating..." : "Generate"}
-												</Button>
-											)}
-										</div>
-									</div>
-								</CardContent>
-							</Card>
-						)}
-
-						<div>
-							<h2 className="text-2xl font-semibold mb-4">Connected Workspaces</h2>
-							<div className="grid gap-4">
-								{integrations.map((integration) => (
-									<Card key={integration.id} className="p-4">
-										<div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-4">
 											<div className="flex items-center gap-3">
-												<SlackIcon className="h-6 w-6" color="black" />
+												<SlackIcon className="h-5 w-5" />
 												<div>
-													<h3 className="font-semibold">{integration.slack_team_name}</h3>
-													<p className="text-sm text-muted-foreground">
-														Slack • Connected on{" "}
-														{new Date(integration.created_at).toLocaleDateString()}
+													<h4 className="font-medium text-sm">{integration.slack_team_name}</h4>
+													<p className="text-xs text-muted-foreground">
+														Connected {new Date(integration.created_at).toLocaleDateString()}
 													</p>
 												</div>
 											</div>
-											<div className="flex items-center gap-2">
-												<Button
-													variant="secondary"
-													size="sm"
-													onClick={() => handleDeleteIntegration(integration)}
-													disabled={deleting === integration.id}
-													className="flex items-center gap-2 w-full sm:w-auto"
-												>
-													<Trash2 className="h-4 w-4" />
-													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
-												</Button>
-											</div>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() => handleDeleteIntegration(integration)}
+												disabled={deleting === integration.id}
+												className="text-foreground hover:text-destructive"
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
 										</div>
-									</Card>
-								))}
-								{discordIntegrations.map((integration) => (
-									<Card key={integration.id} className="p-4">
-										<div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-4">
+									))}
+									{discordIntegrations.map((integration) => (
+										<div
+											key={integration.id}
+											className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
+										>
 											<div className="flex items-center gap-3">
-												<DiscordIcon className="h-6 w-6" color="black" />
+												<DiscordIcon className="h-5 w-5" />
 												<div>
-													<h3 className="font-semibold">{integration.discord_guild_name}</h3>
-													<p className="text-sm text-muted-foreground">
-														Discord • Connected on{" "}
-														{new Date(integration.created_at).toLocaleDateString()}
+													<h4 className="font-medium text-sm">{integration.discord_guild_name}</h4>
+													<p className="text-xs text-muted-foreground">
+														Connected {new Date(integration.created_at).toLocaleDateString()}
 													</p>
 												</div>
 											</div>
-											<div className="flex items-center gap-2">
-												<Button
-													variant="secondary"
-													size="sm"
-													onClick={() => handleDeleteDiscordIntegration(integration)}
-													disabled={deleting === integration.id}
-													className="flex items-center gap-2 w-full sm:w-auto"
-												>
-													<Trash2 className="h-4 w-4" />
-													{deleting === integration.id ? "Disconnecting..." : "Disconnect"}
-												</Button>
-											</div>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() => handleDeleteDiscordIntegration(integration)}
+												disabled={deleting === integration.id}
+												className="text-foreground hover:text-destructive"
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
 										</div>
-									</Card>
-								))}
-							</div>
-						</div>
+									))}
+									{/* Add more connections */}
+									<div className="pt-2 flex flex-col sm:flex-row gap-4 justify-center">
+										<Button
+											size="lg"
+											className="flex items-center gap-2 w-full sm:w-auto"
+											onClick={handleAddToSlack}
+										>
+											<SlackIcon className="h-5 w-5" color="white" />
+											Connect Slack
+										</Button>
+										<Button
+											size="lg"
+											className="flex items-center gap-2 w-full sm:w-auto"
+											onClick={handleAddToDiscord}
+										>
+											<DiscordIcon className="h-5 w-5" color="white" />
+											Connect Discord
+										</Button>
+									</div>
+								</div>
+							)}
+						</CardContent>
+					</Card>
 
-						{/* Connect another workspace buttons */}
-						<div className="flex justify-center pt-4">
-							<div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-								<Button
-									size="lg"
-									className="flex items-center gap-2 w-full sm:w-auto"
-									onClick={handleAddToSlack}
-								>
-									<SlackIcon className="h-5 w-5" color="white" />
-									Connect Slack
-								</Button>
-								<Button
-									size="lg"
-									className="flex items-center gap-2 w-full sm:w-auto"
-									onClick={handleAddToDiscord}
-								>
-									<DiscordIcon className="h-5 w-5" color="white" />
-									Connect Discord
-								</Button>
-							</div>
-						</div>
-					</div>
-				)}
+					{/* GitHub Integration Section */}
+					<GitHubIntegrationCard onIntegrationChange={setGithubIntegration} />
+
+					{/* Claude Integration Section */}
+					<AnthropicIntegrationCard onIntegrationChange={setAnthropicIntegration} />
+
+					{/* Background Agents Section */}
+					<CCAgentIntegrationCard
+						onIntegrationChange={setCCAgentIntegration}
+						githubIntegration={githubIntegration}
+						anthropicIntegration={anthropicIntegration}
+					/>
+				</div>
 
 				{/* Delete confirmation dialogs */}
 				<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -770,78 +569,6 @@ export default function Home() {
 							>
 								{deleting === discordIntegrationToDelete?.id ? "Disconnecting..." : "Disconnect"}
 							</Button>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
-
-				{/* Regenerate Warning Dialog */}
-				<Dialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Regenerate Secret Key</DialogTitle>
-							<DialogDescription>
-								Are you sure you want to regenerate the secret key for your organization?
-								<br />
-								<br />
-								<strong>Warning:</strong> This will invalidate the old key and any running ccagent
-								instances using the old key will stop working until you update them with the new
-								key.
-							</DialogDescription>
-						</DialogHeader>
-						<DialogFooter>
-							<Button variant="outline" onClick={() => setRegenerateDialogOpen(false)}>
-								Cancel
-							</Button>
-							<Button onClick={handleGenerateSecretKey} disabled={generatingKey}>
-								{generatingKey ? "Regenerating..." : "Regenerate Key"}
-							</Button>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
-
-				{/* Secret Key Display Dialog */}
-				<Dialog open={secretKeyDialogOpen} onOpenChange={setSecretKeyDialogOpen}>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Your ccagent Secret Key</DialogTitle>
-							<DialogDescription>
-								Copy this secret key and save it somewhere safe. You won't be able to see it again
-								after closing this dialog.
-							</DialogDescription>
-						</DialogHeader>
-						<div className="space-y-4">
-							<div className="space-y-2">
-								<label htmlFor="secret-key-input" className="text-sm font-medium">
-									Secret Key
-								</label>
-								<div className="flex gap-2">
-									<Input
-										id="secret-key-input"
-										type="text"
-										value={generatedSecretKey}
-										readOnly
-										className="font-mono text-sm"
-										onClick={(e) => e.currentTarget.select()}
-									/>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={handleCopyToClipboard}
-										className="flex items-center gap-2"
-									>
-										<Copy className="h-4 w-4" />
-										{copySuccess ? "Copied!" : "Copy"}
-									</Button>
-								</div>
-							</div>
-							{copySuccess && (
-								<p className="text-sm text-green-600">
-									Secret key copied to clipboard successfully!
-								</p>
-							)}
-						</div>
-						<DialogFooter>
-							<Button onClick={handleCloseSecretKeyDialog}>Close</Button>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>

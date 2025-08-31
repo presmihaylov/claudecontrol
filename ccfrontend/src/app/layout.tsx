@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import PlainChatAuthenticated from "@/components/plain-chat-authenticated";
+import { Toaster } from "@/components/ui/toaster";
 import { ClerkProvider } from "@clerk/nextjs";
+
+// Only import PlainChatAuthenticated in production
+const PlainChatAuthenticated = process.env.NODE_ENV === 'production' 
+	? require("@/components/plain-chat-authenticated").default 
+	: null;
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -40,7 +45,8 @@ export default function RootLayout({
 					className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-full bg-background`}
 				>
 					{children}
-					<PlainChatAuthenticated />
+					{PlainChatAuthenticated && <PlainChatAuthenticated />}
+					<Toaster />
 				</body>
 			</html>
 		</ClerkProvider>

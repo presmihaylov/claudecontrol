@@ -7,7 +7,7 @@ export default function GitHubGlobalRedirect() {
 		// Parse query parameters from current URL
 		const urlParams = new URLSearchParams(window.location.search);
 		const state = urlParams.get("state");
-		
+
 		if (!state) {
 			console.error("No state parameter found in GitHub callback");
 			window.location.href = "/";
@@ -32,7 +32,7 @@ export default function GitHubGlobalRedirect() {
 
 		// Create new URL with the target redirect URI
 		const targetUrl = new URL(targetRedirectUri);
-		
+
 		// Preserve all query parameters except 'state' and add them to target URL
 		urlParams.delete("state");
 		for (const [key, value] of urlParams.entries()) {
