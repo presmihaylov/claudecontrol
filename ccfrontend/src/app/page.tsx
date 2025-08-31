@@ -343,9 +343,9 @@ export default function Home() {
 	// Show error if backend authentication failed
 	if (!loading && authError) {
 		return (
-			<div className="min-h-screen bg-background">
+			<div className="min-h-screen bg-background w-full overflow-x-hidden">
 				<header className="border-b">
-					<div className="container mx-auto px-4 py-4 flex items-center justify-between">
+					<div className="container mx-auto px-4 py-4 flex items-center justify-between min-w-0">
 						<div className="hidden sm:block" />
 						<h1 className="text-xl sm:text-2xl font-semibold text-center sm:text-left">
 							Claude Control
@@ -355,7 +355,7 @@ export default function Home() {
 						</Button>
 					</div>
 				</header>
-				<div className="container mx-auto px-4 py-8 max-w-4xl">
+				<div className="container mx-auto px-4 py-8 max-w-4xl min-w-0 overflow-hidden">
 					<div className="flex flex-col items-center justify-center min-h-[60vh]">
 						<div className="text-center space-y-4">
 							<h2 className="text-xl font-semibold text-destructive">Authentication Failed</h2>
@@ -389,9 +389,9 @@ export default function Home() {
 	}
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="min-h-screen bg-background w-full overflow-x-hidden">
 			<header className="border-b">
-				<div className="container mx-auto px-4 py-4 flex items-center justify-between">
+				<div className="container mx-auto px-4 py-4 flex items-center justify-between min-w-0">
 					<div className="hidden sm:block" />
 					<h1 className="text-xl sm:text-2xl font-semibold text-center sm:text-left">
 						Claude Control
@@ -401,10 +401,10 @@ export default function Home() {
 					</Button>
 				</div>
 			</header>
-			<div className="container mx-auto px-4 py-8 max-w-4xl">
-				<div className="space-y-6">
+			<div className="container mx-auto px-4 py-8 max-w-4xl min-w-0 overflow-hidden">
+				<div className="space-y-6 w-full">
 					{/* App Installations Section */}
-					<Card>
+					<Card className="w-full overflow-hidden">
 						<CardHeader>
 							<CardTitle>App Installations</CardTitle>
 						</CardHeader>
@@ -438,7 +438,7 @@ export default function Home() {
 									{integrations.map((integration) => (
 										<div
 											key={integration.id}
-											className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
+											className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg bg-muted/50 gap-3"
 										>
 											<div className="flex items-center gap-3">
 												<SlackIcon className="h-5 w-5" />
@@ -454,7 +454,7 @@ export default function Home() {
 												size="sm"
 												onClick={() => handleDeleteIntegration(integration)}
 												disabled={deleting === integration.id}
-												className="text-foreground hover:text-destructive"
+												className="text-foreground hover:text-destructive self-start sm:self-center"
 											>
 												<Trash2 className="h-4 w-4" />
 											</Button>
@@ -463,7 +463,7 @@ export default function Home() {
 									{discordIntegrations.map((integration) => (
 										<div
 											key={integration.id}
-											className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
+											className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg bg-muted/50 gap-3"
 										>
 											<div className="flex items-center gap-3">
 												<DiscordIcon className="h-5 w-5" />
@@ -479,7 +479,7 @@ export default function Home() {
 												size="sm"
 												onClick={() => handleDeleteDiscordIntegration(integration)}
 												disabled={deleting === integration.id}
-												className="text-foreground hover:text-destructive"
+												className="text-foreground hover:text-destructive self-start sm:self-center"
 											>
 												<Trash2 className="h-4 w-4" />
 											</Button>

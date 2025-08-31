@@ -953,9 +953,7 @@ export default function OnboardingPage() {
 						{currentStep === 1 && !slackIntegration && !discordIntegration && (
 							<Card className="w-full">
 								<CardHeader>
-									<CardTitle>
-										Install the Claude Control App
-									</CardTitle>
+									<CardTitle>Install the Claude Control App</CardTitle>
 									<CardDescription>Install it in your Slack or Discord</CardDescription>
 								</CardHeader>
 								<CardContent className="space-y-4">
@@ -1113,9 +1111,7 @@ export default function OnboardingPage() {
 						{currentStep === 3 && !anthropicIntegration && (
 							<Card className="w-full">
 								<CardHeader>
-									<CardTitle>
-										Connect your Claude account
-									</CardTitle>
+									<CardTitle>Connect your Claude account</CardTitle>
 									<CardDescription>Choose how to connect your Claude account</CardDescription>
 								</CardHeader>
 								<CardContent>
@@ -1347,7 +1343,9 @@ export default function OnboardingPage() {
 
 									<div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
 										<p className="text-sm text-blue-800">
-											<strong>Want to self-host the container?</strong> If you prefer to self-host Cloud Control instead of using our managed service, please reach out to me for setup instructions.
+											<strong>Want to self-host the container?</strong> If you prefer to self-host
+											Cloud Control instead of using our managed service, please reach out to me for
+											setup instructions.
 										</p>
 									</div>
 

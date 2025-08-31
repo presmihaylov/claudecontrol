@@ -5,9 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { ClerkProvider } from "@clerk/nextjs";
 
 // Only import PlainChatAuthenticated in production
-const PlainChatAuthenticated = process.env.NODE_ENV === 'production' 
-	? require("@/components/plain-chat-authenticated").default 
-	: null;
+const PlainChatAuthenticated =
+	process.env.NODE_ENV === "production"
+		? require("@/components/plain-chat-authenticated").default
+		: null;
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",

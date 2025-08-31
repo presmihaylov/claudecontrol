@@ -173,12 +173,14 @@ export function GitHubIntegrationCard({ onIntegrationChange }: GitHubIntegration
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<div className="rounded-lg border bg-muted/50 p-4">
-					<div className="flex items-start justify-between">
-						<div className="flex-1">
+					<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+						<div className="flex-1 min-w-0">
 							<dl className="space-y-1 text-sm">
 								<div>
 									<dt className="inline font-medium text-muted-foreground">Installation ID:</dt>{" "}
-									<dd className="inline font-mono">{integration.github_installation_id}</dd>
+									<dd className="inline font-mono break-all">
+										{integration.github_installation_id}
+									</dd>
 								</div>
 								<div>
 									<dt className="inline font-medium text-muted-foreground">Connected:</dt>{" "}
@@ -193,7 +195,7 @@ export function GitHubIntegrationCard({ onIntegrationChange }: GitHubIntegration
 							size="sm"
 							onClick={handleDisconnectGitHub}
 							disabled={deleting}
-							className="text-foreground hover:text-destructive"
+							className="text-foreground hover:text-destructive self-start sm:self-center flex-shrink-0"
 						>
 							<Trash2 className="h-4 w-4 mr-2" />
 							{deleting ? "Disconnecting..." : "Disconnect"}
