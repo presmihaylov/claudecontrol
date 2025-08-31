@@ -274,33 +274,19 @@ export default function OnboardingPage() {
 	};
 
 	const handleConnectSlack = () => {
-		const clientId = "7702199766949.7755536473636";
-		const scopes =
-			"app_mentions:read,channels:read,groups:read,im:read,mpim:read,chat:write,files:read,files:write";
-		const redirectUri = `${window.location.origin}/slack/redirect`;
-		const state = btoa(
-			JSON.stringify({
-				redirect_uri: redirectUri,
-				origin: window.location.origin,
-			}),
-		);
+		const scope =
+			"app_mentions:read,channels:history,chat:write,commands,reactions:write,reactions:read,team:read";
+		const userScope = "";
 
-		window.location.href = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
+		const slackAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${env.SLACK_CLIENT_ID}&scope=${encodeURIComponent(scope)}&user_scope=${encodeURIComponent(userScope)}&redirect_uri=${encodeURIComponent(env.SLACK_REDIRECT_URI)}`;
+
+		window.location.href = slackAuthUrl;
 	};
 
 	const handleConnectDiscord = () => {
-		const clientId = "1296558726031634526";
-		const scopes = "bot";
-		const permissions = "277025770560";
-		const redirectUri = `${window.location.origin}/discord/redirect`;
-		const state = btoa(
-			JSON.stringify({
-				redirect_uri: redirectUri,
-				origin: window.location.origin,
-			}),
-		);
+		const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1403408262338187264&permissions=34359740480&integration_type=0&scope=bot&redirect_uri=${encodeURIComponent(env.DISCORD_REDIRECT_URI)}&response_type=code`;
 
-		window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&scope=${scopes}&redirect_uri=${redirectUri}&response_type=code&state=${state}`;
+		window.location.href = discordAuthUrl;
 	};
 
 	const handleDisconnectSlack = async () => {
@@ -745,24 +731,24 @@ export default function OnboardingPage() {
 								{[
 									{
 										step: 1,
-										title: "Connect Your Repo",
-										description: "GitHub integration",
+										title: "Link Github Account",
+										description: "So we can access your repos",
 										icon: <GitBranch className="h-4 w-4" />,
 										isCompleted: !!githubIntegration,
 										isCurrent: currentStep === 1,
 									},
 									{
 										step: 2,
-										title: "Install Slack/Discord App",
-										description: "Chat platform",
+										title: "Install Claude Control",
+										description: "Set it up in Slack or Discord",
 										icon: <MessageCircle className="h-4 w-4" />,
 										isCompleted: !!(slackIntegration || discordIntegration),
 										isCurrent: currentStep === 2,
 									},
 									{
 										step: 3,
-										title: "Link Claude Code",
-										description: "Anthropic integration",
+										title: "Link Anthropic Account",
+										description: "So we can run Claude Code",
 										icon: <User className="h-4 w-4" />,
 										isCompleted: !!anthropicIntegration,
 										isCurrent: currentStep === 3,
@@ -770,7 +756,7 @@ export default function OnboardingPage() {
 									{
 										step: 4,
 										title: "Deploy Background Agent",
-										description: "Container setup",
+										description: "Configure the remote container",
 										icon: <Server className="h-4 w-4" />,
 										isCompleted: !!ccAgentIntegration,
 										isCurrent: currentStep === 4,
@@ -932,38 +918,23 @@ export default function OnboardingPage() {
 									</CardDescription>
 								</CardHeader>
 								<CardContent className="space-y-4">
-									<div className="grid gap-4 sm:grid-cols-2">
-										<Card
-											className="cursor-pointer hover:bg-muted/50 transition-colors"
+									<div className="flex flex-col sm:flex-row gap-4 justify-center">
+										<Button
+											size="lg"
+											className="flex items-center gap-2 w-full sm:w-auto"
 											onClick={handleConnectSlack}
 										>
-											<CardContent className="flex items-center gap-4 p-6">
-												<SlackIcon className="h-8 w-8" />
-												<div className="flex-1">
-													<h3 className="font-medium">Slack</h3>
-													<p className="text-sm text-muted-foreground">
-														Connect to your Slack workspace
-													</p>
-												</div>
-												<ExternalLink className="h-4 w-4 text-muted-foreground" />
-											</CardContent>
-										</Card>
-
-										<Card
-											className="cursor-pointer hover:bg-muted/50 transition-colors"
+											<SlackIcon className="h-5 w-5" color="white" />
+											Connect Slack
+										</Button>
+										<Button
+											size="lg"
+											className="flex items-center gap-2 w-full sm:w-auto"
 											onClick={handleConnectDiscord}
 										>
-											<CardContent className="flex items-center gap-4 p-6">
-												<DiscordIcon className="h-8 w-8" />
-												<div className="flex-1">
-													<h3 className="font-medium">Discord</h3>
-													<p className="text-sm text-muted-foreground">
-														Connect to your Discord server
-													</p>
-												</div>
-												<ExternalLink className="h-4 w-4 text-muted-foreground" />
-											</CardContent>
-										</Card>
+											<DiscordIcon className="h-5 w-5" color="white" />
+											Connect Discord
+										</Button>
 									</div>
 								</CardContent>
 							</Card>
@@ -1362,7 +1333,7 @@ export default function OnboardingPage() {
 												) : (
 													<DiscordIcon className="h-4 w-4" />
 												)}
-												<span className="font-medium text-sm">Chat Platform</span>
+												<span className="font-medium text-sm">App Installed</span>
 											</div>
 											<p className="text-xs text-muted-foreground">
 												{slackIntegration
@@ -1373,7 +1344,7 @@ export default function OnboardingPage() {
 										<div className="rounded-lg border bg-muted/50 p-4">
 											<div className="flex items-center gap-2 mb-2">
 												<User className="h-4 w-4" />
-												<span className="font-medium text-sm">Claude</span>
+												<span className="font-medium text-sm">Anthropic Account</span>
 											</div>
 											<p className="text-xs text-muted-foreground">
 												{anthropicIntegration?.has_api_key
