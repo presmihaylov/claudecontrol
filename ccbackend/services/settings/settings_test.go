@@ -101,11 +101,12 @@ func TestSettingsService_GetBooleanSetting(t *testing.T) {
 	service, org, ctx, cleanup := setupSettingsTest(t)
 	defer cleanup()
 
-	t.Run("returns none when setting does not exist", func(t *testing.T) {
+	t.Run("returns default value when setting does not exist", func(t *testing.T) {
 		valueOpt, err := service.GetBooleanSetting(ctx, org.ID, "org/onboarding_finished")
 		assert.NoError(t, err)
-		_, ok := valueOpt.Get()
-		assert.False(t, ok)
+		retrievedValue, ok := valueOpt.Get()
+		assert.True(t, ok)
+		assert.Equal(t, false, retrievedValue) // Default value from SupportedSettings
 	})
 
 	t.Run("returns value when setting exists", func(t *testing.T) {
@@ -130,11 +131,62 @@ func TestSettingsService_GetBooleanSetting(t *testing.T) {
 		assert.Contains(t, err.Error(), "unsupported setting key")
 	})
 
-	t.Run("returns none for invalid organization ID", func(t *testing.T) {
+	t.Run("returns default value for invalid organization ID", func(t *testing.T) {
 		valueOpt, err := service.GetBooleanSetting(context.Background(), "invalid_org_id", "org/onboarding_finished")
 		assert.NoError(t, err)
-		_, ok := valueOpt.Get()
-		assert.False(t, ok) // Should return none when org doesn't exist
+		retrievedValue, ok := valueOpt.Get()
+		assert.True(t, ok)
+		assert.Equal(t, false, retrievedValue) // Should return default value even when org doesn't exist
+	})
+}
+
+func TestSettingsService_DefaultValues(t *testing.T) {
+	service, org, ctx, cleanup := setupSettingsTest(t)
+	defer cleanup()
+
+	t.Run("boolean setting returns default value when not set", func(t *testing.T) {
+		valueOpt, err := service.GetBooleanSetting(ctx, org.ID, "org/onboarding_finished")
+		assert.NoError(t, err)
+		value, ok := valueOpt.Get()
+		assert.True(t, ok)
+		assert.Equal(t, false, value) // Default value from models
+	})
+
+	t.Run("boolean setting returns stored value over default", func(t *testing.T) {
+		key := "org/onboarding_finished"
+
+		// Set a value different from default (default is false)
+		err := service.UpsertBooleanSetting(ctx, org.ID, key, true)
+		require.NoError(t, err)
+
+		valueOpt, err := service.GetBooleanSetting(ctx, org.ID, key)
+		assert.NoError(t, err)
+		value, ok := valueOpt.Get()
+		assert.True(t, ok)
+		assert.Equal(t, true, value) // Stored value, not default
+	})
+}
+
+func TestSettingsService_GetSettingByType_DefaultValues(t *testing.T) {
+	service, org, ctx, cleanup := setupSettingsTest(t)
+	defer cleanup()
+
+	t.Run("returns default boolean value when not set", func(t *testing.T) {
+		value, err := service.GetSettingByType(ctx, org.ID, "org/onboarding_finished", models.SettingTypeBool)
+		assert.NoError(t, err)
+		assert.Equal(t, false, value)
+	})
+
+	t.Run("returns stored value over default", func(t *testing.T) {
+		key := "org/onboarding_finished"
+
+		// Set a value different from default
+		err := service.UpsertBooleanSetting(ctx, org.ID, key, true)
+		require.NoError(t, err)
+
+		value, err := service.GetSettingByType(ctx, org.ID, key, models.SettingTypeBool)
+		assert.NoError(t, err)
+		assert.Equal(t, true, value) // Stored value, not default
 	})
 }
 

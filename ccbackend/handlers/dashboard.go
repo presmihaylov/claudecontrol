@@ -365,6 +365,38 @@ func (h *DashboardAPIHandler) DeleteAnthropicIntegration(ctx context.Context, in
 	return nil
 }
 
+// upsertSettingByType handles type-specific setting upsert operations
+func (h *DashboardAPIHandler) upsertSettingByType(
+	ctx context.Context,
+	orgID string,
+	key string,
+	settingType models.SettingType,
+	value any,
+) error {
+	switch settingType {
+	case models.SettingTypeBool:
+		boolValue, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("value must be boolean for setting type %s", models.SettingTypeBool)
+		}
+		return h.settingsService.UpsertBooleanSetting(ctx, orgID, key, boolValue)
+	case models.SettingTypeString:
+		stringValue, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("value must be string for setting type %s", models.SettingTypeString)
+		}
+		return h.settingsService.UpsertStringSetting(ctx, orgID, key, stringValue)
+	case models.SettingTypeStringArr:
+		stringArrValue, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("value must be string array for setting type %s", models.SettingTypeStringArr)
+		}
+		return h.settingsService.UpsertStringArraySetting(ctx, orgID, key, stringArrValue)
+	default:
+		return fmt.Errorf("unsupported setting type: %s", settingType)
+	}
+}
+
 // UpsertSetting creates or updates a setting with type validation
 func (h *DashboardAPIHandler) UpsertSetting(
 	ctx context.Context,
@@ -379,39 +411,7 @@ func (h *DashboardAPIHandler) UpsertSetting(
 		return fmt.Errorf("organization not found in context")
 	}
 
-	switch settingType {
-	case models.SettingTypeBool:
-		boolValue, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("value must be boolean for setting type %s", models.SettingTypeBool)
-		}
-		return h.settingsService.UpsertBooleanSetting(ctx, org.ID, key, boolValue)
-	case models.SettingTypeString:
-		stringValue, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("value must be string for setting type %s", models.SettingTypeString)
-		}
-		return h.settingsService.UpsertStringSetting(ctx, org.ID, key, stringValue)
-	case models.SettingTypeStringArr:
-		var stringArrValue []string
-		switch v := value.(type) {
-		case []string:
-			stringArrValue = v
-		case []any:
-			for _, item := range v {
-				str, ok := item.(string)
-				if !ok {
-					return fmt.Errorf("all array elements must be strings for setting type %s", models.SettingTypeStringArr)
-				}
-				stringArrValue = append(stringArrValue, str)
-			}
-		default:
-			return fmt.Errorf("value must be string array for setting type %s", models.SettingTypeStringArr)
-		}
-		return h.settingsService.UpsertStringArraySetting(ctx, org.ID, key, stringArrValue)
-	default:
-		return fmt.Errorf("unsupported setting type: %s", settingType)
-	}
+	return h.upsertSettingByType(ctx, org.ID, key, settingType, value)
 }
 
 // GetSetting retrieves a setting by key
@@ -428,35 +428,10 @@ func (h *DashboardAPIHandler) GetSetting(ctx context.Context, key string) (any, 
 		return nil, "", fmt.Errorf("unsupported setting key: %s", key)
 	}
 
-	switch keyDef.Type {
-	case models.SettingTypeBool:
-		valueOpt, err := h.settingsService.GetBooleanSetting(ctx, org.ID, key)
-		if err != nil {
-			return nil, "", err
-		}
-		if value, ok := valueOpt.Get(); ok {
-			return value, models.SettingTypeBool, nil
-		}
-		return nil, models.SettingTypeBool, nil
-	case models.SettingTypeString:
-		valueOpt, err := h.settingsService.GetStringSetting(ctx, org.ID, key)
-		if err != nil {
-			return nil, "", err
-		}
-		if value, ok := valueOpt.Get(); ok {
-			return value, models.SettingTypeString, nil
-		}
-		return nil, models.SettingTypeString, nil
-	case models.SettingTypeStringArr:
-		valueOpt, err := h.settingsService.GetStringArraySetting(ctx, org.ID, key)
-		if err != nil {
-			return nil, "", err
-		}
-		if value, ok := valueOpt.Get(); ok {
-			return value, models.SettingTypeStringArr, nil
-		}
-		return nil, models.SettingTypeStringArr, nil
-	default:
-		return nil, "", fmt.Errorf("unsupported setting type: %s", keyDef.Type)
+	value, err := h.settingsService.GetSettingByType(ctx, org.ID, key, keyDef.Type)
+	if err != nil {
+		return nil, "", err
 	}
+
+	return value, keyDef.Type, nil
 }

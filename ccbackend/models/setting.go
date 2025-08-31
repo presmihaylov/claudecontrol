@@ -24,15 +24,17 @@ const (
 
 // SettingKeyDefinition defines a supported setting key with its expected type
 type SettingKeyDefinition struct {
-	Key  string
-	Type SettingType
+	Key          string
+	Type         SettingType
+	DefaultValue any
 }
 
 // SupportedSettings is the registry of all supported setting keys with their types
 var SupportedSettings = map[string]SettingKeyDefinition{
 	"org/onboarding_finished": {
-		Key:  "org/onboarding_finished",
-		Type: SettingTypeBool,
+		Key:          "org/onboarding_finished",
+		Type:         SettingTypeBool,
+		DefaultValue: false,
 	},
 }
 

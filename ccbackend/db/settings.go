@@ -68,7 +68,6 @@ func (r *PostgresSettingsRepository) UpsertBooleanSetting(
 		query,
 		id, organizationID, scopeType, scopeID, key, value,
 	).StructScan(&setting)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to upsert boolean setting: %w", err)
 	}
@@ -106,7 +105,6 @@ func (r *PostgresSettingsRepository) UpsertStringSetting(
 		query,
 		id, organizationID, scopeType, scopeID, key, value,
 	).StructScan(&setting)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to upsert string setting: %w", err)
 	}
@@ -144,7 +142,6 @@ func (r *PostgresSettingsRepository) UpsertStringArraySetting(
 		query,
 		id, organizationID, scopeType, scopeID, key, pq.Array(value),
 	).StructScan(&setting)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to upsert string array setting: %w", err)
 	}
@@ -177,11 +174,11 @@ func (r *PostgresSettingsRepository) GetSetting(
 		query,
 		organizationID, scopeType, scopeID, key,
 	).StructScan(&setting)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("setting not found")
+			return nil, core.ErrNotFound
 		}
+
 		return nil, fmt.Errorf("failed to get setting: %w", err)
 	}
 

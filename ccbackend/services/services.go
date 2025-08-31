@@ -355,6 +355,12 @@ type SettingsService interface {
 	GetBooleanSetting(ctx context.Context, organizationID string, key string) (mo.Option[bool], error)
 	GetStringSetting(ctx context.Context, organizationID string, key string) (mo.Option[string], error)
 	GetStringArraySetting(ctx context.Context, organizationID string, key string) (mo.Option[[]string], error)
+	GetSettingByType(
+		ctx context.Context,
+		organizationID string,
+		key string,
+		settingType models.SettingType,
+	) (any, error)
 }
 
 // TransactionManager handles database transactions via context
