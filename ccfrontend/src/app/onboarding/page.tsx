@@ -149,6 +149,20 @@ export default function OnboardingPage() {
 		}
 	}, [currentStep, githubIntegration, repositories.length]);
 
+	// Scroll to main content when step changes or page loads (mobile optimization)
+	useEffect(() => {
+		// Small delay to ensure DOM is updated
+		const timer = setTimeout(() => {
+			const mainContent = document.querySelector('.main-content');
+			if (mainContent && window.innerWidth < 1024) {
+				// Only scroll on mobile/tablet
+				mainContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}, 300);
+
+		return () => clearTimeout(timer);
+	}, [currentStep, loading]); // Also trigger when loading changes
+
 	const checkExistingIntegrations = async () => {
 		try {
 			const token = await getToken();
@@ -156,23 +170,6 @@ export default function OnboardingPage() {
 				setError("Authentication required");
 				setLoading(false);
 				return;
-			}
-
-			// Check GitHub integration
-			const githubResponse = await fetch(`${env.CCBACKEND_BASE_URL}/github/integrations`, {
-				headers: {
-					Authorization: `Bearer ${token}`,
-				},
-			});
-
-			let hasGithub = false;
-			if (githubResponse.ok) {
-				const githubIntegrations: GitHubIntegration[] = await githubResponse.json();
-				if (githubIntegrations.length > 0) {
-					setGithubIntegration(githubIntegrations[0]);
-					hasGithub = true;
-					setCurrentStep(2);
-				}
 			}
 
 			// Check Slack integration
@@ -188,6 +185,7 @@ export default function OnboardingPage() {
 				if (slackIntegrations.length > 0) {
 					setSlackIntegration(slackIntegrations[0]);
 					hasSlackOrDiscord = true;
+					setCurrentStep(2);
 				}
 			}
 
@@ -203,13 +201,30 @@ export default function OnboardingPage() {
 				if (discordIntegrations.length > 0) {
 					setDiscordIntegration(discordIntegrations[0]);
 					hasSlackOrDiscord = true;
+					setCurrentStep(2);
+				}
+			}
+
+			// Check GitHub integration
+			const githubResponse = await fetch(`${env.CCBACKEND_BASE_URL}/github/integrations`, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			});
+
+			let hasGithub = false;
+			if (githubResponse.ok) {
+				const githubIntegrations: GitHubIntegration[] = await githubResponse.json();
+				if (githubIntegrations.length > 0) {
+					setGithubIntegration(githubIntegrations[0]);
+					hasGithub = true;
 				}
 			}
 
 			// Update step based on what we have
-			if (hasGithub && hasSlackOrDiscord) {
+			if (hasSlackOrDiscord && hasGithub) {
 				setCurrentStep(3);
-			} else if (hasGithub) {
+			} else if (hasSlackOrDiscord) {
 				setCurrentStep(2);
 			}
 
@@ -249,13 +264,13 @@ export default function OnboardingPage() {
 			}
 
 			// Final step determination
-			if (hasGithub && hasSlackOrDiscord && hasAnthropic && hasCCAgent) {
+			if (hasSlackOrDiscord && hasGithub && hasAnthropic && hasCCAgent) {
 				setCurrentStep(5);
-			} else if (hasGithub && hasSlackOrDiscord && hasAnthropic) {
+			} else if (hasSlackOrDiscord && hasGithub && hasAnthropic) {
 				setCurrentStep(4);
-			} else if (hasGithub && hasSlackOrDiscord) {
+			} else if (hasSlackOrDiscord && hasGithub) {
 				setCurrentStep(3);
-			} else if (hasGithub) {
+			} else if (hasSlackOrDiscord) {
 				setCurrentStep(2);
 			}
 		} catch (err) {
@@ -319,7 +334,7 @@ export default function OnboardingPage() {
 			}
 
 			setSlackIntegration(null);
-			setCurrentStep(githubIntegration ? 2 : 1);
+			setCurrentStep(1);
 			setError(null);
 		} catch (err) {
 			console.error("Error disconnecting Slack integration:", err);
@@ -361,7 +376,7 @@ export default function OnboardingPage() {
 			}
 
 			setDiscordIntegration(null);
-			setCurrentStep(githubIntegration ? 2 : 1);
+			setCurrentStep(1);
 			setError(null);
 		} catch (err) {
 			console.error("Error disconnecting Discord integration:", err);
@@ -403,7 +418,7 @@ export default function OnboardingPage() {
 			}
 
 			setGithubIntegration(null);
-			setCurrentStep(1);
+			setCurrentStep(slackIntegration || discordIntegration ? 2 : 1);
 			setError(null);
 		} catch (err) {
 			console.error("Error disconnecting GitHub integration:", err);
@@ -533,7 +548,7 @@ export default function OnboardingPage() {
 			}
 
 			setAnthropicIntegration(null);
-			setCurrentStep(slackIntegration || discordIntegration ? 3 : githubIntegration ? 2 : 1);
+			setCurrentStep(githubIntegration ? 3 : slackIntegration || discordIntegration ? 2 : 1);
 			setError(null);
 		} catch (err) {
 			console.error("Error disconnecting Anthropic integration:", err);
@@ -649,11 +664,11 @@ export default function OnboardingPage() {
 
 			setCCAgentIntegration(null);
 			setCurrentStep(
-				githubIntegration && anthropicIntegration
+				anthropicIntegration
 					? 4
-					: slackIntegration || discordIntegration
+					: githubIntegration
 						? 3
-						: githubIntegration
+						: slackIntegration || discordIntegration
 							? 2
 							: 1,
 			);
@@ -710,8 +725,8 @@ export default function OnboardingPage() {
 		ccAgentIntegration;
 
 	return (
-		<div className="min-h-screen p-4 lg:p-8">
-			<div className="mx-auto max-w-6xl">
+		<div className="min-h-screen p-4 lg:p-8 pb-16 lg:pb-32">
+			<div className="mx-auto max-w-6xl pb-8 lg:pb-16">
 				<div className="mb-8 text-center">
 					<h1 className="text-3xl font-bold tracking-tight">Welcome to Claude Control</h1>
 					<p className="text-lg text-muted-foreground mt-2">Let's get you set up!</p>
@@ -731,18 +746,18 @@ export default function OnboardingPage() {
 								{[
 									{
 										step: 1,
-										title: "Link Github Account",
-										description: "So we can access your repos",
-										icon: <GitBranch className="h-4 w-4" />,
-										isCompleted: !!githubIntegration,
-										isCurrent: currentStep === 1,
-									},
-									{
-										step: 2,
 										title: "Install Claude Control",
 										description: "Set it up in Slack or Discord",
 										icon: <MessageCircle className="h-4 w-4" />,
 										isCompleted: !!(slackIntegration || discordIntegration),
+										isCurrent: currentStep === 1,
+									},
+									{
+										step: 2,
+										title: "Link Github Account",
+										description: "So we can access your repos",
+										icon: <GitBranch className="h-4 w-4" />,
+										isCompleted: !!githubIntegration,
 										isCurrent: currentStep === 2,
 									},
 									{
@@ -827,86 +842,9 @@ export default function OnboardingPage() {
 					</div>
 
 					{/* Main Content */}
-					<div className="lg:col-span-9">
-						{/* Step 1: GitHub Integration */}
-						{currentStep === 1 && !githubIntegration && (
-							<Card className="w-full">
-								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<GitBranch className="h-5 w-5" />
-										Connect GitHub
-									</CardTitle>
-									<CardDescription>
-										Install the Claude Control GitHub App to access your repositories
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<p className="text-sm text-muted-foreground">
-										This will allow Claude Control to:
-									</p>
-									<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-										<li>Read repository contents</li>
-										<li>Create branches and pull requests</li>
-									</ul>
-									<Button onClick={handleInstallGitHub} className="w-full">
-										<GitBranch className="mr-2 h-4 w-4" />
-										Install GitHub App
-									</Button>
-								</CardContent>
-							</Card>
-						)}
-
-						{/* GitHub Connected State */}
-						{githubIntegration && currentStep === 1 && (
-							<Card className="w-full">
-								<CardHeader>
-									<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
-										<CheckCircle className="h-5 w-5" />
-										GitHub Connected
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div className="rounded-lg border bg-muted/50 p-4">
-										<div className="flex items-start justify-between">
-											<div className="flex-1">
-												<dl className="space-y-1 text-sm">
-													<div>
-														<dt className="inline font-medium text-muted-foreground">
-															Installation ID:
-														</dt>{" "}
-														<dd className="inline font-mono">
-															{githubIntegration.github_installation_id}
-														</dd>
-													</div>
-													<div>
-														<dt className="inline font-medium text-muted-foreground">Created:</dt>{" "}
-														<dd className="inline">
-															{new Date(githubIntegration.created_at).toLocaleDateString()}
-														</dd>
-													</div>
-												</dl>
-											</div>
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={handleDisconnectGitHub}
-												disabled={loading}
-												className="text-muted-foreground hover:text-destructive"
-											>
-												<Trash2 className="h-4 w-4 mr-2" />
-												{loading ? "Disconnecting..." : "Disconnect"}
-											</Button>
-										</div>
-									</div>
-									<Button onClick={() => setCurrentStep(2)} className="w-full">
-										Continue to Chat Setup
-									</Button>
-								</CardContent>
-							</Card>
-						)}
-
-						{/* Step 2: Slack/Discord Integration */}
-						{currentStep === 2 && !slackIntegration && !discordIntegration && (
+					<div className="lg:col-span-9 main-content pb-4 lg:pb-8">
+						{/* Step 1: Slack/Discord Integration */}
+						{currentStep === 1 && !slackIntegration && !discordIntegration && (
 							<Card className="w-full">
 								<CardHeader>
 									<CardTitle className="flex items-center gap-2">
@@ -941,7 +879,7 @@ export default function OnboardingPage() {
 						)}
 
 						{/* Slack/Discord Connected State */}
-						{(slackIntegration || discordIntegration) && currentStep === 2 && (
+						{(slackIntegration || discordIntegration) && currentStep === 1 && (
 							<Card className="w-full">
 								<CardHeader>
 									<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -976,6 +914,83 @@ export default function OnboardingPage() {
 												variant="ghost"
 												size="sm"
 												onClick={slackIntegration ? handleDisconnectSlack : handleDisconnectDiscord}
+												disabled={loading}
+												className="text-muted-foreground hover:text-destructive"
+											>
+												<Trash2 className="h-4 w-4 mr-2" />
+												{loading ? "Disconnecting..." : "Disconnect"}
+											</Button>
+										</div>
+									</div>
+									<Button onClick={() => setCurrentStep(2)} className="w-full">
+										Continue to GitHub Setup
+									</Button>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* Step 2: GitHub Integration */}
+						{currentStep === 2 && !githubIntegration && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<GitBranch className="h-5 w-5" />
+										Connect GitHub
+									</CardTitle>
+									<CardDescription>
+										Install the Claude Control GitHub App to access your repositories
+									</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<p className="text-sm text-muted-foreground">
+										This will allow Claude Control to:
+									</p>
+									<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+										<li>Read repository contents</li>
+										<li>Create branches and pull requests</li>
+									</ul>
+									<Button onClick={handleInstallGitHub} className="w-full">
+										<GitBranch className="mr-2 h-4 w-4" />
+										Install GitHub App
+									</Button>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* GitHub Connected State */}
+						{githubIntegration && currentStep === 2 && (
+							<Card className="w-full">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
+										<CheckCircle className="h-5 w-5" />
+										GitHub Connected
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<div className="rounded-lg border bg-muted/50 p-4">
+										<div className="flex items-start justify-between">
+											<div className="flex-1">
+												<dl className="space-y-1 text-sm">
+													<div>
+														<dt className="inline font-medium text-muted-foreground">
+															Installation ID:
+														</dt>{" "}
+														<dd className="inline font-mono">
+															{githubIntegration.github_installation_id}
+														</dd>
+													</div>
+													<div>
+														<dt className="inline font-medium text-muted-foreground">Created:</dt>{" "}
+														<dd className="inline">
+															{new Date(githubIntegration.created_at).toLocaleDateString()}
+														</dd>
+													</div>
+												</dl>
+											</div>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={handleDisconnectGitHub}
 												disabled={loading}
 												className="text-muted-foreground hover:text-destructive"
 											>
@@ -1147,7 +1162,7 @@ export default function OnboardingPage() {
 										</div>
 									</div>
 									<Button onClick={() => setCurrentStep(4)} className="w-full">
-										Continue to CCAgent Setup
+										Continue to Background Agent Setup
 									</Button>
 								</CardContent>
 							</Card>
@@ -1319,15 +1334,6 @@ export default function OnboardingPage() {
 									<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 										<div className="rounded-lg border bg-muted/50 p-4">
 											<div className="flex items-center gap-2 mb-2">
-												<GitBranch className="h-4 w-4" />
-												<span className="font-medium text-sm">Repository</span>
-											</div>
-											<p className="text-xs text-muted-foreground">
-												Installation ID: {githubIntegration?.github_installation_id}
-											</p>
-										</div>
-										<div className="rounded-lg border bg-muted/50 p-4">
-											<div className="flex items-center gap-2 mb-2">
 												{slackIntegration ? (
 													<SlackIcon className="h-4 w-4" />
 												) : (
@@ -1339,6 +1345,15 @@ export default function OnboardingPage() {
 												{slackIntegration
 													? `Slack: ${slackIntegration.slack_team_name}`
 													: `Discord: ${discordIntegration?.discord_guild_name}`}
+											</p>
+										</div>
+										<div className="rounded-lg border bg-muted/50 p-4">
+											<div className="flex items-center gap-2 mb-2">
+												<GitBranch className="h-4 w-4" />
+												<span className="font-medium text-sm">Repository</span>
+											</div>
+											<p className="text-xs text-muted-foreground">
+												Installation ID: {githubIntegration?.github_installation_id}
 											</p>
 										</div>
 										<div className="rounded-lg border bg-muted/50 p-4">

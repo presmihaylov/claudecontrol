@@ -1,0 +1,3 @@
+What's left:
+ - add deploy button for ccagent container
+ - Setup Cards on main page
