@@ -141,6 +141,38 @@ export default function OnboardingPage() {
 	const [deploying, setDeploying] = useState(false);
 	const [deploymentMessage, setDeploymentMessage] = useState("");
 
+	// Check onboarding status and redirect to main page if already completed
+	useEffect(() => {
+		const checkOnboardingStatus = async () => {
+			if (!getToken) return;
+
+			try {
+				const token = await getToken();
+				if (!token) return;
+
+				const response = await fetch(`${env.CCBACKEND_BASE_URL}/settings/org-onboarding_finished`, {
+					method: "GET",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+				});
+
+				if (response.ok) {
+					const data = await response.json();
+					if (data.value) {
+						router.push("/");
+						return;
+					}
+				}
+			} catch (error) {
+				console.error("Error checking onboarding status:", error);
+			}
+		};
+
+		checkOnboardingStatus();
+	}, [getToken, router]);
+
 	// Check for existing integrations on mount
 	useEffect(() => {
 		checkExistingIntegrations();
@@ -773,8 +805,11 @@ export default function OnboardingPage() {
 
 	if (loading) {
 		return (
-			<div className="flex min-h-screen items-center justify-center">
-				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="animate-pulse">
+					<div className="h-8 w-32 bg-muted rounded mb-4" />
+					<div className="h-4 w-48 bg-muted rounded" />
+				</div>
 			</div>
 		);
 	}
