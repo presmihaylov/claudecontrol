@@ -1345,6 +1345,12 @@ export default function OnboardingPage() {
 										</div>
 									</div>
 
+									<div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+										<p className="text-sm text-blue-800">
+											<strong>Want to self-host the container?</strong> If you prefer to self-host Cloud Control instead of using our managed service, please reach out to me for setup instructions.
+										</p>
+									</div>
+
 									<Button
 										onClick={handleSaveCCAgent}
 										disabled={!selectedRepo || savingCCAgent}
