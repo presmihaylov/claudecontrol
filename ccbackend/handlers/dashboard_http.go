@@ -51,6 +51,18 @@ type CCAgentContainerIntegrationCreateRequest struct {
 	RepoURL        string `json:"repo_url"`
 }
 
+type UpsertSettingRequest struct {
+	Key         string             `json:"key"`
+	SettingType models.SettingType `json:"settingType"`
+	Value       any                `json:"value"`
+}
+
+type GetSettingResponse struct {
+	Key         string             `json:"key"`
+	SettingType models.SettingType `json:"settingType"`
+	Value       any                `json:"value"`
+}
+
 func (h *DashboardHTTPHandler) HandleUserAuthenticate(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🔐 User authentication request received from %s", r.RemoteAddr)
 
@@ -750,6 +762,84 @@ func (h *DashboardHTTPHandler) HandleListGitHubRepositories(w http.ResponseWrite
 	h.writeJSONResponse(w, http.StatusOK, repositories)
 }
 
+func (h *DashboardHTTPHandler) HandleUpsertSetting(w http.ResponseWriter, r *http.Request) {
+	log.Printf("⚙️ Upsert setting request received from %s", r.RemoteAddr)
+
+	// Parse request body
+	var req UpsertSettingRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("❌ Failed to parse request body: %v", err)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Key == "" {
+		log.Printf("❌ Missing key in request")
+		http.Error(w, "key is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.SettingType == "" {
+		log.Printf("❌ Missing settingType in request")
+		http.Error(w, "settingType is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.Value == nil {
+		log.Printf("❌ Missing value in request")
+		http.Error(w, "value is required", http.StatusBadRequest)
+		return
+	}
+
+	err := h.handler.UpsertSetting(r.Context(), req.Key, req.SettingType, req.Value)
+	if err != nil {
+		log.Printf("❌ Failed to upsert setting: %v", err)
+		if strings.Contains(err.Error(), "unsupported setting key") ||
+			strings.Contains(err.Error(), "expects type") ||
+			strings.Contains(err.Error(), "value must be") {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "failed to upsert setting", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("✅ Setting upserted successfully: %s", req.Key)
+	h.writeJSONResponse(w, http.StatusOK, map[string]string{"message": "setting upserted successfully"})
+}
+
+func (h *DashboardHTTPHandler) HandleGetSetting(w http.ResponseWriter, r *http.Request) {
+	log.Printf("⚙️ Get setting request received from %s", r.RemoteAddr)
+
+	vars := mux.Vars(r)
+	key := vars["key"]
+	if key == "" {
+		log.Printf("❌ Missing key in URL path")
+		http.Error(w, "key is required", http.StatusBadRequest)
+		return
+	}
+
+	value, settingType, err := h.handler.GetSetting(r.Context(), key)
+	if err != nil {
+		log.Printf("❌ Failed to get setting: %v", err)
+		if strings.Contains(err.Error(), "unsupported setting key") {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "failed to get setting", http.StatusInternalServerError)
+		return
+	}
+
+	response := GetSettingResponse{
+		Key:         key,
+		SettingType: settingType,
+		Value:       value,
+	}
+
+	log.Printf("✅ Setting retrieved successfully: %s", key)
+	h.writeJSONResponse(w, http.StatusOK, response)
+}
+
 func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware *middleware.ClerkAuthMiddleware) {
 	log.Printf("🚀 Registering dashboard API endpoints")
 
@@ -841,6 +931,13 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	router.HandleFunc("/organizations/ccagent_secret_key", authMiddleware.WithAuth(h.HandleGenerateCCAgentSecretKey)).
 		Methods("POST")
 	log.Printf("✅ POST /organizations/ccagent_secret_key endpoint registered")
+
+	// Settings endpoints
+	router.HandleFunc("/settings", authMiddleware.WithAuth(h.HandleUpsertSetting)).Methods("POST")
+	log.Printf("✅ POST /settings endpoint registered")
+
+	router.HandleFunc("/settings/{key}", authMiddleware.WithAuth(h.HandleGetSetting)).Methods("GET")
+	log.Printf("✅ GET /settings/{key} endpoint registered")
 
 	log.Printf("✅ All dashboard API endpoints registered successfully")
 }

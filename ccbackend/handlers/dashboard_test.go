@@ -23,6 +23,7 @@ import (
 	discordintegrations "ccbackend/services/discord_integrations"
 	githubintegrations "ccbackend/services/github_integrations"
 	organizations "ccbackend/services/organizations"
+	settingsservice "ccbackend/services/settings"
 	slackintegrations "ccbackend/services/slack_integrations"
 	"ccbackend/services/txmanager"
 	users "ccbackend/services/users"
@@ -124,6 +125,7 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 			mockGitHubIntegrationsService := &githubintegrations.MockGitHubIntegrationsService{}
 			mockAnthropicIntegrationsService := &anthropicintegrations.MockAnthropicIntegrationsService{}
 			mockCCAgentContainerIntegrationsService := &ccagentcontainerintegrations.MockCCAgentContainerIntegrationsService{}
+			mockSettingsService := &settingsservice.MockSettingsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
@@ -133,6 +135,7 @@ func TestDashboardAPIHandler_ListSlackIntegrations(t *testing.T) {
 				mockCCAgentContainerIntegrationsService,
 				mockOrganizationsService,
 				mockAgentsService,
+				mockSettingsService,
 				mockTxManager,
 			)
 
@@ -191,6 +194,7 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 			mockGitHubIntegrationsService := &githubintegrations.MockGitHubIntegrationsService{}
 			mockAnthropicIntegrationsService := &anthropicintegrations.MockAnthropicIntegrationsService{}
 			mockCCAgentContainerIntegrationsService := &ccagentcontainerintegrations.MockCCAgentContainerIntegrationsService{}
+			mockSettingsService := &settingsservice.MockSettingsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
@@ -200,6 +204,7 @@ func TestDashboardAPIHandler_CreateSlackIntegration(t *testing.T) {
 				mockCCAgentContainerIntegrationsService,
 				mockOrganizationsService,
 				mockAgentsService,
+				mockSettingsService,
 				mockTxManager,
 			)
 
@@ -271,6 +276,7 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 			mockGitHubIntegrationsService := &githubintegrations.MockGitHubIntegrationsService{}
 			mockAnthropicIntegrationsService := &anthropicintegrations.MockAnthropicIntegrationsService{}
 			mockCCAgentContainerIntegrationsService := &ccagentcontainerintegrations.MockCCAgentContainerIntegrationsService{}
+			mockSettingsService := &settingsservice.MockSettingsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
@@ -280,6 +286,7 @@ func TestDashboardAPIHandler_DeleteSlackIntegration(t *testing.T) {
 				mockCCAgentContainerIntegrationsService,
 				mockOrganizationsService,
 				mockAgentsService,
+				mockSettingsService,
 				mockTxManager,
 			)
 
@@ -347,6 +354,7 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 			mockGitHubIntegrationsService := &githubintegrations.MockGitHubIntegrationsService{}
 			mockAnthropicIntegrationsService := &anthropicintegrations.MockAnthropicIntegrationsService{}
 			mockCCAgentContainerIntegrationsService := &ccagentcontainerintegrations.MockCCAgentContainerIntegrationsService{}
+			mockSettingsService := &settingsservice.MockSettingsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
@@ -356,6 +364,7 @@ func TestDashboardAPIHandler_GenerateCCAgentSecretKey(t *testing.T) {
 				mockCCAgentContainerIntegrationsService,
 				mockOrganizationsService,
 				mockAgentsService,
+				mockSettingsService,
 				mockTxManager,
 			)
 
@@ -415,6 +424,7 @@ func TestDashboardHTTPHandler_HandleUserAuthenticate(t *testing.T) {
 			mockGitHubIntegrationsService := &githubintegrations.MockGitHubIntegrationsService{}
 			mockAnthropicIntegrationsService := &anthropicintegrations.MockAnthropicIntegrationsService{}
 			mockCCAgentContainerIntegrationsService := &ccagentcontainerintegrations.MockCCAgentContainerIntegrationsService{}
+			mockSettingsService := &settingsservice.MockSettingsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
@@ -424,6 +434,7 @@ func TestDashboardHTTPHandler_HandleUserAuthenticate(t *testing.T) {
 				mockCCAgentContainerIntegrationsService,
 				mockOrganizationsService,
 				mockAgentsService,
+				mockSettingsService,
 				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)
@@ -492,6 +503,7 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 			mockGitHubIntegrationsService := &githubintegrations.MockGitHubIntegrationsService{}
 			mockAnthropicIntegrationsService := &anthropicintegrations.MockAnthropicIntegrationsService{}
 			mockCCAgentContainerIntegrationsService := &ccagentcontainerintegrations.MockCCAgentContainerIntegrationsService{}
+			mockSettingsService := &settingsservice.MockSettingsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
@@ -501,6 +513,7 @@ func TestDashboardHTTPHandler_HandleListSlackIntegrations(t *testing.T) {
 				mockCCAgentContainerIntegrationsService,
 				mockOrganizationsService,
 				mockAgentsService,
+				mockSettingsService,
 				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)
@@ -589,6 +602,7 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 			mockGitHubIntegrationsService := &githubintegrations.MockGitHubIntegrationsService{}
 			mockAnthropicIntegrationsService := &anthropicintegrations.MockAnthropicIntegrationsService{}
 			mockCCAgentContainerIntegrationsService := &ccagentcontainerintegrations.MockCCAgentContainerIntegrationsService{}
+			mockSettingsService := &settingsservice.MockSettingsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
@@ -598,6 +612,7 @@ func TestDashboardHTTPHandler_HandleCreateSlackIntegration(t *testing.T) {
 				mockCCAgentContainerIntegrationsService,
 				mockOrganizationsService,
 				mockAgentsService,
+				mockSettingsService,
 				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)
@@ -663,6 +678,7 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 			mockGitHubIntegrationsService := &githubintegrations.MockGitHubIntegrationsService{}
 			mockAnthropicIntegrationsService := &anthropicintegrations.MockAnthropicIntegrationsService{}
 			mockCCAgentContainerIntegrationsService := &ccagentcontainerintegrations.MockCCAgentContainerIntegrationsService{}
+			mockSettingsService := &settingsservice.MockSettingsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
@@ -672,6 +688,7 @@ func TestDashboardHTTPHandler_HandleDeleteSlackIntegration(t *testing.T) {
 				mockCCAgentContainerIntegrationsService,
 				mockOrganizationsService,
 				mockAgentsService,
+				mockSettingsService,
 				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)
@@ -750,6 +767,7 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 			mockGitHubIntegrationsService := &githubintegrations.MockGitHubIntegrationsService{}
 			mockAnthropicIntegrationsService := &anthropicintegrations.MockAnthropicIntegrationsService{}
 			mockCCAgentContainerIntegrationsService := &ccagentcontainerintegrations.MockCCAgentContainerIntegrationsService{}
+			mockSettingsService := &settingsservice.MockSettingsService{}
 			handler := NewDashboardAPIHandler(
 				mockUsersService,
 				mockSlackIntegrationsService,
@@ -759,6 +777,7 @@ func TestDashboardHTTPHandler_HandleGenerateCCAgentSecretKey(t *testing.T) {
 				mockCCAgentContainerIntegrationsService,
 				mockOrganizationsService,
 				mockAgentsService,
+				mockSettingsService,
 				mockTxManager,
 			)
 			httpHandler := NewDashboardHTTPHandler(handler)

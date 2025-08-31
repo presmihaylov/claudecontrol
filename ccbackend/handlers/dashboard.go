@@ -19,6 +19,7 @@ type DashboardAPIHandler struct {
 	ccAgentContainerService    services.CCAgentContainerIntegrationsService
 	organizationsService       services.OrganizationsService
 	agentsService              services.AgentsService
+	settingsService            services.SettingsService
 	txManager                  services.TransactionManager
 }
 
@@ -31,6 +32,7 @@ func NewDashboardAPIHandler(
 	ccAgentContainerService services.CCAgentContainerIntegrationsService,
 	organizationsService services.OrganizationsService,
 	agentsService services.AgentsService,
+	settingsService services.SettingsService,
 	txManager services.TransactionManager,
 ) *DashboardAPIHandler {
 	return &DashboardAPIHandler{
@@ -42,6 +44,7 @@ func NewDashboardAPIHandler(
 		ccAgentContainerService:    ccAgentContainerService,
 		organizationsService:       organizationsService,
 		agentsService:              agentsService,
+		settingsService:            settingsService,
 		txManager:                  txManager,
 	}
 }
@@ -360,4 +363,75 @@ func (h *DashboardAPIHandler) DeleteAnthropicIntegration(ctx context.Context, in
 	}
 	log.Printf("✅ Anthropic integration deleted successfully: %s", integrationID)
 	return nil
+}
+
+// upsertSettingByType handles type-specific setting upsert operations
+func (h *DashboardAPIHandler) upsertSettingByType(
+	ctx context.Context,
+	orgID string,
+	key string,
+	settingType models.SettingType,
+	value any,
+) error {
+	switch settingType {
+	case models.SettingTypeBool:
+		boolValue, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("value must be boolean for setting type %s", models.SettingTypeBool)
+		}
+		return h.settingsService.UpsertBooleanSetting(ctx, orgID, key, boolValue)
+	case models.SettingTypeString:
+		stringValue, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("value must be string for setting type %s", models.SettingTypeString)
+		}
+		return h.settingsService.UpsertStringSetting(ctx, orgID, key, stringValue)
+	case models.SettingTypeStringArr:
+		stringArrValue, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("value must be string array for setting type %s", models.SettingTypeStringArr)
+		}
+		return h.settingsService.UpsertStringArraySetting(ctx, orgID, key, stringArrValue)
+	default:
+		return fmt.Errorf("unsupported setting type: %s", settingType)
+	}
+}
+
+// UpsertSetting creates or updates a setting with type validation
+func (h *DashboardAPIHandler) UpsertSetting(
+	ctx context.Context,
+	key string,
+	settingType models.SettingType,
+	value any,
+) error {
+	log.Printf("📋 Upserting setting: %s (type: %s)", key, settingType)
+
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return fmt.Errorf("organization not found in context")
+	}
+
+	return h.upsertSettingByType(ctx, org.ID, key, settingType, value)
+}
+
+// GetSetting retrieves a setting by key
+func (h *DashboardAPIHandler) GetSetting(ctx context.Context, key string) (any, models.SettingType, error) {
+	log.Printf("📋 Getting setting: %s", key)
+
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return nil, "", fmt.Errorf("organization not found in context")
+	}
+
+	keyDef, exists := models.SupportedSettings[key]
+	if !exists {
+		return nil, "", fmt.Errorf("unsupported setting key: %s", key)
+	}
+
+	value, err := h.settingsService.GetSettingByType(ctx, org.ID, key, keyDef.Type)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return value, keyDef.Type, nil
 }
