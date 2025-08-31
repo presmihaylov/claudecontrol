@@ -36,6 +36,11 @@ var SupportedSettings = map[string]SettingKeyDefinition{
 		Type:         SettingTypeBool,
 		DefaultValue: false,
 	},
+	"org-ccagent_redeploy_required": {
+		Key:          "org-ccagent_redeploy_required",
+		Type:         SettingTypeBool,
+		DefaultValue: false,
+	},
 }
 
 // Setting represents a generic setting with all possible value types

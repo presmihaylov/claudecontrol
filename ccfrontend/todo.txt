@@ -1,2 +1,0 @@
-What's left:
- - Setup Cards on main page

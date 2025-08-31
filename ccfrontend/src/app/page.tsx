@@ -1,5 +1,8 @@
 "use client";
 
+import { AnthropicIntegrationCard } from "@/components/integrations/AnthropicIntegrationCard";
+import { CCAgentIntegrationCard } from "@/components/integrations/CCAgentIntegrationCard";
+import { GitHubIntegrationCard } from "@/components/integrations/GitHubIntegrationCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -10,9 +13,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { AnthropicIntegrationCard } from "@/components/integrations/AnthropicIntegrationCard";
-import { CCAgentIntegrationCard } from "@/components/integrations/CCAgentIntegrationCard";
-import { GitHubIntegrationCard } from "@/components/integrations/GitHubIntegrationCard";
 import { DiscordIcon, SlackIcon } from "@/icons";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
@@ -454,6 +454,7 @@ export default function Home() {
 												size="sm"
 												onClick={() => handleDeleteIntegration(integration)}
 												disabled={deleting === integration.id}
+												className="text-foreground hover:text-destructive"
 											>
 												<Trash2 className="h-4 w-4" />
 											</Button>
@@ -478,6 +479,7 @@ export default function Home() {
 												size="sm"
 												onClick={() => handleDeleteDiscordIntegration(integration)}
 												disabled={deleting === integration.id}
+												className="text-foreground hover:text-destructive"
 											>
 												<Trash2 className="h-4 w-4" />
 											</Button>
@@ -517,6 +519,7 @@ export default function Home() {
 					<CCAgentIntegrationCard
 						onIntegrationChange={setCCAgentIntegration}
 						githubIntegration={githubIntegration}
+						anthropicIntegration={anthropicIntegration}
 					/>
 				</div>
 

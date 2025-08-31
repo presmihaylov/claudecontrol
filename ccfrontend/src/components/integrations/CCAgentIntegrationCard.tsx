@@ -10,11 +10,19 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
-import { CheckCircle, Loader2, MessageCircle, RefreshCw, Server, Trash2 } from "lucide-react";
+import {
+	AlertTriangle,
+	CheckCircle,
+	Loader2,
+	MessageCircle,
+	RefreshCw,
+	Server,
+	Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
 
 interface CCAgentContainerIntegration {
 	id: string;
@@ -37,6 +45,7 @@ interface GitHubRepository {
 interface CCAgentIntegrationCardProps {
 	onIntegrationChange?: (integration: CCAgentContainerIntegration | null) => void;
 	githubIntegration?: GitHubIntegration | null;
+	anthropicIntegration?: AnthropicIntegration | null;
 }
 
 interface GitHubIntegration {
@@ -47,9 +56,19 @@ interface GitHubIntegration {
 	updated_at: string;
 }
 
+interface AnthropicIntegration {
+	id: string;
+	has_api_key: boolean;
+	has_oauth_token: boolean;
+	organization_id: string;
+	created_at: string;
+	updated_at: string;
+}
+
 export function CCAgentIntegrationCard({
 	onIntegrationChange,
 	githubIntegration,
+	anthropicIntegration,
 }: CCAgentIntegrationCardProps) {
 	const { getToken } = useAuth();
 	const { toast } = useToast();
@@ -61,6 +80,7 @@ export function CCAgentIntegrationCard({
 	const [saving, setSaving] = useState(false);
 	const [deploying, setDeploying] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [redeployRequired, setRedeployRequired] = useState(false);
 
 	// Form states
 	const [selectedRepo, setSelectedRepo] = useState("");
@@ -68,6 +88,7 @@ export function CCAgentIntegrationCard({
 
 	useEffect(() => {
 		checkIntegrationStatus();
+		checkRedeployRequiredSetting();
 	}, []);
 
 	useEffect(() => {
@@ -75,6 +96,21 @@ export function CCAgentIntegrationCard({
 			loadGitHubRepositories();
 		}
 	}, [githubIntegration, integration, repositories.length]);
+
+	// Monitor dependency changes and set redeploy required setting
+	useEffect(() => {
+		if (!integration) return; // Only monitor when agent is configured
+
+		const hasMissingDependencies = !githubIntegration || !anthropicIntegration;
+
+		if (hasMissingDependencies && !redeployRequired) {
+			// Set redeploy required when dependencies are missing
+			setRedeployRequiredSetting(true);
+		} else if (!hasMissingDependencies && redeployRequired) {
+			// Keep the redeploy required flag until user manually redeploys
+			// This ensures user knows they need to redeploy after fixing integrations
+		}
+	}, [githubIntegration, anthropicIntegration, integration, redeployRequired]);
 
 	const checkIntegrationStatus = async () => {
 		try {
@@ -98,6 +134,49 @@ export function CCAgentIntegrationCard({
 			setError("Failed to load background agent status");
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const checkRedeployRequiredSetting = async () => {
+		try {
+			const token = await getToken();
+			if (!token) return;
+
+			const response = await fetch(
+				`${env.CCBACKEND_BASE_URL}/settings/org-ccagent_redeploy_required`,
+				{
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				},
+			);
+
+			if (response.ok) {
+				const data = await response.json();
+				setRedeployRequired(data.value || false);
+			}
+		} catch (err) {
+			console.error("Error checking redeploy required setting:", err);
+		}
+	};
+
+	const setRedeployRequiredSetting = async (required: boolean) => {
+		try {
+			const token = await getToken();
+			if (!token) return;
+
+			await fetch(`${env.CCBACKEND_BASE_URL}/settings/org-ccagent_redeploy_required`, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ value: required }),
+			});
+
+			setRedeployRequired(required);
+		} catch (err) {
+			console.error("Error setting redeploy required setting:", err);
 		}
 	};
 
@@ -166,6 +245,10 @@ export function CCAgentIntegrationCard({
 			const newIntegration: CCAgentContainerIntegration = await response.json();
 			setIntegration(newIntegration);
 			onIntegrationChange?.(newIntegration);
+			
+			// Set redeploy required when creating new agent integration
+			await setRedeployRequiredSetting(true);
+			
 			setError(null);
 		} catch (err) {
 			console.error("Error saving CCAgent integration:", err);
@@ -251,6 +334,9 @@ export function CCAgentIntegrationCard({
 				description: "Your background agent has been redeployed and is ready to work.",
 				variant: "success",
 			});
+
+			// Clear the redeploy required setting after successful redeploy
+			await setRedeployRequiredSetting(false);
 
 			setDeploying(false);
 		} catch (err) {
@@ -435,7 +521,7 @@ export function CCAgentIntegrationCard({
 							size="sm"
 							onClick={handleDisconnectCCAgent}
 							disabled={deleting || deploying}
-							className="text-muted-foreground hover:text-destructive"
+							className="text-foreground hover:text-destructive"
 						>
 							<Trash2 className="h-4 w-4 mr-2" />
 							{deleting ? "Disconnecting..." : "Disconnect"}
@@ -443,21 +529,58 @@ export function CCAgentIntegrationCard({
 					</div>
 				</div>
 				{error && <div className="text-sm text-destructive mb-4">{error}</div>}
+
+				{/* Warning for missing dependencies */}
+				{(!githubIntegration || !anthropicIntegration) && (
+					<div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-md">
+						<div className="flex items-start gap-2">
+							<AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+							<div className="text-sm">
+								<p className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+									Missing dependencies
+								</p>
+								<p className="text-yellow-700 dark:text-yellow-300">
+									Your background agent requires both GitHub and Anthropic integrations to work
+									properly.
+								</p>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Warning for redeploy required */}
+				{githubIntegration && anthropicIntegration && redeployRequired && (
+					<div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-md">
+						<div className="flex items-start gap-2">
+							<RefreshCw className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+							<div className="text-sm">
+								<p className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+									Redeploy required
+								</p>
+								<p className="text-yellow-700 dark:text-yellow-300">
+									The background agent won't work properly because you've recently changed one of
+									your integrations. Please redeploy your agent to apply the changes.
+								</p>
+							</div>
+						</div>
+					</div>
+				)}
+
 				<div className="flex justify-center">
 					<Button
 						onClick={handleRedeploy}
 						size="lg"
-						disabled={deploying || deleting}
+						disabled={deploying || deleting || !githubIntegration || !anthropicIntegration}
 						className="px-6"
 					>
-					{deploying ? (
-						<>
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-							Redeploying...
-						</>
-					) : (
-						"Redeploy Agent"
-					)}
+						{deploying ? (
+							<>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								Redeploying...
+							</>
+						) : (
+							"Redeploy Agent"
+						)}
 					</Button>
 				</div>
 			</CardContent>

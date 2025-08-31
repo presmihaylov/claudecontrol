@@ -401,7 +401,7 @@ export function AnthropicIntegrationCard({ onIntegrationChange }: AnthropicInteg
 							size="sm"
 							onClick={handleDisconnectAnthropic}
 							disabled={deleting}
-							className="text-muted-foreground hover:text-destructive"
+							className="text-foreground hover:text-destructive"
 						>
 							<Trash2 className="h-4 w-4 mr-2" />
 							{deleting ? "Disconnecting..." : "Disconnect"}
