@@ -62,7 +62,8 @@ func (m *MockCCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 	ctx context.Context,
 	orgID models.OrgID,
 	integrationID string,
+	updateConfigOnly bool,
 ) error {
-	args := m.Called(ctx, orgID, integrationID)
+	args := m.Called(ctx, orgID, integrationID, updateConfigOnly)
 	return args.Error(0)
 }
