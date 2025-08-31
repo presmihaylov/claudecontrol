@@ -189,10 +189,10 @@ export default function OnboardingPage() {
 	useEffect(() => {
 		// Small delay to ensure DOM is updated
 		const timer = setTimeout(() => {
-			const mainContent = document.querySelector('.main-content');
+			const mainContent = document.querySelector(".main-content");
 			if (mainContent && window.innerWidth < 1024) {
 				// Only scroll on mobile/tablet
-				mainContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				mainContent.scrollIntoView({ behavior: "smooth", block: "start" });
 			}
 		}, 300);
 
@@ -766,13 +766,16 @@ export default function OnboardingPage() {
 				throw new Error("CCAgent integration not found");
 			}
 
-			const deployResponse = await fetch(`${env.CCBACKEND_BASE_URL}/ccagents/${ccAgentIntegration.id}/redeploy`, {
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${token}`,
-					"Content-Type": "application/json",
+			const deployResponse = await fetch(
+				`${env.CCBACKEND_BASE_URL}/ccagents/${ccAgentIntegration.id}/redeploy`,
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
 				},
-			});
+			);
 
 			if (!deployResponse.ok) {
 				throw new Error("Failed to trigger deployment");
@@ -1473,7 +1476,12 @@ export default function OnboardingPage() {
 											</p>
 										</div>
 									</div>
-									<Button onClick={handleDeployClaudeControl} size="lg" className="w-full" disabled={deploying}>
+									<Button
+										onClick={handleDeployClaudeControl}
+										size="lg"
+										className="w-full"
+										disabled={deploying}
+									>
 										{deploying ? (
 											<>
 												<Loader2 className="mr-2 h-4 w-4 animate-spin" />
