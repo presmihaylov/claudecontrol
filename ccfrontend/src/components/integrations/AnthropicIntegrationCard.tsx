@@ -5,10 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ClaudeIcon } from "@/icons/ClaudeIcon";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
 import { CheckCircle, ExternalLink, Key, Loader2, Trash2 } from "lucide-react";
-import { ClaudeIcon } from "@/icons/ClaudeIcon";
 import { useEffect, useState } from "react";
 
 interface AnthropicIntegration {
@@ -382,8 +382,8 @@ export function AnthropicIntegrationCard({ onIntegrationChange }: AnthropicInteg
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<div className="rounded-lg border bg-muted/50 p-4">
-					<div className="flex items-start justify-between">
-						<div className="flex-1">
+					<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+						<div className="flex-1 min-w-0">
 							<dl className="space-y-1 text-sm">
 								<div>
 									<dt className="inline font-medium text-muted-foreground">Type:</dt>{" "}
@@ -402,7 +402,7 @@ export function AnthropicIntegrationCard({ onIntegrationChange }: AnthropicInteg
 							size="sm"
 							onClick={handleDisconnectAnthropic}
 							disabled={deleting}
-							className="text-foreground hover:text-destructive"
+							className="text-foreground hover:text-destructive self-start sm:self-center flex-shrink-0"
 						>
 							<Trash2 className="h-4 w-4 mr-2" />
 							{deleting ? "Disconnecting..." : "Disconnect"}

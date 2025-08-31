@@ -245,10 +245,10 @@ export function CCAgentIntegrationCard({
 			const newIntegration: CCAgentContainerIntegration = await response.json();
 			setIntegration(newIntegration);
 			onIntegrationChange?.(newIntegration);
-			
+
 			// Set redeploy required when creating new agent integration
 			await setRedeployRequiredSetting(true);
-			
+
 			setError(null);
 		} catch (err) {
 			console.error("Error saving CCAgent integration:", err);
@@ -469,6 +469,13 @@ export function CCAgentIntegrationCard({
 						</div>
 					</div>
 
+					<div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+						<p className="text-sm text-blue-800">
+							If you prefer to self-host Cloud Control instead of using our managed service, please
+							reach out to me for setup instructions.
+						</p>
+					</div>
+
 					<Button onClick={handleSaveCCAgent} disabled={!selectedRepo || saving} className="w-full">
 						{saving ? (
 							<>
@@ -497,12 +504,12 @@ export function CCAgentIntegrationCard({
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<div className="rounded-lg border bg-muted/50 p-4">
-					<div className="flex items-start justify-between">
-						<div className="flex-1">
+					<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+						<div className="flex-1 min-w-0">
 							<dl className="space-y-1 text-sm">
 								<div>
 									<dt className="inline font-medium text-muted-foreground">Repository:</dt>{" "}
-									<dd className="inline">{integration.repo_url}</dd>
+									<dd className="inline break-all">{integration.repo_url}</dd>
 								</div>
 								<div>
 									<dt className="inline font-medium text-muted-foreground">Configured:</dt>{" "}
@@ -517,7 +524,7 @@ export function CCAgentIntegrationCard({
 							size="sm"
 							onClick={handleDisconnectCCAgent}
 							disabled={deleting || deploying}
-							className="text-foreground hover:text-destructive"
+							className="text-foreground hover:text-destructive self-start sm:self-center flex-shrink-0"
 						>
 							<Trash2 className="h-4 w-4 mr-2" />
 							{deleting ? "Disconnecting..." : "Disconnect"}
