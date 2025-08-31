@@ -12,13 +12,16 @@ require github.com/lib/pq v1.10.9
 require (
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/clerk/clerk-sdk-go/v2 v2.3.1
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/rs/cors v1.11.1
+	github.com/samber/lo v1.51.0
 	github.com/samber/mo v1.14.0
 	github.com/stretchr/testify v1.10.0
 	github.com/zishang520/socket.io/v2 v2.0.5
+	golang.org/x/crypto v0.39.0
 )
 
 require (
@@ -26,7 +29,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/google/pprof v0.0.0-20230821062121-407c9e7a662f // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
@@ -46,7 +48,6 @@ require (
 	github.com/zishang520/engine.io/v2 v2.0.3 // indirect
 	github.com/zishang520/socket.io-go-parser/v2 v2.0.4 // indirect
 	go.uber.org/mock v0.3.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/net v0.41.0 // indirect

@@ -9,18 +9,24 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/samber/lo"
 
 	"ccbackend/clients/anthropic"
 	"ccbackend/clients/github"
 	"ccbackend/clients/ssh"
 	"ccbackend/config"
 	"ccbackend/db"
+	"ccbackend/middleware"
 	"ccbackend/models"
 	"ccbackend/services/anthropic_integrations"
 	ccagentcontainerintegrations "ccbackend/services/ccagent_container_integrations"
 	"ccbackend/services/github_integrations"
 	"ccbackend/services/organizations"
 )
+
+type OrgProcessingResults struct {
+	HasUpdates bool
+}
 
 func main() {
 	log.Printf("🔄 Starting Anthropic OAuth token refresh process...")
@@ -36,10 +42,33 @@ func main() {
 		log.Fatalf("❌ Failed to load configuration: %v", err)
 	}
 
+	// Initialize error alert middleware
+	alertMiddleware := middleware.NewErrorAlertMiddleware(middleware.SlackAlertConfig{
+		WebhookURL:  cfg.SlackAlertWebhookURL,
+		Environment: cfg.Environment,
+		AppName:     "ccbackend-refreshtokens",
+		LogsURL:     cfg.ServerLogsURL,
+	})
+
+	// Wrap the entire run method with error alerting
+	wrappedRun := alertMiddleware.WrapBackgroundTask("RefreshTokensProcess", run)
+	if err := wrappedRun(); err != nil {
+		log.Printf("❌ Fatal error: %v", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
 	// Create database connection
 	dbConn, err := db.NewConnection(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("❌ Failed to connect to database: %v", err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer dbConn.Close()
 
@@ -55,12 +84,12 @@ func main() {
 	// Decode base64 GitHub app private key
 	privateKey, err := base64.StdEncoding.DecodeString(cfg.GitHubAppPrivateKey)
 	if err != nil {
-		log.Fatalf("❌ Failed to decode GitHub app private key: %v", err)
+		return fmt.Errorf("failed to decode GitHub app private key: %w", err)
 	}
 
 	githubClient, err := github.NewGitHubClient(cfg.GitHubClientID, cfg.GitHubClientSecret, cfg.GitHubAppID, privateKey)
 	if err != nil {
-		log.Fatalf("❌ Failed to create GitHub client: %v", err)
+		return fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 
 	sshClient := ssh.NewSSHClient(cfg.SSHPrivateKeyBase64)
@@ -83,104 +112,94 @@ func main() {
 	// Get all organizations (we need to fetch integrations per org)
 	organizations, err := organizationsService.GetAllOrganizations(ctx)
 	if err != nil {
-		log.Fatalf("❌ Failed to get organizations: %v", err)
+		return fmt.Errorf("failed to get organizations: %w", err)
 	}
 
 	log.Printf("🔍 Found %d organizations to process", len(organizations))
 
-	totalIntegrations := 0
-	refreshedCount := 0
-	errorCount := 0
-	deploymentErrorCount := 0
 	organizationsWithUpdates := make(map[string]bool)
 
 	// Process each organization
 	for _, org := range organizations {
-		log.Printf("🏢 Processing organization: %s", org.ID)
-
-		// Get all Anthropic integrations for this organization
-		integrations, err := anthropicService.ListAnthropicIntegrations(ctx, models.OrgID(org.ID))
+		orgResults, err := refreshTokensForOrg(ctx, org.ID, anthropicService, ccagentContainerService)
 		if err != nil {
-			log.Printf("❌ Failed to get Anthropic integrations for org %s: %v", org.ID, err)
-			errorCount++
-			continue
-		}
-
-		if len(integrations) == 0 {
-			log.Printf("⏭️  No Anthropic integrations found for organization: %s", org.ID)
-			continue
-		}
-
-		log.Printf("🔍 Found %d Anthropic integrations in org %s", len(integrations), org.ID)
-		totalIntegrations += len(integrations)
-
-		// Refresh tokens for each integration
-		orgHasUpdates := false
-		for _, integration := range integrations {
-			if err := refreshIntegrationTokens(ctx, anthropicService, org.ID, &integration); err != nil {
-				log.Printf("❌ Failed to refresh tokens for integration %s: %v", integration.ID, err)
-				errorCount++
-			} else {
-				refreshedCount++
-				orgHasUpdates = true
-			}
+			return fmt.Errorf("failed to process organization %s: %w", org.ID, err)
 		}
 
 		// Track organizations that had successful token refreshes for container updates
-		if orgHasUpdates {
+		if orgResults.HasUpdates {
 			organizationsWithUpdates[org.ID] = true
-		}
-
-		// After refreshing tokens for this organization, update its container configurations
-		if orgHasUpdates {
-			if err := redeployContainersForOrg(ctx, ccagentContainerService, sshClient, org.ID); err != nil {
-				log.Printf("❌ Failed to update container configurations for org %s: %v", org.ID, err)
-				deploymentErrorCount++
-			}
 		}
 	}
 
-	// After all organizations are processed, finalize deployment for those with updates
+	// After all organizations are processed, finalize deployment for unique SSH hosts
 	if len(organizationsWithUpdates) > 0 {
-		log.Printf("🚀 Finalizing deployment for %d organizations with token updates...", len(organizationsWithUpdates))
-		for orgID := range organizationsWithUpdates {
-			if err := finalizeDeployment(ccagentContainerService, sshClient, orgID); err != nil {
-				log.Printf("❌ Failed to finalize deployment for org %s: %v", orgID, err)
-				deploymentErrorCount++
-			}
+		orgIDs := lo.Keys(organizationsWithUpdates)
+		if err := redeployAllImpactedCCAgents(ctx, ccagentContainerService, sshClient, orgIDs); err != nil {
+			return fmt.Errorf("failed to finalize deployment: %w", err)
 		}
 	}
 
 	// Print summary
-	log.Printf("✅ Token refresh and deployment process completed!")
-	log.Printf("📊 Summary:")
-	log.Printf("   - Organizations processed: %d", len(organizations))
-	log.Printf("   - Total integrations found: %d", totalIntegrations)
-	log.Printf("   - Tokens refreshed successfully: %d", refreshedCount)
-	log.Printf("   - Token refresh errors: %d", errorCount)
-	log.Printf("   - Organizations with updates: %d", len(organizationsWithUpdates))
-	log.Printf("   - Deployment errors: %d", deploymentErrorCount)
+	log.Printf("✅ Token refresh and deployment process completed successfully!")
+	log.Printf("📊 Organizations processed: %d, Organizations with updates: %d", len(organizations), len(organizationsWithUpdates))
 
-	if errorCount > 0 || deploymentErrorCount > 0 {
-		os.Exit(1)
+	return nil
+}
+
+// refreshTokensForOrg processes token refresh and container updates for a single organization
+func refreshTokensForOrg(
+	ctx context.Context,
+	orgID string,
+	anthropicService *anthropic_integrations.AnthropicIntegrationsService,
+	ccagentContainerService *ccagentcontainerintegrations.CCAgentContainerIntegrationsService,
+) (*OrgProcessingResults, error) {
+	log.Printf("🏢 Processing organization: %s", orgID)
+
+	results := &OrgProcessingResults{}
+
+	// Get all Anthropic integrations for this organization
+	integrations, err := anthropicService.ListAnthropicIntegrations(ctx, models.OrgID(orgID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Anthropic integrations for org %s: %w", orgID, err)
 	}
+
+	if len(integrations) == 0 {
+		log.Printf("⏭️  No Anthropic integrations found for organization: %s", orgID)
+		return results, nil
+	}
+
+	log.Printf("🔍 Found %d Anthropic integrations in organization %s", len(integrations), orgID)
+
+	// Refresh tokens for each integration
+	for _, integration := range integrations {
+		if err := refreshIntegrationTokens(ctx, anthropicService, orgID, &integration); err != nil {
+			return nil, fmt.Errorf("failed to refresh tokens for integration %s in org %s: %w", integration.ID, orgID, err)
+		}
+		log.Printf("✅ Successfully refreshed tokens for integration %s in organization %s", integration.ID, orgID)
+		results.HasUpdates = true
+	}
+
+	// After refreshing tokens for this organization, update its container configurations
+	if results.HasUpdates {
+		log.Printf("🔄 Updating container configurations for organization: %s", orgID)
+		if err := updateRemoteContainerConfig(ctx, ccagentContainerService, orgID); err != nil {
+			return nil, fmt.Errorf("failed to update container configurations for org %s: %w", orgID, err)
+		}
+		log.Printf("✅ Successfully updated container configurations for organization: %s", orgID)
+	}
+
+	log.Printf("✅ Successfully completed processing for organization: %s", orgID)
+	return results, nil
 }
 
-// buildRedeployAllCommand builds the SSH command for redeployall.sh
-func buildRedeployAllCommand() string {
-	return "/root/redeployall.sh"
-}
-
-// redeployContainersForOrg updates container configurations for all CCAgent container integrations in an organization
-func redeployContainersForOrg(
+// updateRemoteContainerConfig updates container configurations for all CCAgent container integrations in an organization
+func updateRemoteContainerConfig(
 	ctx context.Context,
 	ccagentContainerService *ccagentcontainerintegrations.CCAgentContainerIntegrationsService,
-	sshClient ssh.SSHClientInterface,
 	orgID string,
 ) error {
 	log.Printf("🔄 Updating container configurations for organization: %s", orgID)
-
-	// Get all CCAgent container integrations for this organization
 	integrations, err := ccagentContainerService.ListCCAgentContainerIntegrations(ctx, models.OrgID(orgID))
 	if err != nil {
 		return fmt.Errorf("failed to list CCAgent container integrations: %w", err)
@@ -192,13 +211,11 @@ func redeployContainersForOrg(
 	}
 
 	log.Printf("🔍 Found %d CCAgent container integrations to update in org %s", len(integrations), orgID)
-
-	// Update configuration for each integration using the existing deployment logic
 	for _, integration := range integrations {
 		log.Printf("🔄 Updating config for CCAgent container integration: %s", integration.ID)
 
-		// Update the configuration only (don't redeploy containers yet)
-		if err := ccagentContainerService.RedeployCCAgentContainer(ctx, models.OrgID(orgID), integration.ID, true); err != nil {
+		updateConfigOnly := true
+		if err := ccagentContainerService.RedeployCCAgentContainer(ctx, models.OrgID(orgID), integration.ID, updateConfigOnly); err != nil {
 			log.Printf("❌ Failed to update config for integration %s: %v", integration.ID, err)
 			return fmt.Errorf("failed to update config for integration %s: %w", integration.ID, err)
 		}
@@ -210,37 +227,41 @@ func redeployContainersForOrg(
 	return nil
 }
 
-// finalizeDeployment runs redeployall.sh to apply all configuration changes for an organization
-func finalizeDeployment(
+// redeployAllImpactedCCAgents runs redeployall.sh on unique SSH hosts for multiple organizations
+func redeployAllImpactedCCAgents(
+	ctx context.Context,
 	ccagentContainerService *ccagentcontainerintegrations.CCAgentContainerIntegrationsService,
 	sshClient ssh.SSHClientInterface,
-	orgID string,
+	orgIDs []string,
 ) error {
-	log.Printf("🚀 Finalizing deployment for organization: %s", orgID)
+	log.Printf("🚀 Finalizing deployment for %d organizations with token updates...", len(orgIDs))
 
-	// Get any CCAgent container integration to get the SSH host (they should all use the same SSH host per org)
-	ctx := context.Background()
-	integrations, err := ccagentContainerService.ListCCAgentContainerIntegrations(ctx, models.OrgID(orgID))
-	if err != nil {
-		return fmt.Errorf("failed to list CCAgent container integrations: %w", err)
+	// Collect all SSH hosts from organizations with updates
+	var allSSHHosts []string
+	for _, orgID := range orgIDs {
+		integrations, err := ccagentContainerService.ListCCAgentContainerIntegrations(ctx, models.OrgID(orgID))
+		if err != nil {
+			return fmt.Errorf("failed to get SSH hosts for org %s: %w", orgID, err)
+		}
+
+		sshHosts := lo.FilterMap(integrations, func(integration models.CCAgentContainerIntegration, _ int) (string, bool) {
+			return integration.SSHHost, integration.SSHHost != ""
+		})
+		allSSHHosts = append(allSSHHosts, sshHosts...)
 	}
 
-	if len(integrations) == 0 {
-		log.Printf("⏭️  No CCAgent container integrations found for organization: %s, skipping deployment", orgID)
-		return nil
+	// Get unique SSH hosts and run redeployall.sh on each
+	uniqueSSHHosts := lo.Uniq(allSSHHosts)
+	for _, sshHost := range uniqueSSHHosts {
+		log.Printf("🔄 Executing redeployall.sh on SSH host: %s", sshHost)
+		command := "/root/redeployall.sh"
+		if err := sshClient.ExecuteCommand(sshHost, command); err != nil {
+			return fmt.Errorf("failed to execute redeployall.sh on host %s: %w", sshHost, err)
+		}
+		log.Printf("✅ Successfully executed redeployall.sh on SSH host: %s", sshHost)
 	}
 
-	// Use the SSH host from the first integration (they should all be the same per organization)
-	sshHost := integrations[0].SSHHost
-	command := buildRedeployAllCommand()
-
-	log.Printf("🔄 Executing redeployall.sh on host: %s", sshHost)
-
-	if err := sshClient.ExecuteCommand(sshHost, command); err != nil {
-		return fmt.Errorf("failed to execute redeployall.sh: %w", err)
-	}
-
-	log.Printf("✅ Successfully finalized deployment for organization: %s", orgID)
+	log.Printf("✅ Successfully finalized deployment on %d unique SSH hosts", len(uniqueSSHHosts))
 	return nil
 }
 
@@ -250,11 +271,11 @@ func refreshIntegrationTokens(
 	orgID string,
 	integration *models.AnthropicIntegration,
 ) error {
-	log.Printf("🔄 Processing integration %s (org: %s)", integration.ID, orgID)
+	log.Printf("🔄 Processing integration %s in organization %s", integration.ID, orgID)
 
 	// Check if this integration has OAuth tokens
 	if integration.ClaudeCodeOAuthRefreshToken == nil || *integration.ClaudeCodeOAuthRefreshToken == "" {
-		log.Printf("⏭️  Skipping integration %s - no refresh token (likely API key auth)", integration.ID)
+		log.Printf("⏭️  Skipping integration %s in org %s - no refresh token (likely API key auth)", integration.ID, orgID)
 		return nil
 	}
 
@@ -262,20 +283,21 @@ func refreshIntegrationTokens(
 	if integration.ClaudeCodeOAuthTokenExpiresAt != nil {
 		timeUntilExpiry := time.Until(*integration.ClaudeCodeOAuthTokenExpiresAt)
 		log.Printf(
-			"🔄 Refreshing integration %s - current tokens expire in %v",
+			"🔄 Refreshing tokens for integration %s in org %s - current tokens expire in %v",
 			integration.ID,
+			orgID,
 			timeUntilExpiry.Round(time.Minute),
 		)
 	} else {
-		log.Printf("🔄 Refreshing integration %s - no expiration time recorded", integration.ID)
+		log.Printf("🔄 Refreshing tokens for integration %s in org %s - no expiration time recorded", integration.ID, orgID)
 	}
 
 	// Refresh the tokens
 	_, err := service.RefreshTokens(ctx, models.OrgID(orgID), integration.ID)
 	if err != nil {
-		return fmt.Errorf("failed to refresh tokens: %w", err)
+		return fmt.Errorf("failed to refresh tokens for integration %s in org %s: %w", integration.ID, orgID, err)
 	}
 
-	log.Printf("✅ Successfully refreshed tokens for integration %s", integration.ID)
+	log.Printf("✅ Successfully refreshed tokens for integration %s in org %s", integration.ID, orgID)
 	return nil
 }
