@@ -457,6 +457,7 @@ export default function Home() {
 												className="text-foreground hover:text-destructive self-start sm:self-center"
 											>
 												<Trash2 className="h-4 w-4" />
+												Disconnect
 											</Button>
 										</div>
 									))}
@@ -482,6 +483,7 @@ export default function Home() {
 												className="text-foreground hover:text-destructive self-start sm:self-center"
 											>
 												<Trash2 className="h-4 w-4" />
+												Disconnect
 											</Button>
 										</div>
 									))}
