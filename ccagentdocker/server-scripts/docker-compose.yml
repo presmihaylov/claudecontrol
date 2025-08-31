@@ -4,7 +4,7 @@ services:
     container_name: ccagent-token-rotator-test
     volumes:
       - ./cc.pem:/secrets/cc.pem:ro
-      - ./ccagent-test:/shared:Z
+      - ./volumes/ccagent-test:/shared:Z
     environment:
       - GITHUB_APP_ID=123456
       - GITHUB_INSTALLATION_ID=123456
@@ -23,7 +23,7 @@ services:
       ccagent-token-rotator-test:
         condition: service_healthy
     volumes:
-      - ./ccagent-test:/home/ccagent
+      - ./volumes/ccagent-test:/home/ccagent
     environment:
       - REPO_URL=github.com/presmihaylov/claudecontrol
       - CCAGENT_API_KEY=sys_xyz

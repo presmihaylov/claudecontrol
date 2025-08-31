@@ -117,7 +117,7 @@ fi
 # Service names
 TOKEN_ROTATOR_SERVICE="ccagent-token-rotator-${INSTANCE_NAME}"
 CCAGENT_SERVICE="ccagent-${INSTANCE_NAME}"
-SHARED_DIR="./ccagent-${INSTANCE_NAME}"
+SHARED_DIR="./volumes/ccagent-${INSTANCE_NAME}"
 
 # Function to remove existing services from docker-compose.yml
 remove_existing_services() {
