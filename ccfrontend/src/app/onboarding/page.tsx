@@ -137,6 +137,10 @@ export default function OnboardingPage() {
 	const [savingCCAgent, setSavingCCAgent] = useState(false);
 	const [loadingRepos, setLoadingRepos] = useState(false);
 
+	// Deployment state
+	const [deploying, setDeploying] = useState(false);
+	const [deploymentMessage, setDeploymentMessage] = useState("");
+
 	// Check for existing integrations on mount
 	useEffect(() => {
 		checkExistingIntegrations();
@@ -162,6 +166,39 @@ export default function OnboardingPage() {
 
 		return () => clearTimeout(timer);
 	}, [currentStep, loading]); // Also trigger when loading changes
+
+	// Deployment message rotation
+	useEffect(() => {
+		if (!deploying) return;
+
+		const messages = [
+			"🚀 Spinning up your Claude Control agent...",
+			"⚙️ Configuring container environment...",
+			"🔧 Installing dependencies...",
+			"🐳 Building Docker image...",
+			"☁️ Deploying to cloud infrastructure...",
+			"🔗 Establishing secure connections...",
+			"✨ Finalizing deployment...",
+			"🎯 Almost ready...",
+		];
+
+		let messageIndex = 0;
+		setDeploymentMessage(messages[messageIndex]);
+
+		const scheduleNextMessage = () => {
+			// Random delay between 1.5-3.5 seconds for realistic jitter
+			const delay = Math.random() * 2000 + 1500;
+			return setTimeout(() => {
+				messageIndex = (messageIndex + 1) % messages.length;
+				setDeploymentMessage(messages[messageIndex]);
+				scheduleNextMessage();
+			}, delay);
+		};
+
+		const timeout = scheduleNextMessage();
+
+		return () => clearTimeout(timeout);
+	}, [deploying]);
 
 	const checkExistingIntegrations = async () => {
 		try {
@@ -681,12 +718,32 @@ export default function OnboardingPage() {
 		}
 	};
 
-	const handleContinueToDashboard = async () => {
+	const handleDeployClaudeControl = async () => {
+		setDeploying(true);
+		setError(null);
+
 		try {
 			const token = await getToken();
 			if (!token) {
 				setError("Authentication required");
 				return;
+			}
+
+			// Trigger deployment
+			if (!ccAgentIntegration) {
+				throw new Error("CCAgent integration not found");
+			}
+
+			const deployResponse = await fetch(`${env.CCBACKEND_BASE_URL}/ccagents/${ccAgentIntegration.id}/redeploy`, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+			});
+
+			if (!deployResponse.ok) {
+				throw new Error("Failed to trigger deployment");
 			}
 
 			// Mark onboarding as completed
@@ -703,10 +760,14 @@ export default function OnboardingPage() {
 				}),
 			});
 
-			router.push("/");
+			// Wait a bit to show completion message
+			setTimeout(() => {
+				router.push("/");
+			}, 2000);
 		} catch (error) {
-			console.error("Error marking onboarding as completed:", error);
-			setError("Failed to complete onboarding setup");
+			console.error("Error deploying Claude Control:", error);
+			setError("Failed to deploy Claude Control");
+			setDeploying(false);
 		}
 	};
 
@@ -1377,9 +1438,21 @@ export default function OnboardingPage() {
 											</p>
 										</div>
 									</div>
-									<Button onClick={handleContinueToDashboard} size="lg" className="w-full">
-										Continue to Dashboard
+									<Button onClick={handleDeployClaudeControl} size="lg" className="w-full" disabled={deploying}>
+										{deploying ? (
+											<>
+												<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+												Deploy Claude Control
+											</>
+										) : (
+											"Deploy Claude Control"
+										)}
 									</Button>
+									{deploying && (
+										<div className="text-center text-sm text-muted-foreground mt-3">
+											{deploymentMessage}
+										</div>
+									)}
 								</CardContent>
 							</Card>
 						)}
