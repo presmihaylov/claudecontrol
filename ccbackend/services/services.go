@@ -349,12 +349,12 @@ type JobsService interface {
 
 // SettingsService defines the interface for settings operations
 type SettingsService interface {
-	UpsertBooleanSetting(ctx context.Context, key string, value bool) error
-	UpsertStringSetting(ctx context.Context, key string, value string) error
-	UpsertStringArraySetting(ctx context.Context, key string, value []string) error
-	GetBooleanSetting(ctx context.Context, key string) (mo.Option[bool], error)
-	GetStringSetting(ctx context.Context, key string) (mo.Option[string], error)
-	GetStringArraySetting(ctx context.Context, key string) (mo.Option[[]string], error)
+	UpsertBooleanSetting(ctx context.Context, organizationID string, key string, value bool) error
+	UpsertStringSetting(ctx context.Context, organizationID string, key string, value string) error
+	UpsertStringArraySetting(ctx context.Context, organizationID string, key string, value []string) error
+	GetBooleanSetting(ctx context.Context, organizationID string, key string) (mo.Option[bool], error)
+	GetStringSetting(ctx context.Context, organizationID string, key string) (mo.Option[string], error)
+	GetStringArraySetting(ctx context.Context, organizationID string, key string) (mo.Option[[]string], error)
 }
 
 // TransactionManager handles database transactions via context

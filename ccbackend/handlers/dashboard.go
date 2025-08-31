@@ -374,19 +374,24 @@ func (h *DashboardAPIHandler) UpsertSetting(
 ) error {
 	log.Printf("📋 Upserting setting: %s (type: %s)", key, settingType)
 
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return fmt.Errorf("organization not found in context")
+	}
+
 	switch settingType {
 	case models.SettingTypeBool:
 		boolValue, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("value must be boolean for setting type %s", models.SettingTypeBool)
 		}
-		return h.settingsService.UpsertBooleanSetting(ctx, key, boolValue)
+		return h.settingsService.UpsertBooleanSetting(ctx, org.ID, key, boolValue)
 	case models.SettingTypeString:
 		stringValue, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("value must be string for setting type %s", models.SettingTypeString)
 		}
-		return h.settingsService.UpsertStringSetting(ctx, key, stringValue)
+		return h.settingsService.UpsertStringSetting(ctx, org.ID, key, stringValue)
 	case models.SettingTypeStringArr:
 		var stringArrValue []string
 		switch v := value.(type) {
@@ -403,7 +408,7 @@ func (h *DashboardAPIHandler) UpsertSetting(
 		default:
 			return fmt.Errorf("value must be string array for setting type %s", models.SettingTypeStringArr)
 		}
-		return h.settingsService.UpsertStringArraySetting(ctx, key, stringArrValue)
+		return h.settingsService.UpsertStringArraySetting(ctx, org.ID, key, stringArrValue)
 	default:
 		return fmt.Errorf("unsupported setting type: %s", settingType)
 	}
@@ -413,6 +418,11 @@ func (h *DashboardAPIHandler) UpsertSetting(
 func (h *DashboardAPIHandler) GetSetting(ctx context.Context, key string) (any, models.SettingType, error) {
 	log.Printf("📋 Getting setting: %s", key)
 
+	org, ok := appctx.GetOrganization(ctx)
+	if !ok {
+		return nil, "", fmt.Errorf("organization not found in context")
+	}
+
 	keyDef, exists := models.SupportedSettings[key]
 	if !exists {
 		return nil, "", fmt.Errorf("unsupported setting key: %s", key)
@@ -420,7 +430,7 @@ func (h *DashboardAPIHandler) GetSetting(ctx context.Context, key string) (any, 
 
 	switch keyDef.Type {
 	case models.SettingTypeBool:
-		valueOpt, err := h.settingsService.GetBooleanSetting(ctx, key)
+		valueOpt, err := h.settingsService.GetBooleanSetting(ctx, org.ID, key)
 		if err != nil {
 			return nil, "", err
 		}
@@ -429,7 +439,7 @@ func (h *DashboardAPIHandler) GetSetting(ctx context.Context, key string) (any, 
 		}
 		return nil, models.SettingTypeBool, nil
 	case models.SettingTypeString:
-		valueOpt, err := h.settingsService.GetStringSetting(ctx, key)
+		valueOpt, err := h.settingsService.GetStringSetting(ctx, org.ID, key)
 		if err != nil {
 			return nil, "", err
 		}
@@ -438,7 +448,7 @@ func (h *DashboardAPIHandler) GetSetting(ctx context.Context, key string) (any, 
 		}
 		return nil, models.SettingTypeString, nil
 	case models.SettingTypeStringArr:
-		valueOpt, err := h.settingsService.GetStringArraySetting(ctx, key)
+		valueOpt, err := h.settingsService.GetStringArraySetting(ctx, org.ID, key)
 		if err != nil {
 			return nil, "", err
 		}

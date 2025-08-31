@@ -7,9 +7,9 @@ import (
 
 	"github.com/samber/mo"
 
-	"ccbackend/appctx"
 	"ccbackend/db"
 	"ccbackend/models"
+	"ccbackend/utils"
 )
 
 type SettingsService struct {
@@ -20,22 +20,16 @@ func NewSettingsService(repo *db.PostgresSettingsRepository) *SettingsService {
 	return &SettingsService{settingsRepo: repo}
 }
 
-func (s *SettingsService) UpsertBooleanSetting(ctx context.Context, key string, value bool) error {
+func (s *SettingsService) UpsertBooleanSetting(ctx context.Context, organizationID string, key string, value bool) error {
 	log.Printf("📋 Starting to upsert boolean setting: %s", key)
-
 	if err := s.validateKey(key, models.SettingTypeBool); err != nil {
-		return err
-	}
-
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return fmt.Errorf("organization not found in context")
+		return fmt.Errorf("invalid setting: %w", err)
 	}
 
 	_, err := s.settingsRepo.UpsertBooleanSetting(
 		ctx,
-		org.ID,
-		"org",
+		organizationID,
+		models.SettingScopeTypeOrg,
 		"",
 		key,
 		value,
@@ -48,22 +42,16 @@ func (s *SettingsService) UpsertBooleanSetting(ctx context.Context, key string, 
 	return nil
 }
 
-func (s *SettingsService) UpsertStringSetting(ctx context.Context, key string, value string) error {
+func (s *SettingsService) UpsertStringSetting(ctx context.Context, organizationID string, key string, value string) error {
 	log.Printf("📋 Starting to upsert string setting: %s", key)
-
 	if err := s.validateKey(key, models.SettingTypeString); err != nil {
 		return err
 	}
 
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return fmt.Errorf("organization not found in context")
-	}
-
 	_, err := s.settingsRepo.UpsertStringSetting(
 		ctx,
-		org.ID,
-		"org",
+		organizationID,
+		models.SettingScopeTypeOrg,
 		"",
 		key,
 		value,
@@ -76,22 +64,16 @@ func (s *SettingsService) UpsertStringSetting(ctx context.Context, key string, v
 	return nil
 }
 
-func (s *SettingsService) UpsertStringArraySetting(ctx context.Context, key string, value []string) error {
+func (s *SettingsService) UpsertStringArraySetting(ctx context.Context, organizationID string, key string, value []string) error {
 	log.Printf("📋 Starting to upsert string array setting: %s", key)
-
 	if err := s.validateKey(key, models.SettingTypeStringArr); err != nil {
-		return err
-	}
-
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return fmt.Errorf("organization not found in context")
+		return fmt.Errorf("invalid setting: %w", err)
 	}
 
 	_, err := s.settingsRepo.UpsertStringArraySetting(
 		ctx,
-		org.ID,
-		"org",
+		organizationID,
+		models.SettingScopeTypeOrg,
 		"",
 		key,
 		value,
@@ -104,22 +86,16 @@ func (s *SettingsService) UpsertStringArraySetting(ctx context.Context, key stri
 	return nil
 }
 
-func (s *SettingsService) GetBooleanSetting(ctx context.Context, key string) (mo.Option[bool], error) {
+func (s *SettingsService) GetBooleanSetting(ctx context.Context, organizationID string, key string) (mo.Option[bool], error) {
 	log.Printf("📋 Starting to get boolean setting: %s", key)
-
 	if err := s.validateKey(key, models.SettingTypeBool); err != nil {
-		return mo.None[bool](), err
-	}
-
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return mo.None[bool](), fmt.Errorf("organization not found in context")
+		return mo.None[bool](), fmt.Errorf("invalid setting: %w", err)
 	}
 
 	setting, err := s.settingsRepo.GetSetting(
 		ctx,
-		org.ID,
-		"org",
+		organizationID,
+		models.SettingScopeTypeOrg,
 		"",
 		key,
 	)
@@ -128,34 +104,25 @@ func (s *SettingsService) GetBooleanSetting(ctx context.Context, key string) (mo
 			log.Printf("📋 Completed successfully - boolean setting not found: %s", key)
 			return mo.None[bool](), nil
 		}
+
 		return mo.None[bool](), fmt.Errorf("failed to get boolean setting: %w", err)
 	}
 
-	if setting.ValueBoolean == nil {
-		log.Printf("📋 Completed successfully - boolean setting has no value: %s", key)
-		return mo.None[bool](), nil
-	}
-
+	utils.AssertInvariant(setting.ValueBoolean != nil, "boolean setting must have a value")
 	log.Printf("📋 Completed successfully - retrieved boolean setting: %s", key)
 	return mo.Some(*setting.ValueBoolean), nil
 }
 
-func (s *SettingsService) GetStringSetting(ctx context.Context, key string) (mo.Option[string], error) {
+func (s *SettingsService) GetStringSetting(ctx context.Context, organizationID string, key string) (mo.Option[string], error) {
 	log.Printf("📋 Starting to get string setting: %s", key)
-
 	if err := s.validateKey(key, models.SettingTypeString); err != nil {
 		return mo.None[string](), err
 	}
 
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return mo.None[string](), fmt.Errorf("organization not found in context")
-	}
-
 	setting, err := s.settingsRepo.GetSetting(
 		ctx,
-		org.ID,
-		"org",
+		organizationID,
+		models.SettingScopeTypeOrg,
 		"",
 		key,
 	)
@@ -164,34 +131,25 @@ func (s *SettingsService) GetStringSetting(ctx context.Context, key string) (mo.
 			log.Printf("📋 Completed successfully - string setting not found: %s", key)
 			return mo.None[string](), nil
 		}
+
 		return mo.None[string](), fmt.Errorf("failed to get string setting: %w", err)
 	}
 
-	if setting.ValueString == nil {
-		log.Printf("📋 Completed successfully - string setting has no value: %s", key)
-		return mo.None[string](), nil
-	}
-
+	utils.AssertInvariant(setting.ValueString != nil, "string setting must have a value")
 	log.Printf("📋 Completed successfully - retrieved string setting: %s", key)
 	return mo.Some(*setting.ValueString), nil
 }
 
-func (s *SettingsService) GetStringArraySetting(ctx context.Context, key string) (mo.Option[[]string], error) {
+func (s *SettingsService) GetStringArraySetting(ctx context.Context, organizationID string, key string) (mo.Option[[]string], error) {
 	log.Printf("📋 Starting to get string array setting: %s", key)
-
 	if err := s.validateKey(key, models.SettingTypeStringArr); err != nil {
 		return mo.None[[]string](), err
 	}
 
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return mo.None[[]string](), fmt.Errorf("organization not found in context")
-	}
-
 	setting, err := s.settingsRepo.GetSetting(
 		ctx,
-		org.ID,
-		"org",
+		organizationID,
+		models.SettingScopeTypeOrg,
 		"",
 		key,
 	)
@@ -203,11 +161,7 @@ func (s *SettingsService) GetStringArraySetting(ctx context.Context, key string)
 		return mo.None[[]string](), fmt.Errorf("failed to get string array setting: %w", err)
 	}
 
-	if len(setting.ValueStringArr) == 0 {
-		log.Printf("📋 Completed successfully - string array setting has no value: %s", key)
-		return mo.None[[]string](), nil
-	}
-
+	utils.AssertInvariant(setting.ValueStringArr != nil, "string array setting must have a value")
 	log.Printf("📋 Completed successfully - retrieved string array setting: %s", key)
 	return mo.Some([]string(setting.ValueStringArr)), nil
 }

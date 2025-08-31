@@ -15,6 +15,13 @@ const (
 	SettingTypeStringArr SettingType = "stringarr"
 )
 
+// SettingScopeType represents the scope type of the setting
+type SettingScopeType string
+
+const (
+	SettingScopeTypeOrg SettingScopeType = "org"
+)
+
 // SettingKeyDefinition defines a supported setting key with its expected type
 type SettingKeyDefinition struct {
 	Key  string

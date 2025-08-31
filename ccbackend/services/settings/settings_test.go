@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"ccbackend/appctx"
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
@@ -32,29 +31,26 @@ func setupSettingsTest(t *testing.T) (*SettingsService, *models.Organization, co
 	err = organizationsRepo.CreateOrganization(context.Background(), org)
 	require.NoError(t, err)
 
-	// Create context with organization
-	ctx := appctx.SetOrganization(context.Background(), org)
-
 	cleanup := func() {
 		dbConn.Close()
 	}
 
-	return service, org, ctx, cleanup
+	return service, org, context.Background(), cleanup
 }
 
 func TestSettingsService_UpsertBooleanSetting(t *testing.T) {
-	service, _, ctx, cleanup := setupSettingsTest(t)
+	service, org, ctx, cleanup := setupSettingsTest(t)
 	defer cleanup()
 
 	t.Run("successful upsert of boolean setting", func(t *testing.T) {
 		key := "org/onboarding_finished"
 		value := true
 
-		err := service.UpsertBooleanSetting(ctx, key, value)
+		err := service.UpsertBooleanSetting(ctx, org.ID, key, value)
 		assert.NoError(t, err)
 
 		// Verify the setting was created
-		valueOpt, err := service.GetBooleanSetting(ctx, key)
+		valueOpt, err := service.GetBooleanSetting(ctx, org.ID, key)
 		assert.NoError(t, err)
 		retrievedValue, ok := valueOpt.Get()
 		assert.True(t, ok)
@@ -65,15 +61,15 @@ func TestSettingsService_UpsertBooleanSetting(t *testing.T) {
 		key := "org/onboarding_finished"
 
 		// First upsert
-		err := service.UpsertBooleanSetting(ctx, key, false)
+		err := service.UpsertBooleanSetting(ctx, org.ID, key, false)
 		require.NoError(t, err)
 
 		// Second upsert with different value
-		err = service.UpsertBooleanSetting(ctx, key, true)
+		err = service.UpsertBooleanSetting(ctx, org.ID, key, true)
 		require.NoError(t, err)
 
 		// Verify the new value
-		valueOpt, err := service.GetBooleanSetting(ctx, key)
+		valueOpt, err := service.GetBooleanSetting(ctx, org.ID, key)
 		assert.NoError(t, err)
 		retrievedValue, ok := valueOpt.Get()
 		assert.True(t, ok)
@@ -81,31 +77,32 @@ func TestSettingsService_UpsertBooleanSetting(t *testing.T) {
 	})
 
 	t.Run("fails with unsupported key", func(t *testing.T) {
-		err := service.UpsertBooleanSetting(ctx, "invalid/key", true)
+		err := service.UpsertBooleanSetting(ctx, org.ID, "invalid/key", true)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported setting key")
 	})
 
 	t.Run("fails with wrong type for key", func(t *testing.T) {
 		key := "org/onboarding_finished" // This is defined as bool type
-		err := service.UpsertStringSetting(ctx, key, "test")
+		err := service.UpsertStringSetting(ctx, org.ID, key, "test")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "expects type bool, got string")
 	})
 
-	t.Run("fails without organization in context", func(t *testing.T) {
-		err := service.UpsertBooleanSetting(context.Background(), "org/onboarding_finished", true)
+	t.Run("fails with invalid organization ID", func(t *testing.T) {
+		err := service.UpsertBooleanSetting(context.Background(), "invalid_org_id", "org/onboarding_finished", true)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "organization not found in context")
+		// This will fail at database level when trying to insert setting with non-existent org ID
+		assert.Contains(t, err.Error(), "failed to upsert boolean setting")
 	})
 }
 
 func TestSettingsService_GetBooleanSetting(t *testing.T) {
-	service, _, ctx, cleanup := setupSettingsTest(t)
+	service, org, ctx, cleanup := setupSettingsTest(t)
 	defer cleanup()
 
 	t.Run("returns none when setting does not exist", func(t *testing.T) {
-		valueOpt, err := service.GetBooleanSetting(ctx, "org/onboarding_finished")
+		valueOpt, err := service.GetBooleanSetting(ctx, org.ID, "org/onboarding_finished")
 		assert.NoError(t, err)
 		_, ok := valueOpt.Get()
 		assert.False(t, ok)
@@ -116,11 +113,11 @@ func TestSettingsService_GetBooleanSetting(t *testing.T) {
 		expectedValue := true
 
 		// First create the setting
-		err := service.UpsertBooleanSetting(ctx, key, expectedValue)
+		err := service.UpsertBooleanSetting(ctx, org.ID, key, expectedValue)
 		require.NoError(t, err)
 
 		// Then retrieve it
-		valueOpt, err := service.GetBooleanSetting(ctx, key)
+		valueOpt, err := service.GetBooleanSetting(ctx, org.ID, key)
 		assert.NoError(t, err)
 		retrievedValue, ok := valueOpt.Get()
 		assert.True(t, ok)
@@ -128,15 +125,16 @@ func TestSettingsService_GetBooleanSetting(t *testing.T) {
 	})
 
 	t.Run("fails with unsupported key", func(t *testing.T) {
-		_, err := service.GetBooleanSetting(ctx, "invalid/key")
+		_, err := service.GetBooleanSetting(ctx, org.ID, "invalid/key")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported setting key")
 	})
 
-	t.Run("fails without organization in context", func(t *testing.T) {
-		_, err := service.GetBooleanSetting(context.Background(), "org/onboarding_finished")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "organization not found in context")
+	t.Run("returns none for invalid organization ID", func(t *testing.T) {
+		valueOpt, err := service.GetBooleanSetting(context.Background(), "invalid_org_id", "org/onboarding_finished")
+		assert.NoError(t, err)
+		_, ok := valueOpt.Get()
+		assert.False(t, ok) // Should return none when org doesn't exist
 	})
 }
 

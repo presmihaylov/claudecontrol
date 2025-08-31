@@ -39,7 +39,9 @@ func NewPostgresSettingsRepository(db *sqlx.DB, schema string) *PostgresSettings
 
 func (r *PostgresSettingsRepository) UpsertBooleanSetting(
 	ctx context.Context,
-	organizationID, scopeType, scopeID, key string,
+	organizationID string,
+	scopeType models.SettingScopeType,
+	scopeID, key string,
 	value bool,
 ) (*models.Setting, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
@@ -76,7 +78,8 @@ func (r *PostgresSettingsRepository) UpsertBooleanSetting(
 
 func (r *PostgresSettingsRepository) UpsertStringSetting(
 	ctx context.Context,
-	organizationID, scopeType, scopeID, key string,
+	organizationID string, scopeType models.SettingScopeType,
+	scopeID, key string,
 	value string,
 ) (*models.Setting, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
@@ -113,7 +116,8 @@ func (r *PostgresSettingsRepository) UpsertStringSetting(
 
 func (r *PostgresSettingsRepository) UpsertStringArraySetting(
 	ctx context.Context,
-	organizationID, scopeType, scopeID, key string,
+	organizationID string, scopeType models.SettingScopeType,
+	scopeID, key string,
 	value []string,
 ) (*models.Setting, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
@@ -150,7 +154,9 @@ func (r *PostgresSettingsRepository) UpsertStringArraySetting(
 
 func (r *PostgresSettingsRepository) GetSetting(
 	ctx context.Context,
-	organizationID, scopeType, scopeID, key string,
+	organizationID string,
+	scopeType models.SettingScopeType,
+	scopeID, key string,
 ) (*models.Setting, error) {
 	db := dbtx.GetTransactional(ctx, r.db)
 
