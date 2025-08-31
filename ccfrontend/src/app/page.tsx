@@ -15,6 +15,7 @@ import { DiscordIcon, SlackIcon } from "@/icons";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
 import { Copy, Download, Key, RefreshCw, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface SlackIntegration {
@@ -49,6 +50,7 @@ interface CCAgentSecretKeyResponse {
 
 export default function Home() {
 	const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
+	const router = useRouter();
 	const [integrations, setIntegrations] = useState<SlackIntegration[]>([]);
 	const [discordIntegrations, setDiscordIntegrations] = useState<DiscordIntegration[]>([]);
 	const [organization, setOrganization] = useState<Organization | null>(null);
@@ -66,6 +68,38 @@ export default function Home() {
 	const [secretKeyDialogOpen, setSecretKeyDialogOpen] = useState(false);
 	const [generatedSecretKey, setGeneratedSecretKey] = useState<string>("");
 	const [copySuccess, setCopySuccess] = useState(false);
+
+	// Check onboarding status and redirect if needed
+	useEffect(() => {
+		const checkOnboardingStatus = async () => {
+			if (!isLoaded || !isSignedIn) return;
+
+			try {
+				const token = await getToken();
+				if (!token) return;
+
+				const response = await fetch(`${env.CCBACKEND_BASE_URL}/settings/org-onboarding_finished`, {
+					method: "GET",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+				});
+
+				if (response.ok) {
+					const data = await response.json();
+					if (!data.value) {
+						router.push("/onboarding");
+						return;
+					}
+				}
+			} catch (error) {
+				console.error("Error checking onboarding status:", error);
+			}
+		};
+
+		checkOnboardingStatus();
+	}, [isLoaded, isSignedIn, getToken, router]);
 
 	// Authenticate user with backend and fetch integrations when they first sign in
 	useEffect(() => {

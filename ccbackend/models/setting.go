@@ -31,8 +31,8 @@ type SettingKeyDefinition struct {
 
 // SupportedSettings is the registry of all supported setting keys with their types
 var SupportedSettings = map[string]SettingKeyDefinition{
-	"org/onboarding_finished": {
-		Key:          "org/onboarding_finished",
+	"org-onboarding_finished": {
+		Key:          "org-onboarding_finished",
 		Type:         SettingTypeBool,
 		DefaultValue: false,
 	},

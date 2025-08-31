@@ -12,6 +12,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DiscordIcon, SlackIcon } from "@/icons";
 import { env } from "@/lib/env";
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -49,6 +50,24 @@ interface CCAgentContainerIntegration {
 	id: string;
 	instances_count: number;
 	repo_url: string;
+	organization_id: string;
+	created_at: string;
+	updated_at: string;
+}
+
+interface SlackIntegration {
+	id: string;
+	slack_team_id: string;
+	slack_team_name: string;
+	user_id: string;
+	created_at: string;
+	updated_at: string;
+}
+
+interface DiscordIntegration {
+	id: string;
+	discord_guild_id: string;
+	discord_guild_name: string;
 	organization_id: string;
 	created_at: string;
 	updated_at: string;
@@ -101,6 +120,8 @@ export default function OnboardingPage() {
 	const [ccAgentIntegration, setCCAgentIntegration] = useState<CCAgentContainerIntegration | null>(
 		null,
 	);
+	const [slackIntegration, setSlackIntegration] = useState<SlackIntegration | null>(null);
+	const [discordIntegration, setDiscordIntegration] = useState<DiscordIntegration | null>(null);
 	const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
 	const [error, setError] = useState<string | null>(null);
 
@@ -121,12 +142,12 @@ export default function OnboardingPage() {
 		checkExistingIntegrations();
 	}, []);
 
-	// Load repositories when reaching step 3
+	// Load repositories when reaching step 4
 	useEffect(() => {
-		if (currentStep === 3 && githubIntegration && repositories.length === 0) {
+		if (currentStep === 4 && githubIntegration && repositories.length === 0) {
 			loadGitHubRepositories();
 		}
-	}, [currentStep, githubIntegration]);
+	}, [currentStep, githubIntegration, repositories.length]);
 
 	const checkExistingIntegrations = async () => {
 		try {
@@ -144,12 +165,52 @@ export default function OnboardingPage() {
 				},
 			});
 
+			let hasGithub = false;
 			if (githubResponse.ok) {
 				const githubIntegrations: GitHubIntegration[] = await githubResponse.json();
 				if (githubIntegrations.length > 0) {
 					setGithubIntegration(githubIntegrations[0]);
+					hasGithub = true;
 					setCurrentStep(2);
 				}
+			}
+
+			// Check Slack integration
+			const slackResponse = await fetch(`${env.CCBACKEND_BASE_URL}/slack/integrations`, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			});
+
+			let hasSlackOrDiscord = false;
+			if (slackResponse.ok) {
+				const slackIntegrations: SlackIntegration[] = await slackResponse.json();
+				if (slackIntegrations.length > 0) {
+					setSlackIntegration(slackIntegrations[0]);
+					hasSlackOrDiscord = true;
+				}
+			}
+
+			// Check Discord integration
+			const discordResponse = await fetch(`${env.CCBACKEND_BASE_URL}/discord/integrations`, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			});
+
+			if (discordResponse.ok) {
+				const discordIntegrations: DiscordIntegration[] = await discordResponse.json();
+				if (discordIntegrations.length > 0) {
+					setDiscordIntegration(discordIntegrations[0]);
+					hasSlackOrDiscord = true;
+				}
+			}
+
+			// Update step based on what we have
+			if (hasGithub && hasSlackOrDiscord) {
+				setCurrentStep(3);
+			} else if (hasGithub) {
+				setCurrentStep(2);
 			}
 
 			// Check Anthropic integration
@@ -159,13 +220,12 @@ export default function OnboardingPage() {
 				},
 			});
 
+			let hasAnthropic = false;
 			if (anthropicResponse.ok) {
 				const anthropicIntegrations: AnthropicIntegration[] = await anthropicResponse.json();
 				if (anthropicIntegrations.length > 0) {
 					setAnthropicIntegration(anthropicIntegrations[0]);
-					if (githubIntegration) {
-						setCurrentStep(3);
-					}
+					hasAnthropic = true;
 				}
 			}
 
@@ -179,14 +239,24 @@ export default function OnboardingPage() {
 				},
 			);
 
+			let hasCCAgent = false;
 			if (ccAgentResponse.ok) {
 				const integrations: CCAgentContainerIntegration[] = await ccAgentResponse.json();
 				if (integrations.length > 0) {
 					setCCAgentIntegration(integrations[0]);
-					if (githubIntegration && anthropicIntegration) {
-						setCurrentStep(4);
-					}
+					hasCCAgent = true;
 				}
+			}
+
+			// Final step determination
+			if (hasGithub && hasSlackOrDiscord && hasAnthropic && hasCCAgent) {
+				setCurrentStep(5);
+			} else if (hasGithub && hasSlackOrDiscord && hasAnthropic) {
+				setCurrentStep(4);
+			} else if (hasGithub && hasSlackOrDiscord) {
+				setCurrentStep(3);
+			} else if (hasGithub) {
+				setCurrentStep(2);
 			}
 		} catch (err) {
 			console.error("Error checking existing integrations:", err);
@@ -201,6 +271,118 @@ export default function OnboardingPage() {
 		const redirectUri = `${window.location.origin}/github/redirect`;
 		const state = `redirect_uri=${encodeURIComponent(redirectUri)}`;
 		window.location.href = `${githubAppUrl}?state=${state}`;
+	};
+
+	const handleConnectSlack = () => {
+		const clientId = "7702199766949.7755536473636";
+		const scopes =
+			"app_mentions:read,channels:read,groups:read,im:read,mpim:read,chat:write,files:read,files:write";
+		const redirectUri = `${window.location.origin}/slack/redirect`;
+		const state = btoa(
+			JSON.stringify({
+				redirect_uri: redirectUri,
+				origin: window.location.origin,
+			}),
+		);
+
+		window.location.href = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
+	};
+
+	const handleConnectDiscord = () => {
+		const clientId = "1296558726031634526";
+		const scopes = "bot";
+		const permissions = "277025770560";
+		const redirectUri = `${window.location.origin}/discord/redirect`;
+		const state = btoa(
+			JSON.stringify({
+				redirect_uri: redirectUri,
+				origin: window.location.origin,
+			}),
+		);
+
+		window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&scope=${scopes}&redirect_uri=${redirectUri}&response_type=code&state=${state}`;
+	};
+
+	const handleDisconnectSlack = async () => {
+		if (!slackIntegration) return;
+
+		const confirmed = window.confirm("Are you sure you want to disconnect this Slack integration?");
+
+		if (!confirmed) return;
+
+		setLoading(true);
+		try {
+			const token = await getToken();
+			if (!token) {
+				setError("Authentication required");
+				return;
+			}
+
+			const response = await fetch(
+				`${env.CCBACKEND_BASE_URL}/slack/integrations/${slackIntegration.id}`,
+				{
+					method: "DELETE",
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				},
+			);
+
+			if (!response.ok) {
+				throw new Error("Failed to disconnect Slack integration");
+			}
+
+			setSlackIntegration(null);
+			setCurrentStep(githubIntegration ? 2 : 1);
+			setError(null);
+		} catch (err) {
+			console.error("Error disconnecting Slack integration:", err);
+			setError("Failed to disconnect Slack integration");
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleDisconnectDiscord = async () => {
+		if (!discordIntegration) return;
+
+		const confirmed = window.confirm(
+			"Are you sure you want to disconnect this Discord integration?",
+		);
+
+		if (!confirmed) return;
+
+		setLoading(true);
+		try {
+			const token = await getToken();
+			if (!token) {
+				setError("Authentication required");
+				return;
+			}
+
+			const response = await fetch(
+				`${env.CCBACKEND_BASE_URL}/discord/integrations/${discordIntegration.id}`,
+				{
+					method: "DELETE",
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				},
+			);
+
+			if (!response.ok) {
+				throw new Error("Failed to disconnect Discord integration");
+			}
+
+			setDiscordIntegration(null);
+			setCurrentStep(githubIntegration ? 2 : 1);
+			setError(null);
+		} catch (err) {
+			console.error("Error disconnecting Discord integration:", err);
+			setError("Failed to disconnect Discord integration");
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	const handleDisconnectGitHub = async () => {
@@ -322,7 +504,7 @@ export default function OnboardingPage() {
 
 			const integration: AnthropicIntegration = await response.json();
 			setAnthropicIntegration(integration);
-			setCurrentStep(3);
+			setCurrentStep(4);
 			setApiKey("");
 			setOauthCode("");
 		} catch (err) {
@@ -365,7 +547,7 @@ export default function OnboardingPage() {
 			}
 
 			setAnthropicIntegration(null);
-			setCurrentStep(githubIntegration ? 2 : 1);
+			setCurrentStep(slackIntegration || discordIntegration ? 3 : githubIntegration ? 2 : 1);
 			setError(null);
 		} catch (err) {
 			console.error("Error disconnecting Anthropic integration:", err);
@@ -439,7 +621,7 @@ export default function OnboardingPage() {
 
 			const integration: CCAgentContainerIntegration = await response.json();
 			setCCAgentIntegration(integration);
-			setCurrentStep(4);
+			setCurrentStep(5);
 		} catch (err) {
 			console.error("Error saving CCAgent integration:", err);
 			setError(err instanceof Error ? err.message : "Failed to save CCAgent integration");
@@ -480,7 +662,15 @@ export default function OnboardingPage() {
 			}
 
 			setCCAgentIntegration(null);
-			setCurrentStep(githubIntegration && anthropicIntegration ? 3 : 2);
+			setCurrentStep(
+				githubIntegration && anthropicIntegration
+					? 4
+					: slackIntegration || discordIntegration
+						? 3
+						: githubIntegration
+							? 2
+							: 1,
+			);
 			setError(null);
 		} catch (err) {
 			console.error("Error disconnecting CCAgent integration:", err);
@@ -490,8 +680,33 @@ export default function OnboardingPage() {
 		}
 	};
 
-	const handleContinueToDashboard = () => {
-		router.push("/");
+	const handleContinueToDashboard = async () => {
+		try {
+			const token = await getToken();
+			if (!token) {
+				setError("Authentication required");
+				return;
+			}
+
+			// Mark onboarding as completed
+			await fetch(`${env.CCBACKEND_BASE_URL}/settings`, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					key: "org-onboarding_finished",
+					settingType: "bool",
+					value: true,
+				}),
+			});
+
+			router.push("/");
+		} catch (error) {
+			console.error("Error marking onboarding as completed:", error);
+			setError("Failed to complete onboarding setup");
+		}
 	};
 
 	if (loading) {
@@ -502,11 +717,15 @@ export default function OnboardingPage() {
 		);
 	}
 
-	const isComplete = githubIntegration && anthropicIntegration && ccAgentIntegration;
+	const isComplete =
+		githubIntegration &&
+		(slackIntegration || discordIntegration) &&
+		anthropicIntegration &&
+		ccAgentIntegration;
 
 	return (
 		<div className="flex min-h-screen items-center justify-center p-4">
-			<Card className="w-full max-w-4xl">
+			<Card className="w-full max-w-7xl">
 				<CardHeader>
 					<CardTitle>Welcome to Claude Control</CardTitle>
 					<CardDescription>Let's get you set up!</CardDescription>
@@ -518,7 +737,7 @@ export default function OnboardingPage() {
 
 					{/* Stepper Progress */}
 					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-2">
+						<div className="flex items-center gap-1 min-w-0">
 							<div
 								className={`flex h-8 w-8 items-center justify-center rounded-full ${
 									currentStep >= 1 ? "bg-primary text-primary-foreground" : "bg-muted"
@@ -526,40 +745,51 @@ export default function OnboardingPage() {
 							>
 								{githubIntegration ? <CheckCircle className="h-5 w-5" /> : "1"}
 							</div>
-							<span className="text-sm font-medium">GitHub</span>
+							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Connect Your Repo</span>
 						</div>
-						<div className="h-px flex-1 bg-muted mx-4" />
-						<div className="flex items-center gap-2">
+						<div className="h-px flex-1 bg-muted mx-1" />
+						<div className="flex items-center gap-1 min-w-0">
 							<div
 								className={`flex h-8 w-8 items-center justify-center rounded-full ${
 									currentStep >= 2 ? "bg-primary text-primary-foreground" : "bg-muted"
 								}`}
 							>
-								{anthropicIntegration ? <CheckCircle className="h-5 w-5" /> : "2"}
+								{slackIntegration || discordIntegration ? <CheckCircle className="h-5 w-5" /> : "2"}
 							</div>
-							<span className="text-sm font-medium">Anthropic</span>
+							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Install Slack/Discord App</span>
 						</div>
-						<div className="h-px flex-1 bg-muted mx-4" />
-						<div className="flex items-center gap-2">
+						<div className="h-px flex-1 bg-muted mx-1" />
+						<div className="flex items-center gap-1 min-w-0">
 							<div
 								className={`flex h-8 w-8 items-center justify-center rounded-full ${
 									currentStep >= 3 ? "bg-primary text-primary-foreground" : "bg-muted"
 								}`}
 							>
-								{ccAgentIntegration ? <CheckCircle className="h-5 w-5" /> : "3"}
+								{anthropicIntegration ? <CheckCircle className="h-5 w-5" /> : "3"}
 							</div>
-							<span className="text-sm font-medium">CCAgent</span>
+							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Link Claude Code</span>
 						</div>
-						<div className="h-px flex-1 bg-muted mx-4" />
-						<div className="flex items-center gap-2">
+						<div className="h-px flex-1 bg-muted mx-1" />
+						<div className="flex items-center gap-1 min-w-0">
+							<div
+								className={`flex h-8 w-8 items-center justify-center rounded-full ${
+									currentStep >= 4 ? "bg-primary text-primary-foreground" : "bg-muted"
+								}`}
+							>
+								{ccAgentIntegration ? <CheckCircle className="h-5 w-5" /> : "4"}
+							</div>
+							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Deploy Background Agent</span>
+						</div>
+						<div className="h-px flex-1 bg-muted mx-1" />
+						<div className="flex items-center gap-1 min-w-0">
 							<div
 								className={`flex h-8 w-8 items-center justify-center rounded-full ${
 									isComplete ? "bg-primary text-primary-foreground" : "bg-muted"
 								}`}
 							>
-								{isComplete ? <CheckCircle className="h-5 w-5" /> : "4"}
+								{isComplete ? <CheckCircle className="h-5 w-5" /> : "5"}
 							</div>
-							<span className="text-sm font-medium">Complete</span>
+							<span className="text-xs sm:text-sm font-medium whitespace-nowrap">Done 👌</span>
 						</div>
 					</div>
 
@@ -632,14 +862,115 @@ export default function OnboardingPage() {
 									</div>
 								</div>
 								<Button onClick={() => setCurrentStep(2)} className="w-full">
+									Continue to Chat Setup
+								</Button>
+							</CardContent>
+						</Card>
+					)}
+
+					{/* Step 2: Slack/Discord Integration */}
+					{currentStep === 2 && !slackIntegration && !discordIntegration && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2">
+									<MessageCircle className="h-5 w-5" />
+									Connect Slack/Discord
+								</CardTitle>
+								<CardDescription>
+									Choose either Slack or Discord to interact with Claude Control
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<div className="grid gap-4 md:grid-cols-2">
+									<Card
+										className="cursor-pointer hover:bg-muted/50 transition-colors"
+										onClick={handleConnectSlack}
+									>
+										<CardContent className="flex items-center gap-4 p-6">
+											<SlackIcon className="h-8 w-8" />
+											<div className="flex-1">
+												<h3 className="font-medium">Slack</h3>
+												<p className="text-sm text-muted-foreground">
+													Connect to your Slack workspace
+												</p>
+											</div>
+											<ExternalLink className="h-4 w-4 text-muted-foreground" />
+										</CardContent>
+									</Card>
+
+									<Card
+										className="cursor-pointer hover:bg-muted/50 transition-colors"
+										onClick={handleConnectDiscord}
+									>
+										<CardContent className="flex items-center gap-4 p-6">
+											<DiscordIcon className="h-8 w-8" />
+											<div className="flex-1">
+												<h3 className="font-medium">Discord</h3>
+												<p className="text-sm text-muted-foreground">
+													Connect to your Discord server
+												</p>
+											</div>
+											<ExternalLink className="h-4 w-4 text-muted-foreground" />
+										</CardContent>
+									</Card>
+								</div>
+							</CardContent>
+						</Card>
+					)}
+
+					{/* Slack/Discord Connected State */}
+					{(slackIntegration || discordIntegration) && currentStep === 2 && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
+									<CheckCircle className="h-5 w-5" />
+									Chat Platform Connected
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<div className="rounded-lg border bg-muted/50 p-4">
+									<div className="flex items-start justify-between">
+										<div className="flex-1">
+											<dl className="space-y-1 text-sm">
+												<div>
+													<dt className="inline font-medium text-muted-foreground">Platform:</dt>{" "}
+													<dd className="inline">
+														{slackIntegration
+															? `Slack (${slackIntegration.slack_team_name})`
+															: `Discord (${discordIntegration?.discord_guild_name})`}
+													</dd>
+												</div>
+												<div>
+													<dt className="inline font-medium text-muted-foreground">Connected:</dt>{" "}
+													<dd className="inline">
+														{new Date(
+															(slackIntegration || discordIntegration)?.created_at || "",
+														).toLocaleDateString()}
+													</dd>
+												</div>
+											</dl>
+										</div>
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={slackIntegration ? handleDisconnectSlack : handleDisconnectDiscord}
+											disabled={loading}
+											className="text-muted-foreground hover:text-destructive"
+										>
+											<Trash2 className="h-4 w-4 mr-2" />
+											{loading ? "Disconnecting..." : "Disconnect"}
+										</Button>
+									</div>
+								</div>
+								<Button onClick={() => setCurrentStep(3)} className="w-full">
 									Continue to Anthropic Setup
 								</Button>
 							</CardContent>
 						</Card>
 					)}
 
-					{/* Step 2: Anthropic Integration */}
-					{currentStep === 2 && !anthropicIntegration && (
+					{/* Step 3: Anthropic Integration */}
+					{currentStep === 3 && !anthropicIntegration && (
 						<Card>
 							<CardHeader>
 								<CardTitle className="flex items-center gap-2">
@@ -754,7 +1085,7 @@ export default function OnboardingPage() {
 					)}
 
 					{/* Anthropic Connected State */}
-					{anthropicIntegration && currentStep === 2 && (
+					{anthropicIntegration && currentStep === 3 && (
 						<Card>
 							<CardHeader>
 								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -793,23 +1124,23 @@ export default function OnboardingPage() {
 										</Button>
 									</div>
 								</div>
-								<Button onClick={() => setCurrentStep(3)} className="w-full">
+								<Button onClick={() => setCurrentStep(4)} className="w-full">
 									Continue to CCAgent Setup
 								</Button>
 							</CardContent>
 						</Card>
 					)}
 
-					{/* Step 3: CCAgent Container Integration */}
-					{currentStep === 3 && !ccAgentIntegration && (
+					{/* Step 4: CCAgent Container Integration */}
+					{currentStep === 4 && !ccAgentIntegration && (
 						<Card>
 							<CardHeader>
 								<CardTitle className="flex items-center gap-2">
 									<Server className="h-5 w-5" />
-									Configure CCAgent
+									Configure your Claude Code Container
 								</CardTitle>
 								<CardDescription>
-									Set up your CCAgent container to run automated tasks
+									Deploy a background agent so that claude code can work on your repository.
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
@@ -861,30 +1192,17 @@ export default function OnboardingPage() {
 											</div>
 											<span className="text-xs text-muted-foreground">Default</span>
 										</div>
-										{[2, 3, 4, 5].map((count) => (
-											<div
-												key={count}
-												className="flex items-center justify-between p-3 border rounded-lg opacity-50"
-											>
-												<div className="flex items-center gap-3">
-													<input
-														type="radio"
-														id={`instance-${count}`}
-														name="instances"
-														value={count.toString()}
-														disabled
-														className="h-4 w-4"
-													/>
-													<label htmlFor={`instance-${count}`} className="text-sm font-medium">
-														{count} Instances
-													</label>
-												</div>
-												<div className="flex items-center gap-2 text-xs text-muted-foreground">
-													<MessageCircle className="h-3 w-3" />
-													<span>Reach out if you need more</span>
-												</div>
+										<div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+											<div className="flex items-center gap-3">
+												<span className="text-sm font-medium text-muted-foreground">
+													More instances
+												</span>
 											</div>
-										))}
+											<div className="flex items-center gap-2 text-xs text-muted-foreground">
+												<MessageCircle className="h-3 w-3" />
+												<span>Contact me if you need this</span>
+											</div>
+										</div>
 									</div>
 								</div>
 
@@ -910,7 +1228,7 @@ export default function OnboardingPage() {
 					)}
 
 					{/* CCAgent Connected State */}
-					{ccAgentIntegration && currentStep === 3 && (
+					{ccAgentIntegration && currentStep === 4 && (
 						<Card>
 							<CardHeader>
 								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -951,15 +1269,15 @@ export default function OnboardingPage() {
 										</Button>
 									</div>
 								</div>
-								<Button onClick={() => setCurrentStep(4)} className="w-full">
+								<Button onClick={() => setCurrentStep(5)} className="w-full">
 									View Summary
 								</Button>
 							</CardContent>
 						</Card>
 					)}
 
-					{/* Step 4: Complete */}
-					{currentStep === 4 && isComplete && (
+					{/* Step 5: Complete */}
+					{currentStep === 5 && isComplete && (
 						<Card>
 							<CardHeader>
 								<CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -969,11 +1287,11 @@ export default function OnboardingPage() {
 								<CardDescription>You're all set up and ready to use Claude Control</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<div className="grid gap-4 md:grid-cols-3">
+								<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 									<div className="rounded-lg border bg-muted/50 p-4">
 										<div className="flex items-center gap-2 mb-2">
 											<GitBranch className="h-4 w-4" />
-											<span className="font-medium text-sm">GitHub</span>
+											<span className="font-medium text-sm">Repository</span>
 										</div>
 										<p className="text-xs text-muted-foreground">
 											Installation ID: {githubIntegration?.github_installation_id}
@@ -981,8 +1299,23 @@ export default function OnboardingPage() {
 									</div>
 									<div className="rounded-lg border bg-muted/50 p-4">
 										<div className="flex items-center gap-2 mb-2">
+											{slackIntegration ? (
+												<SlackIcon className="h-4 w-4" />
+											) : (
+												<DiscordIcon className="h-4 w-4" />
+											)}
+											<span className="font-medium text-sm">Chat Platform</span>
+										</div>
+										<p className="text-xs text-muted-foreground">
+											{slackIntegration
+												? `Slack: ${slackIntegration.slack_team_name}`
+												: `Discord: ${discordIntegration?.discord_guild_name}`}
+										</p>
+									</div>
+									<div className="rounded-lg border bg-muted/50 p-4">
+										<div className="flex items-center gap-2 mb-2">
 											<User className="h-4 w-4" />
-											<span className="font-medium text-sm">Anthropic</span>
+											<span className="font-medium text-sm">Claude</span>
 										</div>
 										<p className="text-xs text-muted-foreground">
 											{anthropicIntegration?.has_api_key
@@ -993,7 +1326,7 @@ export default function OnboardingPage() {
 									<div className="rounded-lg border bg-muted/50 p-4">
 										<div className="flex items-center gap-2 mb-2">
 											<Server className="h-4 w-4" />
-											<span className="font-medium text-sm">CCAgent</span>
+											<span className="font-medium text-sm">Background Agent</span>
 										</div>
 										<p className="text-xs text-muted-foreground">
 											{ccAgentIntegration?.instances_count} instance(s) configured
