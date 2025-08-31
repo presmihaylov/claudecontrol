@@ -347,6 +347,16 @@ type JobsService interface {
 	) (*models.JobCreationResult, error)
 }
 
+// SettingsService defines the interface for settings operations
+type SettingsService interface {
+	UpsertBooleanSetting(ctx context.Context, key string, value bool) error
+	UpsertStringSetting(ctx context.Context, key string, value string) error
+	UpsertStringArraySetting(ctx context.Context, key string, value []string) error
+	GetBooleanSetting(ctx context.Context, key string) (mo.Option[bool], error)
+	GetStringSetting(ctx context.Context, key string) (mo.Option[string], error)
+	GetStringArraySetting(ctx context.Context, key string) (mo.Option[[]string], error)
+}
+
 // TransactionManager handles database transactions via context
 type TransactionManager interface {
 	// Execute function within a transaction (recommended approach)
