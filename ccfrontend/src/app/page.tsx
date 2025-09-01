@@ -403,6 +403,46 @@ export default function Home() {
 			</header>
 			<div className="container mx-auto px-4 py-8 max-w-4xl min-w-0 overflow-hidden">
 				<div className="space-y-6 w-full">
+					{/* Quickstart Section */}
+					<Card className="w-full overflow-hidden">
+						<CardHeader>
+							<CardTitle>🚀 Quickstart</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<div className="space-y-3">
+								<div className="space-y-3">
+									<div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+										<div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
+											1
+										</div>
+										<div>
+											<p className="font-medium text-sm">
+												Add @Claude Control to a channel (Slack only)
+											</p>
+											<p className="text-xs text-muted-foreground mt-1">
+												Invite the bot to any channel. Run /add and select "Claude Control" from the
+												list of apps.
+											</p>
+										</div>
+									</div>
+									<div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+										<div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
+											2
+										</div>
+										<div>
+											<p className="font-medium text-sm">
+												Mention them and watch the magic happen ✨
+											</p>
+											<p className="text-xs text-muted-foreground mt-1">
+												Try this - "Hey @Claude Control, what does this project do?"
+											</p>
+										</div>
+									</div>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+
 					{/* App Installations Section */}
 					<Card className="w-full overflow-hidden">
 						<CardHeader>
