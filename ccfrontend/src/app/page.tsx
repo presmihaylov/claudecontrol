@@ -493,7 +493,7 @@ export default function Home() {
 												size="sm"
 												onClick={() => handleDeleteIntegration(integration)}
 												disabled={deleting === integration.id}
-												className="text-foreground hover:text-destructive self-start sm:self-center"
+												className="text-destructive hover:text-destructive/80 self-start sm:self-center"
 											>
 												<Trash2 className="h-4 w-4" />
 												Disconnect
