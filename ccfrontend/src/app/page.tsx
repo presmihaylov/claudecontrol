@@ -420,8 +420,7 @@ export default function Home() {
 												Add @Claude Control to a channel (Slack only)
 											</p>
 											<p className="text-xs text-muted-foreground mt-1">
-												Invite the bot to any channel. Run /add and select "Claude Control" from the
-												list of apps.
+												Run /add and select "Claude Control" from the list of apps.
 											</p>
 										</div>
 									</div>
@@ -434,7 +433,7 @@ export default function Home() {
 												Mention them and watch the magic happen ✨
 											</p>
 											<p className="text-xs text-muted-foreground mt-1">
-												Try this - "Hey @Claude Control, what does this project do?"
+												"Hey @Claude Control, what does this project do?"
 											</p>
 										</div>
 									</div>
