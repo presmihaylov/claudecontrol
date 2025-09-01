@@ -152,7 +152,18 @@ export default function Home() {
 									How does it work?
 								</h3>
 								<p className="text-gray-600 leading-7">
-									Deploy the open source{" "}
+									Connect your Github and Anthropic account and start chatting
+									where you already work.
+								</p>
+							</div>
+						</AnimateOnScroll>
+						<AnimateOnScroll delay={0.1}>
+							<div className="p-4 md:p-0">
+								<h3 className="text-xl font-semibold mb-4 text-gray-900">
+									Can I self-host it myself?
+								</h3>
+								<p className="text-gray-600 leading-7">
+									Yes! Deploy the open source{" "}
 									<a
 										href="https://github.com/presmihaylov/ccagent"
 										target="_blank"
