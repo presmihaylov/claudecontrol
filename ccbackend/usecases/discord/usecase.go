@@ -359,6 +359,10 @@ func (d *DiscordUseCase) ProcessDiscordReactionEvent(
 	}
 
 	log.Printf("📤 Sent completion message to Discord thread %s", threadChannelID)
+	
+	// Send sales notification for manual job completion
+	salesnotif.New(orgID, fmt.Sprintf("Manually completed job `%s`", job.ID))
+	
 	log.Printf("🗑️ Deleted manually completed job %s", job.ID)
 	log.Printf("📋 Completed successfully - processed manual job completion for job %s", job.ID)
 	return nil
@@ -611,7 +615,7 @@ func (d *DiscordUseCase) ProcessJobComplete(
 	log.Printf("📤 Sent completion message to Discord thread %s: %s", job.DiscordPayload.ThreadID, payload.Reason)
 
 	// Send sales notification for job completion
-	salesnotif.New(fmt.Sprintf("Org %s completed job %s", orgID, jobID))
+	salesnotif.New(orgID, fmt.Sprintf("Completed job `%s`", jobID))
 
 	log.Printf("📋 Completed successfully - processed job complete for job %s", jobID)
 	return nil

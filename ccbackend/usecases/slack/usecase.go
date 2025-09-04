@@ -298,6 +298,10 @@ func (s *SlackUseCase) ProcessReactionAdded(
 	}
 
 	log.Printf("📤 Sent completion message to Slack thread %s", job.SlackPayload.ThreadTS)
+	
+	// Send sales notification for manual job completion
+	salesnotif.New(orgID, fmt.Sprintf("Manually completed job `%s`", job.ID))
+	
 	log.Printf("🗑️ Deleted manually completed job %s", job.ID)
 	log.Printf("📋 Completed successfully - processed manual job completion for job %s", job.ID)
 	return nil
@@ -566,7 +570,7 @@ func (s *SlackUseCase) ProcessJobComplete(
 	log.Printf("📤 Sent completion message to Slack thread %s: %s", job.SlackPayload.ThreadTS, payload.Reason)
 
 	// Send sales notification for job completion
-	salesnotif.New(fmt.Sprintf("Org %s completed job %s", orgID, jobID))
+	salesnotif.New(orgID, fmt.Sprintf("Completed job `%s`", jobID))
 
 	log.Printf("📋 Completed successfully - processed job complete for job %s", jobID)
 	return nil
