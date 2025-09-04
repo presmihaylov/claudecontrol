@@ -43,7 +43,7 @@ func TestSettingsService_UpsertBooleanSetting(t *testing.T) {
 	defer cleanup()
 
 	t.Run("successful upsert of boolean setting", func(t *testing.T) {
-		key := "org/onboarding_finished"
+		key := "org-onboarding_finished"
 		value := true
 
 		err := service.UpsertBooleanSetting(ctx, org.ID, key, value)
@@ -56,7 +56,7 @@ func TestSettingsService_UpsertBooleanSetting(t *testing.T) {
 	})
 
 	t.Run("upsert overwrites existing value", func(t *testing.T) {
-		key := "org/onboarding_finished"
+		key := "org-onboarding_finished"
 
 		// First upsert
 		err := service.UpsertBooleanSetting(ctx, org.ID, key, false)
@@ -79,14 +79,14 @@ func TestSettingsService_UpsertBooleanSetting(t *testing.T) {
 	})
 
 	t.Run("fails with wrong type for key", func(t *testing.T) {
-		key := "org/onboarding_finished" // This is defined as bool type
+		key := "org-onboarding_finished" // This is defined as bool type
 		err := service.UpsertStringSetting(ctx, org.ID, key, "test")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "expects type bool, got string")
 	})
 
 	t.Run("fails with invalid organization ID", func(t *testing.T) {
-		err := service.UpsertBooleanSetting(context.Background(), "invalid_org_id", "org/onboarding_finished", true)
+		err := service.UpsertBooleanSetting(context.Background(), "invalid_org_id", "org-onboarding_finished", true)
 		assert.Error(t, err)
 		// This will fail at database level when trying to insert setting with non-existent org ID
 		assert.Contains(t, err.Error(), "failed to upsert boolean setting")
@@ -98,13 +98,13 @@ func TestSettingsService_GetBooleanSetting(t *testing.T) {
 	defer cleanup()
 
 	t.Run("returns default value when setting does not exist", func(t *testing.T) {
-		retrievedValue, err := service.GetBooleanSetting(ctx, org.ID, "org/onboarding_finished")
+		retrievedValue, err := service.GetBooleanSetting(ctx, org.ID, "org-onboarding_finished")
 		assert.NoError(t, err)
 		assert.Equal(t, false, retrievedValue) // Default value from SupportedSettings
 	})
 
 	t.Run("returns value when setting exists", func(t *testing.T) {
-		key := "org/onboarding_finished"
+		key := "org-onboarding_finished"
 		expectedValue := true
 
 		// First create the setting
@@ -127,7 +127,7 @@ func TestSettingsService_GetBooleanSetting(t *testing.T) {
 		retrievedValue, err := service.GetBooleanSetting(
 			context.Background(),
 			"invalid_org_id",
-			"org/onboarding_finished",
+			"org-onboarding_finished",
 		)
 		assert.NoError(t, err)
 		assert.Equal(t, false, retrievedValue) // Should return default value even when org doesn't exist
@@ -139,13 +139,13 @@ func TestSettingsService_DefaultValues(t *testing.T) {
 	defer cleanup()
 
 	t.Run("boolean setting returns default value when not set", func(t *testing.T) {
-		value, err := service.GetBooleanSetting(ctx, org.ID, "org/onboarding_finished")
+		value, err := service.GetBooleanSetting(ctx, org.ID, "org-onboarding_finished")
 		assert.NoError(t, err)
 		assert.Equal(t, false, value) // Default value from models
 	})
 
 	t.Run("boolean setting returns stored value over default", func(t *testing.T) {
-		key := "org/onboarding_finished"
+		key := "org-onboarding_finished"
 
 		// Set a value different from default (default is false)
 		err := service.UpsertBooleanSetting(ctx, org.ID, key, true)
@@ -162,13 +162,13 @@ func TestSettingsService_GetSettingByType_DefaultValues(t *testing.T) {
 	defer cleanup()
 
 	t.Run("returns default boolean value when not set", func(t *testing.T) {
-		value, err := service.GetSettingByType(ctx, org.ID, "org/onboarding_finished", models.SettingTypeBool)
+		value, err := service.GetSettingByType(ctx, org.ID, "org-onboarding_finished", models.SettingTypeBool)
 		assert.NoError(t, err)
 		assert.Equal(t, false, value)
 	})
 
 	t.Run("returns stored value over default", func(t *testing.T) {
-		key := "org/onboarding_finished"
+		key := "org-onboarding_finished"
 
 		// Set a value different from default
 		err := service.UpsertBooleanSetting(ctx, org.ID, key, true)
@@ -184,7 +184,7 @@ func TestSettingsService_ValidateKey(t *testing.T) {
 	service := &SettingsService{}
 
 	t.Run("validates correct key and type", func(t *testing.T) {
-		err := service.validateKey("org/onboarding_finished", models.SettingTypeBool)
+		err := service.validateKey("org-onboarding_finished", models.SettingTypeBool)
 		assert.NoError(t, err)
 	})
 
@@ -195,7 +195,7 @@ func TestSettingsService_ValidateKey(t *testing.T) {
 	})
 
 	t.Run("rejects wrong type for key", func(t *testing.T) {
-		err := service.validateKey("org/onboarding_finished", models.SettingTypeString)
+		err := service.validateKey("org-onboarding_finished", models.SettingTypeString)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "expects type bool, got string")
 	})
