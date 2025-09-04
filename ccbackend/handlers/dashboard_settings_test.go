@@ -21,8 +21,8 @@ import (
 
 // Test data for settings
 var (
-	testBooleanSetting = true
-	testStringSetting  = "test-value"
+	testBooleanSetting     = true
+	testStringSetting      = "test-value"
 	testStringArraySetting = []string{"value1", "value2", "value3"}
 )
 

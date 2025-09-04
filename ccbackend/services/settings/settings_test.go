@@ -124,7 +124,11 @@ func TestSettingsService_GetBooleanSetting(t *testing.T) {
 	})
 
 	t.Run("returns default value for invalid organization ID", func(t *testing.T) {
-		retrievedValue, err := service.GetBooleanSetting(context.Background(), "invalid_org_id", "org/onboarding_finished")
+		retrievedValue, err := service.GetBooleanSetting(
+			context.Background(),
+			"invalid_org_id",
+			"org/onboarding_finished",
+		)
 		assert.NoError(t, err)
 		assert.Equal(t, false, retrievedValue) // Should return default value even when org doesn't exist
 	})

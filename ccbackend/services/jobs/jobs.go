@@ -11,6 +11,7 @@ import (
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
+	"ccbackend/salesnotif"
 	"ccbackend/services"
 )
 
@@ -79,6 +80,9 @@ func (s *JobsService) CreateSlackJob(
 	if err := s.jobsRepo.CreateJob(ctx, job); err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
+
+	// Send sales notification for job creation
+	salesnotif.New(fmt.Sprintf("Org %s created a new job %s", orgID, job.ID))
 
 	log.Printf("📋 Completed successfully - created job with ID: %s", job.ID)
 	return job, nil
@@ -509,6 +513,9 @@ func (s *JobsService) CreateDiscordJob(
 	if err := s.jobsRepo.CreateJob(ctx, job); err != nil {
 		return nil, fmt.Errorf("failed to create discord job: %w", err)
 	}
+
+	// Send sales notification for job creation
+	salesnotif.New(fmt.Sprintf("Org %s created a new job %s", orgID, job.ID))
 
 	log.Printf("📋 Completed successfully - created discord job with ID: %s", job.ID)
 	return job, nil

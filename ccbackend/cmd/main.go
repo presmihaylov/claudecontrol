@@ -26,6 +26,7 @@ import (
 	"ccbackend/db"
 	"ccbackend/handlers"
 	"ccbackend/middleware"
+	"ccbackend/salesnotif"
 	agentsservice "ccbackend/services/agents"
 	anthropicintegrations "ccbackend/services/anthropic_integrations"
 	ccagentcontainerintegrations "ccbackend/services/ccagent_container_integrations"
@@ -58,6 +59,9 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
+	// Initialize sales notifications
+	salesnotif.Init(cfg.SlackSalesWebhookURL, cfg.Environment)
 
 	// Initialize error alert middleware
 	alertMiddleware := middleware.NewErrorAlertMiddleware(middleware.SlackAlertConfig{
