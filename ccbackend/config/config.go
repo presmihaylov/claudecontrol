@@ -24,6 +24,7 @@ type AppConfig struct {
 	ClerkSecretKey       string
 	CORSAllowedOrigins   string
 	SlackAlertWebhookURL string
+	SlackSalesWebhookURL string
 	Environment          string
 	ServerLogsURL        string
 	DefaultSSHHost       string
@@ -137,6 +138,7 @@ func LoadConfig() (*AppConfig, error) {
 		ClerkSecretKey:       clerkSecretKey,
 		CORSAllowedOrigins:   corsAllowedOrigins,
 		SlackAlertWebhookURL: os.Getenv("SLACK_ALERT_WEBHOOK_URL"),
+		SlackSalesWebhookURL: os.Getenv("SLACK_SALES_WEBHOOK_URL"),
 		Environment:          getEnvWithDefault("ENVIRONMENT", "dev"),
 		ServerLogsURL:        getEnvWithDefault("SERVER_LOGS_URL", ""),
 		DefaultSSHHost:       defaultSSHHost,

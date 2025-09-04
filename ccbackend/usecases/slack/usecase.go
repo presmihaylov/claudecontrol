@@ -3,6 +3,7 @@ package slack
 import (
 	"ccbackend/clients"
 	"ccbackend/models"
+	"ccbackend/salesnotif"
 	"ccbackend/services"
 	"ccbackend/usecases/agents"
 	"ccbackend/utils"
@@ -563,6 +564,10 @@ func (s *SlackUseCase) ProcessJobComplete(
 	}
 
 	log.Printf("📤 Sent completion message to Slack thread %s: %s", job.SlackPayload.ThreadTS, payload.Reason)
+
+	// Send sales notification for job completion
+	salesnotif.New(fmt.Sprintf("Org %s completed job %s", orgID, jobID))
+
 	log.Printf("📋 Completed successfully - processed job complete for job %s", jobID)
 	return nil
 }

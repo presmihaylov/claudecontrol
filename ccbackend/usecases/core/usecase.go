@@ -8,6 +8,7 @@ import (
 	"ccbackend/clients"
 	"ccbackend/core"
 	"ccbackend/models"
+	"ccbackend/salesnotif"
 	"ccbackend/services"
 	"ccbackend/usecases/discord"
 	"ccbackend/usecases/slack"
@@ -175,6 +176,9 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	}
 
 	job := maybeJob.MustGet()
+
+	// Send sales notification for system message
+	salesnotif.New(fmt.Sprintf("Job %s received ccagent system event: %s", jobID, payload.Message))
 
 	// Route based on job type
 	switch job.JobType {
