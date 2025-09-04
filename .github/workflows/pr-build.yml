@@ -22,39 +22,6 @@ jobs:
         cd ccbackend
         make build
 
-  build-ccagent:
-    name: Build ccagent
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
-
-    - name: Build ccagent
-      run: |
-        cd ccagent
-        make build
-
-  test-ccagent:
-    name: Test ccagent
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
-
-    - name: Run ccagent tests
-      run: |
-        cd ccagent
-        make test
 
   lint-ccfrontend:
     name: Lint ccfrontend

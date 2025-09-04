@@ -5,17 +5,15 @@ on:
     branches: [ main ]
     paths:
       - 'ccbackend/**'
-      - 'ccagent/**'
       - '.github/workflows/lint.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'ccbackend/**'
-      - 'ccagent/**'
       - '.github/workflows/lint.yml'
 
 jobs:
-  lint-ccagent-ccbackend:
+  lint-ccbackend:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -35,22 +33,9 @@ jobs:
         cd ccbackend
         golines --max-len=120 --dry-run .
         
-    - name: Run ccagent linting  
-      run: |
-        cd ccagent
-        goimports -d .
-        golines --max-len=120 --dry-run .
-        
     - name: Run golangci-lint on ccbackend
       uses: golangci/golangci-lint-action@v6
       with:
         version: latest
         working-directory: ccbackend
-        args: --timeout=5m
-        
-    - name: Run golangci-lint on ccagent
-      uses: golangci/golangci-lint-action@v6
-      with:
-        version: latest
-        working-directory: ccagent
         args: --timeout=5m
