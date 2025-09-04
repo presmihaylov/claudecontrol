@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"ccbackend/models"
 )
 
 var (
@@ -35,16 +37,16 @@ func Init(webhookURL, environment string) {
 }
 
 // New sends a sales notification message to Slack
-func New(message string) {
+func New(orgID models.OrgID, message string) {
 	if instance == nil {
 		log.Printf("⚠️ Sales notifier not initialized, skipping notification: %s", message)
 		return
 	}
 
-	instance.send(message)
+	instance.send(orgID, message)
 }
 
-func (s *SalesNotifier) send(message string) {
+func (s *SalesNotifier) send(orgID models.OrgID, message string) {
 	if s.webhookURL == "" {
 		return // Sales notifications disabled
 	}
@@ -53,36 +55,35 @@ func (s *SalesNotifier) send(message string) {
 	defer s.mu.RUnlock()
 
 	// Send notification asynchronously to avoid blocking
-	go s.sendSlackNotification(message)
+	go s.sendSlackNotification(orgID, message)
 }
 
-func (s *SalesNotifier) sendSlackNotification(message string) {
+func (s *SalesNotifier) sendSlackNotification(orgID models.OrgID, message string) {
+	// Build fields array
+	fields := []map[string]any{
+		{"type": "mrkdwn", "text": fmt.Sprintf("*Service:* %s", s.appName)},
+		{"type": "mrkdwn", "text": fmt.Sprintf("*Environment:* %s", s.environment)},
+	}
+
+	// Add OrgID field if provided
+	if orgID != "" {
+		fields = append(fields, map[string]any{
+			"type": "mrkdwn",
+			"text": fmt.Sprintf("*OrgID:* `%s`", string(orgID)),
+		})
+	}
+
+	// Add timestamp
+	fields = append(fields, map[string]any{
+		"type": "mrkdwn",
+		"text": fmt.Sprintf("*Timestamp:* %s", time.Now().Format("2006-01-02 15:04:05 UTC")),
+	})
+
 	payload := map[string]any{
 		"blocks": []map[string]any{
 			{
-				"type": "header",
-				"text": map[string]any{
-					"type": "plain_text",
-					"text": fmt.Sprintf("💰 %s[%s] Sales Activity",
-						func() string {
-							if s.environment == "dev" {
-								return "[dev] "
-							}
-							return ""
-						}(), s.appName),
-					"emoji": true,
-				},
-			},
-			{
-				"type": "section",
-				"fields": []map[string]any{
-					{"type": "mrkdwn", "text": fmt.Sprintf("*Service:* %s", s.appName)},
-					{"type": "mrkdwn", "text": fmt.Sprintf("*Environment:* %s", s.environment)},
-					{
-						"type": "mrkdwn",
-						"text": fmt.Sprintf("*Timestamp:* %s", time.Now().Format("2006-01-02 15:04:05 UTC")),
-					},
-				},
+				"type":   "section",
+				"fields": fields,
 			},
 			{
 				"type": "section",

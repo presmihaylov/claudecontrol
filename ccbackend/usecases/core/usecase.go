@@ -178,7 +178,7 @@ func (s *CoreUseCase) ProcessSystemMessage(
 	job := maybeJob.MustGet()
 
 	// Send sales notification for system message
-	salesnotif.New(fmt.Sprintf("Job %s received ccagent system event: %s", jobID, payload.Message))
+	salesnotif.New(orgID, fmt.Sprintf("Job `%s` received ccagent system event: %s", jobID, payload.Message))
 
 	// Route based on job type
 	switch job.JobType {

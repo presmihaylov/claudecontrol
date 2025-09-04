@@ -82,7 +82,7 @@ func (s *JobsService) CreateSlackJob(
 	}
 
 	// Send sales notification for job creation
-	salesnotif.New(fmt.Sprintf("Org %s created a new job %s", orgID, job.ID))
+	salesnotif.New(orgID, fmt.Sprintf("Created a new job `%s`", job.ID))
 
 	log.Printf("📋 Completed successfully - created job with ID: %s", job.ID)
 	return job, nil
@@ -515,7 +515,7 @@ func (s *JobsService) CreateDiscordJob(
 	}
 
 	// Send sales notification for job creation
-	salesnotif.New(fmt.Sprintf("Org %s created a new job %s", orgID, job.ID))
+	salesnotif.New(orgID, fmt.Sprintf("Created a new job `%s`", job.ID))
 
 	log.Printf("📋 Completed successfully - created discord job with ID: %s", job.ID)
 	return job, nil
