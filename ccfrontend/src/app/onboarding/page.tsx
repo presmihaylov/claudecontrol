@@ -1012,11 +1012,10 @@ export default function OnboardingPage() {
 												</dl>
 											</div>
 											<Button
-												variant="ghost"
+												variant="destructive"
 												size="sm"
 												onClick={slackIntegration ? handleDisconnectSlack : handleDisconnectDiscord}
 												disabled={loading}
-												className="text-muted-foreground hover:text-destructive"
 											>
 												<Trash2 className="h-4 w-4 mr-2" />
 												{loading ? "Disconnecting..." : "Disconnect"}
