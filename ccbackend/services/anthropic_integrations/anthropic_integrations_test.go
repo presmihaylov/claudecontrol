@@ -407,9 +407,10 @@ func TestAnthropicIntegrationsService_DeleteAnthropicIntegration(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		// Try to delete using user2's orgID - should silently do nothing (no error expected in happy path)
+		// Try to delete using user2's orgID - should return error since integration doesn't exist for user2's org
 		err = service.DeleteAnthropicIntegration(context.Background(), user2.OrgID, integration.ID)
-		require.NoError(t, err) // Happy path - no error expected
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "anthropic integration not found")
 
 		// Verify integration still exists for user1
 		integrations, err := service.ListAnthropicIntegrations(context.Background(), user1.OrgID)
