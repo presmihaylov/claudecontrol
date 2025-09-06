@@ -2,7 +2,6 @@ package anthropic_integrations
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -61,15 +60,6 @@ func TestAnthropicIntegrationsService_CreateAnthropicIntegration(t *testing.T) {
 		assert.Nil(t, integration.ClaudeCodeOAuthTokenExpiresAt)
 		assert.NotZero(t, integration.CreatedAt)
 		assert.NotZero(t, integration.UpdatedAt)
-
-		// Clean up
-		defer func() {
-			cfg, _ := testutils.LoadTestConfig()
-			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
-			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.anthropic_integrations WHERE id = $1", cfg.DatabaseSchema)
-			dbConn.Exec(query, integration.ID)
-		}()
 	})
 
 	t.Run("successful integration creation with OAuth token", func(t *testing.T) {
@@ -107,15 +97,6 @@ func TestAnthropicIntegrationsService_CreateAnthropicIntegration(t *testing.T) {
 
 		// Verify mock was called
 		mockClient.AssertExpectations(t)
-
-		// Clean up
-		defer func() {
-			cfg, _ := testutils.LoadTestConfig()
-			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
-			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.anthropic_integrations WHERE id = $1", cfg.DatabaseSchema)
-			dbConn.Exec(query, integration.ID)
-		}()
 	})
 }
 
@@ -183,15 +164,6 @@ func TestAnthropicIntegrationsService_ListAnthropicIntegrations(t *testing.T) {
 		assert.True(t, foundIDs[integration1.ID])
 		assert.True(t, foundIDs[integration2.ID])
 		assert.False(t, foundIDs[integration3.ID]) // Should not include other user's integration
-
-		// Clean up
-		defer func() {
-			cfg, _ := testutils.LoadTestConfig()
-			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
-			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.anthropic_integrations WHERE id IN ($1, $2, $3)", cfg.DatabaseSchema)
-			dbConn.Exec(query, integration1.ID, integration2.ID, integration3.ID)
-		}()
 	})
 
 	t.Run("empty result for user with no integrations", func(t *testing.T) {
@@ -241,15 +213,6 @@ func TestAnthropicIntegrationsService_ListAnthropicIntegrations(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, integrations2, 1)
 		assert.Equal(t, integration2.ID, integrations2[0].ID)
-
-		// Clean up
-		defer func() {
-			cfg, _ := testutils.LoadTestConfig()
-			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
-			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.anthropic_integrations WHERE id IN ($1, $2)", cfg.DatabaseSchema)
-			dbConn.Exec(query, integration1.ID, integration2.ID)
-		}()
 	})
 }
 
@@ -285,15 +248,6 @@ func TestAnthropicIntegrationsService_GetAnthropicIntegrationByID(t *testing.T) 
 		assert.Equal(t, createdIntegration.ID, integration.ID)
 		assert.Equal(t, testUser.OrgID, integration.OrgID)
 		assert.Equal(t, apiKey, *integration.AnthropicAPIKey)
-
-		// Clean up
-		defer func() {
-			cfg, _ := testutils.LoadTestConfig()
-			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
-			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.anthropic_integrations WHERE id = $1", cfg.DatabaseSchema)
-			dbConn.Exec(query, createdIntegration.ID)
-		}()
 	})
 
 	t.Run("returns None for non-existent integration", func(t *testing.T) {
@@ -343,15 +297,6 @@ func TestAnthropicIntegrationsService_GetAnthropicIntegrationByID(t *testing.T) 
 		)
 		require.NoError(t, err)
 		assert.True(t, maybeIntegration.IsPresent())
-
-		// Clean up
-		defer func() {
-			cfg, _ := testutils.LoadTestConfig()
-			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
-			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.anthropic_integrations WHERE id = $1", cfg.DatabaseSchema)
-			dbConn.Exec(query, integration.ID)
-		}()
 	})
 }
 
@@ -417,15 +362,6 @@ func TestAnthropicIntegrationsService_DeleteAnthropicIntegration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, integrations, 1)
 		assert.Equal(t, integration.ID, integrations[0].ID)
-
-		// Clean up
-		defer func() {
-			cfg, _ := testutils.LoadTestConfig()
-			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
-			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.anthropic_integrations WHERE id = $1", cfg.DatabaseSchema)
-			dbConn.Exec(query, integration.ID)
-		}()
 	})
 }
 
@@ -480,15 +416,6 @@ func TestAnthropicIntegrationsService_RefreshTokens(t *testing.T) {
 
 		// Verify mock was called
 		refreshMockClient.AssertExpectations(t)
-
-		// Clean up
-		defer func() {
-			cfg, _ := testutils.LoadTestConfig()
-			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
-			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.anthropic_integrations WHERE id = $1", cfg.DatabaseSchema)
-			dbConn.Exec(query, integration.ID)
-		}()
 	})
 
 	t.Run("integration updated in database after refresh", func(t *testing.T) {
@@ -542,14 +469,5 @@ func TestAnthropicIntegrationsService_RefreshTokens(t *testing.T) {
 		assert.Equal(t, refreshedTokens.AccessToken, *updatedIntegration.ClaudeCodeOAuthToken)
 		assert.Equal(t, refreshedTokens.RefreshToken, *updatedIntegration.ClaudeCodeOAuthRefreshToken)
 		assert.NotNil(t, updatedIntegration.ClaudeCodeOAuthTokenExpiresAt)
-
-		// Clean up
-		defer func() {
-			cfg, _ := testutils.LoadTestConfig()
-			dbConn, _ := db.NewConnection(cfg.DatabaseURL)
-			defer dbConn.Close()
-			query := fmt.Sprintf("DELETE FROM %s.anthropic_integrations WHERE id = $1", cfg.DatabaseSchema)
-			dbConn.Exec(query, integration.ID)
-		}()
 	})
 }
