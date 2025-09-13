@@ -2,6 +2,7 @@ FROM alpine:latest
 
 # Install system dependencies
 RUN apk update && apk add --no-cache \
+    postgresql-client |
     git \
     curl \
     bash \
