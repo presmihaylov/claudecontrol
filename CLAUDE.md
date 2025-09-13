@@ -34,15 +34,11 @@ bun run typecheck           # Run TypeScript type checking
 bun install                 # Install dependencies
 ```
 
-### Supabase (Database Development)
+### Database Management
 ```bash
 cd ccbackend
-supabase start              # Start local Supabase development environment
-supabase stop               # Stop local Supabase services
-supabase db reset           # Reset local database with migrations
-supabase migration new <name>  # Create new database migration
-supabase migration up       # Apply pending migrations
-supabase gen types typescript  # Generate TypeScript types from database schema
+./scripts/ccdbup.sh         # Apply all database migrations
+./scripts/ccdbdown.sh       # Drop all database schemas (claudecontrol and claudecontrol_test)
 ```
 
 ### Examples
@@ -253,7 +249,7 @@ All core entities are scoped to organization_id for proper data isolation.
 ### Test Execution Notes
 - **Flaky Tests**: Tests may occasionally fail due to timing or race conditions - retry running tests 2-3 times before investigating
 - **Database Dependency**: Tests require a running PostgreSQL database with proper test schema setup
-- **Database Not Started**: If tests fail with database connection errors, abort test fixing and report to user that the database needs to be started with `supabase start`
+- **Database Not Started**: If tests fail with database connection errors, abort test fixing and report to user that the database needs to be started
 
 ## Development Workflow
 
@@ -271,13 +267,15 @@ All core entities are scoped to organization_id for proper data isolation.
 - **Formatting Available**: Automated formatting tools for consistent code style
 - **Auto-fix Capabilities**: Lint-fix commands available for automated corrections
 
-### Database Migrations
-- **Apply Pending Migrations**: `supabase migration up` to apply only new migrations
-- **Development Reset**: `supabase db reset` to reset and apply all migrations from scratch
-- **New Migrations**: `supabase migration new <name>` 
-- **Migration File Creation**: ALWAYS use `supabase migration new <name>` to generate migration files instead of manually determining timestamps
-- **Test Schema**: Migrations create both prod and test schemas
-```
+### Database Management
+- **Apply All Migrations**: Use `./scripts/ccdbup.sh` to apply all database migrations
+- **Drop All Schemas**: Use `./scripts/ccdbdown.sh` to drop all database schemas and start fresh
+- **Create New Migration**: Create migration file in `supabase/migrations/` using timestamp format:
+  ```bash
+  # Get timestamp and create migration file
+  TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+  touch supabase/migrations/${TIMESTAMP}_your_migration_name.sql
+  ```
 
 ## Message Handling Guidelines
 - **Slack Message Conversion**: Anytime you send a message to slack coming from an agent,
@@ -588,9 +586,9 @@ Claude Code has access to specialized subagents for specific tasks. These should
 
 ### TestFixer Subagent
 - **Purpose**: Automatically fixes broken tests and suggests new test coverage
-- **Prerequisites**: **MUST check if Supabase is running before executing any tests**
-  - Run `supabase status` or equivalent to verify database availability
-  - If Supabase is not running, immediately stop execution and instruct user to run `supabase start`
+- **Prerequisites**: **MUST check if database is running before executing any tests**
+  - Verify database availability before running tests
+  - If database is not running, immediately stop execution and instruct user to start the database
   - All tests will fail without a running database, making test fixing impossible
 - **Scope**: Works only with ccbackend and ccfrontend modules in this repository
 - **Capabilities**: Fixes Go tests in ccbackend and frontend tests in ccfrontend, suggests new test coverage, runs test suites autonomously
