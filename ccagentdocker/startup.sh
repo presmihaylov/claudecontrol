@@ -39,6 +39,24 @@ fi
 echo "Executing $STARTUP_FILE..."
 "$STARTUP_FILE"
 
+STARTUP_ENV_FILE="/home/ccagent/startup_env.sh"
+if [ ! -f "$STARTUP_ENV_FILE" ]; then
+  echo "Creating $STARTUP_ENV_FILE..."
+  mkdir -p "$(dirname "$STARTUP_ENV_FILE")"
+  cat > "$STARTUP_ENV_FILE" << 'EOF'
+#!/bin/bash
+# Add your environment exports here
+EOF
+  chmod +x "$STARTUP_ENV_FILE"
+else
+  echo "$STARTUP_ENV_FILE already exists. Doing nothing."
+fi
+
+# Load the env file into the current shell
+echo "Sourcing $STARTUP_ENV_FILE..."
+# use `source` or `.`, not direct execution
+source "$STARTUP_ENV_FILE"
+
 # Clone repository if REPO_URL is provided
 if [[ -n "${REPO_URL:-}" ]]; then
   echo "Cloning repository: $REPO_URL"
