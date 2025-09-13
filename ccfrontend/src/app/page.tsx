@@ -489,11 +489,11 @@ export default function Home() {
 												</div>
 											</div>
 											<Button
-												variant="ghost"
+												variant="destructive"
 												size="sm"
 												onClick={() => handleDeleteIntegration(integration)}
 												disabled={deleting === integration.id}
-												className="text-foreground hover:text-destructive self-start sm:self-center"
+												className="self-start sm:self-center"
 											>
 												<Trash2 className="h-4 w-4" />
 												Disconnect
