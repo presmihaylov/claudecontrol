@@ -12,8 +12,43 @@ RUN apk update && apk add --no-cache \
     openssl \
     coreutils
 
+# Install system dependencies
+RUN apk update && apk add --no-cache \
+    git \
+    curl \
+    bash \
+    ca-certificates \
+    nodejs \
+    npm \
+    jq \
+    openssl \
+    coreutils \
+    make \
+    go \
+    gcc \
+    musl-dev \
+    libc-dev \
+    upx
+
 # Install GitHub CLI
 RUN apk add --no-cache github-cli
+
+# Install bun
+RUN curl -fsSL https://bun.com/install | bash
+
+# Install JS/TS tools globally
+RUN npm install -g \
+    typescript \
+    pnpm \
+    eslint \
+    prettier
+
+# Install Go tools
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
+    && go install golang.org/x/tools/cmd/goimports@latest
+
+# Add Go binaries to PATH (since go install puts them in /root/go/bin by default)
+ENV PATH="/root/go/bin:${PATH}"
 
 # Install Claude binary via npm
 RUN npm install -g @anthropic-ai/claude-code

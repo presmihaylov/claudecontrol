@@ -20,6 +20,16 @@ set -a  # automatically export all variables
 source /home/ccagent/.config/ccagent/.env
 set +a  # disable automatic export
 
+STARTUP_FILE="/home/ccagent/startup.sh"
+if [ ! -f "$STARTUP_FILE" ]; then
+  echo "Creating $STARTUP_FILE..."
+  mkdir -p "$(dirname "$STARTUP_FILE")"
+  echo '#!/bin/bash' > "$STARTUP_FILE"
+  chmod +x "$STARTUP_FILE"
+else
+  echo "$STARTUP_FILE already exists. Doing nothing."
+fi
+
 # Configure git with claudecontrol identity
 echo "Configuring git user..."
 git config --global user.name "claudecontrol"
