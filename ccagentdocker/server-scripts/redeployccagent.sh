@@ -237,6 +237,7 @@ EOF
     stdin_open: true
     tty: true
     restart: unless-stopped
+    command: ["/bin/bash", "-c", "/home/ccagent/startup.sh && tail -f /dev/null"]
 EOF
 }
 
