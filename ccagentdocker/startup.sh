@@ -55,7 +55,9 @@ fi
 # Load the env file into the current shell
 echo "Sourcing $STARTUP_ENV_FILE..."
 # use `source` or `.`, not direct execution
+set -a  # automatically export all variables
 source "$STARTUP_ENV_FILE"
+set +a  # disable automatic export
 
 # Clone repository if REPO_URL is provided
 if [[ -n "${REPO_URL:-}" ]]; then
