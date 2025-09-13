@@ -1016,7 +1016,7 @@ export default function OnboardingPage() {
 												size="sm"
 												onClick={slackIntegration ? handleDisconnectSlack : handleDisconnectDiscord}
 												disabled={loading}
-												className="text-muted-foreground hover:text-destructive"
+												className={slackIntegration ? "text-red-600 hover:text-red-700" : "text-muted-foreground hover:text-destructive"}
 											>
 												<Trash2 className="h-4 w-4 mr-2" />
 												{loading ? "Disconnecting..." : "Disconnect"}
