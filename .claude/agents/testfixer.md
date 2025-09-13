@@ -64,9 +64,10 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
    - Identify potentially affected integration tests
 
 2. **Autonomous Test Execution**:
-   - Automatically run `make test` in ccbackend and test commands in ccfrontend
-   - If database-related test failures occur (connection errors, migration issues), run `./scripts/ccdbdown.sh && ./scripts/ccdbup.sh` to reset database with fresh migrations
-   - Retry tests after database reset if initial failures were migration-related
+   - **CRITICAL**: Tests will 100% fail if database is not running. Always run `./scripts/ccdbdown.sh && ./scripts/ccdbup.sh` BEFORE executing any tests
+   - Run `make test` in ccbackend and test commands in ccfrontend after database initialization
+   - If any database-related failures occur, re-run `./scripts/ccdbdown.sh && ./scripts/ccdbup.sh` to reset database with fresh migrations
+   - Retry tests after database reset
    - Capture and analyze test failures
    - Classify errors by type and severity
 
@@ -104,11 +105,12 @@ You are the TestFixer subagent, specialized in maintaining and improving the tes
 
 ### Testing Commands
 ```bash
-cd ccbackend && make test          # Run backend tests
-cd ccfrontend && bun test          # Run frontend tests  
+# ALWAYS run database setup first - tests will 100% fail without it
+./scripts/ccdbdown.sh && ./scripts/ccdbup.sh  # Initialize database (REQUIRED before any tests)
+cd ccbackend && make test          # Run backend tests (after database setup)
+cd ccfrontend && bun test          # Run frontend tests
 cd ccbackend && make lint-fix      # Fix linting issues
 cd ccfrontend && bun run lint:fix  # Fix linting issues
-./scripts/ccdbdown.sh && ./scripts/ccdbup.sh  # Reset database with fresh migrations (when needed)
 ```
 
 ### Build Commands (for validation)
@@ -119,6 +121,7 @@ cd ccfrontend && bun run build     # Verify frontend build
 
 ## Important Constraints
 
+- **CRITICAL: Database Initialization Required** - ALWAYS run `./scripts/ccdbdown.sh && ./scripts/ccdbup.sh` before any test execution. Tests will 100% fail without this step
 - **AUTOMATICALLY run tests** as part of your core responsibility - this is your primary function
 - **ALWAYS run `make lint-fix`** after making any code changes
 - **Follow existing code patterns** - don't introduce new testing approaches

@@ -249,7 +249,7 @@ All core entities are scoped to organization_id for proper data isolation.
 ### Test Execution Notes
 - **Flaky Tests**: Tests may occasionally fail due to timing or race conditions - retry running tests 2-3 times before investigating
 - **Database Dependency**: Tests require a running PostgreSQL database with proper test schema setup
-- **Database Not Started**: If tests fail with database connection errors, abort test fixing and report to user that the database needs to be started
+- **Database Not Started**: Tests will 100% fail if database is not running. Run `./scripts/ccdbdown.sh && ./scripts/ccdbup.sh` to ensure database is properly initialized
 
 ## Development Workflow
 
@@ -586,13 +586,13 @@ Claude Code has access to specialized subagents for specific tasks. These should
 
 ### TestFixer Subagent
 - **Purpose**: Automatically fixes broken tests and suggests new test coverage
-- **Prerequisites**: **MUST check if database is running before executing any tests**
-  - Verify database availability before running tests
-  - If database is not running, immediately stop execution and instruct user to start the database
-  - All tests will fail without a running database, making test fixing impossible
+- **Prerequisites**: **Database Dependency Critical**
+  - Tests will 100% fail if database is not running
+  - Always run `./scripts/ccdbdown.sh && ./scripts/ccdbup.sh` before test execution to ensure database is properly initialized
+  - Database must be reset and brought up fresh for reliable test execution
 - **Scope**: Works only with ccbackend and ccfrontend modules in this repository
 - **Capabilities**: Fixes Go tests in ccbackend and frontend tests in ccfrontend, suggests new test coverage, runs test suites autonomously
-- **Usage**: Available for automated test management and fixing test issues, but only after confirming database availability
+- **Usage**: Available for automated test management and fixing test issues, but requires database initialization first
 - **Limitation**: Does not work with ccagent tests as ccagent is in a separate repository
 
 ## Mock Architecture
