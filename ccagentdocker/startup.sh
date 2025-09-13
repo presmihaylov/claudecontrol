@@ -25,6 +25,20 @@ echo "Configuring git user..."
 git config --global user.name "claudecontrol"
 git config --global user.email "agent@claudecontrol.com"
 
+STARTUP_FILE="/home/ccagent/startup.sh"
+if [ ! -f "$STARTUP_FILE" ]; then
+  echo "Creating $STARTUP_FILE..."
+  mkdir -p "$(dirname "$STARTUP_FILE")"
+  echo '#!/bin/bash' > "$STARTUP_FILE"
+  chmod +x "$STARTUP_FILE"
+else
+  echo "$STARTUP_FILE already exists. Doing nothing."
+fi
+
+# Trigger the startup script
+echo "Executing $STARTUP_FILE..."
+"$STARTUP_FILE"
+
 # Clone repository if REPO_URL is provided
 if [[ -n "${REPO_URL:-}" ]]; then
   echo "Cloning repository: $REPO_URL"
@@ -48,19 +62,6 @@ if [[ -n "${REPO_URL:-}" ]]; then
     exec ccagent --claude-bypass-permissions
   fi
 fi
-
-STARTUP_FILE="/home/ccagent/startup.sh"
-if [ ! -f "$STARTUP_FILE" ]; then
-  echo "Creating $STARTUP_FILE..."
-  mkdir -p "$(dirname "$STARTUP_FILE")"
-  echo '#!/bin/bash' > "$STARTUP_FILE"
-  chmod +x "$STARTUP_FILE"
-else
-  echo "$STARTUP_FILE already exists. Doing nothing."
-fi
-
-# Trigger the startup script
-"$STARTUP_FILE"
 
 # Start interactive bash
 exec /bin/bash "$@"
