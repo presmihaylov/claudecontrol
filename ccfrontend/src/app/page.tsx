@@ -579,7 +579,7 @@ export default function Home() {
 								Cancel
 							</Button>
 							<Button
-								variant="secondary"
+								variant="destructive"
 								onClick={confirmDeleteIntegration}
 								disabled={deleting === integrationToDelete?.id}
 							>
