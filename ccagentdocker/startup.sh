@@ -23,7 +23,7 @@ set +a  # disable automatic export
 # Configure git with claudecontrol identity
 echo "Configuring git user..."
 git config --global user.name "claudecontrol"
-git config --global user.email "claudecontrol@users.noreply.github.com"
+git config --global user.email "agent@claudecontrol.com"
 
 # Clone repository if REPO_URL is provided
 if [[ -n "${REPO_URL:-}" ]]; then
