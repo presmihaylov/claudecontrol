@@ -10,18 +10,6 @@ RUN apk update && apk add --no-cache \
     npm \
     jq \
     openssl \
-    coreutils
-
-# Install system dependencies
-RUN apk update && apk add --no-cache \
-    git \
-    curl \
-    bash \
-    ca-certificates \
-    nodejs \
-    npm \
-    jq \
-    openssl \
     coreutils \
     make \
     go \
