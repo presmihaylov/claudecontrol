@@ -51,6 +51,11 @@ func (s *SalesNotifier) send(orgID models.OrgID, message string) {
 		return // Sales notifications disabled
 	}
 
+	// Exclude specific organization from sales notifications
+	if orgID == "org_1984B8360FCB1S6VZJSR87AJAM" {
+		return // Organization excluded from sales notifications
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
