@@ -27,13 +27,8 @@ RUN curl -fsSL https://bun.com/install | bash
 # Install JS/TS tools globally
 RUN npm install -g \
     typescript \
-    pnpm \
     eslint \
     prettier
-
-# Install Go tools
-RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
-    && go install golang.org/x/tools/cmd/goimports@latest
 
 # Add Go binaries to PATH (since go install puts them in /root/go/bin by default)
 ENV PATH="/root/go/bin:${PATH}"
