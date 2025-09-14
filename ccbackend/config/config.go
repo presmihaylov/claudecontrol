@@ -38,10 +38,10 @@ func (c DiscordConfig) IsConfigured() bool {
 }
 
 type GitHubConfig struct {
-	ClientID       string
-	ClientSecret   string
-	AppID          string
-	AppPrivateKey  string
+	ClientID      string
+	ClientSecret  string
+	AppID         string
+	AppPrivateKey string
 }
 
 // IsConfigured returns true if all required GitHub configuration is present
@@ -53,8 +53,8 @@ func (c GitHubConfig) IsConfigured() bool {
 }
 
 type SSHConfig struct {
-	DefaultHost       string
-	PrivateKeyBase64  string
+	DefaultHost      string
+	PrivateKeyBase64 string
 }
 
 // IsConfigured returns true if all required SSH configuration is present
@@ -80,6 +80,7 @@ type AppConfig struct {
 	CORSAllowedOrigins string // Optional with default "*"
 	Environment        string
 	ServerLogsURL      string
+	UseStrictConfig    bool // If true, error when any integration is not fully configured
 
 	// Integration configurations (grouped)
 	SlackConfig   SlackConfig
@@ -113,6 +114,7 @@ func LoadConfig() (*AppConfig, error) {
 		CORSAllowedOrigins: getEnvWithDefault("CORS_ALLOWED_ORIGINS", "*"),
 		Environment:        getEnvWithDefault("ENVIRONMENT", "dev"),
 		ServerLogsURL:      getEnvWithDefault("SERVER_LOGS_URL", ""),
+		UseStrictConfig:    getEnvWithDefault("USE_STRICT_CONFIG", "true") == "true",
 
 		// Slack configuration (optional)
 		SlackConfig: SlackConfig{
@@ -132,10 +134,10 @@ func LoadConfig() (*AppConfig, error) {
 
 		// GitHub configuration (optional)
 		GitHubConfig: GitHubConfig{
-			ClientID:       os.Getenv("GITHUB_CLIENT_ID"),
-			ClientSecret:   os.Getenv("GITHUB_CLIENT_SECRET"),
-			AppID:          os.Getenv("GITHUB_APP_ID"),
-			AppPrivateKey:  os.Getenv("GITHUB_APP_PRIVATE_KEY"),
+			ClientID:      os.Getenv("GITHUB_CLIENT_ID"),
+			ClientSecret:  os.Getenv("GITHUB_CLIENT_SECRET"),
+			AppID:         os.Getenv("GITHUB_APP_ID"),
+			AppPrivateKey: os.Getenv("GITHUB_APP_PRIVATE_KEY"),
 		},
 
 		// SSH configuration (optional)
@@ -155,30 +157,45 @@ func LoadConfig() (*AppConfig, error) {
 		log.Printf("✅ Slack integration configured")
 	} else {
 		log.Printf("⚠️ Slack integration not configured - Slack features will be disabled")
+		if config.UseStrictConfig {
+			return nil, fmt.Errorf("slack integration is not fully configured (USE_STRICT_CONFIG=true)")
+		}
 	}
 
 	if config.DiscordConfig.IsConfigured() {
 		log.Printf("✅ Discord integration configured")
 	} else {
 		log.Printf("⚠️ Discord integration not configured - Discord features will be disabled")
+		if config.UseStrictConfig {
+			return nil, fmt.Errorf("discord integration is not fully configured (USE_STRICT_CONFIG=true)")
+		}
 	}
 
 	if config.GitHubConfig.IsConfigured() {
 		log.Printf("✅ GitHub integration configured")
 	} else {
 		log.Printf("⚠️ GitHub integration not configured - GitHub features will be disabled")
+		if config.UseStrictConfig {
+			return nil, fmt.Errorf("GitHub integration is not fully configured (USE_STRICT_CONFIG=true)")
+		}
 	}
 
 	if config.SSHConfig.IsConfigured() {
 		log.Printf("✅ SSH/Container integration configured")
 	} else {
 		log.Printf("⚠️ SSH/Container integration not configured - Container features will be disabled")
+		if config.UseStrictConfig {
+			return nil, fmt.Errorf("SSH/Container integration is not fully configured (USE_STRICT_CONFIG=true)")
+		}
 	}
 
 	if config.ClerkConfig.IsConfigured() {
 		log.Printf("✅ Clerk authentication configured")
 	} else {
 		log.Printf("⚠️ Clerk authentication not configured - Dashboard authentication will be disabled")
+		if config.UseStrictConfig {
+			return nil, fmt.Errorf("clerk authentication is not fully configured (USE_STRICT_CONFIG=true)")
+		}
 	}
 
 	return config, nil

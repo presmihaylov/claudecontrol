@@ -84,7 +84,12 @@ func bootstrapDependencies(cfg *config.AppConfig) (*RefreshTokensRunner, func(),
 		return nil, nil, fmt.Errorf("failed to decode GitHub app private key: %w", err)
 	}
 
-	githubClient, err := github.NewGitHubClient(cfg.GitHubConfig.ClientID, cfg.GitHubConfig.ClientSecret, cfg.GitHubConfig.AppID, privateKey)
+	githubClient, err := github.NewGitHubClient(
+		cfg.GitHubConfig.ClientID,
+		cfg.GitHubConfig.ClientSecret,
+		cfg.GitHubConfig.AppID,
+		privateKey,
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create GitHub client: %w", err)
 	}

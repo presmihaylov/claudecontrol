@@ -10,8 +10,8 @@ import (
 	"ccbackend/clients"
 	"ccbackend/models"
 	"ccbackend/services"
+	"ccbackend/usecases"
 	"ccbackend/usecases/core"
-	"ccbackend/usecases/discord"
 )
 
 type DiscordEventsHandler struct {
@@ -19,7 +19,7 @@ type DiscordEventsHandler struct {
 	discordClient              clients.DiscordClient
 	coreUseCase                *core.CoreUseCase
 	discordIntegrationsService services.DiscordIntegrationsService
-	discordUseCase             *discord.DiscordUseCase
+	discordUseCase             usecases.DiscordUseCaseInterface
 }
 
 func NewDiscordEventsHandler(
@@ -27,7 +27,7 @@ func NewDiscordEventsHandler(
 	discordClient clients.DiscordClient,
 	coreUseCase *core.CoreUseCase,
 	discordIntegrationsService services.DiscordIntegrationsService,
-	discordUseCase *discord.DiscordUseCase,
+	discordUseCase usecases.DiscordUseCaseInterface,
 ) (*DiscordEventsHandler, error) {
 	// Create a new Discord session using the provided bot token
 	session, err := discordgo.New("Bot " + botToken)
