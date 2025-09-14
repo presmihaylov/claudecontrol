@@ -13,9 +13,12 @@ import (
 	"ccbackend/models"
 )
 
+var ErrGitHubNotConfigured = fmt.Errorf("GitHub integration is not configured - please set GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_APP_ID, and GITHUB_APP_PRIVATE_KEY environment variables")
+
 type GitHubIntegrationsService struct {
 	githubRepo   *db.PostgresGitHubIntegrationsRepository
 	githubClient clients.GitHubClient
+	isConfigured bool
 }
 
 func NewGitHubIntegrationsService(
@@ -25,6 +28,7 @@ func NewGitHubIntegrationsService(
 	return &GitHubIntegrationsService{
 		githubRepo:   repo,
 		githubClient: githubClient,
+		isConfigured: githubClient != nil,
 	}
 }
 
@@ -33,6 +37,10 @@ func (s *GitHubIntegrationsService) CreateGitHubIntegration(
 	orgID models.OrgID,
 	authCode, installationID string,
 ) (*models.GitHubIntegration, error) {
+	if !s.isConfigured {
+		return nil, ErrGitHubNotConfigured
+	}
+
 	log.Printf("📋 Starting to create GitHub integration for org: %s, installation: %s", orgID, installationID)
 
 	if !core.IsValidULID(orgID) {
@@ -72,6 +80,10 @@ func (s *GitHubIntegrationsService) ListGitHubIntegrations(
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.GitHubIntegration, error) {
+	if !s.isConfigured {
+		return nil, ErrGitHubNotConfigured
+	}
+
 	log.Printf("📋 Starting to list GitHub integrations for org: %s", orgID)
 	if !core.IsValidULID(orgID) {
 		return nil, fmt.Errorf("organization ID must be a valid ULID")
@@ -91,6 +103,10 @@ func (s *GitHubIntegrationsService) GetGitHubIntegrationByID(
 	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.GitHubIntegration], error) {
+	if !s.isConfigured {
+		return mo.None[*models.GitHubIntegration](), ErrGitHubNotConfigured
+	}
+
 	log.Printf("📋 Starting to get GitHub integration by ID: %s for org: %s", id, orgID)
 	if !core.IsValidULID(orgID) {
 		return mo.None[*models.GitHubIntegration](), fmt.Errorf("organization ID must be a valid ULID")
@@ -118,6 +134,10 @@ func (s *GitHubIntegrationsService) DeleteGitHubIntegration(
 	orgID models.OrgID,
 	integrationID string,
 ) error {
+	if !s.isConfigured {
+		return ErrGitHubNotConfigured
+	}
+
 	log.Printf("📋 Starting to delete GitHub integration: %s for org: %s", integrationID, orgID)
 
 	if !core.IsValidULID(orgID) {
@@ -156,6 +176,10 @@ func (s *GitHubIntegrationsService) ListAvailableRepositories(
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.GitHubRepository, error) {
+	if !s.isConfigured {
+		return nil, ErrGitHubNotConfigured
+	}
+
 	log.Printf("📋 Starting to list available GitHub repositories for org: %s", orgID)
 
 	if !core.IsValidULID(orgID) {

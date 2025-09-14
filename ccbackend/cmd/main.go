@@ -44,7 +44,6 @@ import (
 	"ccbackend/usecases/core"
 	discordUseCase "ccbackend/usecases/discord"
 	"ccbackend/usecases/slack"
-	"ccbackend/utils"
 )
 
 func main() {
@@ -60,8 +59,10 @@ func run() error {
 		return err
 	}
 
-	// Initialize sales notifications
-	salesnotif.Init(cfg.SlackConfig.SalesWebhookURL, cfg.Environment)
+	// Initialize sales notifications (only if Slack is configured)
+	if cfg.SlackConfig.IsConfigured() {
+		salesnotif.Init(cfg.SlackConfig.SalesWebhookURL, cfg.Environment)
+	}
 
 	// Initialize error alert middleware
 	alertMiddleware := middleware.NewErrorAlertMiddleware(middleware.SlackAlertConfig{
@@ -94,59 +95,117 @@ func run() error {
 
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
+
+	// Core services (always needed)
 	slackMessagesService := slackmessages.NewSlackMessagesService(processedSlackMessagesRepo)
 	discordMessagesService := discordmessages.NewDiscordMessagesService(processedDiscordMessagesRepo)
 	jobsService := jobs.NewJobsService(jobsRepo, slackMessagesService, discordMessagesService, txManager)
 	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
 	usersService := users.NewUsersService(usersRepo, organizationsService, txManager)
-	slackOAuthClient := slackclient.NewSlackOAuthClient()
-	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(
-		slackIntegrationsRepo,
-		slackOAuthClient,
-		cfg.SlackConfig.ClientID,
-		cfg.SlackConfig.ClientSecret,
-	)
-	discordClient, err := discordclient.NewDiscordClient(&http.Client{}, cfg.DiscordConfig.BotToken)
-	utils.AssertInvariant(err == nil, "Failed to create Discord client")
+	settingsService := settingsservice.NewSettingsService(settingsRepo)
 
-	discordIntegrationsService := discordintegrations.NewDiscordIntegrationsService(
-		discordIntegrationsRepo,
-		discordClient,
-		cfg.DiscordConfig.ClientID,
-		cfg.DiscordConfig.ClientSecret,
-	)
-	// Create GitHub client
-	privateKey, err := base64.StdEncoding.DecodeString(cfg.GitHubConfig.AppPrivateKey)
-	if err != nil {
-		return fmt.Errorf("failed to decode GitHub private key: %w", err)
-	}
-	githubClient, err := githubclient.NewGitHubClient(
-		cfg.GitHubConfig.ClientID,
-		cfg.GitHubConfig.ClientSecret,
-		cfg.GitHubConfig.AppID,
-		privateKey,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create GitHub client: %w", err)
-	}
-	githubService := githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, githubClient)
+	// Anthropic service (always needed for ccagent container service)
 	anthropicClient := anthropic.NewAnthropicClient()
 	anthropicService := anthropicintegrations.NewAnthropicIntegrationsService(
 		anthropicIntegrationsRepo,
 		anthropicClient,
 	)
-	settingsService := settingsservice.NewSettingsService(settingsRepo)
-	// Create SSH client
-	sshClient := ssh.NewSSHClient(cfg.SSHConfig.PrivateKeyBase64)
 
-	ccAgentContainerService := ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
-		ccAgentContainerIntegrationsRepo,
-		cfg,
-		githubService,
-		anthropicService,
-		organizationsService,
-		sshClient,
-	)
+	// Initialize Slack components (optional)
+	var slackIntegrationsService *slackintegrations.SlackIntegrationsService
+	var slackUseCase *slack.SlackUseCase
+	var slackHandler *handlers.SlackEventsHandler
+
+	if cfg.SlackConfig.IsConfigured() {
+		log.Printf("🔧 Initializing Slack components...")
+		slackOAuthClient := slackclient.NewSlackOAuthClient()
+		slackIntegrationsService = slackintegrations.NewSlackIntegrationsService(
+			slackIntegrationsRepo,
+			slackOAuthClient,
+			cfg.SlackConfig.ClientID,
+			cfg.SlackConfig.ClientSecret,
+		)
+	} else {
+		log.Printf("⚠️ Slack not configured - Slack components will be disabled")
+	}
+
+	// Initialize Discord components (optional)
+	var discordClient clients.DiscordClient
+	var discordIntegrationsService *discordintegrations.DiscordIntegrationsService
+	var discordUseCaseInstance *discordUseCase.DiscordUseCase
+	var discordHandler *handlers.DiscordEventsHandler
+
+	if cfg.DiscordConfig.IsConfigured() {
+		log.Printf("🔧 Initializing Discord components...")
+		var err error
+		discordClient, err = discordclient.NewDiscordClient(&http.Client{}, cfg.DiscordConfig.BotToken)
+		if err != nil {
+			return fmt.Errorf("failed to create Discord client: %w", err)
+		}
+
+		discordIntegrationsService = discordintegrations.NewDiscordIntegrationsService(
+			discordIntegrationsRepo,
+			discordClient,
+			cfg.DiscordConfig.ClientID,
+			cfg.DiscordConfig.ClientSecret,
+		)
+	} else {
+		log.Printf("⚠️ Discord not configured - Discord components will be disabled")
+	}
+
+	// Initialize GitHub components (optional)
+	var githubClient clients.GitHubClient
+	var githubService *githubintegrations.GitHubIntegrationsService
+
+	if cfg.GitHubConfig.IsConfigured() {
+		log.Printf("🔧 Initializing GitHub components...")
+		privateKey, err := base64.StdEncoding.DecodeString(cfg.GitHubConfig.AppPrivateKey)
+		if err != nil {
+			return fmt.Errorf("failed to decode GitHub private key: %w", err)
+		}
+		githubClient, err = githubclient.NewGitHubClient(
+			cfg.GitHubConfig.ClientID,
+			cfg.GitHubConfig.ClientSecret,
+			cfg.GitHubConfig.AppID,
+			privateKey,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create GitHub client: %w", err)
+		}
+		githubService = githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, githubClient)
+	} else {
+		log.Printf("⚠️ GitHub not configured - GitHub components will be disabled")
+		// Create a service that returns errors for all operations
+		githubService = githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, nil)
+	}
+
+	// Initialize SSH/Container components (optional)
+	var sshClient ssh.SSHClientInterface
+	var ccAgentContainerService *ccagentcontainerintegrations.CCAgentContainerIntegrationsService
+
+	if cfg.SSHConfig.IsConfigured() {
+		log.Printf("🔧 Initializing SSH/Container components...")
+		sshClient = ssh.NewSSHClient(cfg.SSHConfig.PrivateKeyBase64)
+		ccAgentContainerService = ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
+			ccAgentContainerIntegrationsRepo,
+			cfg,
+			githubService,
+			anthropicService,
+			organizationsService,
+			sshClient,
+		)
+	} else {
+		log.Printf("⚠️ SSH/Container not configured - Container features will be disabled")
+		// Create a minimal service that returns appropriate errors
+		ccAgentContainerService = ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
+			ccAgentContainerIntegrationsRepo,
+			cfg,
+			githubService,
+			anthropicService,
+			organizationsService,
+			nil, // No SSH client
+		)
+	}
 
 	// Create API key validator using organizationsService directly
 	apiKeyValidator := func(apiKey string) (string, error) {
@@ -168,76 +227,116 @@ func run() error {
 	// Create use cases in dependency order
 	agentsUseCase := agents.NewAgentsUseCase(wsClient, agentsService)
 
-	slackUseCase := slack.NewSlackUseCase(
-		wsClient,
-		agentsService,
-		jobsService,
-		slackMessagesService,
-		slackIntegrationsService,
-		txManager,
-		agentsUseCase,
-		slackclient.NewSlackClient,
-	)
+	// Create Slack use case if Slack is configured
+	if cfg.SlackConfig.IsConfigured() && slackIntegrationsService != nil {
+		slackUseCase = slack.NewSlackUseCase(
+			wsClient,
+			agentsService,
+			jobsService,
+			slackMessagesService,
+			slackIntegrationsService,
+			txManager,
+			agentsUseCase,
+			slackclient.NewSlackClient,
+		)
+	}
 
-	discordUseCase := discordUseCase.NewDiscordUseCase(
-		discordClient,
-		wsClient,
-		agentsService,
-		jobsService,
-		discordMessagesService,
-		discordIntegrationsService,
-		txManager,
-		agentsUseCase,
-	)
+	// Create Discord use case if Discord is configured
+	if cfg.DiscordConfig.IsConfigured() && discordClient != nil && discordIntegrationsService != nil {
+		discordUseCaseInstance = discordUseCase.NewDiscordUseCase(
+			discordClient,
+			wsClient,
+			agentsService,
+			jobsService,
+			discordMessagesService,
+			discordIntegrationsService,
+			txManager,
+			agentsUseCase,
+		)
+	}
 
+	// Create core use case with available components
 	coreUseCase := core.NewCoreUseCase(
 		wsClient,
 		agentsService,
 		jobsService,
-		slackIntegrationsService,
+		slackIntegrationsService, // Can be nil
 		organizationsService,
-		slackUseCase,
-		discordUseCase,
+		slackUseCase,   // Can be nil
+		discordUseCaseInstance, // Can be nil
 	)
+
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
-	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackConfig.SigningSecret, coreUseCase, slackIntegrationsService)
 
-	// Create Discord events handler
-	discordHandler, discordErr := handlers.NewDiscordEventsHandler(
-		cfg.DiscordConfig.BotToken,
-		discordClient,
-		coreUseCase,
-		discordIntegrationsService,
-		discordUseCase,
-	)
-	utils.AssertInvariant(discordErr == nil, "Failed to create Discord events handler")
+	// Create Slack handler if Slack is configured
+	if cfg.SlackConfig.IsConfigured() && slackIntegrationsService != nil {
+		slackHandler = handlers.NewSlackEventsHandler(cfg.SlackConfig.SigningSecret, coreUseCase, slackIntegrationsService)
+	}
 
+	// Create Discord handler if Discord is configured
+	if cfg.DiscordConfig.IsConfigured() && discordClient != nil && discordIntegrationsService != nil && discordUseCaseInstance != nil {
+		var err error
+		discordHandler, err = handlers.NewDiscordEventsHandler(
+			cfg.DiscordConfig.BotToken,
+			discordClient,
+			coreUseCase,
+			discordIntegrationsService,
+			discordUseCaseInstance,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create Discord events handler: %w", err)
+		}
+	}
+
+	// Create dashboard handler with available services
 	dashboardHandler := handlers.NewDashboardAPIHandler(
 		usersService,
-		slackIntegrationsService,
-		discordIntegrationsService,
-		githubService,
+		slackIntegrationsService,   // Can be nil
+		discordIntegrationsService, // Can be nil
+		githubService,              // Can be nil (but returns errors)
 		anthropicService,
-		ccAgentContainerService,
+		ccAgentContainerService,    // Can be nil
 		organizationsService,
 		agentsService,
 		settingsService,
 		txManager,
 	)
 	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
-	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkConfig.SecretKey)
+
+	// Create authentication middleware if Clerk is configured
+	var authMiddleware *middleware.ClerkAuthMiddleware
+	if cfg.ClerkConfig.IsConfigured() {
+		authMiddleware = middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkConfig.SecretKey)
+	} else {
+		log.Printf("⚠️ Clerk authentication not configured - Dashboard will be unauthenticated")
+	}
 
 	// Create a new router
 	router := mux.NewRouter()
 
 	// Setup endpoints with the new router
 	wsClient.RegisterWithRouter(router)
-	slackHandler.SetupEndpoints(router)
-	dashboardHTTPHandler.SetupEndpoints(router, authMiddleware)
 
-	// Start Discord bot
-	err = discordHandler.StartBot()
-	utils.AssertInvariant(err == nil, "Failed to start Discord bot")
+	// Setup Slack endpoints if configured
+	if slackHandler != nil {
+		slackHandler.SetupEndpoints(router)
+	}
+
+	// Setup dashboard endpoints (with or without auth)
+	if authMiddleware != nil {
+		dashboardHTTPHandler.SetupEndpoints(router, authMiddleware)
+	} else {
+		// You might want to add a public version or disable dashboard entirely
+		log.Printf("⚠️ Dashboard endpoints disabled - no authentication configured")
+	}
+
+	// Start Discord bot if configured
+	if discordHandler != nil {
+		err = discordHandler.StartBot()
+		if err != nil {
+			return fmt.Errorf("failed to start Discord bot: %w", err)
+		}
+	}
 
 	// Health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -329,8 +428,10 @@ func handleGracefulShutdown(server *http.Server, discordHandler *handlers.Discor
 	<-stop
 	log.Printf("🛑 Shutdown signal received, cleaning up...")
 
-	// Stop Discord bot
-	discordHandler.StopBot()
+	// Stop Discord bot if it was started
+	if discordHandler != nil {
+		discordHandler.StopBot()
+	}
 
 	// Create a deadline for shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
