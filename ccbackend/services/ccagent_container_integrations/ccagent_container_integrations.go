@@ -70,7 +70,7 @@ func (s *CCAgentContainerIntegrationsService) CreateCCAgentContainerIntegration(
 		ID:             core.NewID("cci"),
 		InstancesCount: instancesCount,
 		RepoURL:        sanitizedRepoURL,
-		SSHHost:        s.config.DefaultSSHHost,
+		SSHHost:        s.config.SSHConfig.DefaultHost,
 		OrgID:          orgID,
 	}
 

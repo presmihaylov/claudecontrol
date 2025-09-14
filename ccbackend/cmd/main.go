@@ -61,11 +61,11 @@ func run() error {
 	}
 
 	// Initialize sales notifications
-	salesnotif.Init(cfg.SlackSalesWebhookURL, cfg.Environment)
+	salesnotif.Init(cfg.SlackConfig.SalesWebhookURL, cfg.Environment)
 
 	// Initialize error alert middleware
 	alertMiddleware := middleware.NewErrorAlertMiddleware(middleware.SlackAlertConfig{
-		WebhookURL:  cfg.SlackAlertWebhookURL,
+		WebhookURL:  cfg.SlackConfig.AlertWebhookURL,
 		Environment: cfg.Environment,
 		AppName:     "ccbackend",
 		LogsURL:     cfg.ServerLogsURL,
@@ -103,27 +103,27 @@ func run() error {
 	slackIntegrationsService := slackintegrations.NewSlackIntegrationsService(
 		slackIntegrationsRepo,
 		slackOAuthClient,
-		cfg.SlackClientID,
-		cfg.SlackClientSecret,
+		cfg.SlackConfig.ClientID,
+		cfg.SlackConfig.ClientSecret,
 	)
-	discordClient, err := discordclient.NewDiscordClient(&http.Client{}, cfg.DiscordBotToken)
+	discordClient, err := discordclient.NewDiscordClient(&http.Client{}, cfg.DiscordConfig.BotToken)
 	utils.AssertInvariant(err == nil, "Failed to create Discord client")
 
 	discordIntegrationsService := discordintegrations.NewDiscordIntegrationsService(
 		discordIntegrationsRepo,
 		discordClient,
-		cfg.DiscordClientID,
-		cfg.DiscordClientSecret,
+		cfg.DiscordConfig.ClientID,
+		cfg.DiscordConfig.ClientSecret,
 	)
 	// Create GitHub client
-	privateKey, err := base64.StdEncoding.DecodeString(cfg.GitHubAppPrivateKey)
+	privateKey, err := base64.StdEncoding.DecodeString(cfg.GitHubConfig.AppPrivateKey)
 	if err != nil {
 		return fmt.Errorf("failed to decode GitHub private key: %w", err)
 	}
 	githubClient, err := githubclient.NewGitHubClient(
-		cfg.GitHubClientID,
-		cfg.GitHubClientSecret,
-		cfg.GitHubAppID,
+		cfg.GitHubConfig.ClientID,
+		cfg.GitHubConfig.ClientSecret,
+		cfg.GitHubConfig.AppID,
 		privateKey,
 	)
 	if err != nil {
@@ -137,7 +137,7 @@ func run() error {
 	)
 	settingsService := settingsservice.NewSettingsService(settingsRepo)
 	// Create SSH client
-	sshClient := ssh.NewSSHClient(cfg.SSHPrivateKeyBase64)
+	sshClient := ssh.NewSSHClient(cfg.SSHConfig.PrivateKeyBase64)
 
 	ccAgentContainerService := ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
 		ccAgentContainerIntegrationsRepo,
@@ -200,11 +200,11 @@ func run() error {
 		discordUseCase,
 	)
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
-	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackSigningSecret, coreUseCase, slackIntegrationsService)
+	slackHandler := handlers.NewSlackEventsHandler(cfg.SlackConfig.SigningSecret, coreUseCase, slackIntegrationsService)
 
 	// Create Discord events handler
 	discordHandler, discordErr := handlers.NewDiscordEventsHandler(
-		cfg.DiscordBotToken,
+		cfg.DiscordConfig.BotToken,
 		discordClient,
 		coreUseCase,
 		discordIntegrationsService,
@@ -225,7 +225,7 @@ func run() error {
 		txManager,
 	)
 	dashboardHTTPHandler := handlers.NewDashboardHTTPHandler(dashboardHandler)
-	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkSecretKey)
+	authMiddleware := middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkConfig.SecretKey)
 
 	// Create a new router
 	router := mux.NewRouter()

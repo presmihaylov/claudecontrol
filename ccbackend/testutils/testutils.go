@@ -45,7 +45,9 @@ func LoadTestConfig() (*config.AppConfig, error) {
 	return &config.AppConfig{
 		DatabaseURL:    databaseURL,
 		DatabaseSchema: databaseSchema,
-		ClerkSecretKey: clerkSecretKey,
+		ClerkConfig: config.ClerkConfig{
+			SecretKey: clerkSecretKey,
+		},
 	}, nil
 }
 
