@@ -840,106 +840,140 @@ func (h *DashboardHTTPHandler) HandleGetSetting(w http.ResponseWriter, r *http.R
 	h.writeJSONResponse(w, http.StatusOK, response)
 }
 
+type endpointConfig struct {
+	path    string
+	handler http.HandlerFunc
+	method  string
+	logName string
+}
+
+type middlewareFunc func(http.HandlerFunc) http.HandlerFunc
+
+func (h *DashboardHTTPHandler) registerEndpoints(router *mux.Router, endpoints []endpointConfig) {
+	for _, ep := range endpoints {
+		router.HandleFunc(ep.path, ep.handler).Methods(ep.method)
+		log.Printf("✅ %s %s endpoint registered", ep.method, ep.logName)
+	}
+}
+
+func (h *DashboardHTTPHandler) initEndpoints(middleware middlewareFunc) []endpointConfig {
+	return []endpointConfig{
+		// User endpoints
+		{"/users/authenticate", middleware(h.HandleUserAuthenticate), "POST", "/users/authenticate"},
+		{"/users/profile", middleware(h.HandleGetUserProfile), "GET", "/users/profile"},
+
+		// Slack integrations endpoints
+		{"/slack/integrations", middleware(h.HandleListSlackIntegrations), "GET", "/slack/integrations"},
+		{"/slack/integrations", middleware(h.HandleCreateSlackIntegration), "POST", "/slack/integrations"},
+		{"/slack/integrations/{id}", middleware(h.HandleDeleteSlackIntegration), "DELETE", "/slack/integrations/{id}"},
+
+		// Discord integrations endpoints
+		{"/discord/integrations", middleware(h.HandleListDiscordIntegrations), "GET", "/discord/integrations"},
+		{"/discord/integrations", middleware(h.HandleCreateDiscordIntegration), "POST", "/discord/integrations"},
+		{
+			"/discord/integrations/{id}",
+			middleware(h.HandleDeleteDiscordIntegration),
+			"DELETE",
+			"/discord/integrations/{id}",
+		},
+
+		// GitHub integrations endpoints
+		{"/github/integrations", middleware(h.HandleListGitHubIntegrations), "GET", "/github/integrations"},
+		{"/github/integrations", middleware(h.HandleCreateGitHubIntegration), "POST", "/github/integrations"},
+		{"/github/integrations/{id}", middleware(h.HandleGetGitHubIntegrationByID), "GET", "/github/integrations/{id}"},
+		{
+			"/github/integrations/{id}",
+			middleware(h.HandleDeleteGitHubIntegration),
+			"DELETE",
+			"/github/integrations/{id}",
+		},
+		{"/github/repositories", middleware(h.HandleListGitHubRepositories), "GET", "/github/repositories"},
+
+		// Anthropic integrations endpoints
+		{"/anthropic/integrations", middleware(h.HandleListAnthropicIntegrations), "GET", "/anthropic/integrations"},
+		{"/anthropic/integrations", middleware(h.HandleCreateAnthropicIntegration), "POST", "/anthropic/integrations"},
+		{
+			"/anthropic/integrations/{id}",
+			middleware(h.HandleGetAnthropicIntegrationByID),
+			"GET",
+			"/anthropic/integrations/{id}",
+		},
+		{
+			"/anthropic/integrations/{id}",
+			middleware(h.HandleDeleteAnthropicIntegration),
+			"DELETE",
+			"/anthropic/integrations/{id}",
+		},
+
+		// CCAgent Container integrations endpoints
+		{
+			"/ccagent-container/integrations",
+			middleware(h.HandleListCCAgentContainerIntegrations),
+			"GET",
+			"/ccagent-container/integrations",
+		},
+		{
+			"/ccagent-container/integrations",
+			middleware(h.HandleCreateCCAgentContainerIntegration),
+			"POST",
+			"/ccagent-container/integrations",
+		},
+		{
+			"/ccagent-container/integrations/{id}",
+			middleware(h.HandleGetCCAgentContainerIntegrationByID),
+			"GET",
+			"/ccagent-container/integrations/{id}",
+		},
+		{
+			"/ccagent-container/integrations/{id}",
+			middleware(h.HandleDeleteCCAgentContainerIntegration),
+			"DELETE",
+			"/ccagent-container/integrations/{id}",
+		},
+		{"/ccagents/{id}/redeploy", middleware(h.HandleRedeployCCAgentContainer), "POST", "/ccagents/{id}/redeploy"},
+
+		// Organization endpoints
+		{"/organizations", middleware(h.HandleGetOrganization), "GET", "/organizations"},
+		{
+			"/organizations/ccagent_secret_key",
+			middleware(h.HandleGenerateCCAgentSecretKey),
+			"POST",
+			"/organizations/ccagent_secret_key",
+		},
+
+		// Settings endpoints
+		{"/settings", middleware(h.HandleUpsertSetting), "POST", "/settings"},
+		{"/settings/{key}", middleware(h.HandleGetSetting), "GET", "/settings/{key}"},
+	}
+}
+
 func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware *middleware.ClerkAuthMiddleware) {
 	log.Printf("🚀 Registering dashboard API endpoints")
 
-	// User authentication endpoint
-	router.HandleFunc("/users/authenticate", authMiddleware.WithAuth(h.HandleUserAuthenticate)).Methods("POST")
-	log.Printf("✅ POST /users/authenticate endpoint registered")
-
-	// User profile endpoint
-	router.HandleFunc("/users/profile", authMiddleware.WithAuth(h.HandleGetUserProfile)).Methods("GET")
-	log.Printf("✅ GET /users/profile endpoint registered")
-
-	// Slack integrations endpoints
-	router.HandleFunc("/slack/integrations", authMiddleware.WithAuth(h.HandleListSlackIntegrations)).Methods("GET")
-	log.Printf("✅ GET /slack/integrations endpoint registered")
-
-	router.HandleFunc("/slack/integrations", authMiddleware.WithAuth(h.HandleCreateSlackIntegration)).Methods("POST")
-	log.Printf("✅ POST /slack/integrations endpoint registered")
-
-	router.HandleFunc("/slack/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteSlackIntegration)).
-		Methods("DELETE")
-	log.Printf("✅ DELETE /slack/integrations/{id} endpoint registered")
-
-	// Discord integrations endpoints
-	router.HandleFunc("/discord/integrations", authMiddleware.WithAuth(h.HandleListDiscordIntegrations)).Methods("GET")
-	log.Printf("✅ GET /discord/integrations endpoint registered")
-
-	router.HandleFunc("/discord/integrations", authMiddleware.WithAuth(h.HandleCreateDiscordIntegration)).
-		Methods("POST")
-	log.Printf("✅ POST /discord/integrations endpoint registered")
-
-	router.HandleFunc("/discord/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteDiscordIntegration)).
-		Methods("DELETE")
-	log.Printf("✅ DELETE /discord/integrations/{id} endpoint registered")
-
-	// GitHub integrations endpoints
-	router.HandleFunc("/github/integrations", authMiddleware.WithAuth(h.HandleListGitHubIntegrations)).Methods("GET")
-	log.Printf("✅ GET /github/integrations endpoint registered")
-
-	router.HandleFunc("/github/integrations", authMiddleware.WithAuth(h.HandleCreateGitHubIntegration)).Methods("POST")
-	log.Printf("✅ POST /github/integrations endpoint registered")
-
-	router.HandleFunc("/github/integrations/{id}", authMiddleware.WithAuth(h.HandleGetGitHubIntegrationByID)).
-		Methods("GET")
-	log.Printf("✅ GET /github/integrations/{id} endpoint registered")
-
-	router.HandleFunc("/github/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteGitHubIntegration)).
-		Methods("DELETE")
-	log.Printf("✅ DELETE /github/integrations/{id} endpoint registered")
-
-	// Anthropic integrations endpoints
-	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleListAnthropicIntegrations)).
-		Methods("GET")
-	log.Printf("✅ GET /anthropic/integrations endpoint registered")
-	router.HandleFunc("/anthropic/integrations", authMiddleware.WithAuth(h.HandleCreateAnthropicIntegration)).
-		Methods("POST")
-	log.Printf("✅ POST /anthropic/integrations endpoint registered")
-	router.HandleFunc("/anthropic/integrations/{id}", authMiddleware.WithAuth(h.HandleGetAnthropicIntegrationByID)).
-		Methods("GET")
-	log.Printf("✅ GET /anthropic/integrations/{id} endpoint registered")
-	router.HandleFunc("/anthropic/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteAnthropicIntegration)).
-		Methods("DELETE")
-	log.Printf("✅ DELETE /anthropic/integrations/{id} endpoint registered")
-
-	// GitHub repository listing endpoint
-	router.HandleFunc("/github/repositories", authMiddleware.WithAuth(h.HandleListGitHubRepositories)).Methods("GET")
-	log.Printf("✅ GET /github/repositories endpoint registered")
-
-	// CCAgent Container integrations endpoints
-	router.HandleFunc("/ccagent-container/integrations", authMiddleware.WithAuth(h.HandleListCCAgentContainerIntegrations)).
-		Methods("GET")
-	log.Printf("✅ GET /ccagent-container/integrations endpoint registered")
-	router.HandleFunc("/ccagent-container/integrations", authMiddleware.WithAuth(h.HandleCreateCCAgentContainerIntegration)).
-		Methods("POST")
-	log.Printf("✅ POST /ccagent-container/integrations endpoint registered")
-	router.HandleFunc("/ccagent-container/integrations/{id}", authMiddleware.WithAuth(h.HandleGetCCAgentContainerIntegrationByID)).
-		Methods("GET")
-	log.Printf("✅ GET /ccagent-container/integrations/{id} endpoint registered")
-	router.HandleFunc("/ccagent-container/integrations/{id}", authMiddleware.WithAuth(h.HandleDeleteCCAgentContainerIntegration)).
-		Methods("DELETE")
-	log.Printf("✅ DELETE /ccagent-container/integrations/{id} endpoint registered")
-	router.HandleFunc("/ccagents/{id}/redeploy", authMiddleware.WithAuth(h.HandleRedeployCCAgentContainer)).
-		Methods("POST")
-	log.Printf("✅ POST /ccagents/{id}/redeploy endpoint registered")
-
-	// Organization endpoints
-	router.HandleFunc("/organizations", authMiddleware.WithAuth(h.HandleGetOrganization)).Methods("GET")
-	log.Printf("✅ GET /organizations endpoint registered")
-
-	router.HandleFunc("/organizations/ccagent_secret_key", authMiddleware.WithAuth(h.HandleGenerateCCAgentSecretKey)).
-		Methods("POST")
-	log.Printf("✅ POST /organizations/ccagent_secret_key endpoint registered")
-
-	// Settings endpoints
-	router.HandleFunc("/settings", authMiddleware.WithAuth(h.HandleUpsertSetting)).Methods("POST")
-	log.Printf("✅ POST /settings endpoint registered")
-
-	router.HandleFunc("/settings/{key}", authMiddleware.WithAuth(h.HandleGetSetting)).Methods("GET")
-	log.Printf("✅ GET /settings/{key} endpoint registered")
-
+	endpoints := h.initEndpoints(authMiddleware.WithAuth)
+	h.registerEndpoints(router, endpoints)
 	log.Printf("✅ All dashboard API endpoints registered successfully")
+}
+
+// SetupPublicEndpoints registers endpoints without authentication middleware
+func (h *DashboardHTTPHandler) SetupPublicEndpoints(router *mux.Router) {
+	log.Printf("🚀 Registering public dashboard API endpoints (no authentication)")
+
+	// Create a wrapper function that adds a default organization context
+	wrapPublic := func(handler http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// Create a default organization context for public access
+			// You might want to use a specific organization or handle this differently
+			ctx := appctx.SetOrganization(r.Context(), &models.Organization{
+				ID: "org_01K4Z1H41PR7XXPRNWY8A1VYEV", // hardcoded default org ID
+			})
+			handler(w, r.WithContext(ctx))
+		}
+	}
+
+	endpoints := h.initEndpoints(wrapPublic)
+	h.registerEndpoints(router, endpoints)
+	log.Printf("✅ All public dashboard API endpoints registered successfully")
 }
 
 func (h *DashboardHTTPHandler) writeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {

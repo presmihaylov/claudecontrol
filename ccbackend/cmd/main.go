@@ -27,6 +27,7 @@ import (
 	"ccbackend/handlers"
 	"ccbackend/middleware"
 	"ccbackend/salesnotif"
+	"ccbackend/services"
 	agentsservice "ccbackend/services/agents"
 	anthropicintegrations "ccbackend/services/anthropic_integrations"
 	ccagentcontainerintegrations "ccbackend/services/ccagent_container_integrations"
@@ -40,6 +41,7 @@ import (
 	slackmessages "ccbackend/services/slackmessages"
 	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
+	"ccbackend/usecases"
 	"ccbackend/usecases/agents"
 	"ccbackend/usecases/core"
 	discordUseCase "ccbackend/usecases/discord"
@@ -112,8 +114,8 @@ func run() error {
 	)
 
 	// Initialize Slack components (optional)
-	var slackIntegrationsService *slackintegrations.SlackIntegrationsService
-	var slackUseCase *slack.SlackUseCase
+	var slackIntegrationsService services.SlackIntegrationsService
+	var slackUseCase usecases.SlackUseCaseInterface
 	var slackHandler *handlers.SlackEventsHandler
 
 	if cfg.SlackConfig.IsConfigured() {
@@ -126,13 +128,14 @@ func run() error {
 			cfg.SlackConfig.ClientSecret,
 		)
 	} else {
-		log.Printf("⚠️ Slack not configured - Slack components will be disabled")
+		log.Printf("⚠️ Slack not configured - Using unconfigured service")
+		slackIntegrationsService = slackintegrations.NewUnconfiguredSlackIntegrationsService()
 	}
 
 	// Initialize Discord components (optional)
 	var discordClient clients.DiscordClient
-	var discordIntegrationsService *discordintegrations.DiscordIntegrationsService
-	var discordUseCaseInstance *discordUseCase.DiscordUseCase
+	var discordIntegrationsService services.DiscordIntegrationsService
+	var discordUseCaseInstance usecases.DiscordUseCaseInterface
 	var discordHandler *handlers.DiscordEventsHandler
 
 	if cfg.DiscordConfig.IsConfigured() {
@@ -150,12 +153,13 @@ func run() error {
 			cfg.DiscordConfig.ClientSecret,
 		)
 	} else {
-		log.Printf("⚠️ Discord not configured - Discord components will be disabled")
+		log.Printf("⚠️ Discord not configured - Using unconfigured service")
+		discordIntegrationsService = discordintegrations.NewUnconfiguredDiscordIntegrationsService()
 	}
 
 	// Initialize GitHub components (optional)
 	var githubClient clients.GitHubClient
-	var githubService *githubintegrations.GitHubIntegrationsService
+	var githubService services.GitHubIntegrationsService
 
 	if cfg.GitHubConfig.IsConfigured() {
 		log.Printf("🔧 Initializing GitHub components...")
@@ -174,14 +178,13 @@ func run() error {
 		}
 		githubService = githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, githubClient)
 	} else {
-		log.Printf("⚠️ GitHub not configured - GitHub components will be disabled")
-		// Create a service that returns errors for all operations
-		githubService = githubintegrations.NewGitHubIntegrationsService(githubIntegrationsRepo, nil)
+		log.Printf("⚠️ GitHub not configured - Using unconfigured service")
+		githubService = githubintegrations.NewUnconfiguredGitHubIntegrationsService()
 	}
 
 	// Initialize SSH/Container components (optional)
 	var sshClient ssh.SSHClientInterface
-	var ccAgentContainerService *ccagentcontainerintegrations.CCAgentContainerIntegrationsService
+	var ccAgentContainerService services.CCAgentContainerIntegrationsService
 
 	if cfg.SSHConfig.IsConfigured() {
 		log.Printf("🔧 Initializing SSH/Container components...")
@@ -195,16 +198,8 @@ func run() error {
 			sshClient,
 		)
 	} else {
-		log.Printf("⚠️ SSH/Container not configured - Container features will be disabled")
-		// Create a minimal service that returns appropriate errors
-		ccAgentContainerService = ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
-			ccAgentContainerIntegrationsRepo,
-			cfg,
-			githubService,
-			anthropicService,
-			organizationsService,
-			nil, // No SSH client
-		)
+		log.Printf("⚠️ SSH/Container not configured - Using unconfigured service")
+		ccAgentContainerService = ccagentcontainerintegrations.NewUnconfiguredCCAgentContainerIntegrationsService()
 	}
 
 	// Create API key validator using organizationsService directly
@@ -227,8 +222,8 @@ func run() error {
 	// Create use cases in dependency order
 	agentsUseCase := agents.NewAgentsUseCase(wsClient, agentsService)
 
-	// Create Slack use case if Slack is configured
-	if cfg.SlackConfig.IsConfigured() && slackIntegrationsService != nil {
+	// Create Slack use case
+	if cfg.SlackConfig.IsConfigured() {
 		slackUseCase = slack.NewSlackUseCase(
 			wsClient,
 			agentsService,
@@ -239,10 +234,12 @@ func run() error {
 			agentsUseCase,
 			slackclient.NewSlackClient,
 		)
+	} else {
+		slackUseCase = slack.NewUnconfiguredSlackUseCase()
 	}
 
-	// Create Discord use case if Discord is configured
-	if cfg.DiscordConfig.IsConfigured() && discordClient != nil && discordIntegrationsService != nil {
+	// Create Discord use case
+	if cfg.DiscordConfig.IsConfigured() && discordClient != nil {
 		discordUseCaseInstance = discordUseCase.NewDiscordUseCase(
 			discordClient,
 			wsClient,
@@ -253,6 +250,8 @@ func run() error {
 			txManager,
 			agentsUseCase,
 		)
+	} else {
+		discordUseCaseInstance = discordUseCase.NewUnconfiguredDiscordUseCase()
 	}
 
 	// Create core use case with available components
@@ -260,21 +259,25 @@ func run() error {
 		wsClient,
 		agentsService,
 		jobsService,
-		slackIntegrationsService, // Can be nil
+		slackIntegrationsService,
 		organizationsService,
-		slackUseCase,   // Can be nil
-		discordUseCaseInstance, // Can be nil
+		slackUseCase,
+		discordUseCaseInstance,
 	)
 
 	wsHandler := handlers.NewMessagesHandler(coreUseCase)
 
 	// Create Slack handler if Slack is configured
-	if cfg.SlackConfig.IsConfigured() && slackIntegrationsService != nil {
-		slackHandler = handlers.NewSlackEventsHandler(cfg.SlackConfig.SigningSecret, coreUseCase, slackIntegrationsService)
+	if cfg.SlackConfig.IsConfigured() {
+		slackHandler = handlers.NewSlackEventsHandler(
+			cfg.SlackConfig.SigningSecret,
+			coreUseCase,
+			slackIntegrationsService,
+		)
 	}
 
 	// Create Discord handler if Discord is configured
-	if cfg.DiscordConfig.IsConfigured() && discordClient != nil && discordIntegrationsService != nil && discordUseCaseInstance != nil {
+	if cfg.DiscordConfig.IsConfigured() && discordClient != nil {
 		var err error
 		discordHandler, err = handlers.NewDiscordEventsHandler(
 			cfg.DiscordConfig.BotToken,
@@ -291,11 +294,11 @@ func run() error {
 	// Create dashboard handler with available services
 	dashboardHandler := handlers.NewDashboardAPIHandler(
 		usersService,
-		slackIntegrationsService,   // Can be nil
-		discordIntegrationsService, // Can be nil
-		githubService,              // Can be nil (but returns errors)
+		slackIntegrationsService,
+		discordIntegrationsService,
+		githubService,
 		anthropicService,
-		ccAgentContainerService,    // Can be nil
+		ccAgentContainerService,
 		organizationsService,
 		agentsService,
 		settingsService,
@@ -306,7 +309,11 @@ func run() error {
 	// Create authentication middleware if Clerk is configured
 	var authMiddleware *middleware.ClerkAuthMiddleware
 	if cfg.ClerkConfig.IsConfigured() {
-		authMiddleware = middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkConfig.SecretKey)
+		authMiddleware = middleware.NewClerkAuthMiddleware(
+			usersService,
+			organizationsService,
+			cfg.ClerkConfig.SecretKey,
+		)
 	} else {
 		log.Printf("⚠️ Clerk authentication not configured - Dashboard will be unauthenticated")
 	}
@@ -326,8 +333,9 @@ func run() error {
 	if authMiddleware != nil {
 		dashboardHTTPHandler.SetupEndpoints(router, authMiddleware)
 	} else {
-		// You might want to add a public version or disable dashboard entirely
-		log.Printf("⚠️ Dashboard endpoints disabled - no authentication configured")
+		// Setup public endpoints without authentication
+		log.Printf("⚠️ Dashboard endpoints running without authentication - public access enabled")
+		dashboardHTTPHandler.SetupPublicEndpoints(router)
 	}
 
 	// Start Discord bot if configured
