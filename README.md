@@ -10,7 +10,7 @@
 </div>
 
 ## Demo
-
+Click to watch in YouTube:
 [![Claude Control Demo](https://img.youtube.com/vi/mZZu9h-980A/maxresdefault.jpg)](https://www.youtube.com/watch?v=mZZu9h-980A)
 
 ## Overview
