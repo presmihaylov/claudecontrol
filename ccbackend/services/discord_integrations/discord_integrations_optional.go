@@ -9,15 +9,15 @@ import (
 	"ccbackend/models"
 )
 
-// OptionalDiscordIntegrationsService returns errors for all operations when Discord is not configured
-type OptionalDiscordIntegrationsService struct{}
+// UnconfiguredDiscordIntegrationsService returns errors for all operations when Discord is not configured
+type UnconfiguredDiscordIntegrationsService struct{}
 
-// NewOptionalDiscordIntegrationsService creates a new optional Discord integrations service
-func NewOptionalDiscordIntegrationsService() *OptionalDiscordIntegrationsService {
-	return &OptionalDiscordIntegrationsService{}
+// NewUnconfiguredDiscordIntegrationsService creates a new unconfigured Discord integrations service
+func NewUnconfiguredDiscordIntegrationsService() *UnconfiguredDiscordIntegrationsService {
+	return &UnconfiguredDiscordIntegrationsService{}
 }
 
-func (s *OptionalDiscordIntegrationsService) CreateDiscordIntegration(
+func (s *UnconfiguredDiscordIntegrationsService) CreateDiscordIntegration(
 	ctx context.Context,
 	orgID models.OrgID,
 	discordAuthCode, guildID, redirectURL string,
@@ -25,25 +25,25 @@ func (s *OptionalDiscordIntegrationsService) CreateDiscordIntegration(
 	return nil, fmt.Errorf("Service Discord is not configured")
 }
 
-func (s *OptionalDiscordIntegrationsService) GetDiscordIntegrationsByOrganizationID(
+func (s *UnconfiguredDiscordIntegrationsService) GetDiscordIntegrationsByOrganizationID(
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.DiscordIntegration, error) {
 	return nil, fmt.Errorf("Service Discord is not configured")
 }
 
-func (s *OptionalDiscordIntegrationsService) GetAllDiscordIntegrations(ctx context.Context) ([]models.DiscordIntegration, error) {
+func (s *UnconfiguredDiscordIntegrationsService) GetAllDiscordIntegrations(ctx context.Context) ([]models.DiscordIntegration, error) {
 	return nil, fmt.Errorf("Service Discord is not configured")
 }
 
-func (s *OptionalDiscordIntegrationsService) DeleteDiscordIntegration(ctx context.Context, orgID models.OrgID, integrationID string) error {
+func (s *UnconfiguredDiscordIntegrationsService) DeleteDiscordIntegration(ctx context.Context, orgID models.OrgID, integrationID string) error {
 	return fmt.Errorf("Service Discord is not configured")
 }
 
-func (s *OptionalDiscordIntegrationsService) GetDiscordIntegrationByGuildID(ctx context.Context, guildID string) (mo.Option[*models.DiscordIntegration], error) {
+func (s *UnconfiguredDiscordIntegrationsService) GetDiscordIntegrationByGuildID(ctx context.Context, guildID string) (mo.Option[*models.DiscordIntegration], error) {
 	return mo.None[*models.DiscordIntegration](), fmt.Errorf("Service Discord is not configured")
 }
 
-func (s *OptionalDiscordIntegrationsService) GetDiscordIntegrationByID(ctx context.Context, id string) (mo.Option[*models.DiscordIntegration], error) {
+func (s *UnconfiguredDiscordIntegrationsService) GetDiscordIntegrationByID(ctx context.Context, id string) (mo.Option[*models.DiscordIntegration], error) {
 	return mo.None[*models.DiscordIntegration](), fmt.Errorf("Service Discord is not configured")
 }

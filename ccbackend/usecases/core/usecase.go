@@ -10,8 +10,7 @@ import (
 	"ccbackend/models"
 	"ccbackend/salesnotif"
 	"ccbackend/services"
-	"ccbackend/usecases/discord"
-	"ccbackend/usecases/slack"
+	"ccbackend/usecases"
 )
 
 // CoreUseCase orchestrates all core business operations
@@ -23,8 +22,8 @@ type CoreUseCase struct {
 	organizationsService     services.OrganizationsService
 
 	// Use case dependencies
-	slackUseCase   *slack.SlackUseCase
-	discordUseCase *discord.DiscordUseCase
+	slackUseCase   usecases.SlackUseCaseInterface
+	discordUseCase usecases.DiscordUseCaseInterface
 }
 
 // NewCoreUseCase creates a new instance of CoreUseCase
@@ -34,8 +33,8 @@ func NewCoreUseCase(
 	jobsService services.JobsService,
 	slackIntegrationsService services.SlackIntegrationsService,
 	organizationsService services.OrganizationsService,
-	slackUseCase *slack.SlackUseCase,
-	discordUseCase *discord.DiscordUseCase,
+	slackUseCase usecases.SlackUseCaseInterface,
+	discordUseCase usecases.DiscordUseCaseInterface,
 ) *CoreUseCase {
 	return &CoreUseCase{
 		wsClient:                 wsClient,

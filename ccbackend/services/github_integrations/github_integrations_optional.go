@@ -9,15 +9,15 @@ import (
 	"ccbackend/models"
 )
 
-// OptionalGitHubIntegrationsService returns errors for all operations when GitHub is not configured
-type OptionalGitHubIntegrationsService struct{}
+// UnconfiguredGitHubIntegrationsService returns errors for all operations when GitHub is not configured
+type UnconfiguredGitHubIntegrationsService struct{}
 
-// NewOptionalGitHubIntegrationsService creates a new optional GitHub integrations service
-func NewOptionalGitHubIntegrationsService() *OptionalGitHubIntegrationsService {
-	return &OptionalGitHubIntegrationsService{}
+// NewUnconfiguredGitHubIntegrationsService creates a new unconfigured GitHub integrations service
+func NewUnconfiguredGitHubIntegrationsService() *UnconfiguredGitHubIntegrationsService {
+	return &UnconfiguredGitHubIntegrationsService{}
 }
 
-func (s *OptionalGitHubIntegrationsService) CreateGitHubIntegration(
+func (s *UnconfiguredGitHubIntegrationsService) CreateGitHubIntegration(
 	ctx context.Context,
 	orgID models.OrgID,
 	authCode, installationID string,
@@ -25,14 +25,14 @@ func (s *OptionalGitHubIntegrationsService) CreateGitHubIntegration(
 	return nil, fmt.Errorf("Service GitHub is not configured")
 }
 
-func (s *OptionalGitHubIntegrationsService) ListGitHubIntegrations(
+func (s *UnconfiguredGitHubIntegrationsService) ListGitHubIntegrations(
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.GitHubIntegration, error) {
 	return nil, fmt.Errorf("Service GitHub is not configured")
 }
 
-func (s *OptionalGitHubIntegrationsService) GetGitHubIntegrationByID(
+func (s *UnconfiguredGitHubIntegrationsService) GetGitHubIntegrationByID(
 	ctx context.Context,
 	orgID models.OrgID,
 	id string,
@@ -40,11 +40,11 @@ func (s *OptionalGitHubIntegrationsService) GetGitHubIntegrationByID(
 	return mo.None[*models.GitHubIntegration](), fmt.Errorf("Service GitHub is not configured")
 }
 
-func (s *OptionalGitHubIntegrationsService) DeleteGitHubIntegration(ctx context.Context, orgID models.OrgID, integrationID string) error {
+func (s *UnconfiguredGitHubIntegrationsService) DeleteGitHubIntegration(ctx context.Context, orgID models.OrgID, integrationID string) error {
 	return fmt.Errorf("Service GitHub is not configured")
 }
 
-func (s *OptionalGitHubIntegrationsService) ListAvailableRepositories(
+func (s *UnconfiguredGitHubIntegrationsService) ListAvailableRepositories(
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.GitHubRepository, error) {

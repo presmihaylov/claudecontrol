@@ -9,15 +9,15 @@ import (
 	"ccbackend/models"
 )
 
-// OptionalCCAgentContainerIntegrationsService returns errors for all operations when SSH/Container is not configured
-type OptionalCCAgentContainerIntegrationsService struct{}
+// UnconfiguredCCAgentContainerIntegrationsService returns errors for all operations when SSH/Container is not configured
+type UnconfiguredCCAgentContainerIntegrationsService struct{}
 
-// NewOptionalCCAgentContainerIntegrationsService creates a new optional CCAgent container integrations service
-func NewOptionalCCAgentContainerIntegrationsService() *OptionalCCAgentContainerIntegrationsService {
-	return &OptionalCCAgentContainerIntegrationsService{}
+// NewUnconfiguredCCAgentContainerIntegrationsService creates a new unconfigured CCAgent container integrations service
+func NewUnconfiguredCCAgentContainerIntegrationsService() *UnconfiguredCCAgentContainerIntegrationsService {
+	return &UnconfiguredCCAgentContainerIntegrationsService{}
 }
 
-func (s *OptionalCCAgentContainerIntegrationsService) CreateCCAgentContainerIntegration(
+func (s *UnconfiguredCCAgentContainerIntegrationsService) CreateCCAgentContainerIntegration(
 	ctx context.Context,
 	orgID models.OrgID,
 	instancesCount int,
@@ -26,14 +26,14 @@ func (s *OptionalCCAgentContainerIntegrationsService) CreateCCAgentContainerInte
 	return nil, fmt.Errorf("Service CCAgentContainer is not configured")
 }
 
-func (s *OptionalCCAgentContainerIntegrationsService) ListCCAgentContainerIntegrations(
+func (s *UnconfiguredCCAgentContainerIntegrationsService) ListCCAgentContainerIntegrations(
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.CCAgentContainerIntegration, error) {
 	return nil, fmt.Errorf("Service CCAgentContainer is not configured")
 }
 
-func (s *OptionalCCAgentContainerIntegrationsService) GetCCAgentContainerIntegrationByID(
+func (s *UnconfiguredCCAgentContainerIntegrationsService) GetCCAgentContainerIntegrationByID(
 	ctx context.Context,
 	orgID models.OrgID,
 	id string,
@@ -41,7 +41,7 @@ func (s *OptionalCCAgentContainerIntegrationsService) GetCCAgentContainerIntegra
 	return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf("Service CCAgentContainer is not configured")
 }
 
-func (s *OptionalCCAgentContainerIntegrationsService) DeleteCCAgentContainerIntegration(
+func (s *UnconfiguredCCAgentContainerIntegrationsService) DeleteCCAgentContainerIntegration(
 	ctx context.Context,
 	orgID models.OrgID,
 	integrationID string,
@@ -49,7 +49,7 @@ func (s *OptionalCCAgentContainerIntegrationsService) DeleteCCAgentContainerInte
 	return fmt.Errorf("Service CCAgentContainer is not configured")
 }
 
-func (s *OptionalCCAgentContainerIntegrationsService) RedeployCCAgentContainer(
+func (s *UnconfiguredCCAgentContainerIntegrationsService) RedeployCCAgentContainer(
 	ctx context.Context,
 	orgID models.OrgID,
 	integrationID string,
