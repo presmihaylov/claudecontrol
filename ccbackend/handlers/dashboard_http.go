@@ -942,6 +942,67 @@ func (h *DashboardHTTPHandler) SetupEndpoints(router *mux.Router, authMiddleware
 	log.Printf("✅ All dashboard API endpoints registered successfully")
 }
 
+// SetupPublicEndpoints registers endpoints without authentication middleware
+func (h *DashboardHTTPHandler) SetupPublicEndpoints(router *mux.Router) {
+	log.Printf("🚀 Registering public dashboard API endpoints (no authentication)")
+
+	// Create a wrapper function that adds a default organization context
+	wrapPublic := func(handler http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// Create a default organization context for public access
+			// You might want to use a specific organization or handle this differently
+			ctx := appctx.SetOrganization(r.Context(), &models.Organization{
+				ID: "org_public",
+			})
+			handler(w, r.WithContext(ctx))
+		}
+	}
+
+	// User endpoints (limited functionality without auth)
+	router.HandleFunc("/users/authenticate", wrapPublic(h.HandleUserAuthenticate)).Methods("POST")
+	router.HandleFunc("/users/profile", wrapPublic(h.HandleGetUserProfile)).Methods("GET")
+
+	// Slack integrations endpoints
+	router.HandleFunc("/slack/integrations", wrapPublic(h.HandleListSlackIntegrations)).Methods("GET")
+	router.HandleFunc("/slack/integrations", wrapPublic(h.HandleCreateSlackIntegration)).Methods("POST")
+	router.HandleFunc("/slack/integrations/{id}", wrapPublic(h.HandleDeleteSlackIntegration)).Methods("DELETE")
+
+	// Discord integrations endpoints
+	router.HandleFunc("/discord/integrations", wrapPublic(h.HandleListDiscordIntegrations)).Methods("GET")
+	router.HandleFunc("/discord/integrations", wrapPublic(h.HandleCreateDiscordIntegration)).Methods("POST")
+	router.HandleFunc("/discord/integrations/{id}", wrapPublic(h.HandleDeleteDiscordIntegration)).Methods("DELETE")
+
+	// GitHub integrations endpoints
+	router.HandleFunc("/github/integrations", wrapPublic(h.HandleListGitHubIntegrations)).Methods("GET")
+	router.HandleFunc("/github/integrations", wrapPublic(h.HandleCreateGitHubIntegration)).Methods("POST")
+	router.HandleFunc("/github/integrations/{id}", wrapPublic(h.HandleGetGitHubIntegrationByID)).Methods("GET")
+	router.HandleFunc("/github/integrations/{id}", wrapPublic(h.HandleDeleteGitHubIntegration)).Methods("DELETE")
+	router.HandleFunc("/github/repositories", wrapPublic(h.HandleListGitHubRepositories)).Methods("GET")
+
+	// Anthropic integrations endpoints
+	router.HandleFunc("/anthropic/integrations", wrapPublic(h.HandleListAnthropicIntegrations)).Methods("GET")
+	router.HandleFunc("/anthropic/integrations", wrapPublic(h.HandleCreateAnthropicIntegration)).Methods("POST")
+	router.HandleFunc("/anthropic/integrations/{id}", wrapPublic(h.HandleGetAnthropicIntegrationByID)).Methods("GET")
+	router.HandleFunc("/anthropic/integrations/{id}", wrapPublic(h.HandleDeleteAnthropicIntegration)).Methods("DELETE")
+
+	// CCAgent Container integrations endpoints
+	router.HandleFunc("/ccagent-container/integrations", wrapPublic(h.HandleListCCAgentContainerIntegrations)).Methods("GET")
+	router.HandleFunc("/ccagent-container/integrations", wrapPublic(h.HandleCreateCCAgentContainerIntegration)).Methods("POST")
+	router.HandleFunc("/ccagent-container/integrations/{id}", wrapPublic(h.HandleGetCCAgentContainerIntegrationByID)).Methods("GET")
+	router.HandleFunc("/ccagent-container/integrations/{id}", wrapPublic(h.HandleDeleteCCAgentContainerIntegration)).Methods("DELETE")
+	router.HandleFunc("/ccagents/{id}/redeploy", wrapPublic(h.HandleRedeployCCAgentContainer)).Methods("POST")
+
+	// Organization endpoints
+	router.HandleFunc("/organizations", wrapPublic(h.HandleGetOrganization)).Methods("GET")
+	router.HandleFunc("/organizations/ccagent_secret_key", wrapPublic(h.HandleGenerateCCAgentSecretKey)).Methods("POST")
+
+	// Settings endpoints
+	router.HandleFunc("/settings", wrapPublic(h.HandleUpsertSetting)).Methods("POST")
+	router.HandleFunc("/settings/{key}", wrapPublic(h.HandleGetSetting)).Methods("GET")
+
+	log.Printf("✅ All public dashboard API endpoints registered successfully")
+}
+
 func (h *DashboardHTTPHandler) writeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
