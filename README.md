@@ -1,8 +1,6 @@
 # Claude Control
 [Claude Control](https://claudecontrol.com) is the open-source platform for managing Claude Code background agents in Slack and Discord.
 
-For support, reach out to [support@claudecontrol.com](mailto:support@claudecontrol.com).
-
 <img src="static/slack-white.png" alt="Slack Integration" width="600">
 
 ## Overview
@@ -139,6 +137,9 @@ bun dev
 2. **Configure API Key**: Generate organization API key from dashboard
 3. **Connect Agent**: Run `CCAGENT_API_KEY=<api-key> ccagent --agent claude`
 4. **Verify Connection**: Try interacting with Claude Control in Slack/Discord to verify agent is connected
+
+## Support
+For support, reach out to [support@claudecontrol.com](mailto:support@claudecontrol.com).
 
 ## Development
 
