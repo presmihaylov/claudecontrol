@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ccfrontend
 
-## Getting Started
+Modern Next.js 15 frontend application for Claude Control, providing a web-based dashboard for managing AI agent integrations and organization settings.
 
-First, run the development server:
+## Overview
+
+The ccfrontend is a full-stack Next.js application featuring:
+- **Modern Tech Stack**: Next.js 15 with React 19 and TypeScript
+- **Authentication**: Clerk integration with protected routes
+- **Styling**: Tailwind CSS 4 with Shadcn/ui components
+- **Development Tools**: Biome for fast linting and formatting
+- **HTTPS Development**: Secure local development environment
+
+## Prerequisites
+
+- Node.js 18+ or Bun (recommended)
+- ccbackend running on localhost:8080
+
+## Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Install dependencies (recommended: use Bun)
+bun install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Configuration
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env.local` file in the ccfrontend directory:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key
+CLERK_SECRET_KEY=sk_test_your_clerk_secret_key
 
-## Learn More
+# Backend API Configuration
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 
-To learn more about Next.js, take a look at the following resources:
+# Optional: Custom domain configuration
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Required Environment Variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key for client-side auth | Yes |
+| `CLERK_SECRET_KEY` | Clerk secret key for server-side operations | Yes |
+| `NEXT_PUBLIC_API_BASE_URL` | Backend API base URL | Yes |
 
-## Deploy on Vercel
+## Development Commands
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Development Server
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Run development server with HTTPS (recommended)
+bun dev
+
+# Run development server with HTTP
+bun run dev:http
+
+# Alternative with npm
+npm run dev
+```
+
+The development server will start on:
+- **HTTPS**: https://localhost:3000 (default)
+- **HTTP**: http://localhost:3000 (with dev:http)
+
+### Build and Production
+
+```bash
+# Build production bundle
+bun run build
+
+# Start production server
+bun start
+```
+
