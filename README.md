@@ -1,7 +1,7 @@
 <div align="center">
 
 # Claude Control
-**The open-source platform for managing Claude Code background agents in Slack and Discord.**
+**The open-source platform for running Claude Code background agents in Slack and Discord.**
 
 [claudecontrol.com](https://claudecontrol.com) 
 
