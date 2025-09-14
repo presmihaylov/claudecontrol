@@ -1,7 +1,7 @@
 # Claude Control
 The open-source platform for managing Claude Code background agents through Slack and Discord.
 
-<img src="static/slack-white.png" alt="Slack Integration" width="120"> <img src="static/discord-white.png" alt="Discord Integration" width="120">
+<img src="static/slack-white.png" alt="Slack Integration" width="400">
 
 The SaaS version of Claude Control is available at https://claudecontrol.com.
 
