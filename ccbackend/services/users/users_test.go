@@ -30,7 +30,7 @@ func NewTestUserHelper(t *testing.T) *TestUserHelper {
 	// Create Clerk client config
 	clerkConfig := &clerk.ClientConfig{
 		BackendConfig: clerk.BackendConfig{
-			Key: clerk.String(cfg.ClerkSecretKey),
+			Key: clerk.String(cfg.ClerkConfig.SecretKey),
 		},
 	}
 

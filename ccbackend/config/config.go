@@ -2,33 +2,91 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 )
 
+type SlackConfig struct {
+	SigningSecret   string
+	ClientID        string
+	ClientSecret    string
+	AlertWebhookURL string
+	SalesWebhookURL string
+}
+
+// IsConfigured returns true if all required Slack configuration is present
+func (c SlackConfig) IsConfigured() bool {
+	return c.SigningSecret != "" &&
+		c.ClientID != "" &&
+		c.ClientSecret != ""
+	// Note: AlertWebhookURL and SalesWebhookURL are optional
+}
+
+type DiscordConfig struct {
+	ClientID     string
+	ClientSecret string
+	BotToken     string
+}
+
+// IsConfigured returns true if all required Discord configuration is present
+func (c DiscordConfig) IsConfigured() bool {
+	return c.ClientID != "" &&
+		c.ClientSecret != "" &&
+		c.BotToken != ""
+}
+
+type GitHubConfig struct {
+	ClientID       string
+	ClientSecret   string
+	AppID          string
+	AppPrivateKey  string
+}
+
+// IsConfigured returns true if all required GitHub configuration is present
+func (c GitHubConfig) IsConfigured() bool {
+	return c.ClientID != "" &&
+		c.ClientSecret != "" &&
+		c.AppID != "" &&
+		c.AppPrivateKey != ""
+}
+
+type SSHConfig struct {
+	DefaultHost       string
+	PrivateKeyBase64  string
+}
+
+// IsConfigured returns true if all required SSH configuration is present
+func (c SSHConfig) IsConfigured() bool {
+	return c.DefaultHost != "" &&
+		c.PrivateKeyBase64 != ""
+}
+
+type ClerkConfig struct {
+	SecretKey string
+}
+
+// IsConfigured returns true if all required Clerk configuration is present
+func (c ClerkConfig) IsConfigured() bool {
+	return c.SecretKey != ""
+}
+
 type AppConfig struct {
-	SlackSigningSecret   string
-	SlackClientID        string
-	SlackClientSecret    string
-	DiscordClientID      string
-	DiscordClientSecret  string
-	DiscordBotToken      string
-	GitHubClientID       string
-	GitHubClientSecret   string
-	GitHubAppID          string
-	GitHubAppPrivateKey  string
-	Port                 string
-	DatabaseURL          string
-	DatabaseSchema       string
-	ClerkSecretKey       string
-	CORSAllowedOrigins   string
-	SlackAlertWebhookURL string
-	SlackSalesWebhookURL string
-	Environment          string
-	ServerLogsURL        string
-	DefaultSSHHost       string
-	SSHPrivateKeyBase64  string
+	// Core configuration (always required)
+	DatabaseURL        string
+	DatabaseSchema     string
+	Port               string // Optional with default "8080"
+	CORSAllowedOrigins string // Optional with default "*"
+	Environment        string
+	ServerLogsURL      string
+
+	// Integration configurations (grouped)
+	SlackConfig   SlackConfig
+	DiscordConfig DiscordConfig
+	GitHubConfig  GitHubConfig
+	SSHConfig     SSHConfig
+	ClerkConfig   ClerkConfig
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -36,36 +94,7 @@ func LoadConfig() (*AppConfig, error) {
 		fmt.Println("⚠️ Could not load .env file, continuing with system env vars")
 	}
 
-	slackSigningSecret, err := getEnvRequired("SLACK_SIGNING_SECRET")
-	if err != nil {
-		return nil, err
-	}
-
-	slackClientID, err := getEnvRequired("SLACK_CLIENT_ID")
-	if err != nil {
-		return nil, err
-	}
-
-	slackClientSecret, err := getEnvRequired("SLACK_CLIENT_SECRET")
-	if err != nil {
-		return nil, err
-	}
-
-	discordClientID, err := getEnvRequired("DISCORD_CLIENT_ID")
-	if err != nil {
-		return nil, err
-	}
-
-	discordClientSecret, err := getEnvRequired("DISCORD_CLIENT_SECRET")
-	if err != nil {
-		return nil, err
-	}
-
-	discordBotToken, err := getEnvRequired("DISCORD_BOT_TOKEN")
-	if err != nil {
-		return nil, err
-	}
-
+	// Core required configuration
 	databaseURL, err := getEnvRequired("DB_URL")
 	if err != nil {
 		return nil, err
@@ -76,73 +105,80 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, err
 	}
 
-	clerkSecretKey, err := getEnvRequired("CLERK_SECRET_KEY")
-	if err != nil {
-		return nil, err
-	}
-
-	corsAllowedOrigins, err := getEnvRequired("CORS_ALLOWED_ORIGINS")
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := getEnvRequired("PORT")
-	if err != nil {
-		return nil, err
-	}
-
-	githubClientID, err := getEnvRequired("GITHUB_CLIENT_ID")
-	if err != nil {
-		return nil, err
-	}
-
-	githubClientSecret, err := getEnvRequired("GITHUB_CLIENT_SECRET")
-	if err != nil {
-		return nil, err
-	}
-
-	githubAppID, err := getEnvRequired("GITHUB_APP_ID")
-	if err != nil {
-		return nil, err
-	}
-
-	githubAppPrivateKey, err := getEnvRequired("GITHUB_APP_PRIVATE_KEY")
-	if err != nil {
-		return nil, err
-	}
-
-	defaultSSHHost, err := getEnvRequired("DEFAULT_SSH_HOST")
-	if err != nil {
-		return nil, err
-	}
-
-	sshPrivateKeyBase64, err := getEnvRequired("SSH_PRIVATE_KEY_B64")
-	if err != nil {
-		return nil, err
-	}
-
 	config := &AppConfig{
-		SlackSigningSecret:   slackSigningSecret,
-		SlackClientID:        slackClientID,
-		SlackClientSecret:    slackClientSecret,
-		DiscordClientID:      discordClientID,
-		DiscordClientSecret:  discordClientSecret,
-		DiscordBotToken:      discordBotToken,
-		GitHubClientID:       githubClientID,
-		GitHubClientSecret:   githubClientSecret,
-		GitHubAppID:          githubAppID,
-		GitHubAppPrivateKey:  githubAppPrivateKey,
-		Port:                 port,
-		DatabaseURL:          databaseURL,
-		DatabaseSchema:       databaseSchema,
-		ClerkSecretKey:       clerkSecretKey,
-		CORSAllowedOrigins:   corsAllowedOrigins,
-		SlackAlertWebhookURL: os.Getenv("SLACK_ALERT_WEBHOOK_URL"),
-		SlackSalesWebhookURL: os.Getenv("SLACK_SALES_WEBHOOK_URL"),
-		Environment:          getEnvWithDefault("ENVIRONMENT", "dev"),
-		ServerLogsURL:        getEnvWithDefault("SERVER_LOGS_URL", ""),
-		DefaultSSHHost:       defaultSSHHost,
-		SSHPrivateKeyBase64:  sshPrivateKeyBase64,
+		// Core configuration
+		DatabaseURL:        databaseURL,
+		DatabaseSchema:     databaseSchema,
+		Port:               getEnvWithDefault("PORT", "8080"),
+		CORSAllowedOrigins: getEnvWithDefault("CORS_ALLOWED_ORIGINS", "*"),
+		Environment:        getEnvWithDefault("ENVIRONMENT", "dev"),
+		ServerLogsURL:      getEnvWithDefault("SERVER_LOGS_URL", ""),
+
+		// Slack configuration (optional)
+		SlackConfig: SlackConfig{
+			SigningSecret:   os.Getenv("SLACK_SIGNING_SECRET"),
+			ClientID:        os.Getenv("SLACK_CLIENT_ID"),
+			ClientSecret:    os.Getenv("SLACK_CLIENT_SECRET"),
+			AlertWebhookURL: os.Getenv("SLACK_ALERT_WEBHOOK_URL"),
+			SalesWebhookURL: os.Getenv("SLACK_SALES_WEBHOOK_URL"),
+		},
+
+		// Discord configuration (optional)
+		DiscordConfig: DiscordConfig{
+			ClientID:     os.Getenv("DISCORD_CLIENT_ID"),
+			ClientSecret: os.Getenv("DISCORD_CLIENT_SECRET"),
+			BotToken:     os.Getenv("DISCORD_BOT_TOKEN"),
+		},
+
+		// GitHub configuration (optional)
+		GitHubConfig: GitHubConfig{
+			ClientID:       os.Getenv("GITHUB_CLIENT_ID"),
+			ClientSecret:   os.Getenv("GITHUB_CLIENT_SECRET"),
+			AppID:          os.Getenv("GITHUB_APP_ID"),
+			AppPrivateKey:  os.Getenv("GITHUB_APP_PRIVATE_KEY"),
+		},
+
+		// SSH configuration (optional)
+		SSHConfig: SSHConfig{
+			DefaultHost:      os.Getenv("DEFAULT_SSH_HOST"),
+			PrivateKeyBase64: os.Getenv("SSH_PRIVATE_KEY_B64"),
+		},
+
+		// Clerk configuration (optional)
+		ClerkConfig: ClerkConfig{
+			SecretKey: os.Getenv("CLERK_SECRET_KEY"),
+		},
+	}
+
+	// Log which integrations are configured
+	if config.SlackConfig.IsConfigured() {
+		log.Printf("✅ Slack integration configured")
+	} else {
+		log.Printf("⚠️ Slack integration not configured - Slack features will be disabled")
+	}
+
+	if config.DiscordConfig.IsConfigured() {
+		log.Printf("✅ Discord integration configured")
+	} else {
+		log.Printf("⚠️ Discord integration not configured - Discord features will be disabled")
+	}
+
+	if config.GitHubConfig.IsConfigured() {
+		log.Printf("✅ GitHub integration configured")
+	} else {
+		log.Printf("⚠️ GitHub integration not configured - GitHub features will be disabled")
+	}
+
+	if config.SSHConfig.IsConfigured() {
+		log.Printf("✅ SSH/Container integration configured")
+	} else {
+		log.Printf("⚠️ SSH/Container integration not configured - Container features will be disabled")
+	}
+
+	if config.ClerkConfig.IsConfigured() {
+		log.Printf("✅ Clerk authentication configured")
+	} else {
+		log.Printf("⚠️ Clerk authentication not configured - Dashboard authentication will be disabled")
 	}
 
 	return config, nil

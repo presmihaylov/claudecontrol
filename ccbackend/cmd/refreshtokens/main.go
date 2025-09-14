@@ -54,7 +54,7 @@ func main() {
 	defer teardown()
 
 	alertMiddleware := middleware.NewErrorAlertMiddleware(middleware.SlackAlertConfig{
-		WebhookURL:  cfg.SlackAlertWebhookURL,
+		WebhookURL:  cfg.SlackConfig.AlertWebhookURL,
 		Environment: cfg.Environment,
 		AppName:     "ccbackend-refreshtokens",
 		LogsURL:     cfg.ServerLogsURL,
@@ -79,17 +79,17 @@ func bootstrapDependencies(cfg *config.AppConfig) (*RefreshTokensRunner, func(),
 	ccagentContainerRepo := db.NewPostgresCCAgentContainerIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	anthropicClient := anthropic.NewAnthropicClient()
 
-	privateKey, err := base64.StdEncoding.DecodeString(cfg.GitHubAppPrivateKey)
+	privateKey, err := base64.StdEncoding.DecodeString(cfg.GitHubConfig.AppPrivateKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode GitHub app private key: %w", err)
 	}
 
-	githubClient, err := github.NewGitHubClient(cfg.GitHubClientID, cfg.GitHubClientSecret, cfg.GitHubAppID, privateKey)
+	githubClient, err := github.NewGitHubClient(cfg.GitHubConfig.ClientID, cfg.GitHubConfig.ClientSecret, cfg.GitHubConfig.AppID, privateKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 
-	sshClient := ssh.NewSSHClient(cfg.SSHPrivateKeyBase64)
+	sshClient := ssh.NewSSHClient(cfg.SSHConfig.PrivateKeyBase64)
 
 	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
 	anthropicService := anthropic_integrations.NewAnthropicIntegrationsService(anthropicRepo, anthropicClient)
