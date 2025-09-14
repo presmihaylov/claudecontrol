@@ -22,14 +22,14 @@ func (s *UnconfiguredGitHubIntegrationsService) CreateGitHubIntegration(
 	orgID models.OrgID,
 	authCode, installationID string,
 ) (*models.GitHubIntegration, error) {
-	return nil, fmt.Errorf("Service GitHub is not configured")
+	return nil, fmt.Errorf("service GitHub is not configured")
 }
 
 func (s *UnconfiguredGitHubIntegrationsService) ListGitHubIntegrations(
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.GitHubIntegration, error) {
-	return nil, fmt.Errorf("Service GitHub is not configured")
+	return nil, fmt.Errorf("service GitHub is not configured")
 }
 
 func (s *UnconfiguredGitHubIntegrationsService) GetGitHubIntegrationByID(
@@ -37,16 +37,20 @@ func (s *UnconfiguredGitHubIntegrationsService) GetGitHubIntegrationByID(
 	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.GitHubIntegration], error) {
-	return mo.None[*models.GitHubIntegration](), fmt.Errorf("Service GitHub is not configured")
+	return mo.None[*models.GitHubIntegration](), fmt.Errorf("service GitHub is not configured")
 }
 
-func (s *UnconfiguredGitHubIntegrationsService) DeleteGitHubIntegration(ctx context.Context, orgID models.OrgID, integrationID string) error {
-	return fmt.Errorf("Service GitHub is not configured")
+func (s *UnconfiguredGitHubIntegrationsService) DeleteGitHubIntegration(
+	ctx context.Context,
+	orgID models.OrgID,
+	integrationID string,
+) error {
+	return fmt.Errorf("service GitHub is not configured")
 }
 
 func (s *UnconfiguredGitHubIntegrationsService) ListAvailableRepositories(
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.GitHubRepository, error) {
-	return nil, fmt.Errorf("Service GitHub is not configured")
+	return nil, fmt.Errorf("service GitHub is not configured")
 }

@@ -269,23 +269,22 @@ func run() error {
 
 	// Create Slack handler if Slack is configured
 	if cfg.SlackConfig.IsConfigured() {
-		slackHandler = handlers.NewSlackEventsHandler(cfg.SlackConfig.SigningSecret, coreUseCase, slackIntegrationsService)
+		slackHandler = handlers.NewSlackEventsHandler(
+			cfg.SlackConfig.SigningSecret,
+			coreUseCase,
+			slackIntegrationsService,
+		)
 	}
 
 	// Create Discord handler if Discord is configured
 	if cfg.DiscordConfig.IsConfigured() && discordClient != nil {
-		// The handler expects the concrete type, and we only create it when Discord is configured
-		concreteDiscordUseCase, ok := discordUseCaseInstance.(*discordUseCase.DiscordUseCase)
-		if !ok {
-			return fmt.Errorf("discord use case is not properly configured")
-		}
 		var err error
 		discordHandler, err = handlers.NewDiscordEventsHandler(
 			cfg.DiscordConfig.BotToken,
 			discordClient,
 			coreUseCase,
 			discordIntegrationsService,
-			concreteDiscordUseCase,
+			discordUseCaseInstance,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to create Discord events handler: %w", err)
@@ -310,7 +309,11 @@ func run() error {
 	// Create authentication middleware if Clerk is configured
 	var authMiddleware *middleware.ClerkAuthMiddleware
 	if cfg.ClerkConfig.IsConfigured() {
-		authMiddleware = middleware.NewClerkAuthMiddleware(usersService, organizationsService, cfg.ClerkConfig.SecretKey)
+		authMiddleware = middleware.NewClerkAuthMiddleware(
+			usersService,
+			organizationsService,
+			cfg.ClerkConfig.SecretKey,
+		)
 	} else {
 		log.Printf("⚠️ Clerk authentication not configured - Dashboard will be unauthenticated")
 	}

@@ -38,10 +38,10 @@ func (c DiscordConfig) IsConfigured() bool {
 }
 
 type GitHubConfig struct {
-	ClientID       string
-	ClientSecret   string
-	AppID          string
-	AppPrivateKey  string
+	ClientID      string
+	ClientSecret  string
+	AppID         string
+	AppPrivateKey string
 }
 
 // IsConfigured returns true if all required GitHub configuration is present
@@ -53,8 +53,8 @@ func (c GitHubConfig) IsConfigured() bool {
 }
 
 type SSHConfig struct {
-	DefaultHost       string
-	PrivateKeyBase64  string
+	DefaultHost      string
+	PrivateKeyBase64 string
 }
 
 // IsConfigured returns true if all required SSH configuration is present
@@ -80,7 +80,7 @@ type AppConfig struct {
 	CORSAllowedOrigins string // Optional with default "*"
 	Environment        string
 	ServerLogsURL      string
-	UseStrictConfig    bool   // If true, error when any integration is not fully configured
+	UseStrictConfig    bool // If true, error when any integration is not fully configured
 
 	// Integration configurations (grouped)
 	SlackConfig   SlackConfig
@@ -134,10 +134,10 @@ func LoadConfig() (*AppConfig, error) {
 
 		// GitHub configuration (optional)
 		GitHubConfig: GitHubConfig{
-			ClientID:       os.Getenv("GITHUB_CLIENT_ID"),
-			ClientSecret:   os.Getenv("GITHUB_CLIENT_SECRET"),
-			AppID:          os.Getenv("GITHUB_APP_ID"),
-			AppPrivateKey:  os.Getenv("GITHUB_APP_PRIVATE_KEY"),
+			ClientID:      os.Getenv("GITHUB_CLIENT_ID"),
+			ClientSecret:  os.Getenv("GITHUB_CLIENT_SECRET"),
+			AppID:         os.Getenv("GITHUB_APP_ID"),
+			AppPrivateKey: os.Getenv("GITHUB_APP_PRIVATE_KEY"),
 		},
 
 		// SSH configuration (optional)
@@ -158,7 +158,7 @@ func LoadConfig() (*AppConfig, error) {
 	} else {
 		log.Printf("⚠️ Slack integration not configured - Slack features will be disabled")
 		if config.UseStrictConfig {
-			return nil, fmt.Errorf("Slack integration is not fully configured (USE_STRICT_CONFIG=true)")
+			return nil, fmt.Errorf("slack integration is not fully configured (USE_STRICT_CONFIG=true)")
 		}
 	}
 
@@ -167,7 +167,7 @@ func LoadConfig() (*AppConfig, error) {
 	} else {
 		log.Printf("⚠️ Discord integration not configured - Discord features will be disabled")
 		if config.UseStrictConfig {
-			return nil, fmt.Errorf("Discord integration is not fully configured (USE_STRICT_CONFIG=true)")
+			return nil, fmt.Errorf("discord integration is not fully configured (USE_STRICT_CONFIG=true)")
 		}
 	}
 
@@ -194,7 +194,7 @@ func LoadConfig() (*AppConfig, error) {
 	} else {
 		log.Printf("⚠️ Clerk authentication not configured - Dashboard authentication will be disabled")
 		if config.UseStrictConfig {
-			return nil, fmt.Errorf("Clerk authentication is not fully configured (USE_STRICT_CONFIG=true)")
+			return nil, fmt.Errorf("clerk authentication is not fully configured (USE_STRICT_CONFIG=true)")
 		}
 	}
 

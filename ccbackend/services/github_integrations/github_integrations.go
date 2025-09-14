@@ -13,7 +13,9 @@ import (
 	"ccbackend/models"
 )
 
-var ErrGitHubNotConfigured = fmt.Errorf("GitHub integration is not configured - please set GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_APP_ID, and GITHUB_APP_PRIVATE_KEY environment variables")
+var ErrGitHubNotConfigured = fmt.Errorf(
+	"GitHub integration is not configured - please set GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_APP_ID, and GITHUB_APP_PRIVATE_KEY environment variables",
+)
 
 type GitHubIntegrationsService struct {
 	githubRepo   *db.PostgresGitHubIntegrationsRepository

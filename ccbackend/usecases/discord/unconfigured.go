@@ -21,7 +21,7 @@ func (u *UnconfiguredDiscordUseCase) ProcessDiscordMessageEvent(
 	discordIntegrationID string,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Discord use case is not configured")
+	return fmt.Errorf("discord use case is not configured")
 }
 
 func (u *UnconfiguredDiscordUseCase) ProcessDiscordReactionEvent(
@@ -30,7 +30,7 @@ func (u *UnconfiguredDiscordUseCase) ProcessDiscordReactionEvent(
 	discordIntegrationID string,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Discord use case is not configured")
+	return fmt.Errorf("discord use case is not configured")
 }
 
 func (u *UnconfiguredDiscordUseCase) ProcessProcessingMessage(
@@ -39,7 +39,7 @@ func (u *UnconfiguredDiscordUseCase) ProcessProcessingMessage(
 	payload models.ProcessingMessagePayload,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Discord use case is not configured")
+	return fmt.Errorf("discord use case is not configured")
 }
 
 func (u *UnconfiguredDiscordUseCase) ProcessSystemMessage(
@@ -48,7 +48,7 @@ func (u *UnconfiguredDiscordUseCase) ProcessSystemMessage(
 	payload models.SystemMessagePayload,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Discord use case is not configured")
+	return fmt.Errorf("discord use case is not configured")
 }
 
 func (u *UnconfiguredDiscordUseCase) ProcessJobComplete(
@@ -57,7 +57,7 @@ func (u *UnconfiguredDiscordUseCase) ProcessJobComplete(
 	payload models.JobCompletePayload,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Discord use case is not configured")
+	return fmt.Errorf("discord use case is not configured")
 }
 
 func (u *UnconfiguredDiscordUseCase) ProcessAssistantMessage(
@@ -66,7 +66,7 @@ func (u *UnconfiguredDiscordUseCase) ProcessAssistantMessage(
 	payload models.AssistantMessagePayload,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Discord use case is not configured")
+	return fmt.Errorf("discord use case is not configured")
 }
 
 func (u *UnconfiguredDiscordUseCase) CleanupFailedDiscordJob(
@@ -75,9 +75,9 @@ func (u *UnconfiguredDiscordUseCase) CleanupFailedDiscordJob(
 	agentID string,
 	message string,
 ) error {
-	return fmt.Errorf("Discord use case is not configured")
+	return fmt.Errorf("discord use case is not configured")
 }
 
 func (u *UnconfiguredDiscordUseCase) ProcessQueuedJobs(ctx context.Context) error {
-	return fmt.Errorf("Discord use case is not configured")
+	return fmt.Errorf("discord use case is not configured")
 }

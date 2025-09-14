@@ -21,7 +21,7 @@ func (u *UnconfiguredSlackUseCase) ProcessSlackMessageEvent(
 	slackIntegrationID string,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Slack use case is not configured")
+	return fmt.Errorf("slack use case is not configured")
 }
 
 func (u *UnconfiguredSlackUseCase) ProcessReactionAdded(
@@ -29,7 +29,7 @@ func (u *UnconfiguredSlackUseCase) ProcessReactionAdded(
 	reactionName, userID, channelID, messageTS, slackIntegrationID string,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Slack use case is not configured")
+	return fmt.Errorf("slack use case is not configured")
 }
 
 func (u *UnconfiguredSlackUseCase) ProcessProcessingMessage(
@@ -38,11 +38,11 @@ func (u *UnconfiguredSlackUseCase) ProcessProcessingMessage(
 	payload models.ProcessingMessagePayload,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Slack use case is not configured")
+	return fmt.Errorf("slack use case is not configured")
 }
 
 func (u *UnconfiguredSlackUseCase) ProcessQueuedJobs(ctx context.Context) error {
-	return fmt.Errorf("Slack use case is not configured")
+	return fmt.Errorf("slack use case is not configured")
 }
 
 func (u *UnconfiguredSlackUseCase) ProcessJobComplete(
@@ -51,7 +51,7 @@ func (u *UnconfiguredSlackUseCase) ProcessJobComplete(
 	payload models.JobCompletePayload,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Slack use case is not configured")
+	return fmt.Errorf("slack use case is not configured")
 }
 
 func (u *UnconfiguredSlackUseCase) CleanupFailedSlackJob(
@@ -60,7 +60,7 @@ func (u *UnconfiguredSlackUseCase) CleanupFailedSlackJob(
 	agentID string,
 	message string,
 ) error {
-	return fmt.Errorf("Slack use case is not configured")
+	return fmt.Errorf("slack use case is not configured")
 }
 
 func (u *UnconfiguredSlackUseCase) ProcessAssistantMessage(
@@ -69,7 +69,7 @@ func (u *UnconfiguredSlackUseCase) ProcessAssistantMessage(
 	payload models.AssistantMessagePayload,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Slack use case is not configured")
+	return fmt.Errorf("slack use case is not configured")
 }
 
 func (u *UnconfiguredSlackUseCase) ProcessSystemMessage(
@@ -78,5 +78,5 @@ func (u *UnconfiguredSlackUseCase) ProcessSystemMessage(
 	payload models.SystemMessagePayload,
 	orgID models.OrgID,
 ) error {
-	return fmt.Errorf("Slack use case is not configured")
+	return fmt.Errorf("slack use case is not configured")
 }

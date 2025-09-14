@@ -23,14 +23,14 @@ func (s *UnconfiguredCCAgentContainerIntegrationsService) CreateCCAgentContainer
 	instancesCount int,
 	repoURL string,
 ) (*models.CCAgentContainerIntegration, error) {
-	return nil, fmt.Errorf("Service CCAgentContainer is not configured")
+	return nil, fmt.Errorf("service CCAgentContainer is not configured")
 }
 
 func (s *UnconfiguredCCAgentContainerIntegrationsService) ListCCAgentContainerIntegrations(
 	ctx context.Context,
 	orgID models.OrgID,
 ) ([]models.CCAgentContainerIntegration, error) {
-	return nil, fmt.Errorf("Service CCAgentContainer is not configured")
+	return nil, fmt.Errorf("service CCAgentContainer is not configured")
 }
 
 func (s *UnconfiguredCCAgentContainerIntegrationsService) GetCCAgentContainerIntegrationByID(
@@ -38,7 +38,7 @@ func (s *UnconfiguredCCAgentContainerIntegrationsService) GetCCAgentContainerInt
 	orgID models.OrgID,
 	id string,
 ) (mo.Option[*models.CCAgentContainerIntegration], error) {
-	return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf("Service CCAgentContainer is not configured")
+	return mo.None[*models.CCAgentContainerIntegration](), fmt.Errorf("service CCAgentContainer is not configured")
 }
 
 func (s *UnconfiguredCCAgentContainerIntegrationsService) DeleteCCAgentContainerIntegration(
@@ -46,7 +46,7 @@ func (s *UnconfiguredCCAgentContainerIntegrationsService) DeleteCCAgentContainer
 	orgID models.OrgID,
 	integrationID string,
 ) error {
-	return fmt.Errorf("Service CCAgentContainer is not configured")
+	return fmt.Errorf("service CCAgentContainer is not configured")
 }
 
 func (s *UnconfiguredCCAgentContainerIntegrationsService) RedeployCCAgentContainer(
@@ -55,5 +55,5 @@ func (s *UnconfiguredCCAgentContainerIntegrationsService) RedeployCCAgentContain
 	integrationID string,
 	updateConfigOnly bool,
 ) error {
-	return fmt.Errorf("Service CCAgentContainer is not configured")
+	return fmt.Errorf("service CCAgentContainer is not configured")
 }
