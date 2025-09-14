@@ -9,6 +9,10 @@
 
 </div>
 
+## Demo
+
+[![Claude Control Demo](https://img.youtube.com/vi/mZZu9h-980A/maxresdefault.jpg)](https://www.youtube.com/watch?v=mZZu9h-980A)
+
 ## Overview
 
 Claude Control is a comprehensive system that bridges AI agents (like Claude Code) with team communication platforms. It enables organizations to:
