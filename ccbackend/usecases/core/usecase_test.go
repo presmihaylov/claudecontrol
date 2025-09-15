@@ -207,7 +207,7 @@ func TestDeregisterAgent(t *testing.T) {
 	})
 
 	t.Run("agent_not_found", func(t *testing.T) {
-		// Setup
+		// Setup - test agent deregistration when agent is not found (should succeed gracefully)
 		ctx := context.Background()
 		mockAgentsService := new(agents.MockAgentsService)
 		mockWSClient := new(socketio.MockSocketIOClient)
@@ -237,9 +237,8 @@ func TestDeregisterAgent(t *testing.T) {
 		// Execute
 		err := useCase.DeregisterAgent(ctx, client)
 
-		// Assert
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "no agent found for client")
+		// Assert - should succeed when agent not found (handles reconnection race condition)
+		assert.NoError(t, err)
 		mockAgentsService.AssertExpectations(t)
 	})
 
