@@ -299,6 +299,23 @@ func GenerateSlackToken() string {
 	return fmt.Sprintf("xoxb-test-token-%d", n.Int64()+100000)
 }
 
+// CreateTestOrganization creates a test organization in the database
+func CreateTestOrganization(t *testing.T, organizationsRepo *db.PostgresOrganizationsRepository) *models.Organization {
+	testOrgID := core.NewID("org")
+	systemSecretKey, err := core.NewSecretKey("sys")
+	require.NoError(t, err, "Failed to generate system secret key")
+
+	organization := &models.Organization{
+		ID:                     testOrgID,
+		CCAgentSystemSecretKey: systemSecretKey,
+	}
+
+	err = organizationsRepo.CreateOrganization(context.Background(), organization)
+	require.NoError(t, err, "Failed to create test organization")
+
+	return organization
+}
+
 // CreateTestProcessedSlackMessage creates a test processed Slack message
 func CreateTestProcessedSlackMessage(
 	jobID string,
