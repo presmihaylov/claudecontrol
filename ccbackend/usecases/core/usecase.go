@@ -273,8 +273,9 @@ func (s *CoreUseCase) DeregisterAgent(ctx context.Context, client *clients.Clien
 	}
 
 	if !maybeAgent.IsPresent() {
-		log.Printf("❌ No agent found for client %s", client.ID)
-		return fmt.Errorf("no agent found for client: %s", client.ID)
+		log.Printf("ℹ️ No agent found for client %s - already cleaned up or reconnected with new connection ID", client.ID)
+		log.Printf("📋 Completed successfully - deregistration skipped for client %s (agent not found)", client.ID)
+		return nil
 	}
 
 	agent := maybeAgent.MustGet()
