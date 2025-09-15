@@ -84,7 +84,7 @@ export default function Home() {
 	const [anthropicIntegration, setAnthropicIntegration] = useState<AnthropicIntegration | null>(
 		null,
 	);
-	const [ccAgentIntegration, setCCAgentIntegration] = useState<CCAgentContainerIntegration | null>(
+	const [_ccAgentIntegration, setCCAgentIntegration] = useState<CCAgentContainerIntegration | null>(
 		null,
 	);
 

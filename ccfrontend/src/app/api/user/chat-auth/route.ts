@@ -3,7 +3,7 @@ import { env } from "@/lib/env";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
 	console.log("Chat auth API route called");
 	try {
 		// Get the authenticated user from Clerk
