@@ -188,7 +188,7 @@ func run() error {
 
 	if cfg.SSHConfig.IsConfigured() {
 		log.Printf("🔧 Initializing SSH/Container components...")
-		sshClient = ssh.NewSSHClient(cfg.SSHConfig.PrivateKeyBase64, cfg.SSHConfig.KnownHostsContent)
+		sshClient = ssh.NewSSHClient(cfg.SSHConfig.PrivateKeyBase64, cfg.SSHConfig.HostPublicKey)
 		ccAgentContainerService = ccagentcontainerintegrations.NewCCAgentContainerIntegrationsService(
 			ccAgentContainerIntegrationsRepo,
 			cfg,

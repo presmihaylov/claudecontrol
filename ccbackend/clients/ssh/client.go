@@ -1,13 +1,10 @@
 package ssh
 
 import (
-	"bufio"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
-	"net"
-	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -19,15 +16,15 @@ type SSHClientInterface interface {
 
 // SSHClient provides methods for SSH connections and command execution
 type SSHClient struct {
-	privateKeyBase64  string
-	knownHostsContent string
+	privateKeyBase64 string
+	hostPublicKey    string
 }
 
 // NewSSHClient creates a new SSH client instance
-func NewSSHClient(privateKeyBase64, knownHostsContent string) *SSHClient {
+func NewSSHClient(privateKeyBase64, hostPublicKey string) *SSHClient {
 	return &SSHClient{
-		privateKeyBase64:  privateKeyBase64,
-		knownHostsContent: knownHostsContent,
+		privateKeyBase64: privateKeyBase64,
+		hostPublicKey:    hostPublicKey,
 	}
 }
 
@@ -47,15 +44,18 @@ func (c *SSHClient) ExecuteCommand(host, command string) error {
 		return fmt.Errorf("failed to parse SSH private key: %w", err)
 	}
 
-	// Create secure host key callback using known hosts content
-	if c.knownHostsContent == "" {
-		return fmt.Errorf("known hosts content is required for secure SSH connections")
+	// Parse and validate the host public key
+	if c.hostPublicKey == "" {
+		return fmt.Errorf("host public key is required for secure SSH connections")
 	}
 
-	hostKeyCallback, err := c.createHostKeyCallback(c.knownHostsContent)
+	hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(c.hostPublicKey))
 	if err != nil {
-		return fmt.Errorf("failed to create host key callback: %w", err)
+		return fmt.Errorf("failed to parse host public key: %w", err)
 	}
+
+	// Create fixed host key callback
+	hostKeyCallback := ssh.FixedHostKey(hostKey)
 
 	// Create SSH client config
 	config := &ssh.ClientConfig{
@@ -118,74 +118,4 @@ func (c *SSHClient) ExecuteCommand(host, command string) error {
 
 	log.Printf("📋 SSH command completed successfully")
 	return nil
-}
-
-// createHostKeyCallback creates a host key callback from known hosts content
-func (c *SSHClient) createHostKeyCallback(knownHostsContent string) (ssh.HostKeyCallback, error) {
-	// Parse known hosts content into a map of hostname -> public key
-	knownHosts := make(map[string]ssh.PublicKey)
-
-	scanner := bufio.NewScanner(strings.NewReader(knownHostsContent))
-	lineNum := 0
-
-	for scanner.Scan() {
-		lineNum++
-		line := strings.TrimSpace(scanner.Text())
-
-		// Skip empty lines and comments
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		// Parse the known_hosts line: hostname keytype key
-		parts := strings.Fields(line)
-		if len(parts) < 3 {
-			return nil, fmt.Errorf("invalid known_hosts line %d: %s", lineNum, line)
-		}
-
-		hostname := parts[0]
-		keyType := parts[1]
-		keyData := parts[2]
-
-		// Parse the public key
-		keyLine := fmt.Sprintf("%s %s", keyType, keyData)
-		pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(keyLine))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse public key on line %d: %w", lineNum, err)
-		}
-
-		knownHosts[hostname] = pubKey
-
-		// Also handle IP addresses vs hostnames by storing both
-		if net.ParseIP(hostname) != nil {
-			// If hostname is an IP, also store it as is
-			knownHosts[hostname] = pubKey
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading known hosts content: %w", err)
-	}
-
-	// Return a callback function that verifies against known hosts
-	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-		// Check both the hostname and the IP address from remote
-		hostsToCheck := []string{hostname}
-
-		// Extract IP from remote address
-		if tcpAddr, ok := remote.(*net.TCPAddr); ok {
-			hostsToCheck = append(hostsToCheck, tcpAddr.IP.String())
-		}
-
-		for _, hostToCheck := range hostsToCheck {
-			if expectedKey, exists := knownHosts[hostToCheck]; exists {
-				if ssh.KeysEqual(key, expectedKey) {
-					log.Printf("📋 Host key verified for %s", hostToCheck)
-					return nil
-				}
-			}
-		}
-
-		return fmt.Errorf("host key verification failed for %s - key not found in known hosts", hostname)
-	}, nil
 }

@@ -94,7 +94,7 @@ func bootstrapDependencies(cfg *config.AppConfig) (*RefreshTokensRunner, func(),
 		return nil, nil, fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 
-	sshClient := ssh.NewSSHClient(cfg.SSHConfig.PrivateKeyBase64, cfg.SSHConfig.KnownHostsContent)
+	sshClient := ssh.NewSSHClient(cfg.SSHConfig.PrivateKeyBase64, cfg.SSHConfig.HostPublicKey)
 
 	organizationsService := organizations.NewOrganizationsService(organizationsRepo)
 	anthropicService := anthropic_integrations.NewAnthropicIntegrationsService(anthropicRepo, anthropicClient)
