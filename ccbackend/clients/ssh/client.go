@@ -17,12 +17,14 @@ type SSHClientInterface interface {
 // SSHClient provides methods for SSH connections and command execution
 type SSHClient struct {
 	privateKeyBase64 string
+	knownHostsFile   string
 }
 
 // NewSSHClient creates a new SSH client instance
-func NewSSHClient(privateKeyBase64 string) *SSHClient {
+func NewSSHClient(privateKeyBase64, knownHostsFile string) *SSHClient {
 	return &SSHClient{
 		privateKeyBase64: privateKeyBase64,
+		knownHostsFile:   knownHostsFile,
 	}
 }
 
@@ -42,13 +44,27 @@ func (c *SSHClient) ExecuteCommand(host, command string) error {
 		return fmt.Errorf("failed to parse SSH private key: %w", err)
 	}
 
+	// Create secure host key callback using known hosts file
+	var hostKeyCallback ssh.HostKeyCallback
+	if c.knownHostsFile != "" {
+		var err error
+		hostKeyCallback, err = ssh.NewKnownHostsCallback(c.knownHostsFile)
+		if err != nil {
+			return fmt.Errorf("failed to create host key callback from %s: %w", c.knownHostsFile, err)
+		}
+	} else {
+		// Fallback to insecure mode if no known hosts file is provided
+		log.Printf("⚠️ No known hosts file provided, using insecure host key verification")
+		hostKeyCallback = ssh.InsecureIgnoreHostKey()
+	}
+
 	// Create SSH client config
 	config := &ssh.ClientConfig{
 		User: "root",
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Note: In production, should verify host keys
+		HostKeyCallback: hostKeyCallback,
 	}
 
 	// Connect to the SSH server
