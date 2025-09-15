@@ -148,7 +148,13 @@ bun dev
 3. **Connect Agent**: Run `CCAGENT_API_KEY=<api-key> ccagent --agent claude`
 4. **Verify Connection**: Try interacting with Claude Control in Slack/Discord to verify agent is connected
 
-## Support
+## Support & Sponsorship
+
+*Sponsor Claude Control*
+
+If Claude Control has helped improve your team's productivity, consider sponsoring the project! Your support helps maintain and enhance this open-source platform.
+
+*Support Channels*
 For support, reach out to [support@claudecontrol.com](mailto:support@claudecontrol.com).
 
 ## Development
