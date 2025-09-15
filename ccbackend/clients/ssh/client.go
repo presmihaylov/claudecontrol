@@ -17,12 +17,14 @@ type SSHClientInterface interface {
 // SSHClient provides methods for SSH connections and command execution
 type SSHClient struct {
 	privateKeyBase64 string
+	hostPublicKey    string
 }
 
 // NewSSHClient creates a new SSH client instance
-func NewSSHClient(privateKeyBase64 string) *SSHClient {
+func NewSSHClient(privateKeyBase64, hostPublicKey string) *SSHClient {
 	return &SSHClient{
 		privateKeyBase64: privateKeyBase64,
+		hostPublicKey:    hostPublicKey,
 	}
 }
 
@@ -42,13 +44,26 @@ func (c *SSHClient) ExecuteCommand(host, command string) error {
 		return fmt.Errorf("failed to parse SSH private key: %w", err)
 	}
 
+	// Parse and validate the host public key
+	if c.hostPublicKey == "" {
+		return fmt.Errorf("host public key is required for secure SSH connections")
+	}
+
+	hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(c.hostPublicKey))
+	if err != nil {
+		return fmt.Errorf("failed to parse host public key: %w", err)
+	}
+
+	// Create fixed host key callback
+	hostKeyCallback := ssh.FixedHostKey(hostKey)
+
 	// Create SSH client config
 	config := &ssh.ClientConfig{
 		User: "root",
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Note: In production, should verify host keys
+		HostKeyCallback: hostKeyCallback,
 	}
 
 	// Connect to the SSH server
