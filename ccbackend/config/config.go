@@ -53,16 +53,16 @@ func (c GitHubConfig) IsConfigured() bool {
 }
 
 type SSHConfig struct {
-	DefaultHost      string
-	PrivateKeyBase64 string
-	KnownHostsFile   string
+	DefaultHost        string
+	PrivateKeyBase64   string
+	KnownHostsContent  string
 }
 
 // IsConfigured returns true if all required SSH configuration is present
 func (c SSHConfig) IsConfigured() bool {
 	return c.DefaultHost != "" &&
 		c.PrivateKeyBase64 != "" &&
-		c.KnownHostsFile != ""
+		c.KnownHostsContent != ""
 }
 
 type ClerkConfig struct {
@@ -144,9 +144,9 @@ func LoadConfig() (*AppConfig, error) {
 
 		// SSH configuration (optional)
 		SSHConfig: SSHConfig{
-			DefaultHost:      os.Getenv("DEFAULT_SSH_HOST"),
-			PrivateKeyBase64: os.Getenv("SSH_PRIVATE_KEY_B64"),
-			KnownHostsFile:   os.Getenv("SSH_KNOWN_HOSTS"),
+			DefaultHost:       os.Getenv("DEFAULT_SSH_HOST"),
+			PrivateKeyBase64:  os.Getenv("SSH_PRIVATE_KEY_B64"),
+			KnownHostsContent: os.Getenv("SSH_KNOWN_HOSTS"),
 		},
 
 		// Clerk configuration (optional)
