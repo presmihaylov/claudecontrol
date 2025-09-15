@@ -150,11 +150,8 @@ bun dev
 
 ## Support & Sponsorship
 
-*Sponsor Claude Control*
+If Claude Control has helped improve your team's productivity, consider sponsoring the project! Your support helps me maintain and enhance the project.
 
-If Claude Control has helped improve your team's productivity, consider sponsoring the project! Your support helps maintain and enhance this open-source platform.
-
-*Support Channels*
 For support, reach out to [support@claudecontrol.com](mailto:support@claudecontrol.com).
 
 ## Development
