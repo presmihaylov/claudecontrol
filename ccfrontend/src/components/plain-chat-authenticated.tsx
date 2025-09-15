@@ -6,7 +6,31 @@ import { useEffect, useState } from "react";
 declare global {
 	interface Window {
 		Plain?: {
-			init: (config: any) => void;
+			init: (config: {
+				appId: string;
+				customerDetails?: {
+					email: string;
+					emailHash: string;
+					fullName: string;
+					shortName: string;
+				};
+				theme?: string;
+				style?: {
+					brandColor?: string;
+					brandBackgroundColor?: string;
+					launcherBackgroundColor?: string;
+					launcherIconColor?: string;
+				};
+				position?: {
+					right?: string;
+					bottom?: string;
+				};
+				links?: Array<{
+					icon: string;
+					text: string;
+					url: string;
+				}>;
+			}) => void;
 		};
 	}
 }
@@ -19,8 +43,8 @@ interface ChatAuthData {
 }
 
 export default function PlainChatAuthenticated() {
-	const { isSignedIn, getToken } = useAuth();
-	const [isLoading, setIsLoading] = useState(true);
+	const { isSignedIn } = useAuth();
+	const [_isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {

@@ -25,7 +25,7 @@ function GitHubRedirectContent() {
 		} else {
 			router.push("/onboarding?error=github-setup-invalid");
 		}
-	}, [searchParams, router, getToken]);
+	}, [searchParams, router]);
 
 	const handleGitHubIntegration = async (code: string, installationId: string) => {
 		try {

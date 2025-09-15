@@ -198,7 +198,7 @@ export default function OnboardingPage() {
 		}, 300);
 
 		return () => clearTimeout(timer);
-	}, [currentStep, loading]); // Also trigger when loading changes
+	}, []); // Only run once on mount
 
 	// Deployment message rotation
 	useEffect(() => {
