@@ -366,27 +366,44 @@ type SettingsService interface {
 
 // ConnectedChannelsService defines the interface for connected channels operations
 type ConnectedChannelsService interface {
-	UpsertConnectedChannel(
+	// Slack-specific methods
+	UpsertSlackConnectedChannel(
 		ctx context.Context,
 		orgID models.OrgID,
+		teamID string,
 		channelID string,
-		channelType string,
-	) (*models.ConnectedChannel, error)
-	GetConnectedChannelByChannelID(
+	) (*models.SlackConnectedChannel, error)
+	GetSlackConnectedChannel(
 		ctx context.Context,
 		orgID models.OrgID,
+		teamID string,
 		channelID string,
-		channelType string,
-	) (mo.Option[*models.ConnectedChannel], error)
+	) (mo.Option[*models.SlackConnectedChannel], error)
+
+	// Discord-specific methods
+	UpsertDiscordConnectedChannel(
+		ctx context.Context,
+		orgID models.OrgID,
+		guildID string,
+		channelID string,
+	) (*models.DiscordConnectedChannel, error)
+	GetDiscordConnectedChannel(
+		ctx context.Context,
+		orgID models.OrgID,
+		guildID string,
+		channelID string,
+	) (mo.Option[*models.DiscordConnectedChannel], error)
+
+	// Common methods that work with the interface
 	GetConnectedChannelByID(
 		ctx context.Context,
 		orgID models.OrgID,
 		id string,
-	) (mo.Option[*models.ConnectedChannel], error)
+	) (mo.Option[models.ConnectedChannel], error)
 	GetConnectedChannelsByOrganization(
 		ctx context.Context,
 		orgID models.OrgID,
-	) ([]*models.ConnectedChannel, error)
+	) ([]models.ConnectedChannel, error)
 	DeleteConnectedChannel(
 		ctx context.Context,
 		orgID models.OrgID,

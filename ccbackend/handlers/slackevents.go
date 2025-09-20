@@ -166,11 +166,11 @@ func (h *SlackEventsHandler) HandleSlackEvent(w http.ResponseWriter, r *http.Req
 
 	switch eventType {
 	case "app_mention":
-		if err := h.handleAppMention(r.Context(), event, slackIntegration.ID, slackIntegration.OrgID); err != nil {
+		if err := h.handleAppMention(r.Context(), event, slackIntegration.ID, slackIntegration.OrgID, slackIntegration.SlackTeamID); err != nil {
 			log.Printf("❌ Failed to handle app mention: %v", err)
 		}
 	case "reaction_added":
-		if err := h.handleReactionAdded(r.Context(), event, slackIntegration.ID, slackIntegration.OrgID); err != nil {
+		if err := h.handleReactionAdded(r.Context(), event, slackIntegration.ID, slackIntegration.OrgID, slackIntegration.SlackTeamID); err != nil {
 			log.Printf("❌ Failed to handle reaction added: %v", err)
 		}
 	default:
@@ -196,6 +196,7 @@ func (h *SlackEventsHandler) handleAppMention(
 	event map[string]any,
 	slackIntegrationID string,
 	orgID models.OrgID,
+	teamID string,
 ) error {
 	channel := event["channel"].(string)
 	user := event["user"].(string)
@@ -210,7 +211,7 @@ func (h *SlackEventsHandler) handleAppMention(
 	}
 
 	// Track the channel in connected_channels table
-	_, err := h.connectedChannelsService.UpsertConnectedChannel(ctx, orgID, channel, models.ChannelTypeSlack)
+	_, err := h.connectedChannelsService.UpsertSlackConnectedChannel(ctx, orgID, teamID, channel)
 	if err != nil {
 		log.Printf("⚠️ Failed to track Slack channel %s: %v", channel, err)
 		// Continue processing even if channel tracking fails
@@ -232,6 +233,7 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	event map[string]any,
 	slackIntegrationID string,
 	orgID models.OrgID,
+	teamID string,
 ) error {
 	reactionName := event["reaction"].(string)
 	user := event["user"].(string)
@@ -250,7 +252,7 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	log.Printf("📨 Reaction %s added by %s on message %s in %s", reactionName, user, ts, channel)
 
 	// Track the channel in connected_channels table
-	_, err := h.connectedChannelsService.UpsertConnectedChannel(ctx, orgID, channel, models.ChannelTypeSlack)
+	_, err := h.connectedChannelsService.UpsertSlackConnectedChannel(ctx, orgID, teamID, channel)
 	if err != nil {
 		log.Printf("⚠️ Failed to track Slack channel %s: %v", channel, err)
 		// Continue processing even if channel tracking fails

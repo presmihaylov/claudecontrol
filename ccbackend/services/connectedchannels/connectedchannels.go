@@ -28,25 +28,27 @@ func NewConnectedChannelsService(
 	}
 }
 
-func (s *ConnectedChannelsService) UpsertConnectedChannel(
+// Slack-specific methods
+
+func (s *ConnectedChannelsService) UpsertSlackConnectedChannel(
 	ctx context.Context,
 	orgID models.OrgID,
+	teamID string,
 	channelID string,
-	channelType string,
-) (*models.ConnectedChannel, error) {
-	log.Printf("📋 Starting to upsert connected channel: %s (%s) for org: %s", channelID, channelType, orgID)
+) (*models.SlackConnectedChannel, error) {
+	log.Printf("📋 Starting to upsert Slack connected channel: %s (team: %s) for org: %s", channelID, teamID, orgID)
 
+	if teamID == "" {
+		return nil, fmt.Errorf("team ID cannot be empty")
+	}
 	if channelID == "" {
 		return nil, fmt.Errorf("channel ID cannot be empty")
 	}
-	if channelType != models.ChannelTypeSlack && channelType != models.ChannelTypeDiscord {
-		return nil, fmt.Errorf("channel type must be 'slack' or 'discord'")
-	}
 
 	// Check if channel already exists
-	existingChannel, err := s.connectedChannelsRepo.GetConnectedChannelByChannelID(ctx, orgID, channelID, channelType)
+	existingChannel, err := s.connectedChannelsRepo.GetSlackConnectedChannel(ctx, orgID, teamID, channelID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check existing channel: %w", err)
+		return nil, fmt.Errorf("failed to check existing Slack channel: %w", err)
 	}
 
 	var defaultRepoURL *string
@@ -54,94 +56,229 @@ func (s *ConnectedChannelsService) UpsertConnectedChannel(
 		// New channel - assign default repo URL from first available agent
 		defaultRepoURL, err = s.getFirstAvailableRepoURL(ctx, orgID)
 		if err != nil {
-			log.Printf("⚠️ Failed to get default repo URL for new channel, continuing without it: %v", err)
+			log.Printf("⚠️ Failed to get default repo URL for new Slack channel, continuing without it: %v", err)
 			defaultRepoURL = nil
 		}
-		log.Printf("📋 New channel detected, assigned default repo URL: %v", defaultRepoURL)
+		log.Printf("📋 New Slack channel detected, assigned default repo URL: %v", defaultRepoURL)
 	} else {
 		// Existing channel - preserve current default_repo_url
 		existing := existingChannel.MustGet()
 		defaultRepoURL = existing.DefaultRepoURL
-		log.Printf("📋 Existing channel detected, preserving default repo URL: %v", defaultRepoURL)
+		log.Printf("📋 Existing Slack channel detected, preserving default repo URL: %v", defaultRepoURL)
 	}
 
-	channel := &models.ConnectedChannel{
-		ID:             core.NewID("cc"),
-		OrgID:          orgID,
-		ChannelID:      channelID,
-		ChannelType:    channelType,
-		DefaultRepoURL: defaultRepoURL,
+	// Create database model for upsert
+	dbChannel := &models.DatabaseConnectedChannel{
+		ID:               core.NewID("cc"),
+		OrgID:            orgID,
+		SlackTeamID:      &teamID,
+		SlackChannelID:   &channelID,
+		DiscordGuildID:   nil,
+		DiscordChannelID: nil,
+		DefaultRepoURL:   defaultRepoURL,
 	}
 
-	if err := s.connectedChannelsRepo.UpsertConnectedChannel(ctx, channel); err != nil {
-		return nil, fmt.Errorf("failed to upsert connected channel: %w", err)
+	if err := s.connectedChannelsRepo.UpsertSlackConnectedChannel(ctx, dbChannel); err != nil {
+		return nil, fmt.Errorf("failed to upsert Slack connected channel: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - upserted connected channel with ID: %s", channel.ID)
-	return channel, nil
+	// Convert to domain model
+	slackChannel, err := dbChannel.ToSlackConnectedChannel()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to Slack domain model: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - upserted Slack connected channel with ID: %s", slackChannel.ID)
+	return slackChannel, nil
 }
 
-func (s *ConnectedChannelsService) GetConnectedChannelByChannelID(
+func (s *ConnectedChannelsService) GetSlackConnectedChannel(
 	ctx context.Context,
 	orgID models.OrgID,
+	teamID string,
 	channelID string,
-	channelType string,
-) (mo.Option[*models.ConnectedChannel], error) {
-	log.Printf("📋 Starting to get connected channel by channel ID: %s (%s) for org: %s", channelID, channelType, orgID)
+) (mo.Option[*models.SlackConnectedChannel], error) {
+	log.Printf("📋 Starting to get Slack connected channel: %s (team: %s) for org: %s", channelID, teamID, orgID)
 
+	if teamID == "" {
+		return mo.None[*models.SlackConnectedChannel](), fmt.Errorf("team ID cannot be empty")
+	}
 	if channelID == "" {
-		return mo.None[*models.ConnectedChannel](), fmt.Errorf("channel ID cannot be empty")
-	}
-	if channelType != models.ChannelTypeSlack && channelType != models.ChannelTypeDiscord {
-		return mo.None[*models.ConnectedChannel](), fmt.Errorf("channel type must be 'slack' or 'discord'")
+		return mo.None[*models.SlackConnectedChannel](), fmt.Errorf("channel ID cannot be empty")
 	}
 
-	channel, err := s.connectedChannelsRepo.GetConnectedChannelByChannelID(ctx, orgID, channelID, channelType)
+	dbChannel, err := s.connectedChannelsRepo.GetSlackConnectedChannel(ctx, orgID, teamID, channelID)
 	if err != nil {
-		return mo.None[*models.ConnectedChannel](), fmt.Errorf("failed to get connected channel: %w", err)
+		return mo.None[*models.SlackConnectedChannel](), fmt.Errorf("failed to get Slack connected channel: %w", err)
 	}
 
-	if channel.IsPresent() {
-		log.Printf("📋 Completed successfully - found connected channel with ID: %s", channel.MustGet().ID)
-	} else {
-		log.Printf("📋 Completed successfully - no connected channel found for channel ID: %s", channelID)
+	if !dbChannel.IsPresent() {
+		log.Printf("📋 Completed successfully - no Slack connected channel found for channel: %s", channelID)
+		return mo.None[*models.SlackConnectedChannel](), nil
 	}
-	return channel, nil
+
+	// Convert to domain model
+	slackChannel, err := dbChannel.MustGet().ToSlackConnectedChannel()
+	if err != nil {
+		return mo.None[*models.SlackConnectedChannel](), fmt.Errorf("failed to convert to Slack domain model: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found Slack connected channel with ID: %s", slackChannel.ID)
+	return mo.Some(slackChannel), nil
 }
+
+// Discord-specific methods
+
+func (s *ConnectedChannelsService) UpsertDiscordConnectedChannel(
+	ctx context.Context,
+	orgID models.OrgID,
+	guildID string,
+	channelID string,
+) (*models.DiscordConnectedChannel, error) {
+	log.Printf("📋 Starting to upsert Discord connected channel: %s (guild: %s) for org: %s", channelID, guildID, orgID)
+
+	if guildID == "" {
+		return nil, fmt.Errorf("guild ID cannot be empty")
+	}
+	if channelID == "" {
+		return nil, fmt.Errorf("channel ID cannot be empty")
+	}
+
+	// Check if channel already exists
+	existingChannel, err := s.connectedChannelsRepo.GetDiscordConnectedChannel(ctx, orgID, guildID, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing Discord channel: %w", err)
+	}
+
+	var defaultRepoURL *string
+	if !existingChannel.IsPresent() {
+		// New channel - assign default repo URL from first available agent
+		defaultRepoURL, err = s.getFirstAvailableRepoURL(ctx, orgID)
+		if err != nil {
+			log.Printf("⚠️ Failed to get default repo URL for new Discord channel, continuing without it: %v", err)
+			defaultRepoURL = nil
+		}
+		log.Printf("📋 New Discord channel detected, assigned default repo URL: %v", defaultRepoURL)
+	} else {
+		// Existing channel - preserve current default_repo_url
+		existing := existingChannel.MustGet()
+		defaultRepoURL = existing.DefaultRepoURL
+		log.Printf("📋 Existing Discord channel detected, preserving default repo URL: %v", defaultRepoURL)
+	}
+
+	// Create database model for upsert
+	dbChannel := &models.DatabaseConnectedChannel{
+		ID:               core.NewID("cc"),
+		OrgID:            orgID,
+		SlackTeamID:      nil,
+		SlackChannelID:   nil,
+		DiscordGuildID:   &guildID,
+		DiscordChannelID: &channelID,
+		DefaultRepoURL:   defaultRepoURL,
+	}
+
+	if err := s.connectedChannelsRepo.UpsertDiscordConnectedChannel(ctx, dbChannel); err != nil {
+		return nil, fmt.Errorf("failed to upsert Discord connected channel: %w", err)
+	}
+
+	// Convert to domain model
+	discordChannel, err := dbChannel.ToDiscordConnectedChannel()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to Discord domain model: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - upserted Discord connected channel with ID: %s", discordChannel.ID)
+	return discordChannel, nil
+}
+
+func (s *ConnectedChannelsService) GetDiscordConnectedChannel(
+	ctx context.Context,
+	orgID models.OrgID,
+	guildID string,
+	channelID string,
+) (mo.Option[*models.DiscordConnectedChannel], error) {
+	log.Printf("📋 Starting to get Discord connected channel: %s (guild: %s) for org: %s", channelID, guildID, orgID)
+
+	if guildID == "" {
+		return mo.None[*models.DiscordConnectedChannel](), fmt.Errorf("guild ID cannot be empty")
+	}
+	if channelID == "" {
+		return mo.None[*models.DiscordConnectedChannel](), fmt.Errorf("channel ID cannot be empty")
+	}
+
+	dbChannel, err := s.connectedChannelsRepo.GetDiscordConnectedChannel(ctx, orgID, guildID, channelID)
+	if err != nil {
+		return mo.None[*models.DiscordConnectedChannel](), fmt.Errorf("failed to get Discord connected channel: %w", err)
+	}
+
+	if !dbChannel.IsPresent() {
+		log.Printf("📋 Completed successfully - no Discord connected channel found for channel: %s", channelID)
+		return mo.None[*models.DiscordConnectedChannel](), nil
+	}
+
+	// Convert to domain model
+	discordChannel, err := dbChannel.MustGet().ToDiscordConnectedChannel()
+	if err != nil {
+		return mo.None[*models.DiscordConnectedChannel](), fmt.Errorf("failed to convert to Discord domain model: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found Discord connected channel with ID: %s", discordChannel.ID)
+	return mo.Some(discordChannel), nil
+}
+
+// Common methods
 
 func (s *ConnectedChannelsService) GetConnectedChannelByID(
 	ctx context.Context,
 	orgID models.OrgID,
 	id string,
-) (mo.Option[*models.ConnectedChannel], error) {
+) (mo.Option[models.ConnectedChannel], error) {
 	log.Printf("📋 Starting to get connected channel by ID: %s for org: %s", id, orgID)
 
 	if !core.IsValidULID(id) {
-		return mo.None[*models.ConnectedChannel](), fmt.Errorf("ID must be a valid ULID")
+		return mo.None[models.ConnectedChannel](), fmt.Errorf("ID must be a valid ULID")
 	}
 
-	channel, err := s.connectedChannelsRepo.GetConnectedChannelByID(ctx, id, orgID)
+	dbChannel, err := s.connectedChannelsRepo.GetConnectedChannelByID(ctx, id, orgID)
 	if err != nil {
-		return mo.None[*models.ConnectedChannel](), fmt.Errorf("failed to get connected channel: %w", err)
+		return mo.None[models.ConnectedChannel](), fmt.Errorf("failed to get connected channel: %w", err)
 	}
 
-	if channel.IsPresent() {
-		log.Printf("📋 Completed successfully - found connected channel: %s", id)
-	} else {
+	if !dbChannel.IsPresent() {
 		log.Printf("📋 Completed successfully - connected channel not found: %s", id)
+		return mo.None[models.ConnectedChannel](), nil
 	}
-	return channel, nil
+
+	// Convert to domain interface
+	channel, err := dbChannel.MustGet().ToConnectedChannel()
+	if err != nil {
+		return mo.None[models.ConnectedChannel](), fmt.Errorf("failed to convert to domain model: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found connected channel: %s", id)
+	return mo.Some(channel), nil
 }
 
 func (s *ConnectedChannelsService) GetConnectedChannelsByOrganization(
 	ctx context.Context,
 	orgID models.OrgID,
-) ([]*models.ConnectedChannel, error) {
+) ([]models.ConnectedChannel, error) {
 	log.Printf("📋 Starting to get connected channels for org: %s", orgID)
 
-	channels, err := s.connectedChannelsRepo.GetConnectedChannelsByOrganization(ctx, orgID)
+	dbChannels, err := s.connectedChannelsRepo.GetConnectedChannelsByOrganization(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connected channels: %w", err)
+	}
+
+	// Convert to domain models
+	channels := make([]models.ConnectedChannel, 0, len(dbChannels))
+	for _, dbChannel := range dbChannels {
+		channel, err := dbChannel.ToConnectedChannel()
+		if err != nil {
+			log.Printf("⚠️ Failed to convert database channel to domain model: %v", err)
+			continue // Skip invalid records
+		}
+		channels = append(channels, channel)
 	}
 
 	log.Printf("📋 Completed successfully - found %d connected channels for org: %s", len(channels), orgID)
