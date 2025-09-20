@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -22,8 +21,8 @@ type ConnectedChannel interface {
 	GetDefaultRepoURL() *string
 	GetCreatedAt() time.Time
 	GetUpdatedAt() time.Time
-	// Platform-specific identifier for uniqueness
-	GetPlatformIdentifier() string
+	// Returns the channel ID (either Slack or Discord channel ID)
+	GetChannelID() string
 }
 
 // SlackConnectedChannel represents a connected Slack channel
@@ -67,9 +66,9 @@ func (s *SlackConnectedChannel) GetUpdatedAt() time.Time {
 	return s.UpdatedAt
 }
 
-// GetPlatformIdentifier implements ConnectedChannel interface
-func (s *SlackConnectedChannel) GetPlatformIdentifier() string {
-	return fmt.Sprintf("slack:%s:%s", s.TeamID, s.ChannelID)
+// GetChannelID implements ConnectedChannel interface
+func (s *SlackConnectedChannel) GetChannelID() string {
+	return s.ChannelID
 }
 
 // DiscordConnectedChannel represents a connected Discord channel
@@ -113,9 +112,9 @@ func (d *DiscordConnectedChannel) GetUpdatedAt() time.Time {
 	return d.UpdatedAt
 }
 
-// GetPlatformIdentifier implements ConnectedChannel interface
-func (d *DiscordConnectedChannel) GetPlatformIdentifier() string {
-	return fmt.Sprintf("discord:%s:%s", d.GuildID, d.ChannelID)
+// GetChannelID implements ConnectedChannel interface
+func (d *DiscordConnectedChannel) GetChannelID() string {
+	return d.ChannelID
 }
 
 
