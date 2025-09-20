@@ -93,7 +93,7 @@ func (s *SlackUseCase) ProcessSlackMessageEvent(
 			MessageText: event.Text,
 		}
 
-		commandResultObj, err := s.commandsService.ProcessCommand(ctx, commandRequest, connectedChannel.MustGet())
+		commandResultObj, err := s.commandsService.ProcessCommand(ctx, orgID, commandRequest, connectedChannel.MustGet())
 		if err != nil {
 			log.Printf("❌ Failed to process command: %v", err)
 			return s.sendSystemMessage(ctx, slackIntegrationID, event.Channel, event.TS, fmt.Sprintf("Error: %s", err.Error()))

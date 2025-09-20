@@ -29,10 +29,11 @@ func NewCommandsService(
 
 func (s *CommandsService) ProcessCommand(
 	ctx context.Context,
+	orgID models.OrgID,
 	request models.CommandRequest,
 	connectedChannel models.ConnectedChannel,
 ) (*models.CommandResult, error) {
-	log.Printf("📋 Starting to process command: %s from platform: %s", request.Command, connectedChannel.GetChannelType())
+	log.Printf("📋 Starting to process command: %s from platform: %s for org: %s", request.Command, connectedChannel.GetChannelType(), orgID)
 
 	// Parse the command
 	commandType, repoURL, err := s.parseCommand(request.Command)
@@ -46,7 +47,7 @@ func (s *CommandsService) ProcessCommand(
 
 	switch commandType {
 	case "repo":
-		return s.processRepoCommand(ctx, connectedChannel, repoURL)
+		return s.processRepoCommand(ctx, orgID, connectedChannel, repoURL)
 	default:
 		return &models.CommandResult{
 			Success: false,
@@ -88,11 +89,12 @@ func (s *CommandsService) parseCommand(command string) (commandType string, valu
 
 func (s *CommandsService) processRepoCommand(
 	ctx context.Context,
+	orgID models.OrgID,
 	connectedChannel models.ConnectedChannel,
 	repoURL string,
 ) (*models.CommandResult, error) {
 	log.Printf("📋 Starting to process repo command for org: %s, platform: %s, channel: %s, repo: %s",
-		connectedChannel.GetOrgID(), connectedChannel.GetChannelType(), connectedChannel.GetChannelID(), repoURL)
+		orgID, connectedChannel.GetChannelType(), connectedChannel.GetChannelID(), repoURL)
 
 	// Normalize the repository URL
 	normalizedRepoURL, err := s.normalizeRepoURL(repoURL)
@@ -105,14 +107,14 @@ func (s *CommandsService) processRepoCommand(
 	}
 
 	// Validate that the repository exists in active agents
-	exists, err := s.validateRepoExistsInActiveAgents(ctx, connectedChannel.GetOrgID(), normalizedRepoURL)
+	exists, err := s.validateRepoExistsInActiveAgents(ctx, orgID, normalizedRepoURL)
 	if err != nil {
 		log.Printf("❌ Failed to validate repo exists in active agents: %v", err)
 		return nil, fmt.Errorf("failed to validate repository: %w", err)
 	}
 
 	if !exists {
-		log.Printf("❌ Repository %s not found in active agents for org: %s", normalizedRepoURL, connectedChannel.GetOrgID())
+		log.Printf("❌ Repository %s not found in active agents for org: %s", normalizedRepoURL, orgID)
 		return &models.CommandResult{
 			Success: false,
 			Message: fmt.Sprintf("Repository %s not found in active agents for this organization", normalizedRepoURL),
@@ -120,7 +122,7 @@ func (s *CommandsService) processRepoCommand(
 	}
 
 	// Update the connected channel's default repository
-	err = s.updateChannelDefaultRepo(ctx, connectedChannel, normalizedRepoURL)
+	err = s.updateChannelDefaultRepo(ctx, orgID, connectedChannel, normalizedRepoURL)
 	if err != nil {
 		log.Printf("❌ Failed to update channel default repo: %v", err)
 		return nil, fmt.Errorf("failed to update channel repository: %w", err)
@@ -195,6 +197,7 @@ func (s *CommandsService) validateRepoExistsInActiveAgents(
 
 func (s *CommandsService) updateChannelDefaultRepo(
 	ctx context.Context,
+	orgID models.OrgID,
 	connectedChannel models.ConnectedChannel,
 	repoURL string,
 ) error {
@@ -204,13 +207,13 @@ func (s *CommandsService) updateChannelDefaultRepo(
 	switch connectedChannel.GetChannelType() {
 	case models.ChannelTypeSlack:
 		_, err := s.connectedChannelsService.UpdateSlackChannelDefaultRepo(ctx,
-			connectedChannel.GetOrgID(), connectedChannel.GetTeamID(), connectedChannel.GetChannelID(), repoURL)
+			orgID, connectedChannel.GetTeamID(), connectedChannel.GetChannelID(), repoURL)
 		if err != nil {
 			return fmt.Errorf("failed to update Slack channel default repo: %w", err)
 		}
 	case models.ChannelTypeDiscord:
 		_, err := s.connectedChannelsService.UpdateDiscordChannelDefaultRepo(ctx,
-			connectedChannel.GetOrgID(), connectedChannel.GetTeamID(), connectedChannel.GetChannelID(), repoURL)
+			orgID, connectedChannel.GetTeamID(), connectedChannel.GetChannelID(), repoURL)
 		if err != nil {
 			return fmt.Errorf("failed to update Discord channel default repo: %w", err)
 		}

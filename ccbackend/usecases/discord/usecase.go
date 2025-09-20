@@ -122,7 +122,7 @@ func (d *DiscordUseCase) ProcessDiscordMessageEvent(
 			MessageText: event.Content,
 		}
 
-		commandResultObj, err := d.commandsService.ProcessCommand(ctx, commandRequest, connectedChannel.MustGet())
+		commandResultObj, err := d.commandsService.ProcessCommand(ctx, orgID, commandRequest, connectedChannel.MustGet())
 		if err != nil {
 			log.Printf("❌ Failed to process command: %v", err)
 

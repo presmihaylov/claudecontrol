@@ -413,6 +413,7 @@ type ConnectedChannelsService interface {
 type CommandsService interface {
 	ProcessCommand(
 		ctx context.Context,
+		orgID models.OrgID,
 		request models.CommandRequest,
 		connectedChannel models.ConnectedChannel,
 	) (*models.CommandResult, error)

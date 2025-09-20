@@ -59,7 +59,7 @@ func TestCommandsService_ProcessCommand_RepoCommand_Success(t *testing.T) {
 	}
 
 	// Execute
-	result, err := service.ProcessCommand(context.Background(), request, connectedChannel)
+	result, err := service.ProcessCommand(context.Background(), orgID, request, connectedChannel)
 
 	// Assert
 	assert.NoError(t, err)
@@ -108,7 +108,7 @@ func TestCommandsService_ProcessCommand_RepoCommand_RepositoryNotFound(t *testin
 	}
 
 	// Execute
-	result, err := service.ProcessCommand(context.Background(), request, connectedChannel)
+	result, err := service.ProcessCommand(context.Background(), orgID, request, connectedChannel)
 
 	// Assert
 	assert.NoError(t, err)
@@ -168,7 +168,7 @@ func TestCommandsService_ProcessCommand_DiscordCommand_Success(t *testing.T) {
 	}
 
 	// Execute
-	result, err := service.ProcessCommand(context.Background(), request, connectedChannel)
+	result, err := service.ProcessCommand(context.Background(), orgID, request, connectedChannel)
 
 	// Assert
 	assert.NoError(t, err)
@@ -206,7 +206,7 @@ func TestCommandsService_ProcessCommand_InvalidCommand(t *testing.T) {
 	}
 
 	// Execute
-	result, err := service.ProcessCommand(context.Background(), request, connectedChannel)
+	result, err := service.ProcessCommand(context.Background(), orgID, request, connectedChannel)
 
 	// Assert
 	assert.NoError(t, err)
