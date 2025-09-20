@@ -13,53 +13,82 @@ type MockConnectedChannelsService struct {
 	mock.Mock
 }
 
-func (m *MockConnectedChannelsService) UpsertConnectedChannel(
+// Slack-specific methods
+func (m *MockConnectedChannelsService) UpsertSlackConnectedChannel(
 	ctx context.Context,
 	orgID models.OrgID,
+	teamID string,
 	channelID string,
-	channelType string,
-) (*models.ConnectedChannel, error) {
-	args := m.Called(ctx, orgID, channelID, channelType)
+) (*models.SlackConnectedChannel, error) {
+	args := m.Called(ctx, orgID, teamID, channelID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.ConnectedChannel), args.Error(1)
+	return args.Get(0).(*models.SlackConnectedChannel), args.Error(1)
 }
 
-func (m *MockConnectedChannelsService) GetConnectedChannelByChannelID(
+func (m *MockConnectedChannelsService) GetSlackConnectedChannel(
 	ctx context.Context,
 	orgID models.OrgID,
+	teamID string,
 	channelID string,
-	channelType string,
-) (mo.Option[*models.ConnectedChannel], error) {
-	args := m.Called(ctx, orgID, channelID, channelType)
+) (mo.Option[*models.SlackConnectedChannel], error) {
+	args := m.Called(ctx, orgID, teamID, channelID)
 	if args.Get(0) == nil {
-		return mo.None[*models.ConnectedChannel](), args.Error(1)
+		return mo.None[*models.SlackConnectedChannel](), args.Error(1)
 	}
-	return args.Get(0).(mo.Option[*models.ConnectedChannel]), args.Error(1)
+	return args.Get(0).(mo.Option[*models.SlackConnectedChannel]), args.Error(1)
 }
 
+// Discord-specific methods
+func (m *MockConnectedChannelsService) UpsertDiscordConnectedChannel(
+	ctx context.Context,
+	orgID models.OrgID,
+	guildID string,
+	channelID string,
+) (*models.DiscordConnectedChannel, error) {
+	args := m.Called(ctx, orgID, guildID, channelID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.DiscordConnectedChannel), args.Error(1)
+}
+
+func (m *MockConnectedChannelsService) GetDiscordConnectedChannel(
+	ctx context.Context,
+	orgID models.OrgID,
+	guildID string,
+	channelID string,
+) (mo.Option[*models.DiscordConnectedChannel], error) {
+	args := m.Called(ctx, orgID, guildID, channelID)
+	if args.Get(0) == nil {
+		return mo.None[*models.DiscordConnectedChannel](), args.Error(1)
+	}
+	return args.Get(0).(mo.Option[*models.DiscordConnectedChannel]), args.Error(1)
+}
+
+// Common methods that work with the interface
 func (m *MockConnectedChannelsService) GetConnectedChannelByID(
 	ctx context.Context,
 	orgID models.OrgID,
 	id string,
-) (mo.Option[*models.ConnectedChannel], error) {
+) (mo.Option[models.ConnectedChannel], error) {
 	args := m.Called(ctx, orgID, id)
 	if args.Get(0) == nil {
-		return mo.None[*models.ConnectedChannel](), args.Error(1)
+		return mo.None[models.ConnectedChannel](), args.Error(1)
 	}
-	return args.Get(0).(mo.Option[*models.ConnectedChannel]), args.Error(1)
+	return args.Get(0).(mo.Option[models.ConnectedChannel]), args.Error(1)
 }
 
 func (m *MockConnectedChannelsService) GetConnectedChannelsByOrganization(
 	ctx context.Context,
 	orgID models.OrgID,
-) ([]*models.ConnectedChannel, error) {
+) ([]models.ConnectedChannel, error) {
 	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*models.ConnectedChannel), args.Error(1)
+	return args.Get(0).([]models.ConnectedChannel), args.Error(1)
 }
 
 func (m *MockConnectedChannelsService) DeleteConnectedChannel(

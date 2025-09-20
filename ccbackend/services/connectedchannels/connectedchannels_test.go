@@ -2,6 +2,7 @@ package connectedchannels_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -492,5 +493,316 @@ func TestConnectedChannelsService_DeleteConnectedChannel(t *testing.T) {
 		err := service.DeleteConnectedChannel(context.Background(), models.OrgID(testOrg.ID), "invalid-id")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "ID must be a valid ULID")
+	})
+}
+
+func TestConnectedChannelsService_GetConnectedChannelByID(t *testing.T) {
+	dbConn, err := testutils.SetupTestDB()
+	require.NoError(t, err)
+	defer dbConn.Close()
+
+	connectedChannelsRepo := db.NewPostgresConnectedChannelsRepository(dbConn, testutils.TestSchema)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, testutils.TestSchema)
+
+	// Create test organization
+	testOrg := &models.Organization{
+		ID: core.NewID("org"),
+	}
+	err = organizationsRepo.CreateOrganization(context.Background(), testOrg)
+	require.NoError(t, err)
+
+	mockAgentsService := &testutils.MockAgentsService{}
+	service := connectedchannels.NewConnectedChannelsService(connectedChannelsRepo, mockAgentsService)
+
+	t.Run("Get existing Slack channel by ID", func(t *testing.T) {
+		teamID := "T1234567890"
+		channelID := "C1234567890"
+		repoURL := "https://github.com/test/repo.git"
+
+		// Create test channel
+		testChannel := &models.DatabaseConnectedChannel{
+			ID:               core.NewID("cc"),
+			OrgID:            models.OrgID(testOrg.ID),
+			SlackTeamID:      &teamID,
+			SlackChannelID:   &channelID,
+			DiscordGuildID:   nil,
+			DiscordChannelID: nil,
+			DefaultRepoURL:   &repoURL,
+		}
+		err := connectedChannelsRepo.UpsertSlackConnectedChannel(context.Background(), testChannel)
+		require.NoError(t, err)
+		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), testChannel.ID, models.OrgID(testOrg.ID))
+
+		// Get the channel by ID
+		maybeChannel, err := service.GetConnectedChannelByID(context.Background(), models.OrgID(testOrg.ID), testChannel.ID)
+		require.NoError(t, err)
+		require.True(t, maybeChannel.IsPresent())
+
+		channel := maybeChannel.MustGet()
+		slackChannel, ok := channel.(*models.SlackConnectedChannel)
+		require.True(t, ok, "Channel should be a SlackConnectedChannel")
+		assert.Equal(t, testChannel.ID, slackChannel.ID)
+		assert.Equal(t, teamID, slackChannel.TeamID)
+		assert.Equal(t, channelID, slackChannel.ChannelID)
+		assert.Equal(t, repoURL, *slackChannel.DefaultRepoURL)
+	})
+
+	t.Run("Get existing Discord channel by ID", func(t *testing.T) {
+		guildID := "987654321098765432"
+		channelID := "123456789012345678"
+		repoURL := "https://github.com/test/repo.git"
+
+		// Create test channel
+		testChannel := &models.DatabaseConnectedChannel{
+			ID:               core.NewID("cc"),
+			OrgID:            models.OrgID(testOrg.ID),
+			SlackTeamID:      nil,
+			SlackChannelID:   nil,
+			DiscordGuildID:   &guildID,
+			DiscordChannelID: &channelID,
+			DefaultRepoURL:   &repoURL,
+		}
+		err := connectedChannelsRepo.UpsertDiscordConnectedChannel(context.Background(), testChannel)
+		require.NoError(t, err)
+		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), testChannel.ID, models.OrgID(testOrg.ID))
+
+		// Get the channel by ID
+		maybeChannel, err := service.GetConnectedChannelByID(context.Background(), models.OrgID(testOrg.ID), testChannel.ID)
+		require.NoError(t, err)
+		require.True(t, maybeChannel.IsPresent())
+
+		channel := maybeChannel.MustGet()
+		discordChannel, ok := channel.(*models.DiscordConnectedChannel)
+		require.True(t, ok, "Channel should be a DiscordConnectedChannel")
+		assert.Equal(t, testChannel.ID, discordChannel.ID)
+		assert.Equal(t, guildID, discordChannel.GuildID)
+		assert.Equal(t, channelID, discordChannel.ChannelID)
+		assert.Equal(t, repoURL, *discordChannel.DefaultRepoURL)
+	})
+
+	t.Run("Get non-existent channel", func(t *testing.T) {
+		maybeChannel, err := service.GetConnectedChannelByID(context.Background(), models.OrgID(testOrg.ID), core.NewID("cc"))
+		require.NoError(t, err)
+		assert.False(t, maybeChannel.IsPresent())
+	})
+
+	t.Run("Invalid ID returns error", func(t *testing.T) {
+		_, err := service.GetConnectedChannelByID(context.Background(), models.OrgID(testOrg.ID), "invalid-id")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ID must be a valid ULID")
+	})
+}
+
+func TestConnectedChannelsService_UpdateConnectedChannelDefaultRepoURL(t *testing.T) {
+	dbConn, err := testutils.SetupTestDB()
+	require.NoError(t, err)
+	defer dbConn.Close()
+
+	connectedChannelsRepo := db.NewPostgresConnectedChannelsRepository(dbConn, testutils.TestSchema)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, testutils.TestSchema)
+
+	// Create test organization
+	testOrg := &models.Organization{
+		ID: core.NewID("org"),
+	}
+	err = organizationsRepo.CreateOrganization(context.Background(), testOrg)
+	require.NoError(t, err)
+
+	mockAgentsService := &testutils.MockAgentsService{}
+	service := connectedchannels.NewConnectedChannelsService(connectedChannelsRepo, mockAgentsService)
+
+	t.Run("Update existing channel repo URL", func(t *testing.T) {
+		teamID := "T1234567890"
+		channelID := "C1234567890"
+		originalRepoURL := "https://github.com/original/repo.git"
+		newRepoURL := "https://github.com/updated/repo.git"
+
+		// Create test channel
+		testChannel := &models.DatabaseConnectedChannel{
+			ID:               core.NewID("cc"),
+			OrgID:            models.OrgID(testOrg.ID),
+			SlackTeamID:      &teamID,
+			SlackChannelID:   &channelID,
+			DiscordGuildID:   nil,
+			DiscordChannelID: nil,
+			DefaultRepoURL:   &originalRepoURL,
+		}
+		err := connectedChannelsRepo.UpsertSlackConnectedChannel(context.Background(), testChannel)
+		require.NoError(t, err)
+		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), testChannel.ID, models.OrgID(testOrg.ID))
+
+		// Update the repo URL
+		err = service.UpdateConnectedChannelDefaultRepoURL(context.Background(), models.OrgID(testOrg.ID), testChannel.ID, &newRepoURL)
+		require.NoError(t, err)
+
+		// Verify the update
+		maybeChannel, err := service.GetSlackConnectedChannel(context.Background(), models.OrgID(testOrg.ID), teamID, channelID)
+		require.NoError(t, err)
+		require.True(t, maybeChannel.IsPresent())
+
+		channel := maybeChannel.MustGet()
+		assert.Equal(t, newRepoURL, *channel.DefaultRepoURL)
+	})
+
+	t.Run("Clear repo URL with nil", func(t *testing.T) {
+		teamID := "T0987654321"
+		channelID := "C0987654321"
+		originalRepoURL := "https://github.com/original/repo.git"
+
+		// Create test channel
+		testChannel := &models.DatabaseConnectedChannel{
+			ID:               core.NewID("cc"),
+			OrgID:            models.OrgID(testOrg.ID),
+			SlackTeamID:      &teamID,
+			SlackChannelID:   &channelID,
+			DiscordGuildID:   nil,
+			DiscordChannelID: nil,
+			DefaultRepoURL:   &originalRepoURL,
+		}
+		err := connectedChannelsRepo.UpsertSlackConnectedChannel(context.Background(), testChannel)
+		require.NoError(t, err)
+		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), testChannel.ID, models.OrgID(testOrg.ID))
+
+		// Clear the repo URL
+		err = service.UpdateConnectedChannelDefaultRepoURL(context.Background(), models.OrgID(testOrg.ID), testChannel.ID, nil)
+		require.NoError(t, err)
+
+		// Verify the update
+		maybeChannel, err := service.GetSlackConnectedChannel(context.Background(), models.OrgID(testOrg.ID), teamID, channelID)
+		require.NoError(t, err)
+		require.True(t, maybeChannel.IsPresent())
+
+		channel := maybeChannel.MustGet()
+		assert.Nil(t, channel.DefaultRepoURL)
+	})
+
+	t.Run("Update non-existent channel returns error", func(t *testing.T) {
+		newRepoURL := "https://github.com/test/repo.git"
+		err := service.UpdateConnectedChannelDefaultRepoURL(context.Background(), models.OrgID(testOrg.ID), core.NewID("cc"), &newRepoURL)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "connected channel not found")
+	})
+
+	t.Run("Invalid ID returns error", func(t *testing.T) {
+		newRepoURL := "https://github.com/test/repo.git"
+		err := service.UpdateConnectedChannelDefaultRepoURL(context.Background(), models.OrgID(testOrg.ID), "invalid-id", &newRepoURL)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ID must be a valid ULID")
+	})
+}
+
+func TestConnectedChannelsService_RepoURLAssignment(t *testing.T) {
+	dbConn, err := testutils.SetupTestDB()
+	require.NoError(t, err)
+	defer dbConn.Close()
+
+	connectedChannelsRepo := db.NewPostgresConnectedChannelsRepository(dbConn, testutils.TestSchema)
+	organizationsRepo := db.NewPostgresOrganizationsRepository(dbConn, testutils.TestSchema)
+
+	// Create test organization
+	testOrg := &models.Organization{
+		ID: core.NewID("org"),
+	}
+	err = organizationsRepo.CreateOrganization(context.Background(), testOrg)
+	require.NoError(t, err)
+
+	t.Run("New Slack channel with no agents available", func(t *testing.T) {
+		// Create mock that returns no agents
+		mockAgentsService := &testutils.MockAgentsService{}
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), models.OrgID(testOrg.ID), []string{}).
+			Return([]*models.ActiveAgent{}, nil)
+
+		service := connectedchannels.NewConnectedChannelsService(connectedChannelsRepo, mockAgentsService)
+
+		teamID := "T1111111111"
+		channelID := "C1111111111"
+
+		channel, err := service.UpsertSlackConnectedChannel(context.Background(), models.OrgID(testOrg.ID), teamID, channelID)
+		require.NoError(t, err)
+		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), channel.ID, models.OrgID(testOrg.ID))
+
+		assert.NotEmpty(t, channel.ID)
+		assert.Equal(t, models.OrgID(testOrg.ID), channel.OrgID)
+		assert.Equal(t, teamID, channel.TeamID)
+		assert.Equal(t, channelID, channel.ChannelID)
+		assert.Nil(t, channel.DefaultRepoURL)
+		mockAgentsService.AssertExpectations(t)
+	})
+
+	t.Run("New Discord channel with no agents available", func(t *testing.T) {
+		// Create mock that returns no agents
+		mockAgentsService := &testutils.MockAgentsService{}
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), models.OrgID(testOrg.ID), []string{}).
+			Return([]*models.ActiveAgent{}, nil)
+
+		service := connectedchannels.NewConnectedChannelsService(connectedChannelsRepo, mockAgentsService)
+
+		guildID := "987654321098765432"
+		channelID := "111111111111111111"
+
+		channel, err := service.UpsertDiscordConnectedChannel(context.Background(), models.OrgID(testOrg.ID), guildID, channelID)
+		require.NoError(t, err)
+		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), channel.ID, models.OrgID(testOrg.ID))
+
+		assert.NotEmpty(t, channel.ID)
+		assert.Equal(t, models.OrgID(testOrg.ID), channel.OrgID)
+		assert.Equal(t, guildID, channel.GuildID)
+		assert.Equal(t, channelID, channel.ChannelID)
+		assert.Nil(t, channel.DefaultRepoURL)
+		mockAgentsService.AssertExpectations(t)
+	})
+
+	t.Run("New channel with agent having empty repo URL", func(t *testing.T) {
+		// Create agent with empty repo URL
+		testAgent := &models.ActiveAgent{
+			ID:             core.NewID("ag"),
+			WSConnectionID: "test-conn-1",
+			OrgID:          models.OrgID(testOrg.ID),
+			CCAgentID:      "test-agent-1",
+			RepoURL:        "", // Empty repo URL
+		}
+
+		mockAgentsService := &testutils.MockAgentsService{}
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), models.OrgID(testOrg.ID), []string{}).
+			Return([]*models.ActiveAgent{testAgent}, nil)
+
+		service := connectedchannels.NewConnectedChannelsService(connectedChannelsRepo, mockAgentsService)
+
+		teamID := "T2222222222"
+		channelID := "C2222222222"
+
+		channel, err := service.UpsertSlackConnectedChannel(context.Background(), models.OrgID(testOrg.ID), teamID, channelID)
+		require.NoError(t, err)
+		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), channel.ID, models.OrgID(testOrg.ID))
+
+		assert.NotEmpty(t, channel.ID)
+		assert.Equal(t, models.OrgID(testOrg.ID), channel.OrgID)
+		assert.Equal(t, teamID, channel.TeamID)
+		assert.Equal(t, channelID, channel.ChannelID)
+		assert.Nil(t, channel.DefaultRepoURL)
+		mockAgentsService.AssertExpectations(t)
+	})
+
+	t.Run("Error getting agents is handled gracefully", func(t *testing.T) {
+		// Create mock that returns error
+		mockAgentsService := &testutils.MockAgentsService{}
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), models.OrgID(testOrg.ID), []string{}).
+			Return([]*models.ActiveAgent{}, errors.New("failed to get agents"))
+
+		service := connectedchannels.NewConnectedChannelsService(connectedChannelsRepo, mockAgentsService)
+
+		teamID := "T3333333333"
+		channelID := "C3333333333"
+
+		channel, err := service.UpsertSlackConnectedChannel(context.Background(), models.OrgID(testOrg.ID), teamID, channelID)
+		require.NoError(t, err) // Should succeed despite error getting agents
+		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), channel.ID, models.OrgID(testOrg.ID))
+
+		assert.NotEmpty(t, channel.ID)
+		assert.Equal(t, models.OrgID(testOrg.ID), channel.OrgID)
+		assert.Equal(t, teamID, channel.TeamID)
+		assert.Equal(t, channelID, channel.ChannelID)
+		assert.Nil(t, channel.DefaultRepoURL) // Should be nil when agent service fails
+		mockAgentsService.AssertExpectations(t)
 	})
 }
