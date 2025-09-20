@@ -56,8 +56,8 @@ func (s *ConnectedChannelsService) UpsertSlackConnectedChannel(
 		// New channel - assign default repo URL from first available agent
 		defaultRepoURL, err = s.getFirstAvailableRepoURL(ctx, orgID)
 		if err != nil {
-			log.Printf("⚠️ Failed to get default repo URL for new Slack channel, continuing without it: %v", err)
-			defaultRepoURL = nil
+			log.Printf("❌ Failed to get default repo URL for new Slack channel: %v", err)
+			return nil, fmt.Errorf("failed to get default repo URL for new Slack channel: %w", err)
 		}
 		log.Printf("📋 New Slack channel detected, assigned default repo URL: %v", defaultRepoURL)
 	} else {
@@ -155,8 +155,8 @@ func (s *ConnectedChannelsService) UpsertDiscordConnectedChannel(
 		// New channel - assign default repo URL from first available agent
 		defaultRepoURL, err = s.getFirstAvailableRepoURL(ctx, orgID)
 		if err != nil {
-			log.Printf("⚠️ Failed to get default repo URL for new Discord channel, continuing without it: %v", err)
-			defaultRepoURL = nil
+			log.Printf("❌ Failed to get default repo URL for new Discord channel: %v", err)
+			return nil, fmt.Errorf("failed to get default repo URL for new Discord channel: %w", err)
 		}
 		log.Printf("📋 New Discord channel detected, assigned default repo URL: %v", defaultRepoURL)
 	} else {
@@ -275,8 +275,8 @@ func (s *ConnectedChannelsService) GetConnectedChannelsByOrganization(
 	for _, dbChannel := range dbChannels {
 		channel, err := dbChannel.ToConnectedChannel()
 		if err != nil {
-			log.Printf("⚠️ Failed to convert database channel to domain model: %v", err)
-			continue // Skip invalid records
+			log.Printf("❌ Failed to convert database channel to domain model: %v", err)
+			return nil, fmt.Errorf("failed to convert database channel to domain model (channel ID: %s): %w", dbChannel.ID, err)
 		}
 		channels = append(channels, channel)
 	}
