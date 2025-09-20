@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
-	"ccbackend/appctx"
 	"ccbackend/models"
 	agentsservice "ccbackend/services/agents"
 	connectedchannelsservice "ccbackend/services/connectedchannels"
@@ -20,10 +20,16 @@ func TestCommandsService_ProcessCommand_RepoCommand_Success(t *testing.T) {
 	service := NewCommandsService(mockAgentsService, mockConnectedChannelsService)
 
 	orgID := models.OrgID("o_test123")
-	org := &models.Organization{ID: string(orgID)}
-	ctx := appctx.SetOrganization(context.Background(), org)
-
 	normalizedRepoURL := "github.com/user/repo"
+
+	// Mock connected channel
+	connectedChannel := &models.SlackConnectedChannel{
+		ID:             "channel1",
+		OrgID:          orgID,
+		TeamID:         "team123",
+		ChannelID:      "channel123",
+		DefaultRepoURL: nil,
+	}
 
 	// Mock agents with matching repository
 	agents := []*models.ActiveAgent{
@@ -43,20 +49,17 @@ func TestCommandsService_ProcessCommand_RepoCommand_Success(t *testing.T) {
 	}
 
 	// Setup mocks
-	mockAgentsService.On("GetAvailableAgents", ctx, orgID).Return(agents, nil)
-	mockConnectedChannelsService.On("UpdateSlackChannelDefaultRepo", ctx, orgID, "team123", "channel123", normalizedRepoURL).Return(updatedSlackChannel, nil)
+	mockAgentsService.On("GetAvailableAgents", mock.Anything, orgID).Return(agents, nil)
+	mockConnectedChannelsService.On("UpdateSlackChannelDefaultRepo", mock.Anything, orgID, "team123", "channel123", normalizedRepoURL).Return(updatedSlackChannel, nil)
 
 	request := models.CommandRequest{
 		Command:     "--cmd repo=github.com/user/repo",
-		Platform:    models.ChannelTypeSlack,
-		TeamID:      "team123",
-		ChannelID:   "channel123",
 		UserID:      "user123",
 		MessageText: "--cmd repo=github.com/user/repo",
 	}
 
 	// Execute
-	result, err := service.ProcessCommand(ctx, request)
+	result, err := service.ProcessCommand(context.Background(), request, connectedChannel)
 
 	// Assert
 	assert.NoError(t, err)
@@ -77,8 +80,15 @@ func TestCommandsService_ProcessCommand_RepoCommand_RepositoryNotFound(t *testin
 	service := NewCommandsService(mockAgentsService, mockConnectedChannelsService)
 
 	orgID := models.OrgID("o_test123")
-	org := &models.Organization{ID: string(orgID)}
-	ctx := appctx.SetOrganization(context.Background(), org)
+
+	// Mock connected channel
+	connectedChannel := &models.SlackConnectedChannel{
+		ID:             "channel1",
+		OrgID:          orgID,
+		TeamID:         "team123",
+		ChannelID:      "channel123",
+		DefaultRepoURL: nil,
+	}
 
 	// Mock agents with different repository
 	agents := []*models.ActiveAgent{
@@ -89,19 +99,16 @@ func TestCommandsService_ProcessCommand_RepoCommand_RepositoryNotFound(t *testin
 	}
 
 	// Setup mocks
-	mockAgentsService.On("GetAvailableAgents", ctx, orgID).Return(agents, nil)
+	mockAgentsService.On("GetAvailableAgents", mock.Anything, orgID).Return(agents, nil)
 
 	request := models.CommandRequest{
 		Command:     "--cmd repo=github.com/user/repo",
-		Platform:    models.ChannelTypeSlack,
-		TeamID:      "team123",
-		ChannelID:   "channel123",
 		UserID:      "user123",
 		MessageText: "--cmd repo=github.com/user/repo",
 	}
 
 	// Execute
-	result, err := service.ProcessCommand(ctx, request)
+	result, err := service.ProcessCommand(context.Background(), request, connectedChannel)
 
 	// Assert
 	assert.NoError(t, err)
@@ -122,10 +129,16 @@ func TestCommandsService_ProcessCommand_DiscordCommand_Success(t *testing.T) {
 	service := NewCommandsService(mockAgentsService, mockConnectedChannelsService)
 
 	orgID := models.OrgID("o_test123")
-	org := &models.Organization{ID: string(orgID)}
-	ctx := appctx.SetOrganization(context.Background(), org)
-
 	normalizedRepoURL := "github.com/user/repo"
+
+	// Mock connected channel (Discord)
+	connectedChannel := &models.DiscordConnectedChannel{
+		ID:             "channel1",
+		OrgID:          orgID,
+		GuildID:        "guild123",
+		ChannelID:      "channel123",
+		DefaultRepoURL: nil,
+	}
 
 	// Mock agents with matching repository
 	agents := []*models.ActiveAgent{
@@ -145,20 +158,17 @@ func TestCommandsService_ProcessCommand_DiscordCommand_Success(t *testing.T) {
 	}
 
 	// Setup mocks
-	mockAgentsService.On("GetAvailableAgents", ctx, orgID).Return(agents, nil)
-	mockConnectedChannelsService.On("UpdateDiscordChannelDefaultRepo", ctx, orgID, "guild123", "channel123", normalizedRepoURL).Return(updatedDiscordChannel, nil)
+	mockAgentsService.On("GetAvailableAgents", mock.Anything, orgID).Return(agents, nil)
+	mockConnectedChannelsService.On("UpdateDiscordChannelDefaultRepo", mock.Anything, orgID, "guild123", "channel123", normalizedRepoURL).Return(updatedDiscordChannel, nil)
 
 	request := models.CommandRequest{
 		Command:     "--cmd repo=github.com/user/repo",
-		Platform:    models.ChannelTypeDiscord,
-		TeamID:      "guild123", // Discord uses guildID as teamID
-		ChannelID:   "channel123",
 		UserID:      "user123",
 		MessageText: "--cmd repo=github.com/user/repo",
 	}
 
 	// Execute
-	result, err := service.ProcessCommand(ctx, request)
+	result, err := service.ProcessCommand(context.Background(), request, connectedChannel)
 
 	// Assert
 	assert.NoError(t, err)
@@ -179,20 +189,24 @@ func TestCommandsService_ProcessCommand_InvalidCommand(t *testing.T) {
 	service := NewCommandsService(mockAgentsService, mockConnectedChannelsService)
 
 	orgID := models.OrgID("o_test123")
-	org := &models.Organization{ID: string(orgID)}
-	ctx := appctx.SetOrganization(context.Background(), org)
+
+	// Mock connected channel
+	connectedChannel := &models.SlackConnectedChannel{
+		ID:             "channel1",
+		OrgID:          orgID,
+		TeamID:         "team123",
+		ChannelID:      "channel123",
+		DefaultRepoURL: nil,
+	}
 
 	request := models.CommandRequest{
 		Command:     "--cmd invalid=value",
-		Platform:    models.ChannelTypeSlack,
-		TeamID:      "team123",
-		ChannelID:   "channel123",
 		UserID:      "user123",
 		MessageText: "--cmd invalid=value",
 	}
 
 	// Execute
-	result, err := service.ProcessCommand(ctx, request)
+	result, err := service.ProcessCommand(context.Background(), request, connectedChannel)
 
 	// Assert
 	assert.NoError(t, err)

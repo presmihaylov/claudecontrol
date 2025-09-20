@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"ccbackend/appctx"
 	"ccbackend/models"
 	"ccbackend/services"
 )
@@ -31,14 +30,9 @@ func NewCommandsService(
 func (s *CommandsService) ProcessCommand(
 	ctx context.Context,
 	request models.CommandRequest,
+	connectedChannel models.ConnectedChannel,
 ) (*models.CommandResult, error) {
-	log.Printf("📋 Starting to process command: %s from platform: %s", request.Command, request.Platform)
-
-	// Get organization from context
-	org, ok := appctx.GetOrganization(ctx)
-	if !ok {
-		return nil, fmt.Errorf("organization not found in context")
-	}
+	log.Printf("📋 Starting to process command: %s from platform: %s", request.Command, connectedChannel.GetChannelType())
 
 	// Parse the command
 	commandType, repoURL, err := s.parseCommand(request.Command)
@@ -52,7 +46,7 @@ func (s *CommandsService) ProcessCommand(
 
 	switch commandType {
 	case "repo":
-		return s.processRepoCommand(ctx, models.OrgID(org.ID), request.Platform, request.TeamID, request.ChannelID, repoURL)
+		return s.processRepoCommand(ctx, connectedChannel, repoURL)
 	default:
 		return &models.CommandResult{
 			Success: false,
@@ -94,13 +88,11 @@ func (s *CommandsService) parseCommand(command string) (commandType string, valu
 
 func (s *CommandsService) processRepoCommand(
 	ctx context.Context,
-	orgID models.OrgID,
-	platform models.ChannelType,
-	teamID string,
-	channelID string,
+	connectedChannel models.ConnectedChannel,
 	repoURL string,
 ) (*models.CommandResult, error) {
-	log.Printf("📋 Starting to process repo command for org: %s, platform: %s, channel: %s, repo: %s", orgID, platform, channelID, repoURL)
+	log.Printf("📋 Starting to process repo command for org: %s, platform: %s, channel: %s, repo: %s",
+		connectedChannel.GetOrgID(), connectedChannel.GetChannelType(), connectedChannel.GetChannelID(), repoURL)
 
 	// Normalize the repository URL
 	normalizedRepoURL, err := s.normalizeRepoURL(repoURL)
@@ -113,14 +105,14 @@ func (s *CommandsService) processRepoCommand(
 	}
 
 	// Validate that the repository exists in active agents
-	exists, err := s.validateRepoExistsInActiveAgents(ctx, orgID, normalizedRepoURL)
+	exists, err := s.validateRepoExistsInActiveAgents(ctx, connectedChannel.GetOrgID(), normalizedRepoURL)
 	if err != nil {
 		log.Printf("❌ Failed to validate repo exists in active agents: %v", err)
 		return nil, fmt.Errorf("failed to validate repository: %w", err)
 	}
 
 	if !exists {
-		log.Printf("❌ Repository %s not found in active agents for org: %s", normalizedRepoURL, orgID)
+		log.Printf("❌ Repository %s not found in active agents for org: %s", normalizedRepoURL, connectedChannel.GetOrgID())
 		return &models.CommandResult{
 			Success: false,
 			Message: fmt.Sprintf("Repository %s not found in active agents for this organization", normalizedRepoURL),
@@ -128,7 +120,7 @@ func (s *CommandsService) processRepoCommand(
 	}
 
 	// Update the connected channel's default repository
-	err = s.updateChannelDefaultRepo(ctx, orgID, platform, teamID, channelID, normalizedRepoURL)
+	err = s.updateChannelDefaultRepo(ctx, connectedChannel, normalizedRepoURL)
 	if err != nil {
 		log.Printf("❌ Failed to update channel default repo: %v", err)
 		return nil, fmt.Errorf("failed to update channel repository: %w", err)
@@ -203,27 +195,27 @@ func (s *CommandsService) validateRepoExistsInActiveAgents(
 
 func (s *CommandsService) updateChannelDefaultRepo(
 	ctx context.Context,
-	orgID models.OrgID,
-	platform models.ChannelType,
-	teamID string,
-	channelID string,
+	connectedChannel models.ConnectedChannel,
 	repoURL string,
 ) error {
-	log.Printf("📋 Starting to update channel default repo for platform: %s, channel: %s, repo: %s", platform, channelID, repoURL)
+	log.Printf("📋 Starting to update channel default repo for platform: %s, channel: %s, repo: %s",
+		connectedChannel.GetChannelType(), connectedChannel.GetChannelID(), repoURL)
 
-	switch platform {
+	switch connectedChannel.GetChannelType() {
 	case models.ChannelTypeSlack:
-		_, err := s.connectedChannelsService.UpdateSlackChannelDefaultRepo(ctx, orgID, teamID, channelID, repoURL)
+		_, err := s.connectedChannelsService.UpdateSlackChannelDefaultRepo(ctx,
+			connectedChannel.GetOrgID(), connectedChannel.GetTeamID(), connectedChannel.GetChannelID(), repoURL)
 		if err != nil {
 			return fmt.Errorf("failed to update Slack channel default repo: %w", err)
 		}
 	case models.ChannelTypeDiscord:
-		_, err := s.connectedChannelsService.UpdateDiscordChannelDefaultRepo(ctx, orgID, teamID, channelID, repoURL)
+		_, err := s.connectedChannelsService.UpdateDiscordChannelDefaultRepo(ctx,
+			connectedChannel.GetOrgID(), connectedChannel.GetTeamID(), connectedChannel.GetChannelID(), repoURL)
 		if err != nil {
 			return fmt.Errorf("failed to update Discord channel default repo: %w", err)
 		}
 	default:
-		return fmt.Errorf("unsupported platform: %s", platform)
+		return fmt.Errorf("unsupported platform: %s", connectedChannel.GetChannelType())
 	}
 
 	log.Printf("📋 Completed successfully - updated channel default repo")

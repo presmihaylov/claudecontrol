@@ -414,6 +414,7 @@ type CommandsService interface {
 	ProcessCommand(
 		ctx context.Context,
 		request models.CommandRequest,
+		connectedChannel models.ConnectedChannel,
 	) (*models.CommandResult, error)
 }
 

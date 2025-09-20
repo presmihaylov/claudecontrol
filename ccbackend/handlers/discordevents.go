@@ -269,6 +269,19 @@ func (h *DiscordEventsHandler) handleDiscordCommand(
 ) error {
 	log.Printf("📋 Starting to handle Discord command: %s in channel: %s", commandText, channelID)
 
+	// Get the connected channel for this Discord channel
+	connectedChannelOpt, err := h.connectedChannelsService.GetDiscordConnectedChannel(ctx, orgID, guildID, channelID)
+	if err != nil {
+		log.Printf("❌ Failed to get connected channel: %v", err)
+		return fmt.Errorf("failed to get connected channel: %w", err)
+	}
+	if !connectedChannelOpt.IsPresent() {
+		log.Printf("❌ Connected channel not found for guild: %s, channel: %s", guildID, channelID)
+		return fmt.Errorf("connected channel not found")
+	}
+
+	connectedChannel := connectedChannelOpt.MustGet()
+
 	// Add organization to context for the commands service
 	org, err := h.getOrganizationByID(ctx, orgID)
 	if err != nil {
@@ -278,18 +291,15 @@ func (h *DiscordEventsHandler) handleDiscordCommand(
 
 	ctx = appctx.SetOrganization(ctx, org)
 
-	// Create command request
+	// Create simplified command request
 	commandRequest := models.CommandRequest{
 		Command:     commandText,
-		Platform:    models.ChannelTypeDiscord,
-		TeamID:      guildID, // Discord uses guildID as teamID
-		ChannelID:   channelID,
 		UserID:      userID,
 		MessageText: commandText,
 	}
 
 	// Process the command
-	result, err := h.commandsService.ProcessCommand(ctx, commandRequest)
+	result, err := h.commandsService.ProcessCommand(ctx, commandRequest, connectedChannel)
 	if err != nil {
 		log.Printf("❌ Failed to process command: %v", err)
 		// Send error message back to Discord

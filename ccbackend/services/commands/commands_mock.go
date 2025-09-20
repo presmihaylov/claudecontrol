@@ -15,8 +15,9 @@ type MockCommandsService struct {
 func (m *MockCommandsService) ProcessCommand(
 	ctx context.Context,
 	request models.CommandRequest,
+	connectedChannel models.ConnectedChannel,
 ) (*models.CommandResult, error) {
-	args := m.Called(ctx, request)
+	args := m.Called(ctx, request, connectedChannel)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
