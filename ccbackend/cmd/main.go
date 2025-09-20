@@ -41,6 +41,7 @@ import (
 	slackmessages "ccbackend/services/slackmessages"
 	"ccbackend/services/txmanager"
 	"ccbackend/services/users"
+	connectedchannels "ccbackend/services/connectedchannels"
 	"ccbackend/usecases"
 	"ccbackend/usecases/agents"
 	"ccbackend/usecases/core"
@@ -94,6 +95,7 @@ func run() error {
 	anthropicIntegrationsRepo := db.NewPostgresAnthropicIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	ccAgentContainerIntegrationsRepo := db.NewPostgresCCAgentContainerIntegrationsRepository(dbConn, cfg.DatabaseSchema)
 	settingsRepo := db.NewPostgresSettingsRepository(dbConn, cfg.DatabaseSchema)
+	connectedChannelsRepo := db.NewPostgresConnectedChannelsRepository(dbConn, cfg.DatabaseSchema)
 
 	// Initialize transaction manager
 	txManager := txmanager.NewTransactionManager(dbConn)
@@ -219,6 +221,9 @@ func run() error {
 	// Create agents service after wsClient is available
 	agentsService := agentsservice.NewAgentsService(agentsRepo, wsClient)
 
+	// Create connected channels service after agentsService is available
+	connectedChannelsService := connectedchannels.NewConnectedChannelsService(connectedChannelsRepo, agentsService)
+
 	// Create use cases in dependency order
 	agentsUseCase := agents.NewAgentsUseCase(wsClient, agentsService)
 
@@ -273,6 +278,7 @@ func run() error {
 			cfg.SlackConfig.SigningSecret,
 			coreUseCase,
 			slackIntegrationsService,
+			connectedChannelsService,
 		)
 	}
 
@@ -285,6 +291,7 @@ func run() error {
 			coreUseCase,
 			discordIntegrationsService,
 			discordUseCaseInstance,
+			connectedChannelsService,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to create Discord events handler: %w", err)

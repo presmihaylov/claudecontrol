@@ -20,6 +20,7 @@ type DiscordEventsHandler struct {
 	coreUseCase                *core.CoreUseCase
 	discordIntegrationsService services.DiscordIntegrationsService
 	discordUseCase             usecases.DiscordUseCaseInterface
+	connectedChannelsService   services.ConnectedChannelsService
 }
 
 func NewDiscordEventsHandler(
@@ -28,6 +29,7 @@ func NewDiscordEventsHandler(
 	coreUseCase *core.CoreUseCase,
 	discordIntegrationsService services.DiscordIntegrationsService,
 	discordUseCase usecases.DiscordUseCaseInterface,
+	connectedChannelsService services.ConnectedChannelsService,
 ) (*DiscordEventsHandler, error) {
 	// Create a new Discord session using the provided bot token
 	session, err := discordgo.New("Bot " + botToken)
@@ -41,6 +43,7 @@ func NewDiscordEventsHandler(
 		coreUseCase:                coreUseCase,
 		discordIntegrationsService: discordIntegrationsService,
 		discordUseCase:             discordUseCase,
+		connectedChannelsService:   connectedChannelsService,
 	}
 
 	// Register event handlers
@@ -98,6 +101,13 @@ func (h *DiscordEventsHandler) handleMessageCreatedEvent(s *discordgo.Session, m
 		return
 	}
 
+	// Track the channel in connected_channels table
+	_, err = h.connectedChannelsService.UpsertConnectedChannel(ctx, discordIntegration.OrgID, messageEvent.ChannelID, models.ChannelTypeDiscord)
+	if err != nil {
+		log.Printf("⚠️ Failed to track Discord channel %s: %v", messageEvent.ChannelID, err)
+		// Continue processing even if channel tracking fails
+	}
+
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)
 	err = h.discordUseCase.ProcessDiscordMessageEvent(
 		ctx,
@@ -135,6 +145,13 @@ func (h *DiscordEventsHandler) handleReactionAddedEvent(s *discordgo.Session, r 
 	if err != nil {
 		log.Printf("❌ Failed to map Discord reaction event: %v", err)
 		return
+	}
+
+	// Track the channel in connected_channels table
+	_, err = h.connectedChannelsService.UpsertConnectedChannel(ctx, discordIntegration.OrgID, reactionEvent.ChannelID, models.ChannelTypeDiscord)
+	if err != nil {
+		log.Printf("⚠️ Failed to track Discord channel %s: %v", reactionEvent.ChannelID, err)
+		// Continue processing even if channel tracking fails
 	}
 
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)

@@ -364,6 +364,42 @@ type SettingsService interface {
 	) (any, error)
 }
 
+// ConnectedChannelsService defines the interface for connected channels operations
+type ConnectedChannelsService interface {
+	UpsertConnectedChannel(
+		ctx context.Context,
+		orgID models.OrgID,
+		channelID string,
+		channelType string,
+	) (*models.ConnectedChannel, error)
+	GetConnectedChannelByChannelID(
+		ctx context.Context,
+		orgID models.OrgID,
+		channelID string,
+		channelType string,
+	) (mo.Option[*models.ConnectedChannel], error)
+	GetConnectedChannelByID(
+		ctx context.Context,
+		orgID models.OrgID,
+		id string,
+	) (mo.Option[*models.ConnectedChannel], error)
+	GetConnectedChannelsByOrganization(
+		ctx context.Context,
+		orgID models.OrgID,
+	) ([]*models.ConnectedChannel, error)
+	DeleteConnectedChannel(
+		ctx context.Context,
+		orgID models.OrgID,
+		id string,
+	) error
+	UpdateConnectedChannelDefaultRepoURL(
+		ctx context.Context,
+		orgID models.OrgID,
+		id string,
+		defaultRepoURL *string,
+	) error
+}
+
 // TransactionManager handles database transactions via context
 type TransactionManager interface {
 	// Execute function within a transaction (recommended approach)

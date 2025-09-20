@@ -24,17 +24,20 @@ type SlackEventsHandler struct {
 	signingSecret            string
 	coreUseCase              *core.CoreUseCase
 	slackIntegrationsService services.SlackIntegrationsService
+	connectedChannelsService services.ConnectedChannelsService
 }
 
 func NewSlackEventsHandler(
 	signingSecret string,
 	coreUseCase *core.CoreUseCase,
 	slackIntegrationsService services.SlackIntegrationsService,
+	connectedChannelsService services.ConnectedChannelsService,
 ) *SlackEventsHandler {
 	return &SlackEventsHandler{
 		signingSecret:            signingSecret,
 		coreUseCase:              coreUseCase,
 		slackIntegrationsService: slackIntegrationsService,
+		connectedChannelsService: connectedChannelsService,
 	}
 }
 
@@ -206,6 +209,13 @@ func (h *SlackEventsHandler) handleAppMention(
 		threadTS = ""
 	}
 
+	// Track the channel in connected_channels table
+	_, err := h.connectedChannelsService.UpsertConnectedChannel(ctx, orgID, channel, models.ChannelTypeSlack)
+	if err != nil {
+		log.Printf("⚠️ Failed to track Slack channel %s: %v", channel, err)
+		// Continue processing even if channel tracking fails
+	}
+
 	slackEvent := models.SlackMessageEvent{
 		Channel:  channel,
 		User:     user,
@@ -238,6 +248,13 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	ts := item["ts"].(string)
 
 	log.Printf("📨 Reaction %s added by %s on message %s in %s", reactionName, user, ts, channel)
+
+	// Track the channel in connected_channels table
+	_, err := h.connectedChannelsService.UpsertConnectedChannel(ctx, orgID, channel, models.ChannelTypeSlack)
+	if err != nil {
+		log.Printf("⚠️ Failed to track Slack channel %s: %v", channel, err)
+		// Continue processing even if channel tracking fails
+	}
 
 	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID, orgID)
 }
