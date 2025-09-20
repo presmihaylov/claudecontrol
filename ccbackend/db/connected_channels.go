@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/samber/mo"
@@ -14,6 +15,115 @@ import (
 
 	"ccbackend/models"
 )
+
+// DatabaseConnectedChannel represents the raw database record with all platform fields
+type DatabaseConnectedChannel struct {
+	ID                string    `json:"id"                 db:"id"`
+	OrgID             models.OrgID `json:"organization_id"    db:"organization_id"`
+	SlackTeamID       *string   `json:"slack_team_id"      db:"slack_team_id"`
+	SlackChannelID    *string   `json:"slack_channel_id"   db:"slack_channel_id"`
+	DiscordGuildID    *string   `json:"discord_guild_id"   db:"discord_guild_id"`
+	DiscordChannelID  *string   `json:"discord_channel_id" db:"discord_channel_id"`
+	DefaultRepoURL    *string   `json:"default_repo_url"   db:"default_repo_url"`
+	CreatedAt         time.Time `json:"created_at"         db:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"         db:"updated_at"`
+}
+
+// Mapping functions
+
+// ToSlackConnectedChannel converts a DatabaseConnectedChannel to SlackConnectedChannel
+func (db *DatabaseConnectedChannel) ToSlackConnectedChannel() (*models.SlackConnectedChannel, error) {
+	if db.SlackTeamID == nil || db.SlackChannelID == nil {
+		return nil, fmt.Errorf("cannot convert to Slack channel: missing Slack fields")
+	}
+	if db.DiscordGuildID != nil || db.DiscordChannelID != nil {
+		return nil, fmt.Errorf("cannot convert to Slack channel: Discord fields are populated")
+	}
+
+	return &models.SlackConnectedChannel{
+		ID:             db.ID,
+		OrgID:          db.OrgID,
+		TeamID:         *db.SlackTeamID,
+		ChannelID:      *db.SlackChannelID,
+		DefaultRepoURL: db.DefaultRepoURL,
+		CreatedAt:      db.CreatedAt,
+		UpdatedAt:      db.UpdatedAt,
+	}, nil
+}
+
+// ToDiscordConnectedChannel converts a DatabaseConnectedChannel to DiscordConnectedChannel
+func (db *DatabaseConnectedChannel) ToDiscordConnectedChannel() (*models.DiscordConnectedChannel, error) {
+	if db.DiscordGuildID == nil || db.DiscordChannelID == nil {
+		return nil, fmt.Errorf("cannot convert to Discord channel: missing Discord fields")
+	}
+	if db.SlackTeamID != nil || db.SlackChannelID != nil {
+		return nil, fmt.Errorf("cannot convert to Discord channel: Slack fields are populated")
+	}
+
+	return &models.DiscordConnectedChannel{
+		ID:             db.ID,
+		OrgID:          db.OrgID,
+		GuildID:        *db.DiscordGuildID,
+		ChannelID:      *db.DiscordChannelID,
+		DefaultRepoURL: db.DefaultRepoURL,
+		CreatedAt:      db.CreatedAt,
+		UpdatedAt:      db.UpdatedAt,
+	}, nil
+}
+
+// ToConnectedChannel converts a DatabaseConnectedChannel to the appropriate ConnectedChannel interface
+func (db *DatabaseConnectedChannel) ToConnectedChannel() (models.ConnectedChannel, error) {
+	if db.SlackTeamID != nil && db.SlackChannelID != nil {
+		return db.ToSlackConnectedChannel()
+	}
+	if db.DiscordGuildID != nil && db.DiscordChannelID != nil {
+		return db.ToDiscordConnectedChannel()
+	}
+	return nil, fmt.Errorf("invalid database record: no platform fields populated")
+}
+
+// GetChannelType returns the channel type based on populated fields
+func (db *DatabaseConnectedChannel) GetChannelType() (models.ChannelType, error) {
+	if db.SlackTeamID != nil && db.SlackChannelID != nil {
+		return models.ChannelTypeSlack, nil
+	}
+	if db.DiscordGuildID != nil && db.DiscordChannelID != nil {
+		return models.ChannelTypeDiscord, nil
+	}
+	return "", fmt.Errorf("invalid database record: no platform fields populated")
+}
+
+// Conversion functions from domain models back to database models
+
+// FromSlackConnectedChannel creates a DatabaseConnectedChannel from SlackConnectedChannel
+func FromSlackConnectedChannel(slack *models.SlackConnectedChannel) *DatabaseConnectedChannel {
+	return &DatabaseConnectedChannel{
+		ID:               slack.ID,
+		OrgID:            slack.OrgID,
+		SlackTeamID:      &slack.TeamID,
+		SlackChannelID:   &slack.ChannelID,
+		DiscordGuildID:   nil,
+		DiscordChannelID: nil,
+		DefaultRepoURL:   slack.DefaultRepoURL,
+		CreatedAt:        slack.CreatedAt,
+		UpdatedAt:        slack.UpdatedAt,
+	}
+}
+
+// FromDiscordConnectedChannel creates a DatabaseConnectedChannel from DiscordConnectedChannel
+func FromDiscordConnectedChannel(discord *models.DiscordConnectedChannel) *DatabaseConnectedChannel {
+	return &DatabaseConnectedChannel{
+		ID:               discord.ID,
+		OrgID:            discord.OrgID,
+		SlackTeamID:      nil,
+		SlackChannelID:   nil,
+		DiscordGuildID:   &discord.GuildID,
+		DiscordChannelID: &discord.ChannelID,
+		DefaultRepoURL:   discord.DefaultRepoURL,
+		CreatedAt:        discord.CreatedAt,
+		UpdatedAt:        discord.UpdatedAt,
+	}
+}
 
 type PostgresConnectedChannelsRepository struct {
 	db     *sqlx.DB
@@ -39,7 +149,7 @@ func NewPostgresConnectedChannelsRepository(db *sqlx.DB, schema string) *Postgre
 
 func (r *PostgresConnectedChannelsRepository) UpsertSlackConnectedChannel(
 	ctx context.Context,
-	channel *models.DatabaseConnectedChannel,
+	channel *DatabaseConnectedChannel,
 ) error {
 	insertColumns := []string{
 		"id",
@@ -81,7 +191,7 @@ func (r *PostgresConnectedChannelsRepository) UpsertSlackConnectedChannel(
 
 func (r *PostgresConnectedChannelsRepository) UpsertDiscordConnectedChannel(
 	ctx context.Context,
-	channel *models.DatabaseConnectedChannel,
+	channel *DatabaseConnectedChannel,
 ) error {
 	insertColumns := []string{
 		"id",
@@ -126,7 +236,7 @@ func (r *PostgresConnectedChannelsRepository) GetSlackConnectedChannel(
 	orgID models.OrgID,
 	teamID string,
 	channelID string,
-) (mo.Option[*models.DatabaseConnectedChannel], error) {
+) (mo.Option[*DatabaseConnectedChannel], error) {
 	columnsStr := strings.Join(connectedChannelsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -134,13 +244,13 @@ func (r *PostgresConnectedChannelsRepository) GetSlackConnectedChannel(
 		WHERE organization_id = $1 AND slack_team_id = $2 AND slack_channel_id = $3`,
 		columnsStr, r.schema)
 
-	channel := &models.DatabaseConnectedChannel{}
+	channel := &DatabaseConnectedChannel{}
 	err := r.db.GetContext(ctx, channel, query, orgID, teamID, channelID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return mo.None[*models.DatabaseConnectedChannel](), nil
+			return mo.None[*DatabaseConnectedChannel](), nil
 		}
-		return mo.None[*models.DatabaseConnectedChannel](), fmt.Errorf("failed to get Slack connected channel: %w", err)
+		return mo.None[*DatabaseConnectedChannel](), fmt.Errorf("failed to get Slack connected channel: %w", err)
 	}
 
 	return mo.Some(channel), nil
@@ -151,7 +261,7 @@ func (r *PostgresConnectedChannelsRepository) GetDiscordConnectedChannel(
 	orgID models.OrgID,
 	guildID string,
 	channelID string,
-) (mo.Option[*models.DatabaseConnectedChannel], error) {
+) (mo.Option[*DatabaseConnectedChannel], error) {
 	columnsStr := strings.Join(connectedChannelsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -159,13 +269,13 @@ func (r *PostgresConnectedChannelsRepository) GetDiscordConnectedChannel(
 		WHERE organization_id = $1 AND discord_guild_id = $2 AND discord_channel_id = $3`,
 		columnsStr, r.schema)
 
-	channel := &models.DatabaseConnectedChannel{}
+	channel := &DatabaseConnectedChannel{}
 	err := r.db.GetContext(ctx, channel, query, orgID, guildID, channelID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return mo.None[*models.DatabaseConnectedChannel](), nil
+			return mo.None[*DatabaseConnectedChannel](), nil
 		}
-		return mo.None[*models.DatabaseConnectedChannel](), fmt.Errorf("failed to get Discord connected channel: %w", err)
+		return mo.None[*DatabaseConnectedChannel](), fmt.Errorf("failed to get Discord connected channel: %w", err)
 	}
 
 	return mo.Some(channel), nil
@@ -175,20 +285,20 @@ func (r *PostgresConnectedChannelsRepository) GetConnectedChannelByID(
 	ctx context.Context,
 	id string,
 	orgID models.OrgID,
-) (mo.Option[*models.DatabaseConnectedChannel], error) {
+) (mo.Option[*DatabaseConnectedChannel], error) {
 	columnsStr := strings.Join(connectedChannelsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM %s.connected_channels
 		WHERE id = $1 AND organization_id = $2`, columnsStr, r.schema)
 
-	channel := &models.DatabaseConnectedChannel{}
+	channel := &DatabaseConnectedChannel{}
 	err := r.db.GetContext(ctx, channel, query, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return mo.None[*models.DatabaseConnectedChannel](), nil
+			return mo.None[*DatabaseConnectedChannel](), nil
 		}
-		return mo.None[*models.DatabaseConnectedChannel](), fmt.Errorf("failed to get connected channel: %w", err)
+		return mo.None[*DatabaseConnectedChannel](), fmt.Errorf("failed to get connected channel: %w", err)
 	}
 
 	return mo.Some(channel), nil
@@ -197,7 +307,7 @@ func (r *PostgresConnectedChannelsRepository) GetConnectedChannelByID(
 func (r *PostgresConnectedChannelsRepository) GetConnectedChannelsByOrganization(
 	ctx context.Context,
 	orgID models.OrgID,
-) ([]*models.DatabaseConnectedChannel, error) {
+) ([]*DatabaseConnectedChannel, error) {
 	columnsStr := strings.Join(connectedChannelsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -205,7 +315,7 @@ func (r *PostgresConnectedChannelsRepository) GetConnectedChannelsByOrganization
 		WHERE organization_id = $1
 		ORDER BY created_at ASC`, columnsStr, r.schema)
 
-	var channels []*models.DatabaseConnectedChannel
+	var channels []*DatabaseConnectedChannel
 	err := r.db.SelectContext(ctx, &channels, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connected channels by organization: %w", err)
@@ -213,7 +323,7 @@ func (r *PostgresConnectedChannelsRepository) GetConnectedChannelsByOrganization
 
 	// Initialize empty slice if nil to avoid JSON null serialization
 	if channels == nil {
-		channels = []*models.DatabaseConnectedChannel{}
+		channels = []*DatabaseConnectedChannel{}
 	}
 
 	return channels, nil
@@ -222,7 +332,7 @@ func (r *PostgresConnectedChannelsRepository) GetConnectedChannelsByOrganization
 func (r *PostgresConnectedChannelsRepository) GetSlackConnectedChannelsByOrganization(
 	ctx context.Context,
 	orgID models.OrgID,
-) ([]*models.DatabaseConnectedChannel, error) {
+) ([]*DatabaseConnectedChannel, error) {
 	columnsStr := strings.Join(connectedChannelsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -230,7 +340,7 @@ func (r *PostgresConnectedChannelsRepository) GetSlackConnectedChannelsByOrganiz
 		WHERE organization_id = $1 AND slack_team_id IS NOT NULL
 		ORDER BY created_at ASC`, columnsStr, r.schema)
 
-	var channels []*models.DatabaseConnectedChannel
+	var channels []*DatabaseConnectedChannel
 	err := r.db.SelectContext(ctx, &channels, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Slack connected channels by organization: %w", err)
@@ -238,7 +348,7 @@ func (r *PostgresConnectedChannelsRepository) GetSlackConnectedChannelsByOrganiz
 
 	// Initialize empty slice if nil to avoid JSON null serialization
 	if channels == nil {
-		channels = []*models.DatabaseConnectedChannel{}
+		channels = []*DatabaseConnectedChannel{}
 	}
 
 	return channels, nil
@@ -247,7 +357,7 @@ func (r *PostgresConnectedChannelsRepository) GetSlackConnectedChannelsByOrganiz
 func (r *PostgresConnectedChannelsRepository) GetDiscordConnectedChannelsByOrganization(
 	ctx context.Context,
 	orgID models.OrgID,
-) ([]*models.DatabaseConnectedChannel, error) {
+) ([]*DatabaseConnectedChannel, error) {
 	columnsStr := strings.Join(connectedChannelsColumns, ", ")
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -255,7 +365,7 @@ func (r *PostgresConnectedChannelsRepository) GetDiscordConnectedChannelsByOrgan
 		WHERE organization_id = $1 AND discord_guild_id IS NOT NULL
 		ORDER BY created_at ASC`, columnsStr, r.schema)
 
-	var channels []*models.DatabaseConnectedChannel
+	var channels []*DatabaseConnectedChannel
 	err := r.db.SelectContext(ctx, &channels, query, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Discord connected channels by organization: %w", err)
@@ -263,7 +373,7 @@ func (r *PostgresConnectedChannelsRepository) GetDiscordConnectedChannelsByOrgan
 
 	// Initialize empty slice if nil to avoid JSON null serialization
 	if channels == nil {
-		channels = []*models.DatabaseConnectedChannel{}
+		channels = []*DatabaseConnectedChannel{}
 	}
 
 	return channels, nil

@@ -68,7 +68,7 @@ func (s *ConnectedChannelsService) UpsertSlackConnectedChannel(
 	}
 
 	// Create database model for upsert
-	dbChannel := &models.DatabaseConnectedChannel{
+	dbChannel := &db.DatabaseConnectedChannel{
 		ID:               core.NewID("cc"),
 		OrgID:            orgID,
 		SlackTeamID:      &teamID,
@@ -167,7 +167,7 @@ func (s *ConnectedChannelsService) UpsertDiscordConnectedChannel(
 	}
 
 	// Create database model for upsert
-	dbChannel := &models.DatabaseConnectedChannel{
+	dbChannel := &db.DatabaseConnectedChannel{
 		ID:               core.NewID("cc"),
 		OrgID:            orgID,
 		SlackTeamID:      nil,

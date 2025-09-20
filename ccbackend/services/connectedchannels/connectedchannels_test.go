@@ -90,7 +90,7 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 		originalRepoURL := "https://github.com/original/repo.git"
 
 		// Create channel with original repo URL
-		originalChannel := &models.DatabaseConnectedChannel{
+		originalChannel := &db.DatabaseConnectedChannel{
 			ID:               core.NewID("cc"),
 			OrgID:            testUser.OrgID,
 			SlackTeamID:      &teamID,
@@ -216,7 +216,7 @@ func TestConnectedChannelsService_GetSlackConnectedChannel(t *testing.T) {
 		repoURL := "https://github.com/test/repo.git"
 
 		// Create test channel
-		testChannel := &models.DatabaseConnectedChannel{
+		testChannel := &db.DatabaseConnectedChannel{
 			ID:               core.NewID("cc"),
 			OrgID:            testUser.OrgID,
 			SlackTeamID:      &teamID,
@@ -266,7 +266,7 @@ func TestConnectedChannelsService_GetConnectedChannelsByOrganization(t *testing.
 		// Create test channels
 		slackTeamID := "T1234567890"
 		slackChannelID := "C1234567890"
-		slackChannel := &models.DatabaseConnectedChannel{
+		slackChannel := &db.DatabaseConnectedChannel{
 			ID:               core.NewID("cc"),
 			OrgID:            testUser.OrgID,
 			SlackTeamID:      &slackTeamID,
@@ -278,7 +278,7 @@ func TestConnectedChannelsService_GetConnectedChannelsByOrganization(t *testing.
 
 		discordGuildID := "987654321098765432"
 		discordChannelID := "123456789012345678"
-		discordChannel := &models.DatabaseConnectedChannel{
+		discordChannel := &db.DatabaseConnectedChannel{
 			ID:               core.NewID("cc"),
 			OrgID:            testUser.OrgID,
 			SlackTeamID:      nil,
@@ -337,7 +337,7 @@ func TestConnectedChannelsService_DeleteConnectedChannel(t *testing.T) {
 		repoURL := "https://github.com/test/repo.git"
 		teamID := "T1234567890"
 		channelID := "C1234567890"
-		testChannel := &models.DatabaseConnectedChannel{
+		testChannel := &db.DatabaseConnectedChannel{
 			ID:               core.NewID("cc"),
 			OrgID:            testUser.OrgID,
 			SlackTeamID:      &teamID,

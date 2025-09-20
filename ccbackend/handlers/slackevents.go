@@ -213,8 +213,8 @@ func (h *SlackEventsHandler) handleAppMention(
 	// Track the channel in connected_channels table
 	_, err := h.connectedChannelsService.UpsertSlackConnectedChannel(ctx, orgID, teamID, channel)
 	if err != nil {
-		log.Printf("⚠️ Failed to track Slack channel %s: %v", channel, err)
-		// Continue processing even if channel tracking fails
+		log.Printf("❌ Failed to track Slack channel %s: %v", channel, err)
+		return fmt.Errorf("failed to track Slack channel: %w", err)
 	}
 
 	slackEvent := models.SlackMessageEvent{
@@ -254,8 +254,8 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	// Track the channel in connected_channels table
 	_, err := h.connectedChannelsService.UpsertSlackConnectedChannel(ctx, orgID, teamID, channel)
 	if err != nil {
-		log.Printf("⚠️ Failed to track Slack channel %s: %v", channel, err)
-		// Continue processing even if channel tracking fails
+		log.Printf("❌ Failed to track Slack channel %s: %v", channel, err)
+		return fmt.Errorf("failed to track Slack channel: %w", err)
 	}
 
 	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID, orgID)
