@@ -141,6 +141,7 @@ type AgentsService interface {
 		orgID models.OrgID,
 		wsConnectionID string,
 		agentID string,
+		repoURL *string,
 	) (*models.ActiveAgent, error)
 	DeleteActiveAgentByWsConnectionID(ctx context.Context, orgID models.OrgID, wsConnectionID string) error
 	DeleteActiveAgent(ctx context.Context, orgID models.OrgID, id string) error
