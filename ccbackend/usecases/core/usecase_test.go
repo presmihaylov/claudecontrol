@@ -53,7 +53,7 @@ func TestRegisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789", (*string)(nil)).
+		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789", "github.com/unknown/repository").
 			Return(agent, nil)
 
 		// Execute
@@ -90,7 +90,7 @@ func TestRegisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789", (*string)(nil)).
+		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789", "github.com/unknown/repository").
 			Return(nil, assert.AnError)
 
 		// Execute

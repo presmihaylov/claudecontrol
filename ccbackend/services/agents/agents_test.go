@@ -77,7 +77,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID,
 				agentID,
-				nil,
+				"github.com/test/repo",
 			)
 
 			require.NoError(t, err)
@@ -129,7 +129,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID,
 				agentID,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 
@@ -171,7 +171,7 @@ func TestAgentsService(t *testing.T) {
 
 		t.Run("EmptyWSConnectionID", func(t *testing.T) {
 			agentID := core.NewID("ccaid")
-			_, err := agentsService.UpsertActiveAgent(context.Background(), orgID, "", agentID, nil)
+			_, err := agentsService.UpsertActiveAgent(context.Background(), orgID, "", agentID, "github.com/test/invalid")
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "ws_connection_id must be a valid ULID")
@@ -179,7 +179,7 @@ func TestAgentsService(t *testing.T) {
 
 		t.Run("EmptyOrganizationID", func(t *testing.T) {
 			agentID := core.NewID("ccaid")
-			_, err := agentsService.UpsertActiveAgent(context.Background(), "", core.NewID("wsc"), agentID, nil)
+			_, err := agentsService.UpsertActiveAgent(context.Background(), "", core.NewID("wsc"), agentID, "github.com/test/invalid")
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "organization_id must be a valid ULID")
@@ -196,7 +196,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID1,
 				agentID,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent1.ID) }()
@@ -210,7 +210,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID2,
 				agentID,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 
@@ -245,7 +245,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID,
 				agentID1,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent1.ID) }()
@@ -256,7 +256,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID,
 				agentID2,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent2.ID) }()
@@ -277,7 +277,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID,
 				agentID,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 
@@ -334,7 +334,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID,
 				agentID,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 
@@ -403,7 +403,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				core.NewID("wsc"),
 				agentID1,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent1.ID) }()
@@ -425,7 +425,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				core.NewID("wsc"),
 				agentID2,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 
@@ -441,7 +441,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				core.NewID("wsc"),
 				agentID3,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent3.ID) }()
@@ -496,7 +496,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				core.NewID("wsc"),
 				agentIDBusy1,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 
@@ -521,7 +521,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				core.NewID("wsc"),
 				agentIDBusy2,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 
@@ -555,7 +555,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID,
 				agentID,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent.ID) }()
@@ -613,7 +613,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID1,
 				agentID1,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent1.ID) }()
@@ -626,7 +626,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID2,
 				agentID2,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent2.ID) }()
@@ -675,7 +675,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				wsConnectionID,
 				agentID,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent.ID) }()
@@ -725,7 +725,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				core.NewID("wsc"),
 				agentID1,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = testServiceWithMock.DeleteActiveAgent(context.Background(), orgID, agent1.ID) }()
@@ -736,7 +736,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				core.NewID("wsc"),
 				agentID2,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = testServiceWithMock.DeleteActiveAgent(context.Background(), orgID, agent2.ID) }()
@@ -778,7 +778,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				core.NewID("wsc"),
 				agentID1,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = testServiceWithMock.DeleteActiveAgent(context.Background(), orgID, agent1.ID) }()
@@ -789,7 +789,7 @@ func TestAgentsService(t *testing.T) {
 				orgID,
 				core.NewID("wsc"),
 				agentID2,
-				nil,
+				"github.com/test/repo",
 			)
 			require.NoError(t, err)
 			defer func() { _ = testServiceWithMock.DeleteActiveAgent(context.Background(), orgID, agent2.ID) }()

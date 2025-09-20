@@ -250,12 +250,17 @@ func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client)
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
 
 	// Extract repository URL from X-CCAGENT-REPO header
-	var repoURL *string
+	var repoURL string
 	if client.Socket != nil {
 		headers := client.Socket.Handshake().Headers
 		if headerValue, exists := getSocketIOHeader(headers, "X-CCAGENT-REPO"); exists {
-			repoURL = &headerValue
+			repoURL = headerValue
 		}
+	}
+
+	// Use default repo URL if none provided
+	if repoURL == "" {
+		repoURL = "github.com/unknown/repository"
 	}
 
 	// Pass the agent ID and repository URL to UpsertActiveAgent - use organization ID since agents are organization-scoped
@@ -265,7 +270,7 @@ func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client)
 	}
 
 	log.Printf(
-		"📋 Completed successfully - registered agent for client %s with organization %s, repo_url: %v",
+		"📋 Completed successfully - registered agent for client %s with organization %s, repo_url: %s",
 		client.ID,
 		client.OrgID,
 		repoURL,

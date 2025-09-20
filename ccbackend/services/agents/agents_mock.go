@@ -19,7 +19,7 @@ func (m *MockAgentsService) UpsertActiveAgent(
 	orgID models.OrgID,
 	wsConnectionID string,
 	agentID string,
-	repoURL *string,
+	repoURL string,
 ) (*models.ActiveAgent, error) {
 	args := m.Called(ctx, orgID, wsConnectionID, agentID, repoURL)
 	if args.Get(0) == nil {

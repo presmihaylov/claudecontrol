@@ -433,7 +433,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			orgID,
 			core.NewID("wsc"),
 			core.NewID("ccaid"),
-			nil,
+			"github.com/test/repo",
 		)
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent.ID) }()
@@ -508,7 +508,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			orgID,
 			core.NewID("wsc"),
 			core.NewID("ccaid"),
-			nil,
+			"github.com/test/repo",
 		)
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent1.ID) }()
@@ -518,7 +518,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			orgID,
 			core.NewID("wsc"),
 			core.NewID("ccaid"),
-			nil,
+			"github.com/test/repo",
 		)
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent2.ID) }()
@@ -603,7 +603,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			orgID,
 			core.NewID("wsc"),
 			core.NewID("ccaid"),
-			nil,
+			"github.com/test/repo",
 		)
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent.ID) }()
@@ -654,7 +654,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			orgID,
 			wsConnectionID,
 			core.NewID("ccaid"),
-			nil,
+			"github.com/test/repo",
 		)
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent.ID) }()
@@ -1019,7 +1019,7 @@ func TestJobsAndAgentsIntegration(t *testing.T) {
 			orgID,
 			core.NewID("wsc"),
 			core.NewID("ccaid"),
-			nil,
+			"github.com/test/repo",
 		)
 		require.NoError(t, err)
 		defer func() { _ = agentsService.DeleteActiveAgent(context.Background(), orgID, agent.ID) }()
