@@ -151,18 +151,7 @@ func (r *PostgresConnectedChannelsRepository) UpsertSlackConnectedChannel(
 	ctx context.Context,
 	channel *DatabaseConnectedChannel,
 ) error {
-	insertColumns := []string{
-		"id",
-		"organization_id",
-		"slack_team_id",
-		"slack_channel_id",
-		"discord_guild_id",
-		"discord_channel_id",
-		"default_repo_url",
-		"created_at",
-		"updated_at",
-	}
-	columnsStr := strings.Join(insertColumns, ", ")
+	columnsStr := strings.Join(connectedChannelsColumns, ", ")
 	returningStr := strings.Join(connectedChannelsColumns, ", ")
 
 	query := fmt.Sprintf(`
@@ -193,18 +182,7 @@ func (r *PostgresConnectedChannelsRepository) UpsertDiscordConnectedChannel(
 	ctx context.Context,
 	channel *DatabaseConnectedChannel,
 ) error {
-	insertColumns := []string{
-		"id",
-		"organization_id",
-		"slack_team_id",
-		"slack_channel_id",
-		"discord_guild_id",
-		"discord_channel_id",
-		"default_repo_url",
-		"created_at",
-		"updated_at",
-	}
-	columnsStr := strings.Join(insertColumns, ", ")
+	columnsStr := strings.Join(connectedChannelsColumns, ", ")
 	returningStr := strings.Join(connectedChannelsColumns, ", ")
 
 	query := fmt.Sprintf(`
