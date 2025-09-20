@@ -373,12 +373,6 @@ type ConnectedChannelsService interface {
 		teamID string,
 		channelID string,
 	) (*models.SlackConnectedChannel, error)
-	GetSlackConnectedChannel(
-		ctx context.Context,
-		orgID models.OrgID,
-		teamID string,
-		channelID string,
-	) (mo.Option[*models.SlackConnectedChannel], error)
 
 	// Discord-specific methods
 	UpsertDiscordConnectedChannel(
@@ -387,34 +381,6 @@ type ConnectedChannelsService interface {
 		guildID string,
 		channelID string,
 	) (*models.DiscordConnectedChannel, error)
-	GetDiscordConnectedChannel(
-		ctx context.Context,
-		orgID models.OrgID,
-		guildID string,
-		channelID string,
-	) (mo.Option[*models.DiscordConnectedChannel], error)
-
-	// Common methods that work with the interface
-	GetConnectedChannelByID(
-		ctx context.Context,
-		orgID models.OrgID,
-		id string,
-	) (mo.Option[models.ConnectedChannel], error)
-	GetConnectedChannelsByOrganization(
-		ctx context.Context,
-		orgID models.OrgID,
-	) ([]models.ConnectedChannel, error)
-	DeleteConnectedChannel(
-		ctx context.Context,
-		orgID models.OrgID,
-		id string,
-	) error
-	UpdateConnectedChannelDefaultRepoURL(
-		ctx context.Context,
-		orgID models.OrgID,
-		id string,
-		defaultRepoURL *string,
-	) error
 }
 
 // TransactionManager handles database transactions via context

@@ -3,7 +3,6 @@ package connectedchannels
 import (
 	"context"
 
-	"github.com/samber/mo"
 	"github.com/stretchr/testify/mock"
 
 	"ccbackend/models"
@@ -27,18 +26,6 @@ func (m *MockConnectedChannelsService) UpsertSlackConnectedChannel(
 	return args.Get(0).(*models.SlackConnectedChannel), args.Error(1)
 }
 
-func (m *MockConnectedChannelsService) GetSlackConnectedChannel(
-	ctx context.Context,
-	orgID models.OrgID,
-	teamID string,
-	channelID string,
-) (mo.Option[*models.SlackConnectedChannel], error) {
-	args := m.Called(ctx, orgID, teamID, channelID)
-	if args.Get(0) == nil {
-		return mo.None[*models.SlackConnectedChannel](), args.Error(1)
-	}
-	return args.Get(0).(mo.Option[*models.SlackConnectedChannel]), args.Error(1)
-}
 
 // Discord-specific methods
 func (m *MockConnectedChannelsService) UpsertDiscordConnectedChannel(
@@ -54,58 +41,4 @@ func (m *MockConnectedChannelsService) UpsertDiscordConnectedChannel(
 	return args.Get(0).(*models.DiscordConnectedChannel), args.Error(1)
 }
 
-func (m *MockConnectedChannelsService) GetDiscordConnectedChannel(
-	ctx context.Context,
-	orgID models.OrgID,
-	guildID string,
-	channelID string,
-) (mo.Option[*models.DiscordConnectedChannel], error) {
-	args := m.Called(ctx, orgID, guildID, channelID)
-	if args.Get(0) == nil {
-		return mo.None[*models.DiscordConnectedChannel](), args.Error(1)
-	}
-	return args.Get(0).(mo.Option[*models.DiscordConnectedChannel]), args.Error(1)
-}
 
-// Common methods that work with the interface
-func (m *MockConnectedChannelsService) GetConnectedChannelByID(
-	ctx context.Context,
-	orgID models.OrgID,
-	id string,
-) (mo.Option[models.ConnectedChannel], error) {
-	args := m.Called(ctx, orgID, id)
-	if args.Get(0) == nil {
-		return mo.None[models.ConnectedChannel](), args.Error(1)
-	}
-	return args.Get(0).(mo.Option[models.ConnectedChannel]), args.Error(1)
-}
-
-func (m *MockConnectedChannelsService) GetConnectedChannelsByOrganization(
-	ctx context.Context,
-	orgID models.OrgID,
-) ([]models.ConnectedChannel, error) {
-	args := m.Called(ctx, orgID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]models.ConnectedChannel), args.Error(1)
-}
-
-func (m *MockConnectedChannelsService) DeleteConnectedChannel(
-	ctx context.Context,
-	orgID models.OrgID,
-	id string,
-) error {
-	args := m.Called(ctx, orgID, id)
-	return args.Error(0)
-}
-
-func (m *MockConnectedChannelsService) UpdateConnectedChannelDefaultRepoURL(
-	ctx context.Context,
-	orgID models.OrgID,
-	id string,
-	defaultRepoURL *string,
-) error {
-	args := m.Called(ctx, orgID, id, defaultRepoURL)
-	return args.Error(0)
-}
