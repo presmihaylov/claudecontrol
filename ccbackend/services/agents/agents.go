@@ -30,8 +30,9 @@ func (s *AgentsService) UpsertActiveAgent(
 	orgID models.OrgID,
 	wsConnectionID string,
 	agentID string,
+	repoURL string,
 ) (*models.ActiveAgent, error) {
-	log.Printf("📋 Starting to upsert active agent for wsConnectionID: %s, agentID: %s", wsConnectionID, agentID)
+	log.Printf("📋 Starting to upsert active agent for wsConnectionID: %s, agentID: %s, repoURL: %s", wsConnectionID, agentID, repoURL)
 	if !core.IsValidULID(wsConnectionID) {
 		return nil, fmt.Errorf("ws_connection_id must be a valid ULID")
 	}
@@ -41,18 +42,22 @@ func (s *AgentsService) UpsertActiveAgent(
 	if !core.IsValidULID(agentID) {
 		return nil, fmt.Errorf("ccagent_id must be a valid ULID")
 	}
+	if repoURL == "" {
+		return nil, fmt.Errorf("repo_url cannot be empty")
+	}
 
 	agent := &models.ActiveAgent{
 		ID:             core.NewID("ag"),
 		WSConnectionID: wsConnectionID,
 		OrgID:          orgID,
 		CCAgentID:      agentID,
+		RepoURL:        repoURL,
 	}
 	if err := s.agentsRepo.UpsertActiveAgent(ctx, agent); err != nil {
 		return nil, fmt.Errorf("failed to upsert active agent: %w", err)
 	}
 
-	log.Printf("📋 Completed successfully - upserted active agent with ID: %s, ccagent_id: %v", agent.ID, agentID)
+	log.Printf("📋 Completed successfully - upserted active agent with ID: %s, ccagent_id: %s, repo_url: %s", agent.ID, agentID, repoURL)
 	return agent, nil
 }
 

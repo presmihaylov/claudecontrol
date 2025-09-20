@@ -104,11 +104,18 @@ func (ws *Server) handleSocketIOConnection(sock *socket.Socket) {
 		return
 	}
 
+	// Extract repository URL from headers
+	repoURL, exists := getSocketIOHeader(headers, "X-CCAGENT-REPO")
+	if !exists || repoURL == "" {
+		repoURL = "github.com/unknown/repository"
+	}
+
 	client := &clients.Client{
 		ID:      core.NewID("cl"),
 		Socket:  sock,
 		OrgID:   models.OrgID(orgID),
 		AgentID: agentID,
+		RepoURL: repoURL,
 	}
 	ws.addClient(client)
 	log.Printf("✅ Socket.IO client connected with ID: %s, socket ID: %s", client.ID, sock.Id())

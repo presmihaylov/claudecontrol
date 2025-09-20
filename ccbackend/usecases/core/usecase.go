@@ -248,16 +248,17 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
 
-	// Pass the agent ID to UpsertActiveAgent - use organization ID since agents are organization-scoped
-	_, err := s.agentsService.UpsertActiveAgent(ctx, client.OrgID, client.ID, client.AgentID)
+	// Pass the agent ID and repository URL to UpsertActiveAgent - use organization ID since agents are organization-scoped
+	_, err := s.agentsService.UpsertActiveAgent(ctx, client.OrgID, client.ID, client.AgentID, client.RepoURL)
 	if err != nil {
 		return fmt.Errorf("failed to register agent for client %s: %w", client.ID, err)
 	}
 
 	log.Printf(
-		"📋 Completed successfully - registered agent for client %s with organization %s",
+		"📋 Completed successfully - registered agent for client %s with organization %s, repo_url: %s",
 		client.ID,
 		client.OrgID,
+		client.RepoURL,
 	)
 	return nil
 }

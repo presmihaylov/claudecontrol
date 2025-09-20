@@ -44,6 +44,7 @@ func TestRegisterAgent(t *testing.T) {
 			ID:      "ws-123",
 			OrgID:   models.OrgID("org-456"),
 			AgentID: "agent-789",
+			RepoURL: "github.com/test/repo",
 		}
 
 		agent := &models.ActiveAgent{
@@ -53,7 +54,7 @@ func TestRegisterAgent(t *testing.T) {
 		}
 
 		// Configure expectations
-		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789").
+		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789", "github.com/test/repo").
 			Return(agent, nil)
 
 		// Execute
@@ -87,10 +88,11 @@ func TestRegisterAgent(t *testing.T) {
 			ID:      "ws-123",
 			OrgID:   models.OrgID("org-456"),
 			AgentID: "agent-789",
+			RepoURL: "github.com/test/repo",
 		}
 
 		// Configure expectations
-		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789").
+		mockAgentsService.On("UpsertActiveAgent", ctx, models.OrgID("org-456"), "ws-123", "agent-789", "github.com/test/repo").
 			Return(nil, assert.AnError)
 
 		// Execute
@@ -124,8 +126,9 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:    "ws-123",
-			OrgID: models.OrgID("org-456"),
+			ID:      "ws-123",
+			OrgID:   models.OrgID("org-456"),
+			RepoURL: "github.com/test/repo",
 		}
 
 		agent := &models.ActiveAgent{
@@ -170,8 +173,9 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:    "ws-123",
-			OrgID: models.OrgID("org-456"),
+			ID:      "ws-123",
+			OrgID:   models.OrgID("org-456"),
+			RepoURL: "github.com/test/repo",
 		}
 
 		agent := &models.ActiveAgent{
@@ -226,8 +230,9 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:    "ws-123",
-			OrgID: models.OrgID("org-456"),
+			ID:      "ws-123",
+			OrgID:   models.OrgID("org-456"),
+			RepoURL: "github.com/test/repo",
 		}
 
 		// Configure expectations
@@ -262,8 +267,9 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:    "ws-123",
-			OrgID: models.OrgID("org-456"),
+			ID:      "ws-123",
+			OrgID:   models.OrgID("org-456"),
+			RepoURL: "github.com/test/repo",
 		}
 
 		agent := &models.ActiveAgent{
@@ -312,8 +318,9 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:    "ws-123",
-			OrgID: models.OrgID("org-456"),
+			ID:      "ws-123",
+			OrgID:   models.OrgID("org-456"),
+			RepoURL: "github.com/test/repo",
 		}
 
 		agent := &models.ActiveAgent{
@@ -368,8 +375,9 @@ func TestDeregisterAgent(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:    "ws-123",
-			OrgID: models.OrgID("org-456"),
+			ID:      "ws-123",
+			OrgID:   models.OrgID("org-456"),
+			RepoURL: "github.com/test/repo",
 		}
 
 		agent := &models.ActiveAgent{
@@ -420,8 +428,9 @@ func TestProcessPing(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:    "ws-123",
-			OrgID: models.OrgID("org-456"),
+			ID:      "ws-123",
+			OrgID:   models.OrgID("org-456"),
+			RepoURL: "github.com/test/repo",
 		}
 
 		agent := &models.ActiveAgent{
@@ -464,8 +473,9 @@ func TestProcessPing(t *testing.T) {
 		)
 
 		client := &clients.Client{
-			ID:    "ws-123",
-			OrgID: models.OrgID("org-456"),
+			ID:      "ws-123",
+			OrgID:   models.OrgID("org-456"),
+			RepoURL: "github.com/test/repo",
 		}
 
 		// Configure expectations

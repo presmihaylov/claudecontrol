@@ -114,4 +114,5 @@ type Client struct {
 	Socket  *socket.Socket
 	OrgID   models.OrgID
 	AgentID string
+	RepoURL string
 }

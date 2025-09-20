@@ -26,6 +26,7 @@ var activeAgentsColumns = []string{
 	"ws_connection_id",
 	"organization_id",
 	"ccagent_id",
+	"repo_url",
 	"created_at",
 	"updated_at",
 	"last_active_at",
@@ -50,6 +51,7 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent 
 		"ws_connection_id",
 		"organization_id",
 		"ccagent_id",
+		"repo_url",
 		"created_at",
 		"updated_at",
 		"last_active_at",
@@ -58,16 +60,17 @@ func (r *PostgresAgentsRepository) UpsertActiveAgent(ctx context.Context, agent 
 	returningStr := strings.Join(activeAgentsColumns, ", ")
 
 	query := fmt.Sprintf(`
-		INSERT INTO %s.active_agents (%s) 
-		VALUES ($1, $2, $3, $4, NOW(), NOW(), NOW()) 
-		ON CONFLICT (organization_id, ccagent_id) 
-		DO UPDATE SET 
+		INSERT INTO %s.active_agents (%s)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), NOW())
+		ON CONFLICT (organization_id, ccagent_id)
+		DO UPDATE SET
 			ws_connection_id = EXCLUDED.ws_connection_id,
+			repo_url = EXCLUDED.repo_url,
 			updated_at = NOW(),
 			last_active_at = NOW()
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
-	err := r.db.QueryRowxContext(ctx, query, agent.ID, agent.WSConnectionID, agent.OrgID, agent.CCAgentID).
+	err := r.db.QueryRowxContext(ctx, query, agent.ID, agent.WSConnectionID, agent.OrgID, agent.CCAgentID, agent.RepoURL).
 		StructScan(agent)
 	if err != nil {
 		return fmt.Errorf("failed to upsert active agent: %w", err)
