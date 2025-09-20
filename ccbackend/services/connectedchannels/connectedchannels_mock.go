@@ -3,6 +3,7 @@ package connectedchannels
 import (
 	"context"
 
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/mock"
 
 	"ccbackend/models"
@@ -24,6 +25,19 @@ func (m *MockConnectedChannelsService) UpsertSlackConnectedChannel(
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.SlackConnectedChannel), args.Error(1)
+}
+
+func (m *MockConnectedChannelsService) GetSlackConnectedChannel(
+	ctx context.Context,
+	orgID models.OrgID,
+	teamID string,
+	channelID string,
+) (mo.Option[*models.SlackConnectedChannel], error) {
+	args := m.Called(ctx, orgID, teamID, channelID)
+	if args.Get(0) == nil {
+		return mo.None[*models.SlackConnectedChannel](), args.Error(1)
+	}
+	return args.Get(0).(mo.Option[*models.SlackConnectedChannel]), args.Error(1)
 }
 
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/samber/mo"
+
 	"ccbackend/core"
 	"ccbackend/db"
 	"ccbackend/models"
@@ -90,6 +92,41 @@ func (s *ConnectedChannelsService) UpsertSlackConnectedChannel(
 	return slackChannel, nil
 }
 
+func (s *ConnectedChannelsService) GetSlackConnectedChannel(
+	ctx context.Context,
+	orgID models.OrgID,
+	teamID string,
+	channelID string,
+) (mo.Option[*models.SlackConnectedChannel], error) {
+	log.Printf("📋 Starting to get Slack connected channel: %s (team: %s) for org: %s", channelID, teamID, orgID)
+
+	if teamID == "" {
+		return mo.None[*models.SlackConnectedChannel](), fmt.Errorf("team ID cannot be empty")
+	}
+	if channelID == "" {
+		return mo.None[*models.SlackConnectedChannel](), fmt.Errorf("channel ID cannot be empty")
+	}
+
+	dbChannel, err := s.connectedChannelsRepo.GetSlackConnectedChannel(ctx, orgID, teamID, channelID)
+	if err != nil {
+		return mo.None[*models.SlackConnectedChannel](), fmt.Errorf("failed to get Slack connected channel: %w", err)
+	}
+
+	if !dbChannel.IsPresent() {
+		log.Printf("📋 Completed successfully - no Slack connected channel found for channel: %s", channelID)
+		return mo.None[*models.SlackConnectedChannel](), nil
+	}
+
+	// Convert to domain model
+	slackChannel, err := dbChannel.MustGet().ToSlackConnectedChannel()
+	if err != nil {
+		return mo.None[*models.SlackConnectedChannel](), fmt.Errorf("failed to convert to Slack domain model: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found Slack connected channel with ID: %s", slackChannel.ID)
+	return mo.Some(slackChannel), nil
+}
+
 
 // Discord-specific methods
 
@@ -108,27 +145,14 @@ func (s *ConnectedChannelsService) UpsertDiscordConnectedChannel(
 		return nil, fmt.Errorf("channel ID cannot be empty")
 	}
 
-	// Check if channel already exists
-	existingChannel, err := s.connectedChannelsRepo.GetDiscordConnectedChannel(ctx, orgID, guildID, channelID)
+	// Get default repo URL from first available agent
+	// Note: Since we don't have a get function for Discord channels, we always assign a repo URL
+	defaultRepoURL, err := s.getFirstAvailableRepoURL(ctx, orgID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check existing Discord channel: %w", err)
+		log.Printf("❌ Failed to get default repo URL for Discord channel: %v", err)
+		return nil, fmt.Errorf("failed to get default repo URL for Discord channel: %w", err)
 	}
-
-	var defaultRepoURL *string
-	if !existingChannel.IsPresent() {
-		// New channel - assign default repo URL from first available agent
-		defaultRepoURL, err = s.getFirstAvailableRepoURL(ctx, orgID)
-		if err != nil {
-			log.Printf("❌ Failed to get default repo URL for new Discord channel: %v", err)
-			return nil, fmt.Errorf("failed to get default repo URL for new Discord channel: %w", err)
-		}
-		log.Printf("📋 New Discord channel detected, assigned default repo URL: %v", defaultRepoURL)
-	} else {
-		// Existing channel - preserve current default_repo_url
-		existing := existingChannel.MustGet()
-		defaultRepoURL = existing.DefaultRepoURL
-		log.Printf("📋 Existing Discord channel detected, preserving default repo URL: %v", defaultRepoURL)
-	}
+	log.Printf("📋 Assigned default repo URL for Discord channel: %v", defaultRepoURL)
 
 	// Create database model for upsert
 	dbChannel := &db.DatabaseConnectedChannel{

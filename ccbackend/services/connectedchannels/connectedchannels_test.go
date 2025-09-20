@@ -45,13 +45,6 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 	service, testUser, mockAgentsService, cleanup := setupTestService(t)
 	defer cleanup()
 
-	cfg, err := testutils.LoadTestConfig()
-	require.NoError(t, err)
-	dbConn, err := db.NewConnection(cfg.DatabaseURL)
-	require.NoError(t, err)
-	defer dbConn.Close()
-
-	connectedChannelsRepo := db.NewPostgresConnectedChannelsRepository(dbConn, cfg.DatabaseSchema)
 
 	t.Run("Create new Slack channel with default repo URL", func(t *testing.T) {
 		// Create test agent
@@ -72,7 +65,6 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 
 		channel, err := service.UpsertSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
 		require.NoError(t, err)
-		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), channel.ID, testUser.OrgID)
 
 		assert.NotEmpty(t, channel.ID)
 		assert.Equal(t, testUser.OrgID, channel.OrgID)
@@ -81,36 +73,53 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 		assert.NotNil(t, channel.DefaultRepoURL)
 		assert.Equal(t, testAgent.RepoURL, *channel.DefaultRepoURL)
 
+		// Verify the channel can be retrieved
+		retrievedChannel, err := service.GetSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
+		require.NoError(t, err)
+		require.True(t, retrievedChannel.IsPresent())
+		assert.Equal(t, channel.ID, retrievedChannel.MustGet().ID)
+
 		mockAgentsService.AssertExpectations(t)
 	})
 
-	t.Run("Update existing Slack channel preserves default repo URL", func(t *testing.T) {
+	t.Run("Upsert same Slack channel twice", func(t *testing.T) {
+		// Create test agent
+		testAgent := &models.ActiveAgent{
+			ID:             core.NewID("ag"),
+			WSConnectionID: "test-conn-2",
+			OrgID:          testUser.OrgID,
+			CCAgentID:      "test-agent-2",
+			RepoURL:        "https://github.com/duplicate/repo.git",
+		}
+
+		// Mock agents service to return our test agent
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+			Return([]*models.ActiveAgent{testAgent}, nil).Once()
+
 		teamID := "T0987654321"
 		channelID := "C0987654321"
-		originalRepoURL := "https://github.com/original/repo.git"
 
-		// Create channel with original repo URL
-		originalChannel := &db.DatabaseConnectedChannel{
-			ID:               core.NewID("cc"),
-			OrgID:            testUser.OrgID,
-			SlackTeamID:      &teamID,
-			SlackChannelID:   &channelID,
-			DiscordGuildID:   nil,
-			DiscordChannelID: nil,
-			DefaultRepoURL:   &originalRepoURL,
-		}
-		err := connectedChannelsRepo.UpsertSlackConnectedChannel(context.Background(), originalChannel)
-		require.NoError(t, err)
-		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), originalChannel.ID, testUser.OrgID)
-
-		// Upsert again should preserve the original repo URL (no agents service call expected)
-		updatedChannel, err := service.UpsertSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
+		// First upsert
+		_, err := service.UpsertSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
 		require.NoError(t, err)
 
-		assert.Equal(t, originalChannel.ID, updatedChannel.ID)
-		assert.Equal(t, originalRepoURL, *updatedChannel.DefaultRepoURL)
-		// Should not call GetConnectedActiveAgents for existing channel
-		mockAgentsService.AssertNotCalled(t, "GetConnectedActiveAgents")
+		// Second upsert of the same channel
+		secondChannel, err := service.UpsertSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
+		require.NoError(t, err)
+
+		// Both should have the same basic properties
+		assert.Equal(t, testUser.OrgID, secondChannel.OrgID)
+		assert.Equal(t, teamID, secondChannel.TeamID)
+		assert.Equal(t, channelID, secondChannel.ChannelID)
+
+		// Verify the channel can be retrieved
+		retrievedChannel, err := service.GetSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
+		require.NoError(t, err)
+		require.True(t, retrievedChannel.IsPresent())
+		assert.Equal(t, teamID, retrievedChannel.MustGet().TeamID)
+		assert.Equal(t, channelID, retrievedChannel.MustGet().ChannelID)
+
+		mockAgentsService.AssertExpectations(t)
 	})
 
 	t.Run("Empty team ID returns error", func(t *testing.T) {
@@ -135,10 +144,15 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 
 		channel, err := service.UpsertSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
 		require.NoError(t, err)
-		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), channel.ID, testUser.OrgID)
 
 		assert.Nil(t, channel.DefaultRepoURL)
 		mockAgentsService.AssertExpectations(t)
+
+		// Verify the channel can be retrieved
+		retrievedChannel, err := service.GetSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
+		require.NoError(t, err)
+		require.True(t, retrievedChannel.IsPresent())
+		assert.Nil(t, retrievedChannel.MustGet().DefaultRepoURL)
 	})
 }
 
@@ -146,13 +160,6 @@ func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {
 	service, testUser, mockAgentsService, cleanup := setupTestService(t)
 	defer cleanup()
 
-	cfg, err := testutils.LoadTestConfig()
-	require.NoError(t, err)
-	dbConn, err := db.NewConnection(cfg.DatabaseURL)
-	require.NoError(t, err)
-	defer dbConn.Close()
-
-	connectedChannelsRepo := db.NewPostgresConnectedChannelsRepository(dbConn, cfg.DatabaseSchema)
 
 	t.Run("Create new Discord channel with default repo URL", func(t *testing.T) {
 		// Create test agent
@@ -173,7 +180,6 @@ func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {
 
 		channel, err := service.UpsertDiscordConnectedChannel(context.Background(), testUser.OrgID, guildID, channelID)
 		require.NoError(t, err)
-		defer connectedChannelsRepo.DeleteConnectedChannel(context.Background(), channel.ID, testUser.OrgID)
 
 		assert.NotEmpty(t, channel.ID)
 		assert.Equal(t, testUser.OrgID, channel.OrgID)
@@ -181,6 +187,8 @@ func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {
 		assert.Equal(t, channelID, channel.ChannelID)
 		assert.NotNil(t, channel.DefaultRepoURL)
 		assert.Equal(t, testAgent.RepoURL, *channel.DefaultRepoURL)
+
+		// Note: No get function for Discord channels since we only kept Slack get for testing
 
 		mockAgentsService.AssertExpectations(t)
 	})

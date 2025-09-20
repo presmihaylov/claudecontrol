@@ -373,6 +373,12 @@ type ConnectedChannelsService interface {
 		teamID string,
 		channelID string,
 	) (*models.SlackConnectedChannel, error)
+	GetSlackConnectedChannel(
+		ctx context.Context,
+		orgID models.OrgID,
+		teamID string,
+		channelID string,
+	) (mo.Option[*models.SlackConnectedChannel], error)
 
 	// Discord-specific methods
 	UpsertDiscordConnectedChannel(

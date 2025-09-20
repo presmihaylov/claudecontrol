@@ -105,7 +105,7 @@ func (h *DiscordEventsHandler) handleMessageCreatedEvent(s *discordgo.Session, m
 	_, err = h.connectedChannelsService.UpsertDiscordConnectedChannel(ctx, discordIntegration.OrgID, guildID, messageEvent.ChannelID)
 	if err != nil {
 		log.Printf("❌ Failed to track Discord channel %s: %v", messageEvent.ChannelID, err)
-		// Cannot return error from Discord SDK event handler - continue processing
+		return
 	}
 
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)
@@ -117,6 +117,7 @@ func (h *DiscordEventsHandler) handleMessageCreatedEvent(s *discordgo.Session, m
 	)
 	if err != nil {
 		log.Printf("❌ Failed to process Discord message: %v", err)
+		return
 	}
 }
 
@@ -151,7 +152,7 @@ func (h *DiscordEventsHandler) handleReactionAddedEvent(s *discordgo.Session, r 
 	_, err = h.connectedChannelsService.UpsertDiscordConnectedChannel(ctx, discordIntegration.OrgID, guildID, reactionEvent.ChannelID)
 	if err != nil {
 		log.Printf("❌ Failed to track Discord channel %s: %v", reactionEvent.ChannelID, err)
-		// Cannot return error from Discord SDK event handler - continue processing
+		return
 	}
 
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)
@@ -163,6 +164,7 @@ func (h *DiscordEventsHandler) handleReactionAddedEvent(s *discordgo.Session, r 
 	)
 	if err != nil {
 		log.Printf("❌ Failed to process Discord reaction: %v", err)
+		return
 	}
 }
 
