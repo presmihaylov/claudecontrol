@@ -7,11 +7,13 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
+	"ccbackend/appctx"
 	"ccbackend/clients"
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/usecases"
 	"ccbackend/usecases/core"
+	"ccbackend/utils"
 )
 
 type DiscordEventsHandler struct {
@@ -21,6 +23,7 @@ type DiscordEventsHandler struct {
 	discordIntegrationsService services.DiscordIntegrationsService
 	discordUseCase             usecases.DiscordUseCaseInterface
 	connectedChannelsService   services.ConnectedChannelsService
+	commandsService            services.CommandsService
 }
 
 func NewDiscordEventsHandler(
@@ -30,6 +33,7 @@ func NewDiscordEventsHandler(
 	discordIntegrationsService services.DiscordIntegrationsService,
 	discordUseCase usecases.DiscordUseCaseInterface,
 	connectedChannelsService services.ConnectedChannelsService,
+	commandsService services.CommandsService,
 ) (*DiscordEventsHandler, error) {
 	// Create a new Discord session using the provided bot token
 	session, err := discordgo.New("Bot " + botToken)
@@ -44,6 +48,7 @@ func NewDiscordEventsHandler(
 		discordIntegrationsService: discordIntegrationsService,
 		discordUseCase:             discordUseCase,
 		connectedChannelsService:   connectedChannelsService,
+		commandsService:            commandsService,
 	}
 
 	// Register event handlers
@@ -109,6 +114,23 @@ func (h *DiscordEventsHandler) handleMessageCreatedEvent(s *discordgo.Session, m
 	}
 
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)
+
+	// Check if this is a command
+	commandResult := utils.DetectCommand(messageEvent.Content)
+	if commandResult.IsCommand {
+		log.Printf("🎯 Command detected in Discord message: %s", commandResult.CommandText)
+		threadID := ""
+		if messageEvent.ThreadID != nil {
+			threadID = *messageEvent.ThreadID
+		}
+		err = h.handleDiscordCommand(ctx, commandResult.CommandText, discordIntegration.ID, discordIntegration.OrgID, guildID, messageEvent.ChannelID, messageEvent.UserID, messageEvent.MessageID, threadID)
+		if err != nil {
+			log.Printf("❌ Failed to handle Discord command: %v", err)
+		}
+		return
+	}
+
+	// Not a command - proceed with normal message processing
 	err = h.discordUseCase.ProcessDiscordMessageEvent(
 		ctx,
 		messageEvent,
@@ -232,4 +254,74 @@ func isThreadChannel(channelType discordgo.ChannelType) bool {
 	return channelType == discordgo.ChannelTypeGuildPublicThread ||
 		channelType == discordgo.ChannelTypeGuildPrivateThread ||
 		channelType == discordgo.ChannelTypeGuildNewsThread
+}
+
+func (h *DiscordEventsHandler) handleDiscordCommand(
+	ctx context.Context,
+	commandText string,
+	discordIntegrationID string,
+	orgID models.OrgID,
+	guildID string,
+	channelID string,
+	userID string,
+	messageID string,
+	threadID string,
+) error {
+	log.Printf("📋 Starting to handle Discord command: %s in channel: %s", commandText, channelID)
+
+	// Add organization to context for the commands service
+	org, err := h.getOrganizationByID(ctx, orgID)
+	if err != nil {
+		log.Printf("❌ Failed to get organization: %v", err)
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	ctx = appctx.SetOrganization(ctx, org)
+
+	// Create command request
+	commandRequest := models.CommandRequest{
+		Command:     commandText,
+		Platform:    models.ChannelTypeDiscord,
+		TeamID:      guildID, // Discord uses guildID as teamID
+		ChannelID:   channelID,
+		UserID:      userID,
+		MessageText: commandText,
+	}
+
+	// Process the command
+	result, err := h.commandsService.ProcessCommand(ctx, commandRequest)
+	if err != nil {
+		log.Printf("❌ Failed to process command: %v", err)
+		// Send error message back to Discord
+		return h.sendDiscordResponse(ctx, discordIntegrationID, channelID, threadID, "❌ Error processing command: "+err.Error())
+	}
+
+	// Send result message back to Discord
+	return h.sendDiscordResponse(ctx, discordIntegrationID, channelID, threadID, result.Message)
+}
+
+func (h *DiscordEventsHandler) getOrganizationByID(ctx context.Context, orgID models.OrgID) (*models.Organization, error) {
+	// For now, create a mock organization - this should be replaced with actual service call
+	// TODO: Use organization service to get the actual organization
+	return &models.Organization{
+		ID: string(orgID),
+	}, nil
+}
+
+func (h *DiscordEventsHandler) sendDiscordResponse(
+	ctx context.Context,
+	discordIntegrationID string,
+	channelID string,
+	threadID string,
+	message string,
+) error {
+	log.Printf("📋 Starting to send Discord response to channel: %s, message: %s", channelID, message)
+
+	// TODO: Implement actual Discord message sending
+	// For now, just log the response - this needs to be implemented with a Discord client
+	log.Printf("🎯 Would send to Discord channel %s: %s", channelID, message)
+
+	// This is a temporary implementation - we need to add proper Discord client integration
+	log.Printf("📋 Completed successfully - logged Discord response (actual sending not yet implemented)")
+	return nil
 }

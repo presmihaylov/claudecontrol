@@ -138,6 +138,50 @@ func (s *ConnectedChannelsService) GetSlackConnectedChannel(
 	return mo.Some(slackChannel), nil
 }
 
+func (s *ConnectedChannelsService) UpdateSlackChannelDefaultRepo(
+	ctx context.Context,
+	orgID models.OrgID,
+	teamID string,
+	channelID string,
+	repoURL string,
+) (*models.SlackConnectedChannel, error) {
+	log.Printf("📋 Starting to update Slack channel default repo: %s (team: %s) for org: %s to repo: %s", channelID, teamID, orgID, repoURL)
+
+	if teamID == "" {
+		return nil, fmt.Errorf("team ID cannot be empty")
+	}
+	if channelID == "" {
+		return nil, fmt.Errorf("channel ID cannot be empty")
+	}
+	if repoURL == "" {
+		return nil, fmt.Errorf("repo URL cannot be empty")
+	}
+
+	// Create database model for upsert with new repo URL
+	dbChannel := &db.DatabaseConnectedChannel{
+		ID:               core.NewID("cc"),
+		OrgID:            orgID,
+		SlackTeamID:      &teamID,
+		SlackChannelID:   &channelID,
+		DiscordGuildID:   nil,
+		DiscordChannelID: nil,
+		DefaultRepoURL:   &repoURL,
+	}
+
+	if err := s.connectedChannelsRepo.UpsertSlackConnectedChannel(ctx, dbChannel); err != nil {
+		return nil, fmt.Errorf("failed to update Slack connected channel default repo: %w", err)
+	}
+
+	// Convert to domain model
+	slackChannel, err := dbChannel.ToSlackConnectedChannel()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to Slack domain model: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated Slack connected channel default repo with ID: %s", slackChannel.ID)
+	return slackChannel, nil
+}
+
 
 // Discord-specific methods
 
@@ -247,6 +291,50 @@ func (s *ConnectedChannelsService) GetDiscordConnectedChannel(
 
 	log.Printf("📋 Completed successfully - found Discord connected channel with ID: %s", discordChannel.ID)
 	return mo.Some(discordChannel), nil
+}
+
+func (s *ConnectedChannelsService) UpdateDiscordChannelDefaultRepo(
+	ctx context.Context,
+	orgID models.OrgID,
+	guildID string,
+	channelID string,
+	repoURL string,
+) (*models.DiscordConnectedChannel, error) {
+	log.Printf("📋 Starting to update Discord channel default repo: %s (guild: %s) for org: %s to repo: %s", channelID, guildID, orgID, repoURL)
+
+	if guildID == "" {
+		return nil, fmt.Errorf("guild ID cannot be empty")
+	}
+	if channelID == "" {
+		return nil, fmt.Errorf("channel ID cannot be empty")
+	}
+	if repoURL == "" {
+		return nil, fmt.Errorf("repo URL cannot be empty")
+	}
+
+	// Create database model for upsert with new repo URL
+	dbChannel := &db.DatabaseConnectedChannel{
+		ID:               core.NewID("cc"),
+		OrgID:            orgID,
+		SlackTeamID:      nil,
+		SlackChannelID:   nil,
+		DiscordGuildID:   &guildID,
+		DiscordChannelID: &channelID,
+		DefaultRepoURL:   &repoURL,
+	}
+
+	if err := s.connectedChannelsRepo.UpsertDiscordConnectedChannel(ctx, dbChannel); err != nil {
+		return nil, fmt.Errorf("failed to update Discord connected channel default repo: %w", err)
+	}
+
+	// Convert to domain model
+	discordChannel, err := dbChannel.ToDiscordConnectedChannel()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to Discord domain model: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - updated Discord connected channel default repo with ID: %s", discordChannel.ID)
+	return discordChannel, nil
 }
 
 

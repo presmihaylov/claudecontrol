@@ -31,6 +31,7 @@ import (
 	agentsservice "ccbackend/services/agents"
 	anthropicintegrations "ccbackend/services/anthropic_integrations"
 	ccagentcontainerintegrations "ccbackend/services/ccagent_container_integrations"
+	commands "ccbackend/services/commands"
 	discordintegrations "ccbackend/services/discord_integrations"
 	discordmessages "ccbackend/services/discordmessages"
 	githubintegrations "ccbackend/services/github_integrations"
@@ -224,6 +225,9 @@ func run() error {
 	// Create connected channels service after agentsService is available
 	connectedChannelsService := connectedchannels.NewConnectedChannelsService(connectedChannelsRepo, agentsService)
 
+	// Create commands service after agentsService and connectedChannelsService are available
+	commandsService := commands.NewCommandsService(agentsService, connectedChannelsService)
+
 	// Create use cases in dependency order
 	agentsUseCase := agents.NewAgentsUseCase(wsClient, agentsService)
 
@@ -279,6 +283,7 @@ func run() error {
 			coreUseCase,
 			slackIntegrationsService,
 			connectedChannelsService,
+			commandsService,
 		)
 	}
 
@@ -292,6 +297,7 @@ func run() error {
 			discordIntegrationsService,
 			discordUseCaseInstance,
 			connectedChannelsService,
+			commandsService,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to create Discord events handler: %w", err)

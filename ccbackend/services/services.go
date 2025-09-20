@@ -379,6 +379,13 @@ type ConnectedChannelsService interface {
 		teamID string,
 		channelID string,
 	) (mo.Option[*models.SlackConnectedChannel], error)
+	UpdateSlackChannelDefaultRepo(
+		ctx context.Context,
+		orgID models.OrgID,
+		teamID string,
+		channelID string,
+		repoURL string,
+	) (*models.SlackConnectedChannel, error)
 
 	// Discord-specific methods
 	UpsertDiscordConnectedChannel(
@@ -393,6 +400,21 @@ type ConnectedChannelsService interface {
 		guildID string,
 		channelID string,
 	) (mo.Option[*models.DiscordConnectedChannel], error)
+	UpdateDiscordChannelDefaultRepo(
+		ctx context.Context,
+		orgID models.OrgID,
+		guildID string,
+		channelID string,
+		repoURL string,
+	) (*models.DiscordConnectedChannel, error)
+}
+
+// CommandsService defines the interface for command processing operations
+type CommandsService interface {
+	ProcessCommand(
+		ctx context.Context,
+		request models.CommandRequest,
+	) (*models.CommandResult, error)
 }
 
 // TransactionManager handles database transactions via context
