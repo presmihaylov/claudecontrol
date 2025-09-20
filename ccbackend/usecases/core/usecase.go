@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"ccbackend/clients"
 	"ccbackend/core"
@@ -249,22 +248,8 @@ func (s *CoreUseCase) ProcessQueuedJobs(ctx context.Context) error {
 func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client) error {
 	log.Printf("📋 Starting to register agent for client %s", client.ID)
 
-	// Extract repository URL from X-CCAGENT-REPO header
-	var repoURL string
-	if client.Socket != nil {
-		headers := client.Socket.Handshake().Headers
-		if headerValue, exists := getSocketIOHeader(headers, "X-CCAGENT-REPO"); exists {
-			repoURL = headerValue
-		}
-	}
-
-	// Use default repo URL if none provided
-	if repoURL == "" {
-		repoURL = "github.com/unknown/repository"
-	}
-
 	// Pass the agent ID and repository URL to UpsertActiveAgent - use organization ID since agents are organization-scoped
-	_, err := s.agentsService.UpsertActiveAgent(ctx, client.OrgID, client.ID, client.AgentID, repoURL)
+	_, err := s.agentsService.UpsertActiveAgent(ctx, client.OrgID, client.ID, client.AgentID, client.RepoURL)
 	if err != nil {
 		return fmt.Errorf("failed to register agent for client %s: %w", client.ID, err)
 	}
@@ -273,7 +258,7 @@ func (s *CoreUseCase) RegisterAgent(ctx context.Context, client *clients.Client)
 		"📋 Completed successfully - registered agent for client %s with organization %s, repo_url: %s",
 		client.ID,
 		client.OrgID,
-		repoURL,
+		client.RepoURL,
 	)
 	return nil
 }
@@ -491,16 +476,4 @@ func (s *CoreUseCase) BroadcastCheckIdleJobs(ctx context.Context) error {
 
 	log.Printf("📋 Completed successfully - broadcasted CheckIdleJobs to %d agents", totalAgentCount)
 	return nil
-}
-
-// getSocketIOHeader performs a case-insensitive lookup for a header in the headers map
-func getSocketIOHeader(headers map[string][]string, headerName string) (string, bool) {
-	for key, value := range headers {
-		if strings.EqualFold(key, headerName) {
-			if len(value) > 0 && value[0] != "" {
-				return value[0], true
-			}
-		}
-	}
-	return "", false
 }
