@@ -20,6 +20,7 @@ type DiscordEventsHandler struct {
 	coreUseCase                *core.CoreUseCase
 	discordIntegrationsService services.DiscordIntegrationsService
 	discordUseCase             usecases.DiscordUseCaseInterface
+	connectedChannelsService   services.ConnectedChannelsService
 }
 
 func NewDiscordEventsHandler(
@@ -28,6 +29,7 @@ func NewDiscordEventsHandler(
 	coreUseCase *core.CoreUseCase,
 	discordIntegrationsService services.DiscordIntegrationsService,
 	discordUseCase usecases.DiscordUseCaseInterface,
+	connectedChannelsService services.ConnectedChannelsService,
 ) (*DiscordEventsHandler, error) {
 	// Create a new Discord session using the provided bot token
 	session, err := discordgo.New("Bot " + botToken)
@@ -41,6 +43,7 @@ func NewDiscordEventsHandler(
 		coreUseCase:                coreUseCase,
 		discordIntegrationsService: discordIntegrationsService,
 		discordUseCase:             discordUseCase,
+		connectedChannelsService:   connectedChannelsService,
 	}
 
 	// Register event handlers
@@ -98,6 +101,13 @@ func (h *DiscordEventsHandler) handleMessageCreatedEvent(s *discordgo.Session, m
 		return
 	}
 
+	// Track the channel in connected_channels table
+	_, err = h.connectedChannelsService.UpsertDiscordConnectedChannel(ctx, discordIntegration.OrgID, guildID, messageEvent.ChannelID)
+	if err != nil {
+		log.Printf("❌ Failed to track Discord channel %s: %v", messageEvent.ChannelID, err)
+		return
+	}
+
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)
 	err = h.discordUseCase.ProcessDiscordMessageEvent(
 		ctx,
@@ -107,6 +117,7 @@ func (h *DiscordEventsHandler) handleMessageCreatedEvent(s *discordgo.Session, m
 	)
 	if err != nil {
 		log.Printf("❌ Failed to process Discord message: %v", err)
+		return
 	}
 }
 
@@ -137,6 +148,13 @@ func (h *DiscordEventsHandler) handleReactionAddedEvent(s *discordgo.Session, r 
 		return
 	}
 
+	// Track the channel in connected_channels table
+	_, err = h.connectedChannelsService.UpsertDiscordConnectedChannel(ctx, discordIntegration.OrgID, guildID, reactionEvent.ChannelID)
+	if err != nil {
+		log.Printf("❌ Failed to track Discord channel %s: %v", reactionEvent.ChannelID, err)
+		return
+	}
+
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)
 	err = h.discordUseCase.ProcessDiscordReactionEvent(
 		ctx,
@@ -146,6 +164,7 @@ func (h *DiscordEventsHandler) handleReactionAddedEvent(s *discordgo.Session, r 
 	)
 	if err != nil {
 		log.Printf("❌ Failed to process Discord reaction: %v", err)
+		return
 	}
 }
 

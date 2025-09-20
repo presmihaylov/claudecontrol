@@ -353,3 +353,15 @@ func CreateTestProcessedDiscordMessage(
 		OrgID:                orgID,
 	}
 }
+
+// SetupTestDB creates a test database connection
+func SetupTestDB() (*sqlx.DB, error) {
+	cfg, err := LoadTestConfig()
+	if err != nil {
+		return nil, err
+	}
+	return db.NewConnection(cfg.DatabaseURL)
+}
+
+const TestSchema = "claudecontrol_test"
+
