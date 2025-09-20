@@ -61,10 +61,21 @@ func (s *ConnectedChannelsService) UpsertSlackConnectedChannel(
 		}
 		log.Printf("📋 New Slack channel detected, assigned default repo URL: %v", defaultRepoURL)
 	} else {
-		// Existing channel - preserve current default_repo_url
+		// Existing channel - check if repo URL is null and try to assign it
 		existing := existingChannel.MustGet()
-		defaultRepoURL = existing.DefaultRepoURL
-		log.Printf("📋 Existing Slack channel detected, preserving default repo URL: %v", defaultRepoURL)
+		if existing.DefaultRepoURL == nil {
+			// Existing channel has no repo URL - try to assign one now
+			defaultRepoURL, err = s.getFirstAvailableRepoURL(ctx, orgID)
+			if err != nil {
+				log.Printf("❌ Failed to get default repo URL for existing Slack channel: %v", err)
+				return nil, fmt.Errorf("failed to get default repo URL for existing Slack channel: %w", err)
+			}
+			log.Printf("📋 Existing Slack channel had no repo URL, assigned default repo URL: %v", defaultRepoURL)
+		} else {
+			// Existing channel has repo URL - preserve it
+			defaultRepoURL = existing.DefaultRepoURL
+			log.Printf("📋 Existing Slack channel detected, preserving default repo URL: %v", defaultRepoURL)
+		}
 	}
 
 	// Create database model for upsert
@@ -145,14 +156,38 @@ func (s *ConnectedChannelsService) UpsertDiscordConnectedChannel(
 		return nil, fmt.Errorf("channel ID cannot be empty")
 	}
 
-	// Get default repo URL from first available agent
-	// Note: Since we don't have a get function for Discord channels, we always assign a repo URL
-	defaultRepoURL, err := s.getFirstAvailableRepoURL(ctx, orgID)
+	// Check if channel already exists
+	existingChannel, err := s.connectedChannelsRepo.GetDiscordConnectedChannel(ctx, orgID, guildID, channelID)
 	if err != nil {
-		log.Printf("❌ Failed to get default repo URL for Discord channel: %v", err)
-		return nil, fmt.Errorf("failed to get default repo URL for Discord channel: %w", err)
+		return nil, fmt.Errorf("failed to check existing Discord channel: %w", err)
 	}
-	log.Printf("📋 Assigned default repo URL for Discord channel: %v", defaultRepoURL)
+
+	var defaultRepoURL *string
+	if !existingChannel.IsPresent() {
+		// New channel - assign default repo URL from first available agent
+		defaultRepoURL, err = s.getFirstAvailableRepoURL(ctx, orgID)
+		if err != nil {
+			log.Printf("❌ Failed to get default repo URL for new Discord channel: %v", err)
+			return nil, fmt.Errorf("failed to get default repo URL for new Discord channel: %w", err)
+		}
+		log.Printf("📋 New Discord channel detected, assigned default repo URL: %v", defaultRepoURL)
+	} else {
+		// Existing channel - check if repo URL is null and try to assign it
+		existing := existingChannel.MustGet()
+		if existing.DefaultRepoURL == nil {
+			// Existing channel has no repo URL - try to assign one now
+			defaultRepoURL, err = s.getFirstAvailableRepoURL(ctx, orgID)
+			if err != nil {
+				log.Printf("❌ Failed to get default repo URL for existing Discord channel: %v", err)
+				return nil, fmt.Errorf("failed to get default repo URL for existing Discord channel: %w", err)
+			}
+			log.Printf("📋 Existing Discord channel had no repo URL, assigned default repo URL: %v", defaultRepoURL)
+		} else {
+			// Existing channel has repo URL - preserve it
+			defaultRepoURL = existing.DefaultRepoURL
+			log.Printf("📋 Existing Discord channel detected, preserving default repo URL: %v", defaultRepoURL)
+		}
+	}
 
 	// Create database model for upsert
 	dbChannel := &db.DatabaseConnectedChannel{

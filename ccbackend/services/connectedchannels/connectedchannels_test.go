@@ -154,6 +154,46 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 		require.True(t, retrievedChannel.IsPresent())
 		assert.Nil(t, retrievedChannel.MustGet().DefaultRepoURL)
 	})
+
+	t.Run("Channel with null repo URL gets assigned repo URL when agents become available", func(t *testing.T) {
+		teamID := "T3456789012"
+		channelID := "C3456789012"
+
+		// First call - no agents available
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+			Return([]*models.ActiveAgent{}, nil).Once()
+
+		firstChannel, err := service.UpsertSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
+		require.NoError(t, err)
+		assert.Nil(t, firstChannel.DefaultRepoURL)
+
+		// Second call - agent becomes available
+		testAgent := &models.ActiveAgent{
+			ID:             core.NewID("ag"),
+			WSConnectionID: "test-conn-3",
+			OrgID:          testUser.OrgID,
+			CCAgentID:      "test-agent-3",
+			RepoURL:        "https://github.com/newly-available/repo.git",
+		}
+
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+			Return([]*models.ActiveAgent{testAgent}, nil).Once()
+
+		secondChannel, err := service.UpsertSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
+		require.NoError(t, err)
+
+		// Should now have the repo URL assigned
+		assert.NotNil(t, secondChannel.DefaultRepoURL)
+		assert.Equal(t, testAgent.RepoURL, *secondChannel.DefaultRepoURL)
+
+		// Verify via get function
+		retrievedChannel, err := service.GetSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
+		require.NoError(t, err)
+		require.True(t, retrievedChannel.IsPresent())
+		assert.Equal(t, testAgent.RepoURL, *retrievedChannel.MustGet().DefaultRepoURL)
+
+		mockAgentsService.AssertExpectations(t)
+	})
 }
 
 func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {

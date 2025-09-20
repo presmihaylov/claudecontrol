@@ -159,6 +159,7 @@ func (r *PostgresConnectedChannelsRepository) UpsertSlackConnectedChannel(
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 		ON CONFLICT (organization_id, slack_team_id, slack_channel_id)
 		DO UPDATE SET
+			default_repo_url = EXCLUDED.default_repo_url,
 			updated_at = NOW()
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
@@ -190,6 +191,7 @@ func (r *PostgresConnectedChannelsRepository) UpsertDiscordConnectedChannel(
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 		ON CONFLICT (organization_id, discord_guild_id, discord_channel_id)
 		DO UPDATE SET
+			default_repo_url = EXCLUDED.default_repo_url,
 			updated_at = NOW()
 		RETURNING %s`, r.schema, columnsStr, returningStr)
 
@@ -229,6 +231,31 @@ func (r *PostgresConnectedChannelsRepository) GetSlackConnectedChannel(
 			return mo.None[*DatabaseConnectedChannel](), nil
 		}
 		return mo.None[*DatabaseConnectedChannel](), fmt.Errorf("failed to get Slack connected channel: %w", err)
+	}
+
+	return mo.Some(channel), nil
+}
+
+func (r *PostgresConnectedChannelsRepository) GetDiscordConnectedChannel(
+	ctx context.Context,
+	orgID models.OrgID,
+	guildID string,
+	channelID string,
+) (mo.Option[*DatabaseConnectedChannel], error) {
+	columnsStr := strings.Join(connectedChannelsColumns, ", ")
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM %s.connected_channels
+		WHERE organization_id = $1 AND discord_guild_id = $2 AND discord_channel_id = $3`,
+		columnsStr, r.schema)
+
+	channel := &DatabaseConnectedChannel{}
+	err := r.db.GetContext(ctx, channel, query, orgID, guildID, channelID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return mo.None[*DatabaseConnectedChannel](), nil
+		}
+		return mo.None[*DatabaseConnectedChannel](), fmt.Errorf("failed to get Discord connected channel: %w", err)
 	}
 
 	return mo.Some(channel), nil
