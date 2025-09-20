@@ -15,11 +15,9 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"ccbackend/appctx"
 	"ccbackend/models"
 	"ccbackend/services"
 	"ccbackend/usecases/core"
-	"ccbackend/utils"
 )
 
 type SlackEventsHandler struct {
@@ -222,20 +220,14 @@ func (h *SlackEventsHandler) handleAppMention(
 		return fmt.Errorf("failed to track Slack channel: %w", err)
 	}
 
-	// Check if this is a command
-	commandResult := utils.DetectCommand(text)
-	if commandResult.IsCommand {
-		log.Printf("🎯 Command detected in Slack message: %s", commandResult.CommandText)
-		return h.handleSlackCommand(ctx, commandResult.CommandText, slackIntegrationID, orgID, teamID, channel, user, timestamp, threadTS)
-	}
-
-	// Not a command - proceed with normal message processing
+	// Proceed with normal message processing (commands are handled in the usecase)
 	slackEvent := models.SlackMessageEvent{
 		Channel:  channel,
 		User:     user,
 		Text:     text,
 		TS:       timestamp,
 		ThreadTS: threadTS,
+		Team:     teamID,
 	}
 
 	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID, orgID)
@@ -274,67 +266,6 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID, orgID)
 }
 
-func (h *SlackEventsHandler) handleSlackCommand(
-	ctx context.Context,
-	commandText string,
-	slackIntegrationID string,
-	orgID models.OrgID,
-	teamID string,
-	channelID string,
-	userID string,
-	messageTS string,
-	threadTS string,
-) error {
-	log.Printf("📋 Starting to handle Slack command: %s in channel: %s", commandText, channelID)
-
-	// Get the connected channel for this Slack channel
-	connectedChannelOpt, err := h.connectedChannelsService.GetSlackConnectedChannel(ctx, orgID, teamID, channelID)
-	if err != nil {
-		log.Printf("❌ Failed to get connected channel: %v", err)
-		return fmt.Errorf("failed to get connected channel: %w", err)
-	}
-	if !connectedChannelOpt.IsPresent() {
-		log.Printf("❌ Connected channel not found for team: %s, channel: %s", teamID, channelID)
-		return fmt.Errorf("connected channel not found")
-	}
-
-	connectedChannel := connectedChannelOpt.MustGet()
-
-	// Add organization to context for the commands service
-	org, err := h.getOrganizationByID(ctx, orgID)
-	if err != nil {
-		log.Printf("❌ Failed to get organization: %v", err)
-		return fmt.Errorf("failed to get organization: %w", err)
-	}
-
-	ctx = appctx.SetOrganization(ctx, org)
-
-	// Create simplified command request
-	commandRequest := models.CommandRequest{
-		Command:     commandText,
-		UserID:      userID,
-		MessageText: commandText,
-	}
-
-	// Process the command
-	result, err := h.commandsService.ProcessCommand(ctx, commandRequest, connectedChannel)
-	if err != nil {
-		log.Printf("❌ Failed to process command: %v", err)
-		// Send error message back to Slack
-		return h.sendSlackResponse(ctx, slackIntegrationID, channelID, threadTS, "❌ Error processing command: "+err.Error())
-	}
-
-	// Send result message back to Slack
-	return h.sendSlackResponse(ctx, slackIntegrationID, channelID, threadTS, result.Message)
-}
-
-func (h *SlackEventsHandler) getOrganizationByID(ctx context.Context, orgID models.OrgID) (*models.Organization, error) {
-	// For now, create a mock organization - this should be replaced with actual service call
-	// TODO: Use organization service to get the actual organization
-	return &models.Organization{
-		ID: string(orgID),
-	}, nil
-}
 
 func (h *SlackEventsHandler) sendSlackResponse(
 	ctx context.Context,

@@ -13,6 +13,8 @@ import (
 	"ccbackend/clients/socketio"
 	"ccbackend/models"
 	"ccbackend/services/agents"
+	"ccbackend/services/commands"
+	"ccbackend/services/connectedchannels"
 	discordintegrations "ccbackend/services/discord_integrations"
 	"ccbackend/services/discordmessages"
 	"ccbackend/services/jobs"
@@ -38,6 +40,8 @@ type discordUseCaseMocks struct {
 	discordIntegrationsService *discordintegrations.MockDiscordIntegrationsService
 	txManager                  *txmanager.MockTransactionManager
 	agentsUseCase              *agentsUseCase.MockAgentsUseCase
+	commandsService            *commands.MockCommandsService
+	connectedChannelsService   *connectedchannels.MockConnectedChannelsService
 }
 
 // setupDiscordUseCaseTest creates a new test fixture with all mocks initialized
@@ -51,6 +55,8 @@ func setupDiscordUseCaseTest(t *testing.T) *discordUseCaseTestFixture {
 		discordIntegrationsService: new(discordintegrations.MockDiscordIntegrationsService),
 		txManager:                  new(txmanager.MockTransactionManager),
 		agentsUseCase:              new(agentsUseCase.MockAgentsUseCase),
+		commandsService:            new(commands.MockCommandsService),
+		connectedChannelsService:   new(connectedchannels.MockConnectedChannelsService),
 	}
 
 	useCase := NewDiscordUseCase(
@@ -62,6 +68,8 @@ func setupDiscordUseCaseTest(t *testing.T) *discordUseCaseTestFixture {
 		mocks.discordIntegrationsService,
 		mocks.txManager,
 		mocks.agentsUseCase,
+		mocks.commandsService,
+		mocks.connectedChannelsService,
 	)
 
 	return &discordUseCaseTestFixture{
@@ -260,6 +268,8 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -270,6 +280,8 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -383,6 +395,8 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -393,6 +407,8 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -453,6 +469,8 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -463,6 +481,8 @@ func TestProcessDiscordMessageEvent(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -546,6 +566,8 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -556,6 +578,8 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -656,6 +680,8 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -666,6 +692,8 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -723,6 +751,8 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -733,6 +763,8 @@ func TestProcessDiscordReactionEvent(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -777,6 +809,8 @@ func TestProcessProcessingMessage(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -787,6 +821,8 @@ func TestProcessProcessingMessage(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -857,6 +893,8 @@ func TestProcessProcessingMessage(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -867,6 +905,8 @@ func TestProcessProcessingMessage(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -901,6 +941,8 @@ func TestProcessProcessingMessage(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -911,6 +953,8 @@ func TestProcessProcessingMessage(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -963,6 +1007,8 @@ func TestProcessAssistantMessage(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -973,6 +1019,8 @@ func TestProcessAssistantMessage(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Generate consistent test data for this test case
@@ -1083,6 +1131,8 @@ func TestProcessAssistantMessage(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1093,6 +1143,8 @@ func TestProcessAssistantMessage(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		payload := models.AssistantMessagePayload{
@@ -1125,6 +1177,8 @@ func TestProcessAssistantMessage(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1135,6 +1189,8 @@ func TestProcessAssistantMessage(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		payload := models.AssistantMessagePayload{
@@ -1177,6 +1233,8 @@ func TestProcessSystemMessage(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1187,6 +1245,8 @@ func TestProcessSystemMessage(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		payload := models.SystemMessagePayload{
@@ -1245,6 +1305,8 @@ func TestProcessSystemMessage(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1255,6 +1317,8 @@ func TestProcessSystemMessage(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		payload := models.SystemMessagePayload{
@@ -1330,6 +1394,8 @@ func TestProcessSystemMessage(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1340,6 +1406,8 @@ func TestProcessSystemMessage(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		payload := models.SystemMessagePayload{
@@ -1372,6 +1440,8 @@ func TestProcessJobComplete(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1382,6 +1452,8 @@ func TestProcessJobComplete(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		payload := models.JobCompletePayload{
@@ -1462,6 +1534,8 @@ func TestProcessJobComplete(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1472,6 +1546,8 @@ func TestProcessJobComplete(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		payload := models.JobCompletePayload{
@@ -1504,6 +1580,8 @@ func TestProcessQueuedJobs(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1514,6 +1592,8 @@ func TestProcessQueuedJobs(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		integration := &models.DiscordIntegration{
@@ -1604,6 +1684,8 @@ func TestProcessQueuedJobs(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1614,6 +1696,8 @@ func TestProcessQueuedJobs(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		// Configure expectations
@@ -1639,6 +1723,8 @@ func TestProcessQueuedJobs(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1649,6 +1735,8 @@ func TestProcessQueuedJobs(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		integration := &models.DiscordIntegration{
@@ -1682,6 +1770,8 @@ func TestProcessQueuedJobs(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1692,6 +1782,8 @@ func TestProcessQueuedJobs(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		integration := &models.DiscordIntegration{
@@ -1755,6 +1847,8 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1765,6 +1859,8 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		job := &models.Job{
@@ -1827,6 +1923,8 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 		mockDiscordIntegrationsService := new(discordintegrations.MockDiscordIntegrationsService)
 		mockTxManager := new(txmanager.MockTransactionManager)
 		mockAgentsUseCase := new(agentsUseCase.MockAgentsUseCase)
+		commandsService := new(commands.MockCommandsService)
+		connectedChannelsService := new(connectedchannels.MockConnectedChannelsService)
 
 		useCase := NewDiscordUseCase(
 			mockDiscordClient,
@@ -1837,6 +1935,8 @@ func TestCleanupFailedDiscordJob(t *testing.T) {
 			mockDiscordIntegrationsService,
 			mockTxManager,
 			mockAgentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 
 		job := &models.Job{

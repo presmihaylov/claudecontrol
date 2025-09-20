@@ -242,6 +242,8 @@ func run() error {
 			txManager,
 			agentsUseCase,
 			slackclient.NewSlackClient,
+			commandsService,
+			connectedChannelsService,
 		)
 	} else {
 		slackUseCase = slack.NewUnconfiguredSlackUseCase()
@@ -258,6 +260,8 @@ func run() error {
 			discordIntegrationsService,
 			txManager,
 			agentsUseCase,
+			commandsService,
+			connectedChannelsService,
 		)
 	} else {
 		discordUseCaseInstance = discordUseCase.NewUnconfiguredDiscordUseCase()

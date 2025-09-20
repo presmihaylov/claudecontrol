@@ -26,6 +26,8 @@ type SlackUseCase struct {
 	txManager                services.TransactionManager
 	agentsUseCase            agents.AgentsUseCaseInterface
 	slackClientFactory       SlackClientFactory
+	commandsService          services.CommandsService
+	connectedChannelsService services.ConnectedChannelsService
 }
 
 // NewSlackUseCase creates a new instance of SlackUseCase
@@ -38,6 +40,8 @@ func NewSlackUseCase(
 	txManager services.TransactionManager,
 	agentsUseCase agents.AgentsUseCaseInterface,
 	slackClientFactory SlackClientFactory,
+	commandsService services.CommandsService,
+	connectedChannelsService services.ConnectedChannelsService,
 ) *SlackUseCase {
 	return &SlackUseCase{
 		wsClient:                 wsClient,
@@ -48,6 +52,8 @@ func NewSlackUseCase(
 		txManager:                txManager,
 		agentsUseCase:            agentsUseCase,
 		slackClientFactory:       slackClientFactory,
+		commandsService:          commandsService,
+		connectedChannelsService: connectedChannelsService,
 	}
 }
 
@@ -58,6 +64,50 @@ func (s *SlackUseCase) ProcessSlackMessageEvent(
 	orgID models.OrgID,
 ) error {
 	log.Printf("📋 Starting to process Slack message event from %s in %s: %s", event.User, event.Channel, event.Text)
+
+	// Check if this is a command before processing as normal message
+	commandResult := utils.DetectCommand(event.Text)
+	if commandResult.IsCommand {
+		log.Printf("🔧 Detected command in Slack message: %s", commandResult.CommandText)
+
+		// Get connected channel for this Slack team and channel
+		connectedChannel, err := s.connectedChannelsService.GetSlackConnectedChannel(
+			ctx,
+			orgID,
+			event.Team,
+			event.Channel,
+		)
+		if err != nil {
+			log.Printf("❌ Failed to get connected channel: %v", err)
+			return fmt.Errorf("failed to get connected channel: %w", err)
+		}
+		if !connectedChannel.IsPresent() {
+			log.Printf("❌ No connected channel found for team %s channel %s", event.Team, event.Channel)
+			return s.sendSystemMessage(ctx, slackIntegrationID, event.Channel, event.TS, "Error: This channel is not connected to Claude Control")
+		}
+
+		// Process the command
+		commandRequest := models.CommandRequest{
+			Command:     commandResult.CommandText,
+			UserID:      event.User,
+			MessageText: event.Text,
+		}
+
+		commandResultObj, err := s.commandsService.ProcessCommand(ctx, commandRequest, connectedChannel.MustGet())
+		if err != nil {
+			log.Printf("❌ Failed to process command: %v", err)
+			return s.sendSystemMessage(ctx, slackIntegrationID, event.Channel, event.TS, fmt.Sprintf("Error: %s", err.Error()))
+		}
+
+		// Send command result back to Slack
+		if err := s.sendSystemMessage(ctx, slackIntegrationID, event.Channel, event.TS, commandResultObj.Message); err != nil {
+			log.Printf("❌ Failed to send command response: %v", err)
+			return fmt.Errorf("failed to send command response: %w", err)
+		}
+
+		log.Printf("📋 Completed successfully - processed command: %s", commandResult.CommandText)
+		return nil
+	}
 
 	// For thread replies, validate that a job exists first (don't create new jobs)
 	if event.ThreadTS != "" {
