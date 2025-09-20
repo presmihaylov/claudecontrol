@@ -21,6 +21,7 @@ type DiscordEventsHandler struct {
 	discordIntegrationsService services.DiscordIntegrationsService
 	discordUseCase             usecases.DiscordUseCaseInterface
 	connectedChannelsService   services.ConnectedChannelsService
+	commandsService            services.CommandsService
 }
 
 func NewDiscordEventsHandler(
@@ -30,6 +31,7 @@ func NewDiscordEventsHandler(
 	discordIntegrationsService services.DiscordIntegrationsService,
 	discordUseCase usecases.DiscordUseCaseInterface,
 	connectedChannelsService services.ConnectedChannelsService,
+	commandsService services.CommandsService,
 ) (*DiscordEventsHandler, error) {
 	// Create a new Discord session using the provided bot token
 	session, err := discordgo.New("Bot " + botToken)
@@ -44,6 +46,7 @@ func NewDiscordEventsHandler(
 		discordIntegrationsService: discordIntegrationsService,
 		discordUseCase:             discordUseCase,
 		connectedChannelsService:   connectedChannelsService,
+		commandsService:            commandsService,
 	}
 
 	// Register event handlers
@@ -109,6 +112,8 @@ func (h *DiscordEventsHandler) handleMessageCreatedEvent(s *discordgo.Session, m
 	}
 
 	log.Printf("🔑 Found Discord integration for guild %s (ID: %s)", guildID, discordIntegration.ID)
+
+	// Proceed with normal message processing (commands are handled in the usecase)
 	err = h.discordUseCase.ProcessDiscordMessageEvent(
 		ctx,
 		messageEvent,
@@ -232,4 +237,23 @@ func isThreadChannel(channelType discordgo.ChannelType) bool {
 	return channelType == discordgo.ChannelTypeGuildPublicThread ||
 		channelType == discordgo.ChannelTypeGuildPrivateThread ||
 		channelType == discordgo.ChannelTypeGuildNewsThread
+}
+
+
+func (h *DiscordEventsHandler) sendDiscordResponse(
+	ctx context.Context,
+	discordIntegrationID string,
+	channelID string,
+	threadID string,
+	message string,
+) error {
+	log.Printf("📋 Starting to send Discord response to channel: %s, message: %s", channelID, message)
+
+	// TODO: Implement actual Discord message sending
+	// For now, just log the response - this needs to be implemented with a Discord client
+	log.Printf("🎯 Would send to Discord channel %s: %s", channelID, message)
+
+	// This is a temporary implementation - we need to add proper Discord client integration
+	log.Printf("📋 Completed successfully - logged Discord response (actual sending not yet implemented)")
+	return nil
 }

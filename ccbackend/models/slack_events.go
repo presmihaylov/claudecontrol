@@ -6,4 +6,5 @@ type SlackMessageEvent struct {
 	Text     string
 	TS       string
 	ThreadTS string
+	Team     string
 }

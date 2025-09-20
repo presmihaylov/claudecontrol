@@ -23,6 +23,8 @@ type ConnectedChannel interface {
 	GetUpdatedAt() time.Time
 	// Returns the channel ID (either Slack or Discord channel ID)
 	GetChannelID() string
+	// Returns the team/guild ID (TeamID for Slack, GuildID for Discord)
+	GetTeamID() string
 }
 
 // SlackConnectedChannel represents a connected Slack channel
@@ -71,6 +73,11 @@ func (s *SlackConnectedChannel) GetChannelID() string {
 	return s.ChannelID
 }
 
+// GetTeamID implements ConnectedChannel interface
+func (s *SlackConnectedChannel) GetTeamID() string {
+	return s.TeamID
+}
+
 // DiscordConnectedChannel represents a connected Discord channel
 type DiscordConnectedChannel struct {
 	ID             string    `json:"id"`
@@ -115,6 +122,11 @@ func (d *DiscordConnectedChannel) GetUpdatedAt() time.Time {
 // GetChannelID implements ConnectedChannel interface
 func (d *DiscordConnectedChannel) GetChannelID() string {
 	return d.ChannelID
+}
+
+// GetTeamID implements ConnectedChannel interface
+func (d *DiscordConnectedChannel) GetTeamID() string {
+	return d.GuildID
 }
 
 

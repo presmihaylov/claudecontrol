@@ -13,6 +13,8 @@ import (
 	"ccbackend/clients/socketio"
 	"ccbackend/models"
 	agentsservice "ccbackend/services/agents"
+	"ccbackend/services/commands"
+	"ccbackend/services/connectedchannels"
 	"ccbackend/services/jobs"
 	slackintegrations "ccbackend/services/slack_integrations"
 	"ccbackend/services/slackmessages"
@@ -38,6 +40,8 @@ type slackUseCaseMocks struct {
 	txManager                *txmanager.MockTransactionManager
 	agentsUseCase            *agentsusecase.MockAgentsUseCase
 	slackClient              *slackclient.MockSlackClient
+	commandsService          *commands.MockCommandsService
+	connectedChannelsService *connectedchannels.MockConnectedChannelsService
 }
 
 // setupSlackUseCaseTest creates a new test fixture with all mocks initialized
@@ -51,6 +55,8 @@ func setupSlackUseCaseTest(t *testing.T) *slackUseCaseTestFixture {
 		txManager:                new(txmanager.MockTransactionManager),
 		agentsUseCase:            new(agentsusecase.MockAgentsUseCase),
 		slackClient:              new(slackclient.MockSlackClient),
+		commandsService:          new(commands.MockCommandsService),
+		connectedChannelsService: new(connectedchannels.MockConnectedChannelsService),
 	}
 
 	// Mock client factory that always returns the same mock client
@@ -67,6 +73,8 @@ func setupSlackUseCaseTest(t *testing.T) *slackUseCaseTestFixture {
 		mocks.txManager,
 		mocks.agentsUseCase,
 		mockClientFactory,
+		mocks.commandsService,
+		mocks.connectedChannelsService,
 	)
 
 	return &slackUseCaseTestFixture{

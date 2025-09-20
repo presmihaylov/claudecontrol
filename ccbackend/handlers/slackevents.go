@@ -25,6 +25,7 @@ type SlackEventsHandler struct {
 	coreUseCase              *core.CoreUseCase
 	slackIntegrationsService services.SlackIntegrationsService
 	connectedChannelsService services.ConnectedChannelsService
+	commandsService          services.CommandsService
 }
 
 func NewSlackEventsHandler(
@@ -32,12 +33,14 @@ func NewSlackEventsHandler(
 	coreUseCase *core.CoreUseCase,
 	slackIntegrationsService services.SlackIntegrationsService,
 	connectedChannelsService services.ConnectedChannelsService,
+	commandsService services.CommandsService,
 ) *SlackEventsHandler {
 	return &SlackEventsHandler{
 		signingSecret:            signingSecret,
 		coreUseCase:              coreUseCase,
 		slackIntegrationsService: slackIntegrationsService,
 		connectedChannelsService: connectedChannelsService,
+		commandsService:          commandsService,
 	}
 }
 
@@ -217,12 +220,14 @@ func (h *SlackEventsHandler) handleAppMention(
 		return fmt.Errorf("failed to track Slack channel: %w", err)
 	}
 
+	// Proceed with normal message processing (commands are handled in the usecase)
 	slackEvent := models.SlackMessageEvent{
 		Channel:  channel,
 		User:     user,
 		Text:     text,
 		TS:       timestamp,
 		ThreadTS: threadTS,
+		Team:     teamID,
 	}
 
 	return h.coreUseCase.ProcessSlackMessageEvent(ctx, slackEvent, slackIntegrationID, orgID)
@@ -259,4 +264,23 @@ func (h *SlackEventsHandler) handleReactionAdded(
 	}
 
 	return h.coreUseCase.ProcessReactionAdded(ctx, reactionName, user, channel, ts, slackIntegrationID, orgID)
+}
+
+
+func (h *SlackEventsHandler) sendSlackResponse(
+	ctx context.Context,
+	slackIntegrationID string,
+	channelID string,
+	threadTS string,
+	message string,
+) error {
+	log.Printf("📋 Starting to send Slack response to channel: %s, message: %s", channelID, message)
+
+	// TODO: Implement actual Slack message sending
+	// For now, just log the response - this needs to be implemented with a Slack client
+	log.Printf("🎯 Would send to Slack channel %s: %s", channelID, message)
+
+	// This is a temporary implementation - we need to add proper Slack client integration
+	log.Printf("📋 Completed successfully - logged Slack response (actual sending not yet implemented)")
+	return nil
 }

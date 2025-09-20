@@ -25,6 +25,8 @@ type DiscordUseCase struct {
 	discordIntegrationsService services.DiscordIntegrationsService
 	txManager                  services.TransactionManager
 	agentsUseCase              agents.AgentsUseCaseInterface
+	commandsService            services.CommandsService
+	connectedChannelsService   services.ConnectedChannelsService
 }
 
 // NewDiscordUseCase creates a new instance of DiscordUseCase
@@ -37,6 +39,8 @@ func NewDiscordUseCase(
 	discordIntegrationsService services.DiscordIntegrationsService,
 	txManager services.TransactionManager,
 	agentsUseCase agents.AgentsUseCaseInterface,
+	commandsService services.CommandsService,
+	connectedChannelsService services.ConnectedChannelsService,
 ) *DiscordUseCase {
 	return &DiscordUseCase{
 		discordClient:              discordClient,
@@ -47,6 +51,8 @@ func NewDiscordUseCase(
 		discordIntegrationsService: discordIntegrationsService,
 		txManager:                  txManager,
 		agentsUseCase:              agentsUseCase,
+		commandsService:            commandsService,
+		connectedChannelsService:   connectedChannelsService,
 	}
 }
 
@@ -76,6 +82,81 @@ func (d *DiscordUseCase) ProcessDiscordMessageEvent(
 	}
 
 	log.Printf("🤖 Bot %s (%s) mentioned in message from user %s", botUser.Username, botUser.ID, event.UserID)
+
+	// Check if this is a command before processing as normal message
+	commandResult := utils.DetectCommand(event.Content)
+	if commandResult.IsCommand {
+		log.Printf("🔧 Detected command in Discord message: %s", commandResult.CommandText)
+
+		// Get connected channel for this Discord guild and channel
+		connectedChannel, err := d.connectedChannelsService.GetDiscordConnectedChannel(
+			ctx,
+			orgID,
+			event.GuildID,
+			event.ChannelID,
+		)
+		if err != nil {
+			log.Printf("❌ Failed to get connected channel: %v", err)
+			return fmt.Errorf("failed to get connected channel: %w", err)
+		}
+		if !connectedChannel.IsPresent() {
+			log.Printf("❌ No connected channel found for guild %s channel %s", event.GuildID, event.ChannelID)
+
+			// Create a direct reply to the message
+			maybeIntegration, err := d.discordIntegrationsService.GetDiscordIntegrationByID(ctx, discordIntegrationID)
+			if err != nil {
+				return fmt.Errorf("failed to get Discord integration: %w", err)
+			}
+			if !maybeIntegration.IsPresent() {
+				return fmt.Errorf("discord integration not found: %s", discordIntegrationID)
+			}
+			integration := maybeIntegration.MustGet()
+
+			return d.sendSystemMessage(ctx, discordIntegrationID, integration.DiscordGuildID, event.ChannelID, event.ChannelID, "Error: This channel is not connected to Claude Control")
+		}
+
+		// Process the command
+		commandRequest := models.CommandRequest{
+			Command:     commandResult.CommandText,
+			UserID:      event.UserID,
+			MessageText: event.Content,
+		}
+
+		commandResultObj, err := d.commandsService.ProcessCommand(ctx, orgID, commandRequest, connectedChannel.MustGet())
+		if err != nil {
+			log.Printf("❌ Failed to process command: %v", err)
+
+			// Get Discord integration for system message
+			maybeIntegration, err := d.discordIntegrationsService.GetDiscordIntegrationByID(ctx, discordIntegrationID)
+			if err != nil {
+				return fmt.Errorf("failed to get Discord integration: %w", err)
+			}
+			if !maybeIntegration.IsPresent() {
+				return fmt.Errorf("discord integration not found: %s", discordIntegrationID)
+			}
+			integration := maybeIntegration.MustGet()
+
+			return d.sendSystemMessage(ctx, discordIntegrationID, integration.DiscordGuildID, event.ChannelID, event.ChannelID, fmt.Sprintf("Error: %s", err.Error()))
+		}
+
+		// Send command result back to Discord
+		maybeIntegration, err := d.discordIntegrationsService.GetDiscordIntegrationByID(ctx, discordIntegrationID)
+		if err != nil {
+			return fmt.Errorf("failed to get Discord integration: %w", err)
+		}
+		if !maybeIntegration.IsPresent() {
+			return fmt.Errorf("discord integration not found: %s", discordIntegrationID)
+		}
+		integration := maybeIntegration.MustGet()
+
+		if err := d.sendSystemMessage(ctx, discordIntegrationID, integration.DiscordGuildID, event.ChannelID, event.ChannelID, commandResultObj.Message); err != nil {
+			log.Printf("❌ Failed to send command response: %v", err)
+			return fmt.Errorf("failed to send command response: %w", err)
+		}
+
+		log.Printf("📋 Completed successfully - processed command: %s", commandResult.CommandText)
+		return nil
+	}
 
 	// For thread replies, validate that a job exists first (don't create new jobs)
 	if event.ThreadID != nil {
