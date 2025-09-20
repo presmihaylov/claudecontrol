@@ -214,6 +214,41 @@ func (s *ConnectedChannelsService) UpsertDiscordConnectedChannel(
 	return discordChannel, nil
 }
 
+func (s *ConnectedChannelsService) GetDiscordConnectedChannel(
+	ctx context.Context,
+	orgID models.OrgID,
+	guildID string,
+	channelID string,
+) (mo.Option[*models.DiscordConnectedChannel], error) {
+	log.Printf("📋 Starting to get Discord connected channel: %s (guild: %s) for org: %s", channelID, guildID, orgID)
+
+	if guildID == "" {
+		return mo.None[*models.DiscordConnectedChannel](), fmt.Errorf("guild ID cannot be empty")
+	}
+	if channelID == "" {
+		return mo.None[*models.DiscordConnectedChannel](), fmt.Errorf("channel ID cannot be empty")
+	}
+
+	dbChannel, err := s.connectedChannelsRepo.GetDiscordConnectedChannel(ctx, orgID, guildID, channelID)
+	if err != nil {
+		return mo.None[*models.DiscordConnectedChannel](), fmt.Errorf("failed to get Discord connected channel: %w", err)
+	}
+
+	if !dbChannel.IsPresent() {
+		log.Printf("📋 Completed successfully - no Discord connected channel found for channel: %s", channelID)
+		return mo.None[*models.DiscordConnectedChannel](), nil
+	}
+
+	// Convert to domain model
+	discordChannel, err := dbChannel.MustGet().ToDiscordConnectedChannel()
+	if err != nil {
+		return mo.None[*models.DiscordConnectedChannel](), fmt.Errorf("failed to convert to Discord domain model: %w", err)
+	}
+
+	log.Printf("📋 Completed successfully - found Discord connected channel with ID: %s", discordChannel.ID)
+	return mo.Some(discordChannel), nil
+}
+
 
 
 // getFirstAvailableRepoURL gets the repository URL from the first available active agent

@@ -387,6 +387,12 @@ type ConnectedChannelsService interface {
 		guildID string,
 		channelID string,
 	) (*models.DiscordConnectedChannel, error)
+	GetDiscordConnectedChannel(
+		ctx context.Context,
+		orgID models.OrgID,
+		guildID string,
+		channelID string,
+	) (mo.Option[*models.DiscordConnectedChannel], error)
 }
 
 // TransactionManager handles database transactions via context

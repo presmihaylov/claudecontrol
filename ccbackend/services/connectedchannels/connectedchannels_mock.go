@@ -55,4 +55,17 @@ func (m *MockConnectedChannelsService) UpsertDiscordConnectedChannel(
 	return args.Get(0).(*models.DiscordConnectedChannel), args.Error(1)
 }
 
+func (m *MockConnectedChannelsService) GetDiscordConnectedChannel(
+	ctx context.Context,
+	orgID models.OrgID,
+	guildID string,
+	channelID string,
+) (mo.Option[*models.DiscordConnectedChannel], error) {
+	args := m.Called(ctx, orgID, guildID, channelID)
+	if args.Get(0) == nil {
+		return mo.None[*models.DiscordConnectedChannel](), args.Error(1)
+	}
+	return args.Get(0).(mo.Option[*models.DiscordConnectedChannel]), args.Error(1)
+}
+
 

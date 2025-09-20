@@ -228,7 +228,11 @@ func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {
 		assert.NotNil(t, channel.DefaultRepoURL)
 		assert.Equal(t, testAgent.RepoURL, *channel.DefaultRepoURL)
 
-		// Note: No get function for Discord channels since we only kept Slack get for testing
+		// Verify the channel can be retrieved
+		retrievedChannel, err := service.GetDiscordConnectedChannel(context.Background(), testUser.OrgID, guildID, channelID)
+		require.NoError(t, err)
+		require.True(t, retrievedChannel.IsPresent())
+		assert.Equal(t, channel.ID, retrievedChannel.MustGet().ID)
 
 		mockAgentsService.AssertExpectations(t)
 	})
@@ -243,6 +247,67 @@ func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {
 		_, err := service.UpsertDiscordConnectedChannel(context.Background(), testUser.OrgID, "987654321098765432", "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "channel ID cannot be empty")
+	})
+
+	t.Run("No agents available returns empty repo URL", func(t *testing.T) {
+		// Mock returns empty agents
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+			Return([]*models.ActiveAgent{}, nil).Once()
+
+		guildID := "555666777888999000"
+		channelID := "111222333444555666"
+
+		channel, err := service.UpsertDiscordConnectedChannel(context.Background(), testUser.OrgID, guildID, channelID)
+		require.NoError(t, err)
+
+		assert.Nil(t, channel.DefaultRepoURL)
+		mockAgentsService.AssertExpectations(t)
+
+		// Verify the channel can be retrieved
+		retrievedChannel, err := service.GetDiscordConnectedChannel(context.Background(), testUser.OrgID, guildID, channelID)
+		require.NoError(t, err)
+		require.True(t, retrievedChannel.IsPresent())
+		assert.Nil(t, retrievedChannel.MustGet().DefaultRepoURL)
+	})
+
+	t.Run("Channel with null repo URL gets assigned repo URL when agents become available", func(t *testing.T) {
+		guildID := "777888999000111222"
+		channelID := "333444555666777888"
+
+		// First call - no agents available
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+			Return([]*models.ActiveAgent{}, nil).Once()
+
+		firstChannel, err := service.UpsertDiscordConnectedChannel(context.Background(), testUser.OrgID, guildID, channelID)
+		require.NoError(t, err)
+		assert.Nil(t, firstChannel.DefaultRepoURL)
+
+		// Second call - agent becomes available
+		testAgent := &models.ActiveAgent{
+			ID:             core.NewID("ag"),
+			WSConnectionID: "test-conn-discord",
+			OrgID:          testUser.OrgID,
+			CCAgentID:      "test-agent-discord",
+			RepoURL:        "https://github.com/discord-newly-available/repo.git",
+		}
+
+		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+			Return([]*models.ActiveAgent{testAgent}, nil).Once()
+
+		secondChannel, err := service.UpsertDiscordConnectedChannel(context.Background(), testUser.OrgID, guildID, channelID)
+		require.NoError(t, err)
+
+		// Should now have the repo URL assigned
+		assert.NotNil(t, secondChannel.DefaultRepoURL)
+		assert.Equal(t, testAgent.RepoURL, *secondChannel.DefaultRepoURL)
+
+		// Verify via get function
+		retrievedChannel, err := service.GetDiscordConnectedChannel(context.Background(), testUser.OrgID, guildID, channelID)
+		require.NoError(t, err)
+		require.True(t, retrievedChannel.IsPresent())
+		assert.Equal(t, testAgent.RepoURL, *retrievedChannel.MustGet().DefaultRepoURL)
+
+		mockAgentsService.AssertExpectations(t)
 	})
 }
 
