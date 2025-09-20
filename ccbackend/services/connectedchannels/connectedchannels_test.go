@@ -57,7 +57,7 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 		}
 
 		// Mock agents service to return our test agent
-		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+		mockAgentsService.On("GetAvailableAgents", context.Background(), testUser.OrgID).
 			Return([]*models.ActiveAgent{testAgent}, nil).Once()
 
 		teamID := "T1234567890"
@@ -93,7 +93,7 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 		}
 
 		// Mock agents service to return our test agent
-		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+		mockAgentsService.On("GetAvailableAgents", context.Background(), testUser.OrgID).
 			Return([]*models.ActiveAgent{testAgent}, nil).Once()
 
 		teamID := "T0987654321"
@@ -136,7 +136,7 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 
 	t.Run("No agents available returns empty repo URL", func(t *testing.T) {
 		// Mock returns empty agents
-		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+		mockAgentsService.On("GetAvailableAgents", context.Background(), testUser.OrgID).
 			Return([]*models.ActiveAgent{}, nil).Once()
 
 		teamID := "T2345678901"
@@ -160,7 +160,7 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 		channelID := "C3456789012"
 
 		// First call - no agents available
-		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+		mockAgentsService.On("GetAvailableAgents", context.Background(), testUser.OrgID).
 			Return([]*models.ActiveAgent{}, nil).Once()
 
 		firstChannel, err := service.UpsertSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
@@ -176,7 +176,7 @@ func TestConnectedChannelsService_UpsertSlackConnectedChannel(t *testing.T) {
 			RepoURL:        "https://github.com/newly-available/repo.git",
 		}
 
-		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+		mockAgentsService.On("GetAvailableAgents", context.Background(), testUser.OrgID).
 			Return([]*models.ActiveAgent{testAgent}, nil).Once()
 
 		secondChannel, err := service.UpsertSlackConnectedChannel(context.Background(), testUser.OrgID, teamID, channelID)
@@ -212,7 +212,7 @@ func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {
 		}
 
 		// Mock agents service to return our test agent
-		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+		mockAgentsService.On("GetAvailableAgents", context.Background(), testUser.OrgID).
 			Return([]*models.ActiveAgent{testAgent}, nil).Once()
 
 		guildID := "987654321098765432"
@@ -251,7 +251,7 @@ func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {
 
 	t.Run("No agents available returns empty repo URL", func(t *testing.T) {
 		// Mock returns empty agents
-		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+		mockAgentsService.On("GetAvailableAgents", context.Background(), testUser.OrgID).
 			Return([]*models.ActiveAgent{}, nil).Once()
 
 		guildID := "555666777888999000"
@@ -275,7 +275,7 @@ func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {
 		channelID := "333444555666777888"
 
 		// First call - no agents available
-		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+		mockAgentsService.On("GetAvailableAgents", context.Background(), testUser.OrgID).
 			Return([]*models.ActiveAgent{}, nil).Once()
 
 		firstChannel, err := service.UpsertDiscordConnectedChannel(context.Background(), testUser.OrgID, guildID, channelID)
@@ -291,7 +291,7 @@ func TestConnectedChannelsService_UpsertDiscordConnectedChannel(t *testing.T) {
 			RepoURL:        "https://github.com/discord-newly-available/repo.git",
 		}
 
-		mockAgentsService.On("GetConnectedActiveAgents", context.Background(), testUser.OrgID, []string{}).
+		mockAgentsService.On("GetAvailableAgents", context.Background(), testUser.OrgID).
 			Return([]*models.ActiveAgent{testAgent}, nil).Once()
 
 		secondChannel, err := service.UpsertDiscordConnectedChannel(context.Background(), testUser.OrgID, guildID, channelID)

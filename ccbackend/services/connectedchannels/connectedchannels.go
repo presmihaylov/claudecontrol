@@ -255,7 +255,7 @@ func (s *ConnectedChannelsService) GetDiscordConnectedChannel(
 func (s *ConnectedChannelsService) getFirstAvailableRepoURL(ctx context.Context, orgID models.OrgID) (*string, error) {
 	log.Printf("📋 Starting to get first available repo URL for org: %s", orgID)
 
-	agents, err := s.agentsService.GetConnectedActiveAgents(ctx, orgID, []string{})
+	agents, err := s.agentsService.GetAvailableAgents(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active agents: %w", err)
 	}
